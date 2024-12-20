@@ -75,6 +75,12 @@ namespace LivePhotoConvert
             Console.WriteLine("所有任务已完成。");
         }
 
+        /// <summary>
+        /// 处理照片和视频
+        /// </summary>
+        /// <param name="photoPath"></param>
+        /// <param name="videoPath"></param>
+        /// <param name="outputDirectory"></param>
         private static void ProcessGroup(string photoPath, string videoPath, string outputDirectory)
         {
             // 检查照片格式并转换HEIC为JPG
@@ -93,17 +99,12 @@ namespace LivePhotoConvert
             string outputFilePath = Path.Combine(outputDirectory, $"MVIMG_{baseName}.jpg");
 
             // 转换并合并文件
-            ConvertAsync(processedPhotoPath, videoPath, outputFilePath);
-
-            // 获取原照片的创建时间
-            DateTime originalCreationTime = File.GetCreationTime(photoPath);
-            // 获取原照片的最后修改时间
-            DateTime originalWriteTime = File.GetLastWriteTime(photoPath);
+            MergePhoto(processedPhotoPath, videoPath, outputFilePath);
 
             // 设置新图片的创建时间为原照片的创建时间
-            File.SetCreationTime(outputFilePath, originalCreationTime);
+            File.SetCreationTime(outputFilePath, File.GetCreationTime(photoPath));
             // 设置新图片的最后修改时间为原照片的最后修改时间
-            File.SetLastWriteTime(outputFilePath, originalWriteTime);
+            File.SetLastWriteTime(outputFilePath, File.GetLastWriteTime(photoPath));
 
             // 清理临时文件
             if (processedPhotoPath != photoPath)
@@ -112,6 +113,11 @@ namespace LivePhotoConvert
             }
         }
 
+        /// <summary>
+        /// 将HEIC转换为JPG
+        /// </summary>
+        /// <param name="inputPath"></param>
+        /// <param name="outputPath"></param>
         private static void ConvertHeicToJpg(string inputPath, string outputPath)
         {
             using MagickImage image = new(inputPath);
@@ -119,10 +125,16 @@ namespace LivePhotoConvert
             image.Write(outputPath);
         }
 
-        private static void ConvertAsync(string photoPath, string videoPath, string outputPath)
+        /// <summary>
+        /// 合并照片和视频
+        /// </summary>
+        /// <param name="photoPath"></param>
+        /// <param name="videoPath"></param>
+        /// <param name="outputPath"></param>
+        private static void MergePhoto(string photoPath, string videoPath, string outputPath)
         {
             // 合并文件
-            MergeFilesAsync(photoPath, videoPath, outputPath);
+            MergeFiles(photoPath, videoPath, outputPath);
 
             // 获取文件大小并计算偏移量
             long photoFilesize = new FileInfo(photoPath).Length;
@@ -130,30 +142,29 @@ namespace LivePhotoConvert
             long offset = mergedFilesize - photoFilesize;
 
             // 添加XMP元数据
-            AddXmpMetadataAsync(outputPath, offset);
+            AddXmpMetadata(outputPath, offset);
         }
 
-        private static void MergeFilesAsync(string photoPath, string videoPath, string outputPath)
+        private static void MergeFiles(string photoPath, string videoPath, string outputPath)
         {
-            try
+            using FileStream outfile = new(outputPath, FileMode.Create, FileAccess.Write);
+            using FileStream photo = new(photoPath, FileMode.Open, FileAccess.Read);
+            using FileStream video = new(videoPath, FileMode.Open, FileAccess.Read);
             {
-                using FileStream outfile = new(outputPath, FileMode.Create, FileAccess.Write);
-                using FileStream photo = new(photoPath, FileMode.Open, FileAccess.Read);
-                using FileStream video = new(videoPath, FileMode.Open, FileAccess.Read);
-                {
-                    photo.CopyTo(outfile);
-                    video.CopyTo(outfile);
-                }
-            }
-            catch (Exception ex)
-            {
-                throw;
+                photo.CopyTo(outfile);
+                video.CopyTo(outfile);
             }
         }
 
-        private static void AddXmpMetadataAsync(string mergedPath, long offset)
+        /// <summary>
+        /// 添加XMP元数据
+        /// </summary>
+        /// <param name="mergedPath"></param>
+        /// <param name="offset"></param>
+        /// <exception cref="Exception"></exception>
+        private static void AddXmpMetadata(string mergedPath, long offset)
         {
-            string configPath = CreateExifToolConfigAsync();
+            string configPath = CreateExifToolConfig();
             ProcessStartInfo startInfo = new()
             {
                 FileName = exiftoolPath,
@@ -179,7 +190,11 @@ namespace LivePhotoConvert
             }
         }
 
-        private static string CreateExifToolConfigAsync()
+        /// <summary>
+        /// 创建ExifTool配置文件
+        /// </summary>
+        /// <returns></returns>
+        private static string CreateExifToolConfig()
         {
             string configFile = "custom_exiftool.config";
             if (File.Exists(configFile))
