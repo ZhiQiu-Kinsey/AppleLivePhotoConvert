@@ -55,11 +55,11 @@ namespace LivePhotoConvert
             int completedTasks = 0;
 
             // 多线程处理
-            Parallel.ForEach(matchedGroups, async (group, loopState) =>
+            Parallel.ForEach(matchedGroups, (group, loopState) =>
             {
                 try
                 {
-                    await ProcessGroup(group.Item1, group.Item2, outputDirectory);
+                    ProcessGroup(group.Item1, group.Item2, outputDirectory);
                 }
                 catch (Exception ex)
                 {
@@ -75,7 +75,7 @@ namespace LivePhotoConvert
             Console.WriteLine("所有任务已完成。");
         }
 
-        private static async Task ProcessGroup(string photoPath, string videoPath, string outputDirectory)
+        private static void ProcessGroup(string photoPath, string videoPath, string outputDirectory)
         {
             // 检查照片格式并转换HEIC为JPG
             string processedPhotoPath = photoPath;
@@ -93,7 +93,17 @@ namespace LivePhotoConvert
             string outputFilePath = Path.Combine(outputDirectory, $"MVIMG_{baseName}.jpg");
 
             // 转换并合并文件
-            await ConvertAsync(processedPhotoPath, videoPath, outputFilePath);
+            ConvertAsync(processedPhotoPath, videoPath, outputFilePath);
+
+            // 获取原照片的创建时间
+            DateTime originalCreationTime = File.GetCreationTime(photoPath);
+            // 获取原照片的最后修改时间
+            DateTime originalWriteTime = File.GetLastWriteTime(photoPath);
+
+            // 设置新图片的创建时间为原照片的创建时间
+            File.SetCreationTime(outputFilePath, originalCreationTime);
+            // 设置新图片的最后修改时间为原照片的最后修改时间
+            File.SetLastWriteTime(outputFilePath, originalWriteTime);
 
             // 清理临时文件
             if (processedPhotoPath != photoPath)
@@ -109,10 +119,10 @@ namespace LivePhotoConvert
             image.Write(outputPath);
         }
 
-        private static async Task ConvertAsync(string photoPath, string videoPath, string outputPath)
+        private static void ConvertAsync(string photoPath, string videoPath, string outputPath)
         {
             // 合并文件
-            await MergeFilesAsync(photoPath, videoPath, outputPath);
+            MergeFilesAsync(photoPath, videoPath, outputPath);
 
             // 获取文件大小并计算偏移量
             long photoFilesize = new FileInfo(photoPath).Length;
@@ -120,21 +130,30 @@ namespace LivePhotoConvert
             long offset = mergedFilesize - photoFilesize;
 
             // 添加XMP元数据
-            await AddXmpMetadataAsync(outputPath, offset);
+            AddXmpMetadataAsync(outputPath, offset);
         }
 
-        private static async Task MergeFilesAsync(string photoPath, string videoPath, string outputPath)
+        private static void MergeFilesAsync(string photoPath, string videoPath, string outputPath)
         {
-            using FileStream outfile = new(outputPath, FileMode.Create, FileAccess.Write);
-            using FileStream photo = new(photoPath, FileMode.Open, FileAccess.Read);
-            using FileStream video = new(videoPath, FileMode.Open, FileAccess.Read);
-            await photo.CopyToAsync(outfile);
-            await video.CopyToAsync(outfile);
+            try
+            {
+                using FileStream outfile = new(outputPath, FileMode.Create, FileAccess.Write);
+                using FileStream photo = new(photoPath, FileMode.Open, FileAccess.Read);
+                using FileStream video = new(videoPath, FileMode.Open, FileAccess.Read);
+                {
+                    photo.CopyTo(outfile);
+                    video.CopyTo(outfile);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
         }
 
-        private static async Task AddXmpMetadataAsync(string mergedPath, long offset)
+        private static void AddXmpMetadataAsync(string mergedPath, long offset)
         {
-            string configPath = await CreateExifToolConfigAsync();
+            string configPath = CreateExifToolConfigAsync();
             ProcessStartInfo startInfo = new()
             {
                 FileName = exiftoolPath,
@@ -153,14 +172,14 @@ namespace LivePhotoConvert
 
             using Process process = new() { StartInfo = startInfo };
             process.Start();
-            await process.WaitForExitAsync();
+            process.WaitForExit();
             if (process.ExitCode != 0)
             {
                 throw new Exception("ExifTool 处理失败。");
             }
         }
 
-        private static async Task<string> CreateExifToolConfigAsync()
+        private static string CreateExifToolConfigAsync()
         {
             string configFile = "custom_exiftool.config";
             if (File.Exists(configFile))
@@ -190,7 +209,7 @@ namespace LivePhotoConvert
                                         MicroVideoOffset => { Writable => 'integer' },
                                         MicroVideoPresentationTimestampUs => { Writable => 'integer' },
                                     );";
-            await File.WriteAllTextAsync(configFile, configContent);
+            File.WriteAllText(configFile, configContent);
             return configFile;
         }
 
