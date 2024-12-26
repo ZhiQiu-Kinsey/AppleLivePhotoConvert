@@ -13,7 +13,7 @@ This program is designed to convert iPhone Live Photos into a dynamic photo form
 ### Steps
 
 1. **Prepare Files**
-   - Download the program and unzip it[iPhoneLivePhotoConvert](https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert/releases/tag/1.0)
+   - Download the program and unzip it. [iPhoneLivePhotoConvert](https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert/releases/tag/1.0)
    - Open the iPhone Photos app, select all dynamic photos, click share, choose to include original data, and save to your local device. You will find that the dynamic photos are split into photo and MOV video files.
    - Compress all the data and upload it to your computer, then decompress it.
    - Open the program, select the directory, and choose the output directory, then start the conversion process.
