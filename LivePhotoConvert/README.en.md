@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This program is designed to convert Apple device Live Photos into a dynamic photo format that can be recognized by Xiaomi phones. Apple's Live Photos cannot be directly used on Xiaomi phones because they handle dynamic photos differently. This program merges the photo and video files and adds necessary metadata to ensure that the resulting dynamic photos are correctly identified and displayed in Xiaomi's gallery.
+This program is designed to convert iPhone Live Photos into a dynamic photo format that can be recognized by Xiaomi phones. iPhone Live Photos cannot be directly used on Xiaomi phones because they handle dynamic photos differently. This program merges the photo and video files and adds necessary metadata to ensure that the resulting dynamic photos are correctly identified and displayed in Xiaomi's gallery.
 
 ## Usage
 
@@ -13,15 +13,16 @@ This program is designed to convert Apple device Live Photos into a dynamic phot
 ### Steps
 
 1. **Prepare Files**
-   - Open the Apple Photos app, select all dynamic photos, click share, choose to include original data, and save to your local device. You will find that the dynamic photos are split into photo and MOV video files.
+   - Download the program and unzip it[iPhoneLivePhotoConvert](https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert/releases/tag/1.0)
+   - Open the iPhone Photos app, select all dynamic photos, click share, choose to include original data, and save to your local device. You will find that the dynamic photos are split into photo and MOV video files.
    - Compress all the data and upload it to your computer, then decompress it.
    - Open the program, select the directory, and choose the output directory, then start the conversion process.
 
-2. **Dynamic Photo Creation**
+3. **Dynamic Photo Creation**
    - The photo file should be in `.jpg`, `.jpeg`, or `.heic` format, and the video file should be in `.mov` or `.mp4` format.
    - Ensure that the photo and video files have the same prefix in their filenames, for example, `IMG_0001.heic` and `IMG_0001.mov`.
 
-3. **View the Results**
+4. **View the Results**
 
    - After the conversion is complete, the dynamic photos will be saved in the specified output directory.
    - Transfer these photos to your Xiaomi phone and view them in Xiaomi's gallery.
