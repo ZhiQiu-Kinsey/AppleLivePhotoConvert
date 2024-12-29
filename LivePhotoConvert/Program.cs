@@ -1,12 +1,17 @@
 ﻿using System.Diagnostics;
+
 using ImageMagick;
+
+using NReco.VideoConverter;
 
 namespace LivePhotoConvert
 {
     public class Program
     {
         private const string exiftoolPath = @".\ExifTool\ExifTool.exe";
-        private static readonly object consoleLock = new ();
+        private const string ffmpegPath = @".\";
+        private static readonly object consoleLock = new();
+
         public static void Main(string[] args)
         {
             // 选择照片目录
@@ -94,12 +99,23 @@ namespace LivePhotoConvert
                 processedPhotoPath = jpgPath;
             }
 
+            // 检查视频格式并转换MOV为MP4
+            string processedVideoPath = videoPath;
+            if (Path.GetExtension(videoPath).Equals(".mov", StringComparison.CurrentCultureIgnoreCase))
+            {
+                string tempDir = Path.Combine(outputDirectory, "Temp");
+                Directory.CreateDirectory(tempDir);
+                string mp4Path = Path.Combine(tempDir, Guid.NewGuid().ToString() + ".mp4");
+                ConvertMovToMp4(videoPath, mp4Path);
+                processedVideoPath = mp4Path;
+            }
+
             // 生成输出路径
             string baseName = Path.GetFileNameWithoutExtension(photoPath);
             string outputFilePath = Path.Combine(outputDirectory, $"MVIMG_{baseName}.jpg");
 
             // 转换并合并文件
-            MergePhoto(processedPhotoPath, videoPath, outputFilePath);
+            MergePhoto(processedPhotoPath, processedVideoPath, outputFilePath);
 
             // 设置新图片的创建时间为原照片的创建时间
             File.SetCreationTime(outputFilePath, File.GetCreationTime(photoPath));
@@ -110,6 +126,10 @@ namespace LivePhotoConvert
             if (processedPhotoPath != photoPath)
             {
                 File.Delete(processedPhotoPath);
+            }
+            if (processedVideoPath != videoPath)
+            {
+                File.Delete(processedVideoPath);
             }
         }
 
@@ -126,11 +146,22 @@ namespace LivePhotoConvert
         }
 
         /// <summary>
-        /// 合并照片和视频
+        /// 将MOV转换为MP4
         /// </summary>
-        /// <param name="photoPath"></param>
-        /// <param name="videoPath"></param>
+        /// <param name="inputPath"></param>
         /// <param name="outputPath"></param>
+        private static void ConvertMovToMp4(string inputPath, string outputPath)
+        {
+            FFMpegConverter converter = new()
+            {
+                FFMpegToolPath = ffmpegPath,
+            };
+            converter.ConvertMedia(inputPath,null, outputPath, "mp4", new ConvertSettings
+            {
+                //VideoCodec = "h264_amf"
+            });
+        }
+
         private static void MergePhoto(string photoPath, string videoPath, string outputPath)
         {
             // 合并文件
@@ -260,7 +291,7 @@ namespace LivePhotoConvert
                 // 处理文件名，超过 15 个字符时显示 "..."
                 if (fileName.Length > 15)
                 {
-                    fileName = string.Concat("...", fileName.AsSpan(fileName.Length - 12, 12));
+                    fileName = $"...{fileName.Substring(fileName.Length - 12, 12)}";
                 }
                 // 构建进度条字符串，显示百分比并保留两位小数
                 string progressBar = $"正在处理: {fileName} [{new string('=', filled)}{new string(' ', barLength - filled)}] {progress:P2}";

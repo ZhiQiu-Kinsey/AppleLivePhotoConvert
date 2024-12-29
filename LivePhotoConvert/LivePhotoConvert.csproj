@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <PackageReference Include="Magick.NET-Q16-AnyCPU" Version="14.2.0" />
+    <PackageReference Include="NReco.VideoConverter" Version="1.2.1" />
   </ItemGroup>
 
   <ItemGroup>
