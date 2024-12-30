@@ -46,8 +46,7 @@ namespace LivePhotoConvert
             int totalTasks = matchedGroups.Count;
             int completedTasks = 0;
 
-            // 使用多线程转换
-            Parallel.ForEach(matchedGroups, group =>
+            matchedGroups.ForEach(group =>
             {
                 try
                 {
