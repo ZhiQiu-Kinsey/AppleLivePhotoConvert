@@ -9,6 +9,7 @@
 ### 依赖项
 
 - [ExifTool](https://exiftool.org/)
+- [FFmpeg](https://www.ffmpeg.org/)
 
 ### 步骤
 
