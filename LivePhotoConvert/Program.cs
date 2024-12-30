@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 
 using ImageMagick;
 
@@ -8,9 +8,10 @@ namespace LivePhotoConvert
 {
     public class Program
     {
-        private const string exiftoolPath = @".\ExifTool\ExifTool.exe";
-        private const string ffmpegPath = @".\";
-        private static readonly object consoleLock = new();
+        private const string ExifToolPath = @".\ExifTool\ExifTool.exe";
+        private const string FfmpegPath = @".\";
+        private static string TempDir = string.Empty;
+        private static readonly object ConsoleLock = new();
 
         public static void Main(string[] args)
         {
@@ -30,11 +31,17 @@ namespace LivePhotoConvert
                 return;
             }
 
+            TempDir = Path.Combine(outputDirectory, "Temp");
+            // 创建临时目录
+            Directory.CreateDirectory(TempDir);
+
             // 获取照片和视频文件
             HashSet<string> photoExtensions = [".jpg", ".jpeg", ".heic"];
             HashSet<string> videoExtensions = [".mov", ".mp4"];
-            List<string> photos = [.. Directory.GetFiles(photoDirectory, "*", SearchOption.TopDirectoryOnly).Where(f => photoExtensions.Contains(Path.GetExtension(f).ToLower()))];
-            List<string> videos = [.. Directory.GetFiles(photoDirectory, "*", SearchOption.TopDirectoryOnly).Where(f => videoExtensions.Contains(Path.GetExtension(f).ToLower()))];
+
+            // 获取照片和视频文件
+            var photos = Directory.GetFiles(photoDirectory, "*", SearchOption.TopDirectoryOnly).Where(f => photoExtensions.Contains(Path.GetExtension(f))).ToList();
+            var videos = Directory.GetFiles(photoDirectory, "*", SearchOption.TopDirectoryOnly).Where(f => videoExtensions.Contains(Path.GetExtension(f))).ToList();
 
             // 匹配照片和视频
             var matchedGroups = new List<Tuple<string, string>>();
@@ -50,7 +57,8 @@ namespace LivePhotoConvert
 
             Console.WriteLine($"匹配到 {matchedGroups.Count} 组动态照片。");
             Console.WriteLine("是否开始转换？ (Y/N)");
-            if (Console.ReadLine()?.TrimEnd().ToLower() != "y")
+
+            if (Console.ReadLine()?.Trim().ToLower() != "y")
             {
                 Console.WriteLine("转换已取消。");
                 return;
@@ -59,8 +67,8 @@ namespace LivePhotoConvert
             int totalTasks = matchedGroups.Count;
             int completedTasks = 0;
 
-            // 多线程处理
-            Parallel.ForEach(matchedGroups, (group, loopState) =>
+            // 使用 Parallel.ForEach 进行并行处理
+            Parallel.ForEach(matchedGroups, group =>
             {
                 try
                 {
@@ -77,7 +85,9 @@ namespace LivePhotoConvert
                 }
             });
 
-            Console.WriteLine("所有任务已完成。");
+            // 删除临时目录
+            Directory.Delete(TempDir, true);
+            Console.ReadKey();
         }
 
         /// <summary>
@@ -90,32 +100,26 @@ namespace LivePhotoConvert
         {
             // 检查照片格式并转换HEIC为JPG
             string processedPhotoPath = photoPath;
-            if (Path.GetExtension(photoPath).Equals(".heic", StringComparison.CurrentCultureIgnoreCase))
+            if (Path.GetExtension(photoPath).Equals(".heic", StringComparison.OrdinalIgnoreCase))
             {
-                string tempDir = Path.Combine(outputDirectory, "Temp");
-                Directory.CreateDirectory(tempDir);
-                string jpgPath = Path.Combine(tempDir, Guid.NewGuid().ToString() + ".jpg");
-                ConvertHeicToJpg(photoPath, jpgPath);
-                processedPhotoPath = jpgPath;
+                processedPhotoPath = ConvertHeicToJpg(photoPath);
             }
 
             // 检查视频格式并转换MOV为MP4
             string processedVideoPath = videoPath;
-            if (Path.GetExtension(videoPath).Equals(".mov", StringComparison.CurrentCultureIgnoreCase))
+            if (Path.GetExtension(videoPath).Equals(".mov", StringComparison.OrdinalIgnoreCase))
             {
-                string tempDir = Path.Combine(outputDirectory, "Temp");
-                Directory.CreateDirectory(tempDir);
-                string mp4Path = Path.Combine(tempDir, Guid.NewGuid().ToString() + ".mp4");
-                ConvertMovToMp4(videoPath, mp4Path);
-                processedVideoPath = mp4Path;
+                processedVideoPath = ConvertMovToMp4(videoPath);
             }
 
             // 生成输出路径
             string baseName = Path.GetFileNameWithoutExtension(photoPath);
             string outputFilePath = Path.Combine(outputDirectory, $"MVIMG_{baseName}.jpg");
 
-            // 转换并合并文件
-            MergePhoto(processedPhotoPath, processedVideoPath, outputFilePath);
+            // 合并文件
+            (long photoFilesize, long mergedFilesize) = MergeFiles(processedPhotoPath, processedVideoPath, outputFilePath);
+            // 添加XMP元数据
+            AddXmpMetadata(outputFilePath, photoFilesize, mergedFilesize);
 
             // 设置新图片的创建时间为原照片的创建时间
             File.SetCreationTime(outputFilePath, File.GetCreationTime(photoPath));
@@ -138,11 +142,13 @@ namespace LivePhotoConvert
         /// </summary>
         /// <param name="inputPath"></param>
         /// <param name="outputPath"></param>
-        private static void ConvertHeicToJpg(string inputPath, string outputPath)
+        private static string ConvertHeicToJpg(string inputPath)
         {
+            string outputPath = Path.Combine(TempDir, Guid.NewGuid() + ".jpg");
             using MagickImage image = new(inputPath);
             image.Format = MagickFormat.Jpeg;
             image.Write(outputPath);
+            return outputPath;
         }
 
         /// <summary>
@@ -150,41 +156,46 @@ namespace LivePhotoConvert
         /// </summary>
         /// <param name="inputPath"></param>
         /// <param name="outputPath"></param>
-        private static void ConvertMovToMp4(string inputPath, string outputPath)
+        private static string ConvertMovToMp4(string inputPath)
         {
-            FFMpegConverter converter = new()
+            string outputPath = Path.Combine(TempDir, Guid.NewGuid() + ".mp4");
+            var converter = new FFMpegConverter
             {
-                FFMpegToolPath = ffmpegPath,
+                FFMpegToolPath = FfmpegPath,
             };
-            converter.ConvertMedia(inputPath,null, outputPath, "mp4", new ConvertSettings
+            converter.ConvertMedia(inputPath, null, outputPath, "mp4", new ConvertSettings
             {
+                // AMD显卡加速 (需要安装ROCM,并且质量会下降)
                 //VideoCodec = "h264_amf"
+                // Nvidia显卡加速 (未测试)
+                //VideoCodec = "h264_nvenc"
+                // Intel显卡加速 (未测试)
+                //VideoCodec = "h264_qsv"
             });
+            return outputPath;
         }
 
-        private static void MergePhoto(string photoPath, string videoPath, string outputPath)
+        /// <summary>
+        /// 合并照片和视频
+        /// </summary>
+        /// <param name="photoPath"></param>
+        /// <param name="videoPath"></param>
+        /// <param name="outputPath"></param>
+        private static (long, long) MergeFiles(string photoPath, string videoPath, string outputPath)
         {
-            // 合并文件
-            MergeFiles(photoPath, videoPath, outputPath);
-
-            // 获取文件大小并计算偏移量
-            long photoFilesize = new FileInfo(photoPath).Length;
-            long mergedFilesize = new FileInfo(outputPath).Length;
-            long offset = mergedFilesize - photoFilesize;
-
-            // 添加XMP元数据
-            AddXmpMetadata(outputPath, offset);
-        }
-
-        private static void MergeFiles(string photoPath, string videoPath, string outputPath)
-        {
-            using FileStream outfile = new(outputPath, FileMode.Create, FileAccess.Write);
-            using FileStream photo = new(photoPath, FileMode.Open, FileAccess.Read);
-            using FileStream video = new(videoPath, FileMode.Open, FileAccess.Read);
+            long photoFilesize;
+            long mergedFilesize;
+            // 将视频流写入照片末尾
+            using var outfile = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
+            using var photo = new FileStream(photoPath, FileMode.Open, FileAccess.Read);
+            photoFilesize = photo.Length;
+            using var video = new FileStream(videoPath, FileMode.Open, FileAccess.Read);
             {
                 photo.CopyTo(outfile);
                 video.CopyTo(outfile);
             }
+            mergedFilesize = outfile.Length;
+            return (photoFilesize, mergedFilesize);
         }
 
         /// <summary>
@@ -193,12 +204,14 @@ namespace LivePhotoConvert
         /// <param name="mergedPath"></param>
         /// <param name="offset"></param>
         /// <exception cref="Exception"></exception>
-        private static void AddXmpMetadata(string mergedPath, long offset)
+        private static void AddXmpMetadata(string mergedPath, long photoFilesize,long mergedFilesize)
         {
+            // 计算偏移量
+            long offset = mergedFilesize - photoFilesize;
             string configPath = CreateExifToolConfig();
             ProcessStartInfo startInfo = new()
             {
-                FileName = exiftoolPath,
+                FileName = ExifToolPath,
                 Arguments = $"-config \"{configPath}\" " +
                             $"-XMP-GCamera:MicroVideo=1 " +
                             $"-XMP-GCamera:MicroVideoVersion=1 " +
@@ -212,7 +225,7 @@ namespace LivePhotoConvert
                 CreateNoWindow = true
             };
 
-            using Process process = new() { StartInfo = startInfo };
+            using var process = new Process { StartInfo = startInfo };
             process.Start();
             process.WaitForExit();
             if (process.ExitCode != 0)
@@ -283,7 +296,7 @@ namespace LivePhotoConvert
         private static void DrawProgressBar(int completed, int total, string fileName, int barLength = 70)
         {
             if (total == 0) return;
-            lock (consoleLock)
+            lock (ConsoleLock)
             {
                 // 计算进度并保留两位小数
                 double progress = (double)completed / total;
