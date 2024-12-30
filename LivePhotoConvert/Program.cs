@@ -36,8 +36,8 @@ namespace LivePhotoConvert
             Directory.CreateDirectory(TempDir);
 
             // 获取照片和视频文件
-            HashSet<string> photoExtensions = [".jpg", ".jpeg", ".heic"];
-            HashSet<string> videoExtensions = [".mov", ".mp4"];
+            HashSet<string> photoExtensions = [".jpg", ".jpeg", ".heic", ".JPG", ".JPEG", ".HEIC"];
+            HashSet<string> videoExtensions = [".mov", ".mp4", ".MOV", ".MP4"];
 
             // 获取照片和视频文件
             var photos = Directory.GetFiles(photoDirectory, "*", SearchOption.TopDirectoryOnly).Where(f => photoExtensions.Contains(Path.GetExtension(f))).ToList();
