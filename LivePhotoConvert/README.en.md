@@ -9,6 +9,7 @@ This program is designed to convert iPhone Live Photos into a dynamic photo form
 ### Dependencies
 
 - [ExifTool](https://exiftool.org/)
+- [FFmpeg](https://www.ffmpeg.org/)
 
 ### Steps
 
