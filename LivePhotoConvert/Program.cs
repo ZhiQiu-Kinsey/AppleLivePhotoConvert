@@ -1,3 +1,4 @@
+using System;
 using System.Diagnostics;
 using System.Reflection;
 
@@ -11,22 +12,28 @@ namespace LivePhotoConvert
     {
         public static void Main(string[] args)
         {
-            // 选择照片目录
-            string? photoDirectory = MergeMotionPhoto.SelectFolder("请选择照片目录");
-            if (string.IsNullOrEmpty(photoDirectory))
-            {
-                Console.WriteLine("未选择照片目录，程序退出。");
-                return;
-            }
+            // 显示操作选项菜单
+            Console.WriteLine("请选择操作：");
+            Console.WriteLine("1. 合成动态照片");
+            Console.WriteLine("2. 拆分动态照片");
 
-            // 选择输出目录
-            string? outputDirectory = MergeMotionPhoto.SelectFolder("请选择输出目录");
-            if (string.IsNullOrEmpty(outputDirectory))
+            string? choice = Console.ReadLine();
+
+            // 根据用户选择的操作执行不同的功能
+            if (choice == "1")
             {
-                Console.WriteLine("未选择输出目录，程序退出。");
-                return;
+                // 合成动态照片
+                MergeMotionPhoto.Convert();
             }
-            MergeMotionPhoto.Convert(photoDirectory, outputDirectory);
+            else if (choice == "2")
+            {
+                // 拆分动态照片
+                SplitMotionPhoto.Split();
+            }
+            else
+            {
+                Console.WriteLine("无效的选项，程序退出。");
+            }
         }
     }
 }

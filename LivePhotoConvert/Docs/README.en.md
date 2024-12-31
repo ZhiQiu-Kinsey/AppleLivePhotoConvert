@@ -55,7 +55,7 @@ To determine the special identifier used by Xiaomi's gallery to recognize dynami
 1. **Reverse Engineering of Xiaomi Gallery APP**
 
    Use the reverse engineering tool `jadx-gui` to open the Xiaomi Gallery APK file.
-
+   1. <img src=".\PixPin_2024-12-19_19-35-11.png" alt="">
 2. **Code Analysis**
 
    In the reverse-engineered code, locate the logic that determines whether a photo is a dynamic photo. It was found that Xiaomi's gallery reads a special tag in the Exif data to make this determination.

@@ -1,5 +1,5 @@
 # LivePhotoConvert
-[English](/LivePhotoConvert/README.en.md) 
+[English](/LivePhotoConvert/Docs/README.en.md) 
 ## 介绍
 
 本程序用于将苹果设备的实况照片转换为小米手机可识别的动态照片格式。苹果的实况照片无法直接在小米手机上使用，因为两者对动态照片的处理方式不同。本程序通过将照片和视频合并，并添加必要的元数据，使得生成的动态照片能够在小米相册中正确识别和显示。
