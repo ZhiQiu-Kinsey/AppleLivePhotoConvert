@@ -7,8 +7,32 @@
     <Nullable>enable</Nullable>
     <PublishTrimmed>True</PublishTrimmed>
     <PublishAot>True</PublishAot>
+    <ApplicationIcon>LivePhotoConvert.ico</ApplicationIcon>
+    <PlatformTarget>x64</PlatformTarget>
+    <ProduceReferenceAssembly>False</ProduceReferenceAssembly>
+    <Authors>Kinsey.Qiu</Authors>
+    <Description>动态照片工具箱，支持动态照片的合成与拆分</Description>
+    <PackageProjectUrl>https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert</RepositoryUrl>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DebugType>none</DebugType>
+    <Optimize>True</Optimize>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="LivePhotoConvert.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="LivePhotoConvert.ico" />
+  </ItemGroup>
+	
   <ItemGroup>
     <PackageReference Include="Magick.NET-Q16-AnyCPU" Version="14.2.0" />
     <PackageReference Include="NReco.VideoConverter" Version="1.2.1" />
@@ -16,6 +40,10 @@
 
   <ItemGroup>
     <Folder Include="Properties\PublishProfiles\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="LivePhotoConvert.ico" />
   </ItemGroup>
 
 </Project>
