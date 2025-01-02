@@ -2,8 +2,9 @@
 
 ## Introduction
 
-This program is designed to convert iPhone Live Photos into a dynamic photo format that can be recognized by Xiaomi phones. iPhone Live Photos cannot be directly used on Xiaomi phones because they handle dynamic photos differently. This program merges the photo and video files and adds necessary metadata to ensure that the resulting dynamic photos are correctly identified and displayed in Xiaomi's gallery.
-
+This program is designed to convert iPhone Live Photos into a Motion Photo format that can be recognized by Xiaomi phones. iPhone Live Photos cannot be directly used on Xiaomi phones because they handle Motion Photo differently. 
+This program merges the photo and video files and adds necessary metadata to ensure that the resulting Motion Photo are correctly identified and displayed in Xiaomi's gallery.
+Support Android Motion Photo split into photos and videos
 ## Usage
 
 ### Dependencies
@@ -15,7 +16,7 @@ This program is designed to convert iPhone Live Photos into a dynamic photo form
 
 1. **Prepare Files**
    - Download the program and unzip it. [iPhoneLivePhotoConvert](https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert/releases/tag/1.0)
-   - Open the iPhone Photos app, select all dynamic photos, click share, choose to include original data, and save to your local device. You will find that the dynamic photos are split into photo and MOV video files.
+   - Open the iPhone Photos app, select all Motion Photo, click share, choose to include original data, and save to your local device. You will find that the Motion Photo are split into photo and MOV video files.
    - Compress all the data and upload it to your computer, then decompress it.
    - Open the program, select the directory, and choose the output directory, then start the conversion process.
 
@@ -25,7 +26,7 @@ This program is designed to convert iPhone Live Photos into a dynamic photo form
 
 4. **View the Results**
 
-   - After the conversion is complete, the dynamic photos will be saved in the specified output directory.
+   - After the conversion is complete, the Motion Photo will be saved in the specified output directory.
    - Transfer these photos to your Xiaomi phone and view them in Xiaomi's gallery.
 
 ## Principles
@@ -36,21 +37,21 @@ The program merges the photo file and the video file into a single file, with th
 
 ### Metadata Addition
 
-To ensure that Xiaomi's gallery recognizes the dynamic photos, the program uses `ExifTool` to add the following metadata:
+To ensure that Xiaomi's gallery recognizes the Motion Photo, the program uses `ExifTool` to add the following metadata:
 
 - **MicroVideo Tag**: Indicates that the file contains video data.
 - **MicroVideoOffset**: The starting position of the video data in the file.
 - **MicroVideoPresentationTimestampUs**: The starting timestamp for video playback.
 
-Additionally, the program sets a special Exif tag `0x8897`, which is crucial for Xiaomi's gallery to recognize dynamic photos.
+Additionally, the program sets a special Exif tag `0x8897`, which is crucial for Xiaomi's gallery to recognize Motion Photo.
 
 ### Other Processing
 
-- **HEIC Conversion**: If the photo is in `.heic` format, the program will convert it to `.jpg` format. Currently, it does not support dynamic photos in `.heic` format.
+- **HEIC Conversion**: If the photo is in `.heic` format, the program will convert it to `.jpg` format. Currently, it does not support Motion Photo in `.heic` format.
 
 ## Reverse Engineering of Xiaomi Gallery APP to Discover Special Identifier
 
-To determine the special identifier used by Xiaomi's gallery to recognize dynamic photos, the following steps were taken:
+To determine the special identifier used by Xiaomi's gallery to recognize Motion Photo, the following steps were taken:
 
 1. **Reverse Engineering of Xiaomi Gallery APP**
 
@@ -66,7 +67,7 @@ To determine the special identifier used by Xiaomi's gallery to recognize dynami
 
 4. **Apply Special Tag**
 
-   The program uses `ExifTool` to write this special tag, which ultimately resolves the issue of Xiaomi's gallery not recognizing dynamic photos.
+   The program uses `ExifTool` to write this special tag, which ultimately resolves the issue of Xiaomi's gallery not recognizing Motion Photo.
 
 ## Notes
 
