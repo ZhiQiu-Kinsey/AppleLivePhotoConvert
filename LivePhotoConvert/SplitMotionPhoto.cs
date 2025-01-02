@@ -30,8 +30,8 @@ public class SplitMotionPhoto
         Parallel.ForEach(imageFiles, imagePath =>
         {
             string fileName = Path.GetFileName(imagePath);
-            string outputJpgPath = Path.Combine(outputDirectory, fileName.Replace(".jpg", "_image.jpg"));
-            string outputMp4Path = Path.Combine(outputDirectory, fileName.Replace(".jpg", "_video.mp4"));
+            string outputJpgPath = Path.Combine(outputDirectory, fileName.Replace(".jpg", "_01.jpg"));
+            string outputMp4Path = Path.Combine(outputDirectory, fileName.Replace(".jpg", "_01.mp4"));
             try
             {
                 // 获取MicroVideoOffset值
