@@ -42,8 +42,8 @@ namespace LivePhotoConvert
             var videos = Directory.GetFiles(inputPath, "*", SearchOption.TopDirectoryOnly).Where(f => VideoExtensions.Contains(Path.GetExtension(f))).ToList();
 
             // 匹配照片和视频
-            var matchedGroups = photos.Join(videos, photoPath => Path.GetFileNameWithoutExtension(photoPath),
-                                                    videoPath => Path.GetFileNameWithoutExtension(videoPath),
+            var matchedGroups = photos.Join(videos, Path.GetFileNameWithoutExtension,
+                                                    Path.GetFileNameWithoutExtension,
                                                     (photoPath, videoPath) => (photoPath, videoPath)).ToList();
 
             Console.WriteLine($"匹配到 {matchedGroups.Count} 组动态照片。");
@@ -175,18 +175,14 @@ namespace LivePhotoConvert
         /// <param name="outputPath"></param>
         private static (long, long) MergeFiles(string photoPath, string videoPath, string outputPath)
         {
-            long photoFilesize;
-            long mergedFilesize;
             // 将视频流写入照片末尾
             using var outfile = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
             using var photo = new FileStream(photoPath, FileMode.Open, FileAccess.Read);
-            photoFilesize = photo.Length;
+            long photoFilesize = photo.Length;
             using var video = new FileStream(videoPath, FileMode.Open, FileAccess.Read);
-            {
-                photo.CopyTo(outfile);
-                video.CopyTo(outfile);
-            }
-            mergedFilesize = outfile.Length;
+            photo.CopyTo(outfile);
+            video.CopyTo(outfile);
+            long mergedFilesize = outfile.Length;
             return (photoFilesize, mergedFilesize);
         }
     }

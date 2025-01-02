@@ -51,13 +51,13 @@ namespace LivePhotoConvert
                 string outputMp4Path = Path.Combine(outputDirectory, fileName.Replace(".jpg", "_video.mp4"));
                 try
                 {
-                    // 第一步：获取MicroVideoOffset值
+                    // 获取MicroVideoOffset值
                     long offset = UtilityHelp.GetMicroVideoOffset(imagePath);
-
-                    // 第二步：提取图片部分
+                    // 提取图片部分
                     ExtractData(imagePath, outputJpgPath, offset, true);
-
-                    // 第三步：提取视频部分
+                    // 删除元数据
+                    UtilityHelp.RemoveXmpAndExifTags(outputJpgPath);
+                    // 提取视频部分
                     ExtractData(imagePath, outputMp4Path, offset, false);
                 }
                 catch (Exception ex)
@@ -87,7 +87,6 @@ namespace LivePhotoConvert
         {
             using FileStream sourceStream = new(imagePath, FileMode.Open, FileAccess.Read);
             using FileStream outputStream = new(outputPath, FileMode.Create, FileAccess.Write);
-
             // 计算源文件长度减去偏移量的值
             long lengthMinusOffset = sourceStream.Length - offset;
             // 根据是否为图片确定起始位置
@@ -99,7 +98,7 @@ namespace LivePhotoConvert
             // 设置源文件流的位置
             sourceStream.Seek(startPos, SeekOrigin.Begin);
             // 从源文件流读取数据到缓冲区
-            sourceStream.Read(buffer);
+            sourceStream.ReadExactly(buffer);
             // 将缓冲区数据写入输出文件流
             outputStream.Write(buffer);
         }
