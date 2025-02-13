@@ -10,8 +10,9 @@ public class Program
         Console.WriteLine("请选择操作：");
         Console.WriteLine("1. 合成动态照片");
         Console.WriteLine("2. 拆分动态照片");
-        Console.WriteLine("3. 退出");
-        string? choice = Console.ReadLine();
+        Console.WriteLine("3. 合成iPhone动态照片");
+        Console.WriteLine("4. 退出");
+        var choice = Console.ReadLine();
         Console.Clear();
         // 根据用户选择的操作执行不同的功能
         switch (choice)
@@ -23,6 +24,10 @@ public class Program
             case "2":
                 // 拆分动态照片
                 SplitMotionPhoto.Split();
+                break;
+            case "3":
+                // 合成iPhone动态照片
+                // TODO
                 break;
             default:
                 Console.WriteLine("程序退出。");

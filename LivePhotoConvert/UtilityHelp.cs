@@ -62,8 +62,8 @@ public static class UtilityHelp
     public static void InsertExifMetadata(string imagePath, long photoFilesize, long mergedFilesize)
     {
         // 计算偏移量
-        long offset = mergedFilesize - photoFilesize;
-        string configPath = CreateExifToolConfig();
+        var offset = mergedFilesize - photoFilesize;
+        var configPath = CreateExifToolConfig();
         using var process = new Process
         {
             StartInfo = new()
@@ -86,7 +86,7 @@ public static class UtilityHelp
         process.WaitForExit();
         if (process.ExitCode != 0)
         {
-            string error = process.StandardError.ReadToEnd();
+            var error = process.StandardError.ReadToEnd();
             throw new Exception($"ExifTool添加元数据失败:{error}");
         }
     }
@@ -97,7 +97,7 @@ public static class UtilityHelp
     /// <param name="imagePath">图片路径</param>
     public static void RemoveXmpAndExifTags(string imagePath)
     {
-        string configPath = CreateExifToolConfig();
+        var configPath = CreateExifToolConfig();
         using var process = new Process
         {
             StartInfo = new()
@@ -122,7 +122,7 @@ public static class UtilityHelp
         process.WaitForExit();
         if (process.ExitCode != 0)
         {
-            string error = process.StandardError.ReadToEnd();
+            var error = process.StandardError.ReadToEnd();
             throw new Exception($"ExifTool删除元数据失败: {error}");
         }
     }
@@ -147,7 +147,7 @@ public static class UtilityHelp
 
         using var process = Process.Start(startInfo)!;
         using var reader = process.StandardOutput;
-        string output = reader.ReadToEnd();
+        var output = reader.ReadToEnd();
         if (string.IsNullOrEmpty(output))
         {
             throw new Exception("该图片不是动态照片!");
@@ -164,6 +164,89 @@ public static class UtilityHelp
     }
 
     /// <summary>
+    /// 是否动态照片
+    /// </summary>
+    /// <param name="imagePath">图片路径</param>
+    /// <param name="videoPath">视频路径</param>
+    /// <returns>偏移量</returns>
+    /// <exception cref="Exception">不是动态照片类型或照片与视频不匹配</exception>
+    public static long IsLivePhoto(string imagePath, string videoPath)
+    {
+        // 获取照片的 Content Identifier
+        var imageContentId = GetContentIdentifier(imagePath, "-Apple:Content Identifier");
+        // 获取视频的 Content Identifier
+        var videoContentId = GetContentIdentifier(videoPath, "-Keys:Content Identifier");
+        // 检查照片和视频的 Content Identifier 是否匹配
+        if (imageContentId != videoContentId)
+        {
+            throw new Exception("照片和视频的 Content Identifier 不匹配!");
+        }
+        
+        // 获取 MicroVideoOffset
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = ExifToolPath,
+            Arguments = $"-MicroVideoOffset \"{imagePath}\"",
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+
+        using var process = Process.Start(startInfo)!;
+        using var reader = process.StandardOutput;
+        var output = reader.ReadToEnd();
+        if (string.IsNullOrEmpty(output))
+        {
+            throw new Exception("该图片不是动态照片!");
+        }
+
+        // 提取偏移量值
+        var offset = output.Split(':')[1].Trim();
+        if (string.IsNullOrEmpty(offset))
+        {
+            throw new Exception("该图片不是动态照片!");
+        }
+
+        return long.Parse(offset);
+    }
+
+    /// <summary>
+    /// 获取文件中的 Content Identifier
+    /// </summary>
+    /// <param name="filePath">文件路径</param>
+    /// <param name="tagName">标签名称</param>
+    /// <returns>Content Identifier</returns>
+    public static string GetContentIdentifier(string filePath, string tagName)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = ExifToolPath,
+            Arguments = $"\"{tagName}\" \"{filePath}\"",
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+
+        using var process = Process.Start(startInfo)!;
+        using var reader = process.StandardOutput;
+        var output = reader.ReadToEnd();
+
+        // 提取 Content Identifier
+        var lines = output.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
+        foreach (var line in lines)
+        {
+            if (line.Contains("Content Identifier"))
+            {
+                return line.Split(':')[1].Trim();
+            }
+        }
+
+        return string.Empty;
+    }
+
+    /// <summary>
     /// 选择文件夹路径，并验证路径是否有效
     /// </summary>
     /// <param name="message">提示信息</param>
@@ -174,7 +257,7 @@ public static class UtilityHelp
         {
             // 提示用户输入
             Console.WriteLine($"{message}（输入文件夹路径或拖动文件夹到控制台（或输入 'q' 退出））：");
-            string? input = Console.ReadLine()?.Replace("\"", "").Trim();
+            var input = Console.ReadLine()?.Replace("\"", "").Trim();
             // 检查是否退出
             if (string.Equals(input, "q", StringComparison.OrdinalIgnoreCase))
             {
@@ -201,11 +284,11 @@ public static class UtilityHelp
     public static void Print(string text, ConsoleColor color = ConsoleColor.Red)
     {
         Console.ForegroundColor = color;
-        int consoleWidth = Console.WindowWidth;
+        var consoleWidth = Console.WindowWidth;
         // 文本两侧各加两个空格
-        int dashLength = Math.Max(0, (consoleWidth - (text.Length * 2) - 2) / 2);
+        var dashLength = Math.Max(0, (consoleWidth - (text.Length * 2) - 2) / 2);
         string dashes = new('-', dashLength);
-        string header = $"{dashes} {text} {dashes}";
+        var header = $"{dashes} {text} {dashes}";
         // 如果总长度不足一行，补充分割线
         if (header.Length < consoleWidth)
         {
@@ -224,19 +307,22 @@ public static class UtilityHelp
     /// <param name="barLength">进度条长度</param>
     public static void DrawProgressBar(int completed, int total, string fileName, int barLength = 80)
     {
-        if (total == 0) return;
+        if (total == 0)
+        {
+            return;
+        }
 
         lock (ConsoleLock)
         {
             // 计算进度并保留两位小数
-            double progress = total == 0 ? 0 : (double)completed / total;
-            int filled = (int)(progress * barLength);
+            var progress = total == 0 ? 0 : (double)completed / total;
+            var filled = (int)(progress * barLength);
 
             // 处理文件名，超过 15 个字符时显示 "..."
-            string displayName = fileName.Length > 20 ? $"...{fileName[^17..]}" : fileName;
+            var displayName = fileName.Length > 20 ? $"...{fileName[^17..]}" : fileName;
 
             // 构建进度条字符串，显示百分比并保留两位小数
-            string progressBar = $"正在处理: {displayName} [{new string('=', filled)}{new string(' ', barLength - filled)}] {progress:P2}";
+            var progressBar = $"正在处理: {displayName} [{new string('=', filled)}{new string(' ', barLength - filled)}] {progress:P2}";
 
             // 移动光标到行首并输出进度条
             Console.SetCursorPosition(0, Console.CursorTop);

@@ -21,16 +21,17 @@ public class MergeMotionPhoto
     {
         UtilityHelp.Print("合成动态照片");
         // 选择照片目录
-        string inputPath = UtilityHelp.SelectFolder("请选择输入目录");
+        var inputPath = UtilityHelp.SelectFolder("请选择输入目录");
         // 选择输出目录
-        string outputPath = UtilityHelp.SelectFolder("请选择输出目录");
+        var outputPath = UtilityHelp.SelectFolder("请选择输出目录");
         // 创建临时目录
         TempDir = Directory.CreateDirectory(Path.Combine(outputPath, "Temp")).FullName;
 
         // 获取照片和视频文件
         var photos = Directory.GetFiles(inputPath, "*", SearchOption.TopDirectoryOnly).Where(f => PhotoExtensions.Contains(Path.GetExtension(f))).ToList();
         var videos = Directory.GetFiles(inputPath, "*", SearchOption.TopDirectoryOnly).Where(f => VideoExtensions.Contains(Path.GetExtension(f))).ToList();
-
+        var testKey = photos.ToDictionary(a => UtilityHelp.GetContentIdentifier(a, "-Apple:Content Identifier"), a => a);
+        var testVKey = videos.ToDictionary(a => UtilityHelp.GetContentIdentifier(a, "-Keys:Content Identifier"), a => a);
         // 匹配照片和视频
         var matchedGroups = photos.Join(videos, Path.GetFileNameWithoutExtension,
                                         Path.GetFileNameWithoutExtension,
@@ -46,8 +47,8 @@ public class MergeMotionPhoto
         }
 
         UtilityHelp.Print("正在合成");
-        int totalTasks = matchedGroups.Count;
-        int completedTasks = 0;
+        var totalTasks = matchedGroups.Count;
+        var completedTasks = 0;
         matchedGroups.ForEach(group =>
         {
             try
@@ -82,25 +83,25 @@ public class MergeMotionPhoto
     private static void ProcessGroup(string photoPath, string videoPath, string outputDirectory)
     {
         // 检查照片格式并转换HEIC为JPG
-        string processedPhotoPath = photoPath;
+        var processedPhotoPath = photoPath;
         if (Path.GetExtension(photoPath).Equals(".heic", StringComparison.OrdinalIgnoreCase))
         {
             processedPhotoPath = ConvertHeicToJpg(photoPath);
         }
 
         // 检查视频格式并转换MOV为MP4
-        string processedVideoPath = videoPath;
+        var processedVideoPath = videoPath;
         if (Path.GetExtension(videoPath).Equals(".mov", StringComparison.OrdinalIgnoreCase))
         {
             processedVideoPath = ConvertMovToMp4(videoPath);
         }
 
         // 生成输出路径
-        string baseName = Path.GetFileNameWithoutExtension(photoPath);
-        string outputFilePath = Path.Combine(outputDirectory, $"MVIMG_{baseName}.jpg");
+        var baseName = Path.GetFileNameWithoutExtension(photoPath);
+        var outputFilePath = Path.Combine(outputDirectory, $"MVIMG_{baseName}.jpg");
 
         // 合并文件
-        (long photoFilesize, long mergedFilesize) = MergeFiles(processedPhotoPath, processedVideoPath, outputFilePath);
+        (var photoFilesize, var mergedFilesize) = MergeFiles(processedPhotoPath, processedVideoPath, outputFilePath);
         // 添加XMP元数据
         UtilityHelp.InsertExifMetadata(outputFilePath, photoFilesize, mergedFilesize);
 
@@ -128,7 +129,7 @@ public class MergeMotionPhoto
     /// <returns>转换后的JPG文件路径</returns>
     private static string ConvertHeicToJpg(string photoPath)
     {
-        string outputPath = Path.Combine(TempDir, Guid.NewGuid() + ".jpg");
+        var outputPath = Path.Combine(TempDir, Guid.NewGuid() + ".jpg");
         using MagickImage image = new(photoPath);
         image.Format = MagickFormat.Jpeg;
         image.Write(outputPath);
@@ -142,7 +143,7 @@ public class MergeMotionPhoto
     /// <returns>转换后的MP4文件路径</returns>
     private static string ConvertMovToMp4(string videoPath)
     {
-        string outputPath = Path.Combine(TempDir, Guid.NewGuid() + ".mp4");
+        var outputPath = Path.Combine(TempDir, Guid.NewGuid() + ".mp4");
         var converter = new FFMpegConverter
         {
             FFMpegToolPath = FfmpegPath,
@@ -171,11 +172,11 @@ public class MergeMotionPhoto
         // 将视频流写入照片末尾
         using var outfile = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
         using var photo = new FileStream(photoPath, FileMode.Open, FileAccess.Read);
-        long photoFilesize = photo.Length;
+        var photoFilesize = photo.Length;
         using var video = new FileStream(videoPath, FileMode.Open, FileAccess.Read);
         photo.CopyTo(outfile);
         video.CopyTo(outfile);
-        long mergedFilesize = outfile.Length;
+        var mergedFilesize = outfile.Length;
         return (photoFilesize, mergedFilesize);
     }
 }
