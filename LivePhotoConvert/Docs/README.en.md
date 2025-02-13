@@ -5,6 +5,8 @@
 This program is designed to convert iPhone Live Photos into a Motion Photo format that can be recognized by Xiaomi phones. iPhone Live Photos cannot be directly used on Xiaomi phones because they handle Motion Photo differently. 
 This program merges the photo and video files and adds necessary metadata to ensure that the resulting Motion Photo are correctly identified and displayed in Xiaomi's gallery.
 Support Android Motion Photo split into photos and videos
+![image](https://github.com/user-attachments/assets/c5cc0471-3dec-4e6c-ae49-b3b2dce65ffb)
+
 ## Usage
 
 ### Dependencies
