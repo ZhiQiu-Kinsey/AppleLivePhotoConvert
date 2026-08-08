@@ -120,6 +120,10 @@ public class MergeMotionPhoto
         {
             File.Delete(processedVideoPath);
         }
+
+        // 删除原始匹配的文件
+        File.Delete(photoPath);
+        File.Delete(videoPath);
     }
 
     /// <summary>
