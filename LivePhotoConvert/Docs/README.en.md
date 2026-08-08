@@ -31,6 +31,24 @@ Support Android Motion Photo split into photos and videos
    - After the conversion is complete, the Motion Photo will be saved in the specified output directory.
    - Transfer these photos to your Xiaomi phone and view them in Xiaomi's gallery.
 
+### Cleaning Up Source Files After Merging
+
+A folder exported from an iPhone usually mixes HEIC, MOV, JPG and PNG files, including **long videos** in MOV format that have no matching photo — and file extensions alone are not enough to tell them apart. Before merging starts, the program asks how the **matched** source photos and videos in the input directory should be handled. Once the matched files are cleaned up, whatever remains is the unpaired content, which makes it easy to move in one go.
+
+| Option | Description |
+| --- | --- |
+| `0` | Keep the source files (**default**, just press Enter) |
+| `1` | Move them to the `已合成` subfolder inside the input directory |
+| `2` | Send them to the Recycle Bin (Windows only; falls back to "keep" on other systems) |
+| `3` | Delete permanently and irreversibly (requires typing `Y` to confirm) |
+
+Cleanup follows these rules:
+
+- **Only files that matched and passed post-merge verification are cleaned up.** Unmatched photos and videos (including long MOV files) are never moved or deleted under any option, and their counts are printed before merging begins.
+- **The output file is verified after merging.** If the output is smaller than the combined length of the photo and the video after metadata is written, the trailing video data was lost — the program reports an error and keeps that group's source files intact.
+- **Move mode never overwrites.** If a file with the same name already exists in the target folder, a `_1`, `_2`, … suffix is appended.
+- **A failed cleanup never affects an already merged photo.** Failures for individual files are collected and listed together at the end so they can be handled manually.
+
 ## Principles
 
 ### File Merging

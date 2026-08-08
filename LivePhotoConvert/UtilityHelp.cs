@@ -1,6 +1,34 @@
 ﻿using System.Diagnostics;
+using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 
 namespace LivePhotoConvert;
+
+/// <summary>
+/// 合成成功后对输入目录中【已匹配】原始文件的处理方式
+/// </summary>
+public enum SourceFileAction
+{
+    /// <summary>
+    /// 保留原始文件（默认）
+    /// </summary>
+    Keep = 0,
+
+    /// <summary>
+    /// 移动到输入目录下的子文件夹
+    /// </summary>
+    Move = 1,
+
+    /// <summary>
+    /// 删除到回收站（仅 Windows）
+    /// </summary>
+    Recycle = 2,
+
+    /// <summary>
+    /// 永久删除（不可恢复）
+    /// </summary>
+    Delete = 3
+}
 
 /// <summary>
 /// 工具类
@@ -9,6 +37,11 @@ public static class UtilityHelp
 {
     private const string ExifToolPath = @".\ExifTool\ExifTool.exe";
     private static readonly object ConsoleLock = new();
+
+    /// <summary>
+    /// 移动模式下，存放已合成原始文件的子文件夹名称
+    /// </summary>
+    public const string MergedFolderName = "已合成";
 
 
     /// <summary>
@@ -334,4 +367,258 @@ public static class UtilityHelp
             Console.Out.Flush();
         }
     }
+
+    /// <summary>
+    /// 询问合成成功后如何处理输入目录中【已匹配】的原始文件
+    /// </summary>
+    /// <returns>用户选择的处理方式</returns>
+    public static SourceFileAction AskSourceFileAction()
+    {
+        while (true)
+        {
+            Console.WriteLine("合成成功后，如何处理输入目录中【已匹配】的原始照片与视频？");
+            Console.WriteLine("  0. 保留（默认，直接回车即为此项）");
+            Console.WriteLine($"  1. 移动到输入目录下的 \"{MergedFolderName}\" 子文件夹");
+            Console.WriteLine("  2. 删除到回收站（仅 Windows 可用）");
+            Console.WriteLine("  3. 永久删除（不可恢复，需二次确认）");
+            Console.WriteLine("未匹配的文件在任何选项下都不会被处理。请输入选项：");
+
+            var input = Console.ReadLine()?.Trim();
+            // 直接回车即保留
+            if (string.IsNullOrEmpty(input) || input == "0")
+            {
+                Console.WriteLine("已选择：保留原始文件。");
+                return SourceFileAction.Keep;
+            }
+
+            switch (input)
+            {
+                case "1":
+                    Console.WriteLine($"已选择：合成成功后将原始文件移动到 \"{MergedFolderName}\" 子文件夹。");
+                    return SourceFileAction.Move;
+                case "2":
+                    // 回收站依赖 Windows Shell，其他平台没有等价实现，降级为保留
+                    if (!OperatingSystem.IsWindows())
+                    {
+                        Console.WriteLine("当前系统不是 Windows，无法使用回收站，已自动降级为：保留原始文件。");
+                        return SourceFileAction.Keep;
+                    }
+
+                    Console.WriteLine("已选择：合成成功后将原始文件删除到回收站。");
+                    return SourceFileAction.Recycle;
+                case "3":
+                    Console.WriteLine("警告：永久删除后文件无法恢复！确认请输入 Y，输入其他内容将改为保留：");
+                    var confirm = Console.ReadLine()?.Trim();
+                    if (!string.Equals(confirm, "y", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Console.WriteLine("未确认，已改为：保留原始文件。");
+                        return SourceFileAction.Keep;
+                    }
+
+                    Console.WriteLine("已选择：合成成功后永久删除原始文件。");
+                    return SourceFileAction.Delete;
+                default:
+                    Console.WriteLine("无效的选项，请重新输入。");
+                    break;
+            }
+        }
+    }
+
+    /// <summary>
+    /// 按指定方式清理一组已合成成功的原始文件
+    /// </summary>
+    /// <remarks>单个文件处理失败只会被记录到 <paramref name="failures"/>，不会中断流程，已合成好的照片不受影响。</remarks>
+    /// <param name="filePaths">需要清理的原始文件路径，调用方必须保证这些文件已匹配成功且合成校验通过</param>
+    /// <param name="action">处理方式</param>
+    /// <param name="inputPath">输入目录，移动模式下子文件夹建在此目录下</param>
+    /// <param name="failures">失败信息收集列表</param>
+    /// <returns>成功处理的文件数量</returns>
+    public static int CleanupSourceFiles(IEnumerable<string> filePaths, SourceFileAction action, string inputPath, ICollection<string> failures)
+    {
+        if (action == SourceFileAction.Keep)
+        {
+            return 0;
+        }
+
+        string? mergedDirectory = null;
+        if (action == SourceFileAction.Move)
+        {
+            mergedDirectory = Path.Combine(inputPath, MergedFolderName);
+            try
+            {
+                Directory.CreateDirectory(mergedDirectory);
+            }
+            catch (Exception ex)
+            {
+                // 子文件夹建不出来时逐个记为失败，不向外抛，避免把清理问题误报成合成失败
+                foreach (var filePath in filePaths)
+                {
+                    failures.Add($"{filePath}：无法创建 \"{MergedFolderName}\" 子文件夹，{ex.Message}");
+                }
+
+                return 0;
+            }
+        }
+
+        var cleaned = 0;
+        foreach (var filePath in filePaths)
+        {
+            try
+            {
+                if (!File.Exists(filePath))
+                {
+                    continue;
+                }
+
+                switch (action)
+                {
+                    case SourceFileAction.Move:
+                        // 重名时追加 _1、_2 后缀，绝不覆盖已有文件
+                        File.Move(filePath, GetUniqueDestinationPath(mergedDirectory!, Path.GetFileName(filePath)));
+                        break;
+                    case SourceFileAction.Recycle:
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            failures.Add($"{filePath}：当前系统不支持回收站。");
+                            continue;
+                        }
+
+                        SendToRecycleBin(filePath);
+                        break;
+                    case SourceFileAction.Delete:
+                        File.Delete(filePath);
+                        break;
+                    case SourceFileAction.Keep:
+                    default:
+                        continue;
+                }
+
+                cleaned++;
+            }
+            catch (Exception ex)
+            {
+                failures.Add($"{filePath}：{ex.Message}");
+            }
+        }
+
+        return cleaned;
+    }
+
+    /// <summary>
+    /// 在目标目录中获取不冲突的文件路径，重名时依次追加 _1、_2
+    /// </summary>
+    /// <param name="directory">目标目录</param>
+    /// <param name="fileName">文件名</param>
+    /// <returns>不冲突的完整路径</returns>
+    private static string GetUniqueDestinationPath(string directory, string fileName)
+    {
+        var candidate = Path.Combine(directory, fileName);
+        if (!Exists(candidate))
+        {
+            return candidate;
+        }
+
+        var name = Path.GetFileNameWithoutExtension(fileName);
+        var extension = Path.GetExtension(fileName);
+        for (var index = 1; index < int.MaxValue; index++)
+        {
+            candidate = Path.Combine(directory, $"{name}_{index}{extension}");
+            if (!Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        throw new IOException($"无法为 {fileName} 找到不冲突的文件名。");
+
+        // 同名目录同样会让 File.Move 失败，因此一并跳过
+        static bool Exists(string path) => File.Exists(path) || Directory.Exists(path);
+    }
+
+    #region 回收站
+
+    /// <summary>
+    /// 删除文件（放入回收站）
+    /// </summary>
+    private const uint FoDelete = 0x0003;
+
+    /// <summary>
+    /// 允许撤销，即放入回收站而不是直接删除
+    /// </summary>
+    private const ushort FofAllowUndo = 0x0040;
+
+    /// <summary>
+    /// 不显示确认对话框
+    /// </summary>
+    private const ushort FofNoConfirmation = 0x0010;
+
+    /// <summary>
+    /// 不显示进度对话框
+    /// </summary>
+    private const ushort FofSilent = 0x0004;
+
+    /// <summary>
+    /// 出错时不弹出界面
+    /// </summary>
+    private const ushort FofNoErrorUi = 0x0400;
+
+    /// <summary>
+    /// SHFileOperation 的参数结构
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct ShFileOpStruct
+    {
+        public IntPtr hwnd;
+        public uint wFunc;
+        [MarshalAs(UnmanagedType.LPWStr)] public string? pFrom;
+        [MarshalAs(UnmanagedType.LPWStr)] public string? pTo;
+        public ushort fFlags;
+        public int fAnyOperationsAborted;
+        public IntPtr hNameMappings;
+        [MarshalAs(UnmanagedType.LPWStr)] public string? lpszProgressTitle;
+    }
+
+    /// <summary>
+    /// 调用 Windows Shell 执行文件操作
+    /// </summary>
+    /// <remarks>项目开启了 PublishAot，因此使用 DllImport 而不是 Microsoft.VisualBasic.FileIO。</remarks>
+    [DllImport("shell32.dll", EntryPoint = "SHFileOperationW", CharSet = CharSet.Unicode)]
+    private static extern int SHFileOperation(ref ShFileOpStruct fileOp);
+
+    /// <summary>
+    /// 将文件删除到回收站
+    /// </summary>
+    /// <param name="filePath">文件路径</param>
+    /// <exception cref="IOException">操作失败或文件仍然存在</exception>
+    [SupportedOSPlatform("windows")]
+    private static void SendToRecycleBin(string filePath)
+    {
+        // SHFileOperation 需要绝对路径，且 pFrom 是以 \0 分隔、再以 \0 结尾的列表
+        var fullPath = Path.GetFullPath(filePath);
+        var fileOp = new ShFileOpStruct
+        {
+            wFunc = FoDelete,
+            pFrom = fullPath + "\0\0",
+            fFlags = unchecked((ushort)(FofAllowUndo | FofNoConfirmation | FofSilent | FofNoErrorUi))
+        };
+
+        var result = SHFileOperation(ref fileOp);
+        if (result != 0)
+        {
+            throw new IOException($"移入回收站失败，SHFileOperation 返回 0x{result:X8}。");
+        }
+
+        if (fileOp.fAnyOperationsAborted != 0)
+        {
+            throw new IOException("移入回收站的操作被中止。");
+        }
+
+        // 兜底校验，避免 Shell 返回成功但文件并未被移走
+        if (File.Exists(fullPath))
+        {
+            throw new IOException("移入回收站后文件仍然存在。");
+        }
+    }
+
+    #endregion
 }
