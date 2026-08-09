@@ -90,4 +90,31 @@ public class ToolDownloaderTests
         Assert.Contains("LivePhotoConvert", directory);
         Assert.Contains("tools", directory);
     }
+
+    /// <summary>
+    /// 联网测试：验证 ExifTool 和 FFmpeg 的所有 8 个下载源均在线可用且可正常响应
+    /// </summary>
+    [Theory]
+    [InlineData("ExifTool", 0)]
+    [InlineData("ExifTool", 1)]
+    [InlineData("ExifTool", 2)]
+    [InlineData("ExifTool", 3)]
+    [InlineData("FFmpeg", 0)]
+    [InlineData("FFmpeg", 1)]
+    [InlineData("FFmpeg", 2)]
+    [InlineData("FFmpeg", 3)]
+    public async Task DownloadSources_Should_Be_Available_Online(string toolName, int sourceIndex)
+    {
+        var tool = toolName == "ExifTool" ? ExternalToolMetadata.ExifTool : ExternalToolMetadata.FFmpeg;
+        var source = tool.Sources[sourceIndex];
+
+        using var handler = new HttpClientHandler { AllowAutoRedirect = true };
+        using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(15) };
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, source.Url);
+        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+
+        Assert.True(response.IsSuccessStatusCode, $"源 [{source.Name}] ({source.Url}) 响应状态码异常：{(int)response.StatusCode}");
+    }
 }

@@ -13,7 +13,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="License" /></a>
   <img src="https://img.shields.io/badge/Platform-Windows%20x64-0078D6?style=flat-square&logo=windows" alt="Platform" />
   <img src="https://img.shields.io/badge/Native%20AOT-Supported-success?style=flat-square" alt="Native AOT" />
-  <img src="https://img.shields.io/badge/Tests-84%20Passed-brightgreen?style=flat-square" alt="Tests" />
+  <a href="https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert/actions/workflows/ci.yml"><img src="https://img.shields.io/badge/Tests-92%20Passed-success?style=flat-square&logo=githubactions&logoColor=white" alt="Tests"></a>
 </p>
 
 <p align="center">

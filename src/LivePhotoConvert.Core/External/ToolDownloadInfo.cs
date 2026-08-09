@@ -102,7 +102,7 @@ public static class ExternalToolMetadata
         [
             new ToolDownloadSource("阿里云国内高速镜像 (npmmirror)", "https://registry.npmmirror.com/@ffmpeg-binary/win32-x64/-/win32-x64-7.0.0.tgz"),
             new ToolDownloadSource("国内 GitHub 加速镜像 (ghfast.top)", "https://ghfast.top/https://github.com/GyanD/codexffmpeg/releases/download/7.0.2/ffmpeg-7.0.2-essentials_build.zip", IsGitHubRelease: true),
-            new ToolDownloadSource("Gyan.dev 官方精简源 (Essentials)", "https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-7.0.2-essentials_build.zip"),
+            new ToolDownloadSource("国内 GitHub BtbN 镜像 (ghfast.top)", "https://ghfast.top/https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip", IsGitHubRelease: true),
             new ToolDownloadSource("GitHub 官方源", "https://github.com/GyanD/codexffmpeg/releases/download/7.0.2/ffmpeg-7.0.2-essentials_build.zip", IsGitHubRelease: true)
         ],
         ZipEntryFilter: entry =>
