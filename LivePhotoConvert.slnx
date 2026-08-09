@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/LivePhotoConvert.Cli/LivePhotoConvert.Cli.csproj" />
+    <Project Path="src/LivePhotoConvert.Core/LivePhotoConvert.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/LivePhotoConvert.Core.Tests/LivePhotoConvert.Core.Tests.csproj" />
+  </Folder>
+</Solution>

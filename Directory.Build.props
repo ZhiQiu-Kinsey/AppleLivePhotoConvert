@@ -1,0 +1,15 @@
+<Project>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <Authors>Kinsey.Qiu</Authors>
+    <PackageProjectUrl>https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert</RepositoryUrl>
+  </PropertyGroup>
+
+</Project>

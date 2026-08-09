@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>LivePhotoConvert</AssemblyName>
+    <RootNamespace>LivePhotoConvert.Cli</RootNamespace>
+    <PublishTrimmed>True</PublishTrimmed>
+    <PublishSingleFile>True</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>True</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>True</EnableCompressionInSingleFile>
+    <ApplicationIcon>LivePhotoConvert.ico</ApplicationIcon>
+    <PlatformTarget>x64</PlatformTarget>
+    <ProduceReferenceAssembly>False</ProduceReferenceAssembly>
+    <Description>动态照片工具箱，支持动态照片的合成与拆分</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LivePhotoConvert.Core\LivePhotoConvert.Core.csproj" />
+    <PackageReference Include="Spectre.Console" Version="0.49.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="LivePhotoConvert.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="LivePhotoConvert.Core.Tests" />
+  </ItemGroup>
+
+</Project>

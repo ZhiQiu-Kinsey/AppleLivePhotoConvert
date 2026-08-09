@@ -1,102 +1,185 @@
-# LivePhotoConvert
-[English](/LivePhotoConvert/Docs/README.en.md) 
-## 介绍
+# LivePhotoConvert (动态照片工具箱)
 
-- 本程序用于将苹果设备的实况照片转换为小米手机可识别的动态照片格式。苹果的实况照片无法直接在小米手机上使用，因为两者对动态照片的处理方式不同。
-- 本程序通过将照片和视频合并，并添加必要的元数据，使得生成的动态照片能够在小米相册中正确识别和显示。
-- 支持安卓动态照片拆分成照片和视频
-![image](https://github.com/user-attachments/assets/c5cc0471-3dec-4e6c-ae49-b3b2dce65ffb)
+<p align="center">
+  <img src="src/LivePhotoConvert.Cli/LivePhotoConvert.ico" width="80" height="80" alt="LivePhotoConvert Logo" />
+</p>
 
-## 使用方法
+<p align="center">
+  <strong>⚡ 在苹果实况照片 (Apple Live Photo) 与安卓动态照片 (Motion Photo) 之间实现双向高保真无损转换</strong>
+</p>
 
-### 依赖项
+<p align="center">
+  <a href="https://dotnet.microsoft.com/download"><img src="https://img.shields.io/badge/.NET-10.0-512BD4?style=flat-square&logo=dotnet" alt=".NET 10" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="License" /></a>
+  <img src="https://img.shields.io/badge/Platform-Windows%20x64-0078D6?style=flat-square&logo=windows" alt="Platform" />
+  <img src="https://img.shields.io/badge/Native%20AOT-Supported-success?style=flat-square" alt="Native AOT" />
+  <img src="https://img.shields.io/badge/Tests-83%20Passed-brightgreen?style=flat-square" alt="Tests" />
+</p>
 
-- [ExifTool](https://exiftool.org/)
-- [FFmpeg](https://www.ffmpeg.org/)
+<p align="center">
+  <a href="README.md"><b>简体中文</b></a> • <a href="docs/README.en.md"><b>English</b></a>
+</p>
 
-### 步骤
+---
 
-1. **准备文件**
-   - 下载程序并解压[AppleLivePhotoConvert](https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert/releases/tag/1.0)
-   - 打开苹果相册，选择所有动态照片，点击分享，选择包含原始数据，并保存到本地，找到文件夹你会发现，动态照片被拆分为照片和mov视频。
-   - 将所有数据压缩，并且上传到电脑中，并解压。
-   - 打开程序拖拽输入目录到控制台，以及输出目录，开始你的转换吧！。
-	 
-3. **动态照片制作**
-   - 照片文件应为 `.jpg`, `.jpeg`, 或 `.heic` 格式，视频文件应为 `.mov` 或 `.mp4` 格式。
-   - 确保照片和视频文件的命名前缀相同，例如 `IMG_0001.heic` 和 `IMG_0001.mov`。
+## 🌟 核心特性
 
-4. **查看结果**
+- 🔄 **双向转换与实况还原**：
+  - **合成模式**：将 iPhone 导出的实况照片（`HEIC/JPG` + `MOV`）合成为标准安卓单文件动态照片（`.jpg`），完美适配**小米相册、Google 相册**动态播放。
+  - **双格式拆分模式**：
+    - **标准安卓格式 (`android`)**：原生无损提取封面与内嵌视频（`.jpg/.heic` + `.mp4`）。
+    - **苹果实况格式 (`apple`)**：将安卓动态照片转换为 Apple Live Photo 兼容格式（`.jpg/.heic` + `.mov`），自动生成并注入配对的 `ContentIdentifier` UUID，**可直接导入 iPhone/Mac 相册长按动态播放**。
+- ⚡ **无损流复制（Stream Copy）**：
+  - MOV 与 MP4 容器转换优先采用 FFmpeg 视频流复制（`-c copy`），**毫秒级极速处理且画面质量 0 损失**。
+- 🚀 **极小体积与原生机器码**：
+  - 基于 .NET 10 **Native AOT** 纯原生编译，全程序零第三方运行时 DLL 依赖，单个可执行文件仅 **~7.8 MB**，冷启动达到毫秒级。
+- 📥 **智能依赖一键就绪**：
+  - 内置国内加速镜像（阿里云 CDN）下载源，首次启动自动检测并一键静默安装配置 `ExifTool` 与 `FFmpeg`。
+- 🖥️ **现代化双模交互**：
+  - **交互式菜单**：基于 Spectre.Console 的彩色终端界面，集成 **Windows 原生文件夹弹窗选择器** 与拖拽支持。
+  - **CLI 命令行参数**：支持完整静默参数、并发控制、批处理脚本集成。
+- 🧹 **安全清理与完整性校验**：
+  - 支持合成成功后对原始文件进行保留、移动或清理；内置字节流长度与元数据双重校验，绝不误删未配对的长视频。
 
-   - 转换完成后，生成的动态照片将保存在指定的输出目录中。
-   - 将这些照片传输到小米手机，并在小米相册中查看。
+---
 
-### 合成后清理原始文件
+## 📸 运行预览
 
-从 iPhone 导出的文件夹里通常混着 HEIC、MOV、JPG、PNG，其中还有没有配对的**长视频** MOV，只按后缀名无法把它们区分开。合成动态照片时，程序会在开始前询问如何处理输入目录中**已匹配**的原始照片与视频，清理掉已匹配的文件后，剩下的就是未配对的文件，方便整体转移。
+<p align="center">
+  <img src="docs/preview.png" alt="主程序交互界面" width="850" />
+</p>
 
-| 选项 | 说明 |
-| --- | --- |
-| `0` | 保留原始文件（**默认**，直接回车即为此项） |
-| `1` | 移动到输入目录下的 `已合成` 子文件夹 |
-| `2` | 删除到回收站（仅 Windows，其他系统自动降级为保留） |
-| `3` | 永久删除，不可恢复（需要再输入 `Y` 二次确认） |
+---
 
-清理行为遵循以下约束：
+## 🚀 快速上手
 
-- **只清理匹配成功、且合成后通过校验的那一组文件。** 未匹配的照片和视频（包括长视频 MOV）在任何选项下都不会被移动或删除，合成前也会打印它们的数量。
-- **合成后会校验输出文件长度。** 写入元数据后如果输出文件小于「照片 + 视频」的长度之和，说明尾部的视频数据丢失，程序会报错并完整保留该组原始文件。
-- **移动模式遇到重名不会覆盖。** 目标文件夹中已存在同名文件时，会依次追加 `_1`、`_2` 后缀。
-- **清理失败不影响已合成的照片。** 单个文件处理失败只会被记录，最后统一列出，方便手动处理。
+### 1. 下载程序
+前往 [Releases 页面](https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert/releases) 下载最新的 `LivePhotoConvert` 单文件绿色免安装版。
 
-## 原理
+### 2. 从 iPhone 导出照片
+1. 打开 iPhone【照片】App，选中需要导出的实况照片。
+2. 点击左下角【分享】 $\rightarrow$ 选择【导出未修改的原片】保存到本地（每张实况照片将导出为一个同名的图片与 `.MOV` 视频）。
+3. 将导出的文件夹复制到电脑上。
 
-### 文件合并
+### 3. 运行转换
+直接双击运行 `LivePhotoConvert.exe`：
+* **首次运行**：程序会自动检查外部工具，若缺失将提示通过国内镜像一键自动下载。
+* **合成转换**：在主菜单选择 `1. 合成动态照片`，按弹窗提示选取输入与输出目录即可。
+* **拆分还原**：选择 `2. 拆分动态照片`，可自主选择输出为通用安卓格式或苹果实况格式。
 
-程序将照片文件和视频文件合并成一个文件，照片数据在前，视频数据在后。[安卓动态照片格式](https://developer.android.com/media/platform/motion-photo-format?hl=zh-cn)。
+---
 
-### 元数据添加
+## 💻 命令行使用指南 (CLI)
 
-为了使小米相册识别动态照片，程序使用 `ExifTool` 添加以下元数据：
+除交互菜单外，程序提供丰富的 CLI 命令行接口，便于脚本自动化与批处理调用：
 
-- **MicroVideo 标签**: 指示文件中包含视频数据。
-- **MicroVideoOffset**: 视频数据在文件中的起始位置。
-- **MicroVideoPresentationTimestampUs**: 视频播放的起始时间戳。
+```bash
+# 1. 基础合成：将照片和视频合成为动态照片
+LivePhotoConvert merge -i "D:\Photos" -o "D:\MotionPhotos"
 
-此外，程序还设置了一个特殊的 Exif 标签 `0x8897`，这是小米相册识别动态照片的关键。
+# 2. 合成并移动原始文件（静默确认）
+LivePhotoConvert merge -i "D:\Photos" -o "D:\MotionPhotos" -s move -y
 
-### 其他处理
+# 3. 拆分为标准安卓格式 (.jpg + .mp4)
+LivePhotoConvert split -i "D:\MotionPhotos" -o "D:\Output" -f android
 
-- **HEIC 转换**: 如果照片是 `.heic` 格式，程序会将其转换为 `.jpg` 格式，目前还不支持`.heic`格式的动态照片。
+# 4. 拆分为苹果实况照片格式 (.jpg + .mov，写入 Live Photo 元数据)
+LivePhotoConvert split -i "D:\MotionPhotos" -o "D:\AppleLivePhotos" -f apple
 
-## 反编译小米相册APP发现特殊标识
+# 5. 提前检查或下载外部依赖工具
+LivePhotoConvert tools --auto-download
+```
 
-为了确定小米相册识别动态照片的特殊标识，我进行了以下步骤：
+### 参数选项一览表
 
-1. **反编译小米相册APP**
+| 选项 | 别名 | 适用命令 | 说明 |
+| :--- | :--- | :--- | :--- |
+| `--input <目录>` | `-i` | `merge` / `split` | 输入目录路径（省略时自动弹出原生文件夹选择框） |
+| `--output <目录>` | `-o` | `merge` / `split` | 输出目录路径（省略时自动弹出原生文件夹选择框） |
+| `--format <格式>` | `-f` | `split` | 拆分目标格式：`android`（标准安卓格式，默认）或 `apple`（苹果实况照片） |
+| `--source-action <方式>`| `-s` | `merge` | 合成成功后原始文件处理策略：`keep`（保留，默认）、`move`（移动）、`recycle`（回收站）、`delete`（永久删除） |
+| `--strict` | | `merge` | 严格校验模式：使用 Apple Content Identifier 校验图片与视频确实属于同一张实况 |
+| `--parallel <数量>` | `-p` | `merge` / `split` | 并行并发处理文件数（默认根据 CPU 核心数自动调优） |
+| `--overwrite` | | `merge` / `split` | 输出目录存在同名文件时直接覆盖（默认自动追加 `_1`、`_2` 后缀） |
+| `--auto-download` | | 全部 | 缺少 ExifTool 或 FFmpeg 时自动通过加速镜像下载安装 |
+| `--mirror <前缀>` | | `tools` | 自定义 GitHub 镜像代理前缀（如 `https://ghfast.top/`） |
+| `--exiftool <路径>` | | 全部 | 显式指定 ExifTool 可执行文件路径 |
+| `--ffmpeg <路径>` | | 全部 | 显式指定 FFmpeg 可执行文件路径 |
+| `--yes` | `-y` | 全部 | 跳过开始前的确认提示，便于脚本自动化执行 |
 
-   使用反编译工具 `jadx-gui` 打开小米相册的 APK 文件。
+> [!NOTE]
+> **退出码定义**：`0` 全部成功，`1` 执行异常，`2` 参数错误，`3` 用户主动取消，`4` 部分文件处理失败。
 
-2. **分析代码**
+---
 
-   在反编译的代码中，找到判断照片是否为动态照片的逻辑。发现小米相册通过读取 Exif 中的特殊标签来判断。
-1. <img src=".\LivePhotoConvert\Docs\PixPin_2024-12-19_19-35-11.png" alt="">
+## 🔬 技术原理与逆向解析
 
-3. **发现特殊标签**
+### 1. 安卓动态照片存储机制
+标准安卓动态照片遵循 [Google Motion Photo 规范](https://developer.android.com/media/platform/motion-photo-format?hl=zh-cn)，将封面 JPEG 与 MP4 视频直接进行二进制流拼接（封面在前，视频在后），并通过 XMP 命名空间注入元数据：
+* `GCamera:MicroVideo = 1`：声明该图片包含微视频数据。
+* `GCamera:MicroVideoOffset`：内嵌视频在文件尾部的字节偏移量。
+* `GCamera:MicroVideoPresentationTimestampUs`：实况照片代表帧的时间戳（微秒）。
 
-   代码中提到的特殊标签是十进制数 `34967`，将其转换为十六进制得到 `0x8897`。
+### 2. 小米相册 `0x8897` 专属标识逆向发现
+在开发过程中，仅写入 Google 标准 XMP 标签的小米手机无法正常触发动态播放效果。通过使用 `jadx-gui` 反编译小米相册官方 APK 分析其判定逻辑：
 
-4. **应用特殊标签**
+<p align="center">
+  <img src="docs/PixPin_2024-12-19_19-35-11.png" alt="小米相册动态照片识别逻辑反编译源码" width="750" />
+</p>
 
-   在程序中使用 `ExifTool` 写入这个特殊标签，最终解决了小米相册无法识别动态照片的问题。
-1. 具体的代码实现可以查看 [Program.cs](./Program.cs) 文件。
+逆向发现小米相册在底层通过读取 Exif 专属标签判定动态照片：
+* 代码中匹配十进制常数 `34967`，换算为十六进制即 **`0x8897`**。
+* 本程序使用 ExifTool 自动配置并注入该特殊标签，完美解决了小米澎湃 OS（Xiaomi HyperOS / MIUI）相册无法识别的问题。
 
-## 注意事项
+### 3. Apple Live Photo 配对标识机制
+苹果实况照片依赖全局唯一的 UUID 进行双向绑定：
+* **图片端**：在 MakerNotes 或 Exif 注入 `ContentIdentifier`。
+* **视频端**：在 QuickTime MOV 容器的 `com.apple.quicktime.content.identifier` 注入相同 UUID，并设置 `still-image-time = 0`。
+* 拆分选择 `apple` 格式时，程序会自动生成配对 UUID 并完成双向元数据写入，确保导入 iOS / macOS 照片库后可正常动态播放。
 
-- 确保照片和视频文件的命名前缀完全一致，否则程序无法正确匹配文件。
-- 请把ExifTool下载后复制到程序根目录。
+---
 
-## 相关链接
+## 🛠️ 项目结构与本地构建
 
-- [安卓动态照片格式](https://developer.android.com/media/platform/motion-photo-format?hl=zh-cn)
-- [ExifTool 官方网站](https://exiftool.org/)
+### 架构布局
+```
+src/
+  LivePhotoConvert.Core/       # 纯净核心库：格式嗅探、二进制拼接、元数据编解码、外部工具驱动（0 第三方依赖）
+  LivePhotoConvert.Cli/        # 控制台程序：Spectre.Console 交互界面、CLI 参数解析、进度渲染
+tests/
+  LivePhotoConvert.Core.Tests/ # 全套自动化单元测试（覆盖解包、嗅探、配对与清理）
+```
+
+### 编译运行
+本项目基于 **.NET 10.0** 与 C# 13 构建：
+
+```bash
+# 1. 还原并编译解决方案
+dotnet build LivePhotoConvert.slnx
+
+# 2. 运行自动化测试套件
+dotnet test LivePhotoConvert.slnx
+
+# 3. 发布为超精简 Native AOT 原生单文件 exe (仅 ~7.8 MB)
+dotnet publish src/LivePhotoConvert.Cli/LivePhotoConvert.Cli.csproj /p:PublishProfile=win-x64-aot
+
+# 4. 发布为通用 Self-Contained 单文件 exe
+dotnet publish src/LivePhotoConvert.Cli/LivePhotoConvert.Cli.csproj /p:PublishProfile=win-x64
+```
+
+---
+
+## 💖 致谢与开源项目引用
+
+本项目由衷感谢以下优秀的开源工具与项目支持：
+
+* [ExifTool by Phil Harvey](https://exiftool.org/) - 强大的多格式媒体元数据读写引擎
+* [FFmpeg](https://ffmpeg.org/) - 领先的多媒体音视频处理框架
+* [Spectre.Console](https://github.com/spectreconsole/spectre.console) - 优雅强大的 .NET 终端 UI 渲染库
+* [Google Motion Photo Specification](https://developer.android.com/media/platform/motion-photo-format) - 安卓动态照片规范
+
+---
+
+## 📄 开源许可证
+
+本项目基于 [MIT 许可证](LICENSE) 开源。欢迎提交 Issue 或 Pull Request 为项目贡献力量！

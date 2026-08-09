@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Core 是纯类库，不含任何控制台交互，便于被 CLI、测试或将来的 GUI 前端复用 -->
+    <IsAotCompatible>true</IsAotCompatible>
+    <Description>动态照片工具箱核心库，负责动态照片的合成与拆分</Description>
+  </PropertyGroup>
+
+  <!-- Core 库现在是 100% 纯托管、零外部包依赖的高性能原生库 -->
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="LivePhotoConvert.Core.Tests" />
+  </ItemGroup>
+
+</Project>
