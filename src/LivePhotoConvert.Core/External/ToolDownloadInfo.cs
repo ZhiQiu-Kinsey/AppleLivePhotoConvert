@@ -77,8 +77,8 @@ public static class ExternalToolMetadata
         [
             new ToolDownloadSource("阿里云国内高速镜像 (npmmirror)", "https://registry.npmmirror.com/exiftool-vendored.exe/-/exiftool-vendored.exe-13.59.2.tgz"),
             new ToolDownloadSource("SourceForge 官方独立完整版 (CDN)", "https://sourceforge.net/projects/exiftool/files/latest/download"),
-            new ToolDownloadSource("国内 GitHub 加速镜像 (ghfast.top)", "https://ghfast.top/https://github.com/exiftool/exiftool/archive/refs/tags/13.25.zip", IsGitHubRelease: true),
-            new ToolDownloadSource("GitHub 官方源", "https://github.com/exiftool/exiftool/archive/refs/tags/13.25.zip", IsGitHubRelease: true)
+            new ToolDownloadSource("国内 GitHub 加速镜像 (ghfast.top)", "https://ghfast.top/https://github.com/exiftool/exiftool/archive/refs/tags/13.59.zip", IsGitHubRelease: true),
+            new ToolDownloadSource("GitHub 官方源", "https://github.com/exiftool/exiftool/archive/refs/tags/13.59.zip", IsGitHubRelease: true)
         ],
         ZipEntryFilter: entry =>
         {
@@ -101,9 +101,9 @@ public static class ExternalToolMetadata
         Sources:
         [
             new ToolDownloadSource("阿里云国内高速镜像 (npmmirror)", "https://registry.npmmirror.com/@ffmpeg-binary/win32-x64/-/win32-x64-7.0.0.tgz"),
-            new ToolDownloadSource("国内 GitHub 加速镜像 (ghfast.top)", "https://ghfast.top/https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v6.1/ffmpeg-6.1-win-64.zip", IsGitHubRelease: true),
-            new ToolDownloadSource("Gyan.dev 官方精简源 (Essentials)", "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"),
-            new ToolDownloadSource("GitHub BtbN 官方源", "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip", IsGitHubRelease: true)
+            new ToolDownloadSource("国内 GitHub 加速镜像 (ghfast.top)", "https://ghfast.top/https://github.com/GyanD/codexffmpeg/releases/download/7.0.2/ffmpeg-7.0.2-essentials_build.zip", IsGitHubRelease: true),
+            new ToolDownloadSource("Gyan.dev 官方精简源 (Essentials)", "https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-7.0.2-essentials_build.zip"),
+            new ToolDownloadSource("GitHub 官方源", "https://github.com/GyanD/codexffmpeg/releases/download/7.0.2/ffmpeg-7.0.2-essentials_build.zip", IsGitHubRelease: true)
         ],
         ZipEntryFilter: entry =>
         {
