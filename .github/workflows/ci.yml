@@ -1,0 +1,26 @@
+name: CI Build & Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-and-build:
+    runs-on: windows-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 配置 .NET 10 环境
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: 编译解决方案
+        run: dotnet build LivePhotoConvert.slnx -c Release
+
+      - name: 运行全部单元测试
+        run: dotnet test LivePhotoConvert.slnx -c Release --no-build --verbosity normal

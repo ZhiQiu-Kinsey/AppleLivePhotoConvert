@@ -1,0 +1,64 @@
+name: Release Build & Publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: '发布版本标签 (如 v1.2.0)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 配置 .NET 10 环境
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: 运行自动化测试套件
+        run: dotnet test LivePhotoConvert.slnx -c Release --verbosity normal
+
+      - name: 编译发布 Native AOT 原生单文件 (win-x64-aot)
+        run: |
+          dotnet publish src/LivePhotoConvert.Cli/LivePhotoConvert.Cli.csproj `
+            /p:PublishProfile=win-x64-aot `
+            -o dist/aot
+          # 排除调试 pdb，只保留纯单文件可执行程序
+          Get-ChildItem dist/aot -Filter *.pdb | Remove-Item -Force
+          Compress-Archive -Path dist/aot/* -DestinationPath LivePhotoConvert-win-x64-aot.zip
+
+      - name: 编译发布 Self-Contained 单文件 (win-x64)
+        run: |
+          dotnet publish src/LivePhotoConvert.Cli/LivePhotoConvert.Cli.csproj `
+            /p:PublishProfile=win-x64 `
+            -o dist/self-contained
+          Get-ChildItem dist/self-contained -Filter *.pdb | Remove-Item -Force
+          Compress-Archive -Path dist/self-contained/* -DestinationPath LivePhotoConvert-win-x64-standalone.zip
+
+      - name: 创建 GitHub Release 并上传安装包
+        uses: softprops/action-gh-release@v2
+        with:
+          name: LivePhotoConvert ${{ github.ref_name || inputs.tag_name }}
+          tag_name: ${{ github.ref_name || inputs.tag_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            LivePhotoConvert-win-x64-aot.zip
+            LivePhotoConvert-win-x64-standalone.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
