@@ -160,11 +160,8 @@ dotnet build LivePhotoConvert.slnx
 # 2. 运行自动化测试套件
 dotnet test LivePhotoConvert.slnx
 
-# 3. 发布为超精简 Native AOT 原生单文件 exe (仅 ~7.8 MB)
+# 3. 发布为超精简 Native AOT 原生独立单文件 exe (仅 ~7.8 MB)
 dotnet publish src/LivePhotoConvert.Cli/LivePhotoConvert.Cli.csproj /p:PublishProfile=win-x64-aot
-
-# 4. 发布为通用 Self-Contained 单文件 exe
-dotnet publish src/LivePhotoConvert.Cli/LivePhotoConvert.Cli.csproj /p:PublishProfile=win-x64
 ```
 
 ---

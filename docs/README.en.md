@@ -162,9 +162,6 @@ dotnet test LivePhotoConvert.slnx
 
 # 3. Publish ultra-compact Native AOT standalone executable (~7.8 MB)
 dotnet publish src/LivePhotoConvert.Cli/LivePhotoConvert.Cli.csproj /p:PublishProfile=win-x64-aot
-
-# 4. Publish portable Self-Contained standalone executable
-dotnet publish src/LivePhotoConvert.Cli/LivePhotoConvert.Cli.csproj /p:PublishProfile=win-x64
 ```
 
 ---
