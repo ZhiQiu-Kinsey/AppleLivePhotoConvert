@@ -76,7 +76,6 @@ public static class ExternalToolMetadata
         Sources:
         [
             new ToolDownloadSource("阿里云国内高速镜像 (npmmirror)", "https://registry.npmmirror.com/exiftool-vendored.exe/-/exiftool-vendored.exe-13.59.2.tgz"),
-            new ToolDownloadSource("SourceForge 官方独立完整版 (CDN)", "https://sourceforge.net/projects/exiftool/files/latest/download"),
             new ToolDownloadSource("国内 GitHub 加速镜像 (ghfast.top)", "https://ghfast.top/https://github.com/exiftool/exiftool/archive/refs/tags/13.59.zip", IsGitHubRelease: true),
             new ToolDownloadSource("GitHub 官方源", "https://github.com/exiftool/exiftool/archive/refs/tags/13.59.zip", IsGitHubRelease: true)
         ],

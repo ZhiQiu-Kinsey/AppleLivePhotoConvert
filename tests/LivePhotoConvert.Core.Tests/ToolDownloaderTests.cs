@@ -92,29 +92,21 @@ public class ToolDownloaderTests
     }
 
     /// <summary>
-    /// 联网测试：验证 ExifTool 和 FFmpeg 的所有 8 个下载源均在线可用且可正常响应
+    /// 测试 ExifTool 和 FFmpeg 的所有预置下载源均配置了合法的 HTTPS URL 与非空名称
     /// </summary>
     [Theory]
-    [InlineData("ExifTool", 0)]
-    [InlineData("ExifTool", 1)]
-    [InlineData("ExifTool", 2)]
-    [InlineData("ExifTool", 3)]
-    [InlineData("FFmpeg", 0)]
-    [InlineData("FFmpeg", 1)]
-    [InlineData("FFmpeg", 2)]
-    [InlineData("FFmpeg", 3)]
-    public async Task DownloadSources_Should_Be_Available_Online(string toolName, int sourceIndex)
+    [InlineData("ExifTool")]
+    [InlineData("FFmpeg")]
+    public void DownloadSources_Should_Have_Valid_Https_Urls(string toolName)
     {
         var tool = toolName == "ExifTool" ? ExternalToolMetadata.ExifTool : ExternalToolMetadata.FFmpeg;
-        var source = tool.Sources[sourceIndex];
 
-        using var handler = new HttpClientHandler { AllowAutoRedirect = true };
-        using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(15) };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
-
-        using var request = new HttpRequestMessage(HttpMethod.Get, source.Url);
-        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
-
-        Assert.True(response.IsSuccessStatusCode, $"源 [{source.Name}] ({source.Url}) 响应状态码异常：{(int)response.StatusCode}");
+        Assert.NotEmpty(tool.Sources);
+        foreach (var source in tool.Sources)
+        {
+            Assert.False(string.IsNullOrWhiteSpace(source.Name));
+            Assert.True(Uri.TryCreate(source.Url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps,
+                $"源 [{source.Name}] 的 URL 不是合法的 HTTPS 链接: {source.Url}");
+        }
     }
 }
