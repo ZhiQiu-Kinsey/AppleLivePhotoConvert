@@ -245,7 +245,7 @@ public static class Program
         }
 
         var progress = new ConsoleProgressReporter();
-        var merger = new MotionPhotoMerger(exifTool, videoConverter, videoConverter, progress);
+        var merger = new MotionPhotoMerger(exifTool, MagickImageConverter.Instance, videoConverter, progress);
 
         var mergeOptions = new MergeOptions
         {

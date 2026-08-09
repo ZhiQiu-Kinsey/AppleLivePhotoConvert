@@ -100,7 +100,9 @@ public sealed class FfmpegVideoConverter : IVideoConverter, IImageConverter
     private static IReadOnlyList<string> BuildRemuxArguments(string sourcePath, string destinationPath) =>
     [
         "-i", sourcePath,
-        "-c", "copy",
+        "-c:v", "copy",
+        "-c:a", "aac",
+        "-b:a", "192k",
         "-map", "0:v:0",
         "-map", "0:a:0?",
         "-movflags", "+faststart",

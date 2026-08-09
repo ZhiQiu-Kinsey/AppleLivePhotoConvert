@@ -33,15 +33,22 @@ jobs:
       - name: 运行自动化测试套件
         run: dotnet test LivePhotoConvert.slnx -c Release --verbosity normal
 
-      - name: 编译发布 Native AOT 原生单文件 (直接输出单个 exe)
+      - name: 编译发布 Native AOT 原生程序包
         run: |
           dotnet publish src/LivePhotoConvert.Cli/LivePhotoConvert.Cli.csproj `
             /p:PublishProfile=win-x64-aot `
             -o dist/aot
-          # 提取纯独立单个 exe 文件用于 Release 发布
-          Copy-Item "dist/aot/LivePhotoConvert.exe" "LivePhotoConvert.exe" -Force
+          # 清除调试符号 pdb 文件
+          Remove-Item -Path "dist/aot/*.pdb" -Force -ErrorAction SilentlyContinue
 
-      - name: 创建 GitHub Release 并直接上传 exe
+          # 提取版本号并打包为 ZIP 归档
+          $tag = "${{ github.ref_name || inputs.tag_name }}"
+          if (-not $tag) { $tag = "win-x64" }
+          $zipName = "LivePhotoConvert-$tag-win-x64.zip"
+          Compress-Archive -Path "dist/aot/*" -DestinationPath $zipName -Force
+          echo "RELEASE_ZIP=$zipName" >> $env:GITHUB_ENV
+
+      - name: 创建 GitHub Release 并上传 ZIP 压缩包
         uses: softprops/action-gh-release@v2
         with:
           name: LivePhotoConvert ${{ github.ref_name || inputs.tag_name }}
@@ -50,6 +57,6 @@ jobs:
           prerelease: false
           generate_release_notes: true
           files: |
-            LivePhotoConvert.exe
+            ${{ env.RELEASE_ZIP }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

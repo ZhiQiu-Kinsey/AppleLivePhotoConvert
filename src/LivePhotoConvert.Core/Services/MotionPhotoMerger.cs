@@ -146,11 +146,19 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
             }
 
             // 让合成后的照片保留原照片的时间，相册按时间排序时才不会乱。
-            // 部分文件系统不支持设置时间，此时照片本身已经合成好了，不应因此判定失败
+            // 若原图片因第三方工具中转导致修改时间失真，回退参考配对的 .MOV 视频原始时间。
             try
             {
-                File.SetCreationTime(outputPath, File.GetCreationTime(pair.PhotoPath));
-                File.SetLastWriteTime(outputPath, File.GetLastWriteTime(pair.PhotoPath));
+                var photoCreationTime = File.GetCreationTime(pair.PhotoPath);
+                var photoWriteTime = File.GetLastWriteTime(pair.PhotoPath);
+                var videoCreationTime = File.GetCreationTime(pair.VideoPath);
+                var videoWriteTime = File.GetLastWriteTime(pair.VideoPath);
+
+                var earliestCreation = photoCreationTime < videoCreationTime ? photoCreationTime : videoCreationTime;
+                var earliestWrite = photoWriteTime < videoWriteTime ? photoWriteTime : videoWriteTime;
+
+                File.SetCreationTime(outputPath, earliestCreation);
+                File.SetLastWriteTime(outputPath, earliestWrite);
             }
             catch (Exception)
             {

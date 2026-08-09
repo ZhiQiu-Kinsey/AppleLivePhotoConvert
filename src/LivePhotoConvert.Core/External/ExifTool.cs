@@ -43,26 +43,76 @@ public sealed class ExifTool : IExifTool
         ArgumentOutOfRangeException.ThrowIfNegative(videoOffset);
 
         var offset = videoOffset.ToString(CultureInfo.InvariantCulture);
-        // 沿用原有取值：以偏移量的一半作为封面帧时间戳。它并非真实的视频时长，
-        // 但这是此前已验证可被相册接受的写法，改动会影响封面帧的选取，故保持不变。
-        var timestamp = (videoOffset / 2).ToString(CultureInfo.InvariantCulture);
+        // 固定 1.5 秒（1,500,000 微秒）作为代表帧时间戳
+        var timestampUs = "1500000";
 
-        List<string> arguments =
-        [
-            "-XMP-GCamera:MicroVideo=1",
-            "-XMP-GCamera:MicroVideoVersion=1",
-            $"-XMP-GCamera:MicroVideoOffset={offset}",
-            $"-XMP-GCamera:MicroVideoPresentationTimestampUs={timestamp}",
-            // 小米相册识别动态照片的关键标签，见 ExifToolConfig
-            "-MicroVideo=1",
-            "-overwrite_original",
-            imagePath
-        ];
-        var response = await _session.ExecuteAsync(arguments, cancellationToken);
-        ThrowIfFailed(response, "写入动态照片标记");
-        if (!response.StandardOutput.Contains("1 image files updated", StringComparison.Ordinal))
+        var tempXmpPath = Path.Combine(Path.GetTempPath(), "LivePhotoConvert", $"xmp_{Guid.NewGuid():N}.xml");
+        var xmpContent = $"""
+                          <x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="Adobe XMP Core 5.1.0-jc003">
+                            <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+                              <rdf:Description rdf:about=""
+                                  xmlns:GCamera="http://ns.google.com/photos/1.0/camera/"
+                                  xmlns:Container="http://ns.google.com/photos/1.0/container/"
+                                  xmlns:Item="http://ns.google.com/photos/1.0/container/item/"
+                                GCamera:MotionPhoto="1"
+                                GCamera:MotionPhotoVersion="1"
+                                GCamera:MotionPhotoPresentationTimestampUs="{timestampUs}"
+                                GCamera:MicroVideo="1"
+                                GCamera:MicroVideoVersion="1"
+                                GCamera:MicroVideoOffset="{offset}"
+                                GCamera:MicroVideoPresentationTimestampUs="{timestampUs}">
+                                <Container:Directory>
+                                  <rdf:Seq>
+                                    <rdf:li rdf:parseType="Resource">
+                                      <Container:Item
+                                        Item:Mime="image/jpeg"
+                                        Item:Semantic="Primary"/>
+                                    </rdf:li>
+                                    <rdf:li rdf:parseType="Resource">
+                                      <Container:Item
+                                        Item:Mime="video/mp4"
+                                        Item:Semantic="MotionPhoto"
+                                        Item:Length="{offset}"
+                                        Item:Padding="0"/>
+                                    </rdf:li>
+                                  </rdf:Seq>
+                                </Container:Directory>
+                              </rdf:Description>
+                            </rdf:RDF>
+                          </x:xmpmeta>
+                          """;
+
+        try
         {
-            throw new InvalidOperationException($"ExifTool 未能写入动态照片标记：{Describe(response)}");
+            var tempDir = Path.GetDirectoryName(tempXmpPath)!;
+            Directory.CreateDirectory(tempDir);
+            await File.WriteAllTextAsync(tempXmpPath, xmpContent, cancellationToken);
+
+            List<string> arguments =
+            [
+                $"-xmp<={tempXmpPath}",
+                "-EXIF:MicroVideo=1",
+                "-MicroVideo=1",
+                "-overwrite_original",
+                imagePath
+            ];
+            var response = await _session.ExecuteAsync(arguments, cancellationToken);
+            ThrowIfFailed(response, "写入动态照片标记");
+            if (!response.StandardOutput.Contains("1 image files updated", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException($"ExifTool 未能写入动态照片标记：{Describe(response)}");
+            }
+        }
+        finally
+        {
+            try
+            {
+                File.Delete(tempXmpPath);
+            }
+            catch
+            {
+                // 忽略清理临时文件时的异常
+            }
         }
     }
 
@@ -75,6 +125,11 @@ public sealed class ExifTool : IExifTool
             "-XMP-GCamera:MicroVideoVersion=",
             "-XMP-GCamera:MicroVideoOffset=",
             "-XMP-GCamera:MicroVideoPresentationTimestampUs=",
+            "-XMP-GCamera:MotionPhoto=",
+            "-XMP-GCamera:MotionPhotoVersion=",
+            "-XMP-GCamera:MotionPhotoPresentationTimestampUs=",
+            "-XMP-Container:Directory=",
+            "-EXIF:MicroVideo=",
             "-MicroVideo=",
             "-overwrite_original",
             imagePath
@@ -98,7 +153,30 @@ public sealed class ExifTool : IExifTool
         var response = await _session.ExecuteAsync(arguments, cancellationToken);
         ThrowIfFailed(response, "读取动态照片标记");
         var text = response.StandardOutput.Trim();
-        return long.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var offset) ? offset : null;
+        if (long.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var offset))
+        {
+            return offset;
+        }
+
+        // 尝试从 Google GContainer 容器结构中读取
+        List<string> containerArguments =
+        [
+            "-s3",
+            "-XMP-Container:DirectoryItemLength",
+            imagePath
+        ];
+        var containerResponse = await _session.ExecuteAsync(containerArguments, cancellationToken);
+        var containerText = containerResponse.StandardOutput.Trim();
+        if (!string.IsNullOrEmpty(containerText))
+        {
+            var lines = containerText.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (lines.Length > 0 && long.TryParse(lines[^1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var containerOffset))
+            {
+                return containerOffset;
+            }
+        }
+
+        return null;
     }
 
     /// <inheritdoc />

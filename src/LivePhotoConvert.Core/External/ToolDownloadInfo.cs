@@ -100,7 +100,6 @@ public static class ExternalToolMetadata
         TargetExecutableName: OperatingSystem.IsWindows() ? "ffmpeg.exe" : "ffmpeg",
         Sources:
         [
-            new ToolDownloadSource("阿里云国内高速镜像 (npmmirror)", "https://registry.npmmirror.com/@ffmpeg-installer/win32-x64/-/win32-x64-4.1.0.tgz"),
             new ToolDownloadSource("国内 GitHub 加速镜像 (ghfast.top)", "https://ghfast.top/https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip", IsGitHubRelease: true),
             new ToolDownloadSource("Gyan.dev 官方精简源 (Essentials)", "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"),
             new ToolDownloadSource("GitHub BtbN 官方源", "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip", IsGitHubRelease: true)

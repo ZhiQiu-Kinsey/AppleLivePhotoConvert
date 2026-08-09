@@ -23,6 +23,29 @@ static class ExifToolConfig
                                       'Image::ExifTool::Exif::Main' => {
                                           0x8897 => { Name => 'MicroVideo', Writable => 'int8u' },
                                       },
+                                      'Image::ExifTool::XMP::Main' => {
+                                          Container => {
+                                              SubDirectory => {
+                                                  TagTable => 'Image::ExifTool::UserDefined::Container',
+                                              },
+                                          },
+                                      },
+                                   );
+
+                                   %Image::ExifTool::UserDefined::Container = (
+                                      GROUPS => { 0 => 'XMP', 1 => 'XMP-Container', 2 => 'Image' },
+                                      NAMESPACE => { 'Container' => 'http://ns.google.com/photos/1.0/container/' },
+                                      WRITABLE => 'string',
+                                      Directory => {
+                                          List => 'Seq',
+                                          Struct => {
+                                              NAMESPACE => { 'Item' => 'http://ns.google.com/photos/1.0/container/item/' },
+                                              Mime => { Writable => 'string' },
+                                              Semantic => { Writable => 'string' },
+                                              Length => { Writable => 'integer' },
+                                              Padding => { Writable => 'integer' },
+                                          },
+                                      },
                                    );
 
                                    # Perl 要求配置文件以真值结尾

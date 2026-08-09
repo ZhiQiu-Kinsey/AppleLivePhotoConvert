@@ -13,7 +13,7 @@
   <a href="../LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="License" /></a>
   <img src="https://img.shields.io/badge/Platform-Windows%20x64-0078D6?style=flat-square&logo=windows" alt="Platform" />
   <img src="https://img.shields.io/badge/Native%20AOT-Supported-success?style=flat-square" alt="Native AOT" />
-  <img src="https://img.shields.io/badge/Tests-83%20Passed-brightgreen?style=flat-square" alt="Tests" />
+  <img src="https://img.shields.io/badge/Tests-84%20Passed-brightgreen?style=flat-square" alt="Tests" />
 </p>
 
 <p align="center">
@@ -25,14 +25,14 @@
 ## 🌟 Key Features
 
 - 🔄 **Bidirectional Conversion & Restoration**:
-  - **Merge Mode**: Combine iPhone-exported Live Photos (`HEIC/JPG` + `MOV`) into standard single-file Android Motion Photos (`.jpg`), perfectly playable in **Xiaomi Gallery, Google Photos**, etc.
+  - **Merge Mode**: Combine iPhone-exported Live Photos (`HEIC/JPG` + `MOV`) into standard single-file Android Motion Photos (`.jpg`), perfectly playable across **Xiaomi Gallery (HyperOS / MIUI), Google Photos, and Windows 11 Photos**.
   - **Dual-Format Split Mode**:
     - **Standard Android Format (`android`)**: Losslessly unpack covers and embedded videos (`.jpg/.heic` + `.mp4`).
     - **Apple Live Photo Format (`apple`)**: Convert Android Motion Photos back into iOS-compatible Live Photos (`.jpg/.heic` + `.mov`) with paired `ContentIdentifier` UUIDs, allowing **direct import and dynamic playback in iOS / macOS Photos**.
-- ⚡ **Lossless Stream Copying**:
-  - MOV and MP4 container transformations prioritize FFmpeg stream copying (`-c copy`), resulting in **millisecond conversion speeds with zero quality loss**.
+- ⚡ **Lossless Stream Copying & High Efficiency**:
+  - Video stream copying prioritizes lossless performance with instant processing speeds.
 - 🚀 **Ultra-Compact Native AOT**:
-  - Built with .NET 10 **Native AOT** pure machine code generation. Zero runtime DLLs required, resulting in a single standalone `.exe` of only **~7.8 MB** with instant millisecond cold start.
+  - Built with .NET 10 **Native AOT** pure machine code generation. Ready-to-run portable package with instant millisecond cold start.
 - 📥 **One-Click Automated Tool Download**:
   - Built-in accelerated mirror downloads (including Aliyun CDN) automatically detect, download, and extract `ExifTool` and `FFmpeg` quietly on first run.
 - 🖥️ **Modern Dual-Interaction Experience**:
@@ -54,7 +54,7 @@
 ## 🚀 Quick Start
 
 ### 1. Download
-Grab the latest single-file standalone release from the [Releases Page](https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert/releases).
+Download the latest `LivePhotoConvert` portable ZIP archive from the [Releases Page](https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert/releases) and extract it (includes the main executable and native acceleration libraries).
 
 ### 2. Export Photos from iPhone
 1. Open the **Photos** app on your iPhone and select the Live Photos you wish to export.
@@ -160,9 +160,10 @@ dotnet build LivePhotoConvert.slnx
 # 2. Run test suite
 dotnet test LivePhotoConvert.slnx
 
-# 3. Publish ultra-compact Native AOT standalone executable (~7.8 MB)
-dotnet publish src/LivePhotoConvert.Cli/LivePhotoConvert.Cli.csproj /p:PublishProfile=win-x64-aot
+# 3. Publish Native AOT portable release package
+dotnet publish src/LivePhotoConvert.Cli/LivePhotoConvert.Cli.csproj /p:PublishProfile=win-x64-aot -o dist/aot
 ```
+> The output directory contains the main `LivePhotoConvert.exe` binary and the `Magick.Native-Q8-x64.dll` native acceleration library.
 
 ---
 
@@ -172,6 +173,7 @@ We would like to express our gratitude to the following open-source projects:
 
 * [ExifTool by Phil Harvey](https://exiftool.org/) - Industry-standard multimedia metadata read/write engine
 * [FFmpeg](https://ffmpeg.org/) - Leading cross-platform multimedia framework
+* [Magick.NET / ImageMagick](https://github.com/dlemstra/Magick.NET) - Powerful image processing library
 * [Spectre.Console](https://github.com/spectreconsole/spectre.console) - Feature-rich terminal UI library for .NET
 * [Google Motion Photo Specification](https://developer.android.com/media/platform/motion-photo-format) - Android Motion Photo specification
 

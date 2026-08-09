@@ -13,7 +13,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="License" /></a>
   <img src="https://img.shields.io/badge/Platform-Windows%20x64-0078D6?style=flat-square&logo=windows" alt="Platform" />
   <img src="https://img.shields.io/badge/Native%20AOT-Supported-success?style=flat-square" alt="Native AOT" />
-  <img src="https://img.shields.io/badge/Tests-83%20Passed-brightgreen?style=flat-square" alt="Tests" />
+  <img src="https://img.shields.io/badge/Tests-84%20Passed-brightgreen?style=flat-square" alt="Tests" />
 </p>
 
 <p align="center">
@@ -25,14 +25,14 @@
 ## 🌟 核心特性
 
 - 🔄 **双向转换与实况还原**：
-  - **合成模式**：将 iPhone 导出的实况照片（`HEIC/JPG` + `MOV`）合成为标准安卓单文件动态照片（`.jpg`），完美适配**小米相册、Google 相册**动态播放。
+  - **合成模式**：将 iPhone 导出的实况照片（`HEIC/JPG` + `MOV`）合成为标准安卓单文件动态照片（`.jpg`），完美适配**小米相册（澎湃 OS / MIUI）、Google 相册、Windows 11 照片应用**等全平台动态播放。
   - **双格式拆分模式**：
     - **标准安卓格式 (`android`)**：原生无损提取封面与内嵌视频（`.jpg/.heic` + `.mp4`）。
     - **苹果实况格式 (`apple`)**：将安卓动态照片转换为 Apple Live Photo 兼容格式（`.jpg/.heic` + `.mov`），自动生成并注入配对的 `ContentIdentifier` UUID，**可直接导入 iPhone/Mac 相册长按动态播放**。
-- ⚡ **无损流复制（Stream Copy）**：
-  - MOV 与 MP4 容器转换优先采用 FFmpeg 视频流复制（`-c copy`），**毫秒级极速处理且画面质量 0 损失**。
+- ⚡ **无损流复制与高效转换**：
+  - 视频优先采用流复制（`-c:v copy`），音频自动转码为标准 AAC，**毫秒级极速处理且视频画质 0 损失**。
 - 🚀 **极小体积与原生机器码**：
-  - 基于 .NET 10 **Native AOT** 纯原生编译，全程序零第三方运行时 DLL 依赖，单个可执行文件仅 **~7.8 MB**，冷启动达到毫秒级。
+  - 基于 .NET 10 **Native AOT** 纯原生机器码编译，免安装绿色压缩包开箱即用，冷启动达到毫秒级。
 - 📥 **智能依赖一键就绪**：
   - 内置国内加速镜像（阿里云 CDN）下载源，首次启动自动检测并一键静默安装配置 `ExifTool` 与 `FFmpeg`。
 - 🖥️ **现代化双模交互**：
@@ -54,7 +54,7 @@
 ## 🚀 快速上手
 
 ### 1. 下载程序
-前往 [Releases 页面](https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert/releases) 下载最新的 `LivePhotoConvert` 单文件绿色免安装版。
+前往 [Releases 页面](https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert/releases) 下载最新的 `LivePhotoConvert` 绿色压缩包并解压（包含主程序与原生图像加速库）。
 
 ### 2. 从 iPhone 导出照片
 1. 打开 iPhone【照片】App，选中需要导出的实况照片。
@@ -160,9 +160,10 @@ dotnet build LivePhotoConvert.slnx
 # 2. 运行自动化测试套件
 dotnet test LivePhotoConvert.slnx
 
-# 3. 发布为超精简 Native AOT 原生独立单文件 exe (仅 ~7.8 MB)
-dotnet publish src/LivePhotoConvert.Cli/LivePhotoConvert.Cli.csproj /p:PublishProfile=win-x64-aot
+# 3. 发布为 Native AOT 绿色运行包
+dotnet publish src/LivePhotoConvert.Cli/LivePhotoConvert.Cli.csproj /p:PublishProfile=win-x64-aot -o dist/aot
 ```
+> 发布输出目录包含 `LivePhotoConvert.exe` 主程序及 `Magick.Native-Q8-x64.dll` 原生加速库。
 
 ---
 
@@ -172,6 +173,7 @@ dotnet publish src/LivePhotoConvert.Cli/LivePhotoConvert.Cli.csproj /p:PublishPr
 
 * [ExifTool by Phil Harvey](https://exiftool.org/) - 强大的多格式媒体元数据读写引擎
 * [FFmpeg](https://ffmpeg.org/) - 领先的多媒体音视频处理框架
+* [Magick.NET / ImageMagick](https://github.com/dlemstra/Magick.NET) - 强大的图像处理库
 * [Spectre.Console](https://github.com/spectreconsole/spectre.console) - 优雅强大的 .NET 终端 UI 渲染库
 * [Google Motion Photo Specification](https://developer.android.com/media/platform/motion-photo-format) - 安卓动态照片规范
 
