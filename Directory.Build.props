@@ -8,9 +8,9 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <Authors>Kinsey.Qiu</Authors>
-    <Version>2.1.0</Version>
-    <AssemblyVersion>2.1.0.0</AssemblyVersion>
-    <FileVersion>2.1.0.0</FileVersion>
+    <Version>2.2.0</Version>
+    <AssemblyVersion>2.2.0.0</AssemblyVersion>
+    <FileVersion>2.2.0.0</FileVersion>
     <PackageProjectUrl>https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert</PackageProjectUrl>
     <RepositoryUrl>https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert</RepositoryUrl>
   </PropertyGroup>
