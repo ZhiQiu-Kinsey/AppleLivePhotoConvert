@@ -68,4 +68,20 @@ public interface IExifTool : IAsyncDisposable
     /// <param name="contentIdentifier">全局唯一标识符</param>
     /// <param name="cancellationToken">取消令牌</param>
     Task WriteAppleVideoMetadataAsync(string videoPath, string contentIdentifier, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 读取文件的拍摄/创建时间
+    /// </summary>
+    /// <param name="filePath">文件路径</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>拍摄时间；无法读取时返回 <c>null</c></returns>
+    Task<DateTime?> TryReadCreateDateAsync(string filePath, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 读取视频时长
+    /// </summary>
+    /// <param name="filePath">视频文件路径</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>视频时长；无法读取时返回 <c>null</c></returns>
+    Task<TimeSpan?> TryReadDurationAsync(string filePath, CancellationToken cancellationToken = default);
 }

@@ -98,7 +98,7 @@ LivePhotoConvert tools --auto-download
 | `--output <dir>` | `-o` | `merge` / `split` | Output directory path (opens native folder picker when omitted) |
 | `--format <format>` | `-f` | `split` | Target format: `android` (standard Android, default) or `apple` (Apple Live Photo) |
 | `--source-action <mode>`| `-s` | `merge` | Source file handling on success: `keep` (default), `move`, `recycle`, `delete` |
-| `--strict` | | `merge` | Strict mode: Verify with Apple Content Identifier that files belong to the same Live Photo |
+| `--no-verify` | | `merge` | Skip smart pair verification and match solely by filename (multi-signal validation enabled by default) |
 | `--parallel <count>` | `-p` | `merge` / `split` | Number of parallel processing workers (defaults to CPU core count) |
 | `--overwrite` | | `merge` / `split` | Overwrite existing files in output directory instead of appending suffixes |
 | `--auto-download` | | All | Automatically download missing ExifTool or FFmpeg dependencies via mirrors |

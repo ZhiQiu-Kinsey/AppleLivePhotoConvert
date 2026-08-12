@@ -40,6 +40,8 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
         var cleaner = new SourceFileCleaner(options.SourceFileAction, options.InputDirectory);
         var failures = new ConcurrentBag<FailureRecord>();
         var cleanupFailures = new ConcurrentBag<FailureRecord>();
+        var skippedItems = new ConcurrentBag<FailureRecord>();
+        var validator = options.SkipValidation ? null : new PairValidator(exifTool);
         var total = pairing.Pairs.Count;
         var completed = 0;
         var succeeded = 0;
@@ -56,6 +58,18 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
                 {
                     try
                     {
+                        // 配对校验：不通过时跳过该组，不中断整体流程
+                        if (validator is not null)
+                        {
+                            var validation = await validator.ValidateAsync(pair, token);
+                            if (!validation.IsAccepted)
+                            {
+                                var reason = string.Join("；", validation.Reasons);
+                                skippedItems.Add(new FailureRecord(pair.Name, reason));
+                                return;
+                            }
+                        }
+
                         await MergeOneAsync(pair, options, tempDirectory, token);
                         Interlocked.Increment(ref succeeded);
                         // 只有合成成功并通过校验的这一组才会被清理，未匹配的文件绝不会进入这里
@@ -91,6 +105,7 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
             Total = total,
             Succeeded = succeeded,
             CleanedFileCount = cleanedFiles,
+            SkippedItems = [.. skippedItems],
             Failures = [.. failures],
             CleanupFailures = [.. cleanupFailures]
         };
@@ -105,11 +120,6 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
     /// <param name="cancellationToken">取消令牌</param>
     private async Task MergeOneAsync(MediaPair pair, MergeOptions options, string tempDirectory, CancellationToken cancellationToken)
     {
-        if (options.StrictPairing)
-        {
-            await VerifySamePhotoAsync(pair, cancellationToken);
-        }
-
         string? temporaryPhoto = null;
         string? temporaryVideo = null;
         string? outputPath = null;
@@ -175,26 +185,6 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
         {
             TryDeleteFile(temporaryPhoto);
             TryDeleteFile(temporaryVideo);
-        }
-    }
-
-    /// <summary>
-    /// 用苹果的 Content Identifier 校验照片与视频确实来自同一张实况照片
-    /// </summary>
-    /// <param name="pair">照片与视频</param>
-    /// <param name="cancellationToken">取消令牌</param>
-    /// <exception cref="InvalidDataException">两者并非同一张实况照片</exception>
-    private async Task VerifySamePhotoAsync(MediaPair pair, CancellationToken cancellationToken)
-    {
-        var photoId = await exifTool.TryReadContentIdentifierAsync(pair.PhotoPath, ContentIdentifierKind.Photo, cancellationToken);
-        var videoId = await exifTool.TryReadContentIdentifierAsync(pair.VideoPath, ContentIdentifierKind.Video, cancellationToken);
-        if (photoId is null || videoId is null)
-        {
-            throw new InvalidDataException("照片或视频缺少 Content Identifier，无法确认它们属于同一张实况照片。");
-        }
-        if (!string.Equals(photoId, videoId, StringComparison.OrdinalIgnoreCase))
-        {
-            throw new InvalidDataException("照片和视频的 Content Identifier 不匹配，它们不是同一张实况照片。");
         }
     }
 

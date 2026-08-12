@@ -226,6 +226,56 @@ public sealed class ExifTool : IExifTool
     }
 
     /// <inheritdoc />
+    public async Task<DateTime?> TryReadCreateDateAsync(string filePath, CancellationToken cancellationToken = default)
+    {
+        // 依次尝试多个时间标签，取第一个有效值
+        string[] tags = ["-DateTimeOriginal", "-CreateDate", "-MediaCreateDate"];
+        foreach (var tag in tags)
+        {
+            List<string> arguments = ["-s3", tag, filePath];
+            var response = await _session.ExecuteAsync(arguments, cancellationToken);
+            var text = response.StandardOutput.Trim();
+            if (!string.IsNullOrEmpty(text) && TryParseExifDate(text, out var date))
+            {
+                return date;
+            }
+        }
+
+        return null;
+    }
+
+    /// <inheritdoc />
+    public async Task<TimeSpan?> TryReadDurationAsync(string filePath, CancellationToken cancellationToken = default)
+    {
+        List<string> arguments = ["-s3", "-Duration#", filePath];
+        var response = await _session.ExecuteAsync(arguments, cancellationToken);
+        var text = response.StandardOutput.Trim();
+        if (double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var seconds) && seconds > 0)
+        {
+            return TimeSpan.FromSeconds(seconds);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 解析 ExifTool 输出的日期字符串
+    /// </summary>
+    private static bool TryParseExifDate(string text, out DateTime date)
+    {
+        // ExifTool 通常输出 "2024:01:15 14:30:00" 格式
+        string[] formats =
+        [
+            "yyyy:MM:dd HH:mm:ss",
+            "yyyy:MM:dd HH:mm:sszzz",
+            "yyyy-MM-dd HH:mm:ss",
+            "yyyy-MM-ddTHH:mm:ss",
+            "yyyy-MM-ddTHH:mm:sszzz"
+        ];
+        return DateTime.TryParseExact(text, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out date);
+    }
+
+    /// <inheritdoc />
     public ValueTask DisposeAsync() => _session.DisposeAsync();
 
     /// <summary>

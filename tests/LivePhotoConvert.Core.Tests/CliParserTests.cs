@@ -71,11 +71,11 @@ public class CliParserTests
     [Fact]
     public void Should_Parse_All_Switches()
     {
-        var result = CliParser.Parse(["merge", "--overwrite", "--strict", "-y", "-p", "8"]);
+        var result = CliParser.Parse(["merge", "--overwrite", "--no-verify", "-y", "-p", "8"]);
 
         Assert.Null(result.Error);
         Assert.True(result.Options!.Overwrite);
-        Assert.True(result.Options.Strict);
+        Assert.True(result.Options.SkipValidation);
         Assert.True(result.Options.AssumeYes);
         Assert.Equal(8, result.Options.Parallelism);
     }
@@ -142,14 +142,26 @@ public class CliParserTests
     }
 
     /// <summary>
-    /// 测试拆分命令不接受严格配对校验选项。
+    /// 测试拆分命令不接受跳过校验选项。
     /// </summary>
     [Fact]
-    public void Split_Command_Should_Not_Accept_Strict_Matching()
+    public void Split_Command_Should_Not_Accept_No_Verify()
     {
-        var result = CliParser.Parse(["split", "--strict"]);
+        var result = CliParser.Parse(["split", "--no-verify"]);
 
         Assert.NotNull(result.Error);
+    }
+
+    /// <summary>
+    /// 测试兼容旧版 --strict 参数（静默忽略）。
+    /// </summary>
+    [Fact]
+    public void Merge_Command_Should_Ignore_Legacy_Strict_Flag()
+    {
+        var result = CliParser.Parse(["merge", "--strict", "-i", @"D:\in"]);
+
+        Assert.Null(result.Error);
+        Assert.False(result.Options!.SkipValidation);
     }
 
     /// <summary>

@@ -26,10 +26,10 @@ public sealed record MergeOptions
     public bool Overwrite { get; init; }
 
     /// <summary>
-    /// 是否额外用苹果的 Content Identifier 校验照片与视频确实来自同一张实况照片
+    /// 跳过配对校验，强制仅按文件名匹配
     /// </summary>
-    /// <remarks>更严格但更慢，每组需要多读两次元数据。</remarks>
-    public bool StrictPairing { get; init; }
+    /// <remarks>默认启用校验（ContentIdentifier / 拍摄时间 / 视频时长），设为 <c>true</c> 可关闭。</remarks>
+    public bool SkipValidation { get; init; }
 
     /// <summary>
     /// 并行处理的分组数量
@@ -68,6 +68,11 @@ public sealed record MergeReport
     /// 按所选方式成功清理的原始文件数量
     /// </summary>
     public required int CleanedFileCount { get; init; }
+
+    /// <summary>
+    /// 因校验不通过而跳过的分组
+    /// </summary>
+    public required IReadOnlyList<FailureRecord> SkippedItems { get; init; }
 
     /// <summary>
     /// 合成失败的分组

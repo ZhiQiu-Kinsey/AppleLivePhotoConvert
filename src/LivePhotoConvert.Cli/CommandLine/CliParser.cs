@@ -104,13 +104,17 @@ static class CliParser
                     options = options with { Overwrite = true };
                     break;
 
-                case "--strict":
+                case "--no-verify":
                     if (command == CliCommand.Split)
                     {
-                        return ParseResult.Failure("拆分命令不支持 --strict 严格匹配选项。");
+                        return ParseResult.Failure("拆分命令不支持 --no-verify 选项。");
                     }
 
-                    options = options with { Strict = true };
+                    options = options with { SkipValidation = true };
+                    break;
+
+                case "--strict":
+                    // 兼容旧版参数，静默忽略（校验现在默认启用）
                     break;
 
                 case "--exiftool":

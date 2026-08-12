@@ -253,7 +253,7 @@ public static class Program
             OutputDirectory = output,
             SourceFileAction = sourceAction,
             Overwrite = options.Overwrite,
-            StrictPairing = options.Strict,
+            SkipValidation = options.SkipValidation,
             Parallelism = options.Parallelism ?? MergeOptions.DefaultParallelism
         };
 
@@ -263,15 +263,20 @@ public static class Program
 
         Console.WriteLine();
         Console.WriteLine($"成功合成 {report.Succeeded}/{report.Total} 张动态照片。");
+        if (report.SkippedItems.Count > 0)
+        {
+            ConsoleUi.WriteLine($"校验跳过 {report.SkippedItems.Count} 组（可用 --no-verify 关闭校验）。", ConsoleColor.Yellow);
+        }
         if (sourceAction != SourceFileAction.Keep)
         {
             Console.WriteLine($"已{DescribeAction(sourceAction)}原始文件 {report.CleanedFileCount} 个。");
         }
 
+        PrintFailures("以下分组因校验不通过而跳过（照片与视频可能不是同一张实况照片）：", report.SkippedItems);
         PrintFailures("以下分组合成失败：", report.Failures);
         PrintFailures("以下原始文件清理失败，请手动处理（动态照片已合成成功，不受影响）：", report.CleanupFailures);
 
-        return WaitForReturn(report.Failures.Count > 0 ? ExitCodes.PartialFailure : ExitCodes.Success, interactive);
+        return WaitForReturn(report.Failures.Count > 0 || report.SkippedItems.Count > 0 ? ExitCodes.PartialFailure : ExitCodes.Success, interactive);
     }
 
     /// <summary>

@@ -37,8 +37,8 @@ static class HelpText
                                                            move     移动到输入目录下的"已合成"子文件夹
                                                            recycle  删除到回收站（仅 Windows）
                                                            delete   永久删除，不可恢复
-                                --strict                 用苹果 Content Identifier 校验照片与视频确实
-                                                         来自同一张实况照片，更安全但更慢
+                                --no-verify              跳过配对校验，强制按文件名匹配（默认会校验
+                                                         ContentIdentifier、拍摄时间、视频时长）
                                 --ffmpeg <路径>          指定 FFmpeg 可执行文件
 
                           split 专用选项:

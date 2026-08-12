@@ -67,9 +67,9 @@ sealed record CliOptions
     public bool Overwrite { get; init; }
 
     /// <summary>
-    /// 仅在照片与视频的拍摄时间高度吻合时才合成
+    /// 跳过配对校验（ContentIdentifier / 拍摄时间 / 视频时长），强制仅按文件名匹配
     /// </summary>
-    public bool Strict { get; init; }
+    public bool SkipValidation { get; init; }
 
     /// <summary>
     /// 是否在检测到工具缺失时自动下载安装（非交互模式下生效）

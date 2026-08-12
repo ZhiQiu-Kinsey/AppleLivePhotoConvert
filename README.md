@@ -98,7 +98,7 @@ LivePhotoConvert tools --auto-download
 | `--output <目录>` | `-o` | `merge` / `split` | 输出目录路径（省略时自动弹出原生文件夹选择框） |
 | `--format <格式>` | `-f` | `split` | 拆分目标格式：`android`（标准安卓格式，默认）或 `apple`（苹果实况照片） |
 | `--source-action <方式>`| `-s` | `merge` | 合成成功后原始文件处理策略：`keep`（保留，默认）、`move`（移动）、`recycle`（回收站）、`delete`（永久删除） |
-| `--strict` | | `merge` | 严格校验模式：使用 Apple Content Identifier 校验图片与视频确实属于同一张实况 |
+| `--no-verify` | | `merge` | 跳过智能配对校验，强制仅按文件名匹配（默认启用 ContentIdentifier、拍摄时间差、视频时长多信号校验） |
 | `--parallel <数量>` | `-p` | `merge` / `split` | 并行并发处理文件数（默认根据 CPU 核心数自动调优） |
 | `--overwrite` | | `merge` / `split` | 输出目录存在同名文件时直接覆盖（默认自动追加 `_1`、`_2` 后缀） |
 | `--auto-download` | | 全部 | 缺少 ExifTool 或 FFmpeg 时自动通过加速镜像下载安装 |
