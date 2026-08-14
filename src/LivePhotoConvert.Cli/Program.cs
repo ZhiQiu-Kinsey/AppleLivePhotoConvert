@@ -203,11 +203,13 @@ public static class Program
         WarnIfSameDirectory(input, output);
 
         var pairing = MediaPairMatcher.Match(Directory.EnumerateFiles(input, "*", SearchOption.TopDirectoryOnly));
-        Console.WriteLine($"匹配到 {pairing.Pairs.Count} 组动态照片。");
+        var matchedGroupCount = pairing.Pairs.Select(pair => pair.Name).Distinct(StringComparer.OrdinalIgnoreCase).Count();
+        Console.WriteLine($"匹配到 {matchedGroupCount} 组动态照片。");
         Console.WriteLine($"未匹配的照片 {pairing.UnmatchedPhotoCount} 个，未匹配的视频 {pairing.UnmatchedVideoCount} 个，均不会被合成或清理。");
-        if (pairing.SkippedDuplicateCount > 0)
+        var duplicateCandidateCount = pairing.Pairs.Count - matchedGroupCount;
+        if (duplicateCandidateCount > 0)
         {
-            Console.WriteLine($"另有 {pairing.SkippedDuplicateCount} 个同名备选格式文件未参与合成，也不会被清理。");
+            Console.WriteLine($"另有 {duplicateCandidateCount} 个同名候选将参与智能校验，仅与视频匹配的那组会被合成。");
         }
 
         if (pairing.Pairs.Count == 0)

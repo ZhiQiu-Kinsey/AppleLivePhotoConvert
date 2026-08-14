@@ -42,7 +42,9 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
         var cleanupFailures = new ConcurrentBag<FailureRecord>();
         var skippedItems = new ConcurrentBag<FailureRecord>();
         var validator = options.SkipValidation ? null : new PairValidator(exifTool);
-        var total = pairing.Pairs.Count;
+        var candidates = pairing.Pairs;
+        // 同名文件可能生成多个候选（按扩展名优先级排序），最终每个文件名只合成一组
+        var total = candidates.Select(pair => pair.Name).Distinct(StringComparer.OrdinalIgnoreCase).Count();
         var completed = 0;
         var succeeded = 0;
         var cleanedFiles = 0;
@@ -51,25 +53,50 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
         Directory.CreateDirectory(tempDirectory);
         try
         {
+            // ── 阶段 1：并行校验所有候选，判断照片与视频是否确属同一张实况照片 ──
+            var validations = new ConcurrentDictionary<MediaPair, PairValidationResult>();
             await Parallel.ForEachAsync(
-                pairing.Pairs,
+                candidates,
+                new ParallelOptions { MaxDegreeOfParallelism = options.Parallelism, CancellationToken = cancellationToken },
+                async (pair, token) =>
+                {
+                    var result = validator is null
+                        ? PairValidationResult.Accept([])
+                        : await validator.ValidateAsync(pair, token);
+                    validations[pair] = result;
+                });
+
+            // ── 阶段 2：按文件名分组，每组选第一个校验通过的候选 ──
+            // 候选已按扩展名优先级排序，因此同名多格式（如 .heic 与 .jpg）优先取画质更好的；
+            // 若首选与视频并非同一张实况照片（校验不通过），自动回退到同名的下一个候选。
+            var chosen = new List<MediaPair>();
+            foreach (var group in candidates.GroupBy(pair => pair.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                var selected = group.FirstOrDefault(pair => validations[pair].IsAccepted);
+                if (selected is null)
+                {
+                    foreach (var pair in group)
+                    {
+                        skippedItems.Add(new FailureRecord(group.Key, string.Join("；", validations[pair].Reasons)));
+                    }
+                    continue;
+                }
+
+                chosen.Add(selected);
+                foreach (var other in group.Where(pair => !pair.Equals(selected)))
+                {
+                    skippedItems.Add(new FailureRecord(group.Key, $"同名候选 {Path.GetFileName(other.PhotoPath)} 未采用，已选用 {Path.GetFileName(selected.PhotoPath)}"));
+                }
+            }
+
+            // ── 阶段 3：并行合成选中的分组 ──
+            await Parallel.ForEachAsync(
+                chosen,
                 new ParallelOptions { MaxDegreeOfParallelism = options.Parallelism, CancellationToken = cancellationToken },
                 async (pair, token) =>
                 {
                     try
                     {
-                        // 配对校验：不通过时跳过该组，不中断整体流程
-                        if (validator is not null)
-                        {
-                            var validation = await validator.ValidateAsync(pair, token);
-                            if (!validation.IsAccepted)
-                            {
-                                var reason = string.Join("；", validation.Reasons);
-                                skippedItems.Add(new FailureRecord(pair.Name, reason));
-                                return;
-                            }
-                        }
-
                         await MergeOneAsync(pair, options, tempDirectory, token);
                         Interlocked.Increment(ref succeeded);
                         // 只有合成成功并通过校验的这一组才会被清理，未匹配的文件绝不会进入这里
@@ -138,7 +165,9 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
             if (!MediaFileTypes.IsMp4(videoPath))
             {
                 temporaryVideo = Path.Combine(tempDirectory, $"{Guid.NewGuid():N}.mp4");
-                await videoConverter.ConvertToMp4Async(videoPath, temporaryVideo, cancellationToken);
+                // 前置摄像头视频带镜像矩阵，安卓播放器不识别，需转码把方向烧进像素
+                var isMirrored = await exifTool.IsMirroredVideoAsync(videoPath, cancellationToken);
+                await videoConverter.ConvertToMp4Async(videoPath, temporaryVideo, isMirrored, cancellationToken);
                 videoPath = temporaryVideo;
             }
 

@@ -8,8 +8,8 @@ namespace LivePhotoConvert.Core.Services;
 /// </summary>
 /// <remarks>
 /// 依次检查 ContentIdentifier、拍摄时间差、视频时长三个维度。
-/// 任一维度明确否定即拒绝；所有可评估维度均为可疑时也拒绝；
-/// 全部维度不可评估时降级为仅文件名匹配（通过）。
+/// ContentIdentifier 单边存在或明确不一致时直接拒绝；时间差与视频时长异常时记为可疑；
+/// 所有可评估维度均为可疑时也拒绝；全部维度不可评估时降级为仅文件名匹配（通过）。
 /// </remarks>
 /// <param name="exifTool">元数据读写</param>
 public sealed class PairValidator(IExifTool exifTool)
@@ -70,7 +70,10 @@ public sealed class PairValidator(IExifTool exifTool)
             }
             else
             {
-                reasons.Add($"仅{(photoId is not null ? "照片" : "视频")}含 ContentIdentifier，跳过此项校验");
+                // 真正的实况照片，照片与视频必然带有相同的 ContentIdentifier；
+                // 仅单边存在强烈暗示二者并非同一张实况照片，直接拒绝，避免错配合成
+                reasons.Add($"仅{(photoId is not null ? "照片" : "视频")}含 ContentIdentifier，不像是同一张实况照片");
+                return PairValidationResult.Reject(reasons);
             }
         }
         catch (Exception)

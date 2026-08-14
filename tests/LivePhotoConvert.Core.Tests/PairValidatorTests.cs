@@ -49,6 +49,31 @@ public class PairValidatorTests
     }
 
     /// <summary>
+    /// 仅照片或仅视频单边含 ContentIdentifier 时应拒绝，避免把不相关的照片与视频错配合成
+    /// </summary>
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async Task Should_Reject_When_Only_One_Side_Has_ContentIdentifier(bool photoHasId, bool videoHasId)
+    {
+        var exifTool = new FakeExifTool();
+        if (photoHasId)
+        {
+            exifTool.ContentIdentifiers["photo"] = "ABC-123";
+        }
+        if (videoHasId)
+        {
+            exifTool.ContentIdentifiers["video"] = "ABC-123";
+        }
+        var validator = new PairValidator(exifTool);
+
+        var result = await validator.ValidateAsync(MakePair(), TestContext.Current.CancellationToken);
+
+        Assert.False(result.IsAccepted);
+        Assert.Contains(result.Reasons, r => r.Contains("仅"));
+    }
+
+    /// <summary>
     /// 无 ContentIdentifier 但拍摄时间差在 3 秒内应通过
     /// </summary>
     [Fact]
@@ -167,6 +192,9 @@ public class PairValidatorTests
 
         public Task<TimeSpan?> TryReadDurationAsync(string filePath, CancellationToken cancellationToken = default) =>
             Task.FromResult(VideoDuration);
+
+        public Task<bool> IsMirroredVideoAsync(string videoPath, CancellationToken cancellationToken = default) =>
+            Task.FromResult(false);
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }

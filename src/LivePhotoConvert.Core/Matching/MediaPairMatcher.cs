@@ -19,20 +19,40 @@ public static class MediaPairMatcher
         var files = filePaths.ToList();
         var photos = files.Where(MediaFileTypes.IsPhoto).ToList();
         var videos = files.Where(MediaFileTypes.IsVideo).ToList();
-        // 同名多格式（如 IMG_0001.heic 与 IMG_0001.jpg）只保留优先级最高的一个，避免同一张照片被匹配成多组
-        var uniquePhotos = PickPreferredByName(photos, MediaFileTypes.PhotoExtensionPriority);
-        var uniqueVideos = PickPreferredByName(videos, MediaFileTypes.VideoExtensionPriority);
-        var pairs = uniquePhotos.Join(uniqueVideos, GetNameKey, GetNameKey, (photoPath, videoPath) => new MediaPair(photoPath, videoPath), StringComparer.OrdinalIgnoreCase).ToList();
+
+        var photosByName = photos.GroupBy(GetNameKey, StringComparer.OrdinalIgnoreCase);
+        var videosByName = videos.GroupBy(GetNameKey, StringComparer.OrdinalIgnoreCase)
+                                 .ToDictionary(group => group.Key, group => group.ToList(), StringComparer.OrdinalIgnoreCase);
+
+        // 同名文件可能存在多个格式（如 IMG_0001.heic 与 IMG_0001.jpg），
+        // 全部保留为候选并按扩展名优先级排序，合成阶段会校验并只取每组第一个通过者。
+        // 这样既能优先取画质更好的格式，又能在同名不同内容的照片里选对与视频真正匹配的那张。
+        var pairs = new List<MediaPair>();
+        foreach (var photoGroup in photosByName)
+        {
+            if (!videosByName.TryGetValue(photoGroup.Key, out var sameNameVideos))
+            {
+                continue;
+            }
+
+            var orderedPhotos = photoGroup.OrderBy(GetPhotoRank).ThenBy(filePath => filePath, StringComparer.OrdinalIgnoreCase);
+            var orderedVideos = sameNameVideos.OrderBy(GetVideoRank).ThenBy(filePath => filePath, StringComparer.OrdinalIgnoreCase);
+            foreach (var photo in orderedPhotos)
+            {
+                foreach (var video in orderedVideos)
+                {
+                    pairs.Add(new MediaPair(photo, video));
+                }
+            }
+        }
+
         // 统计未匹配的文件，它们在任何清理选项下都不会被处理
-        var matchedNames = new HashSet<string>(pairs.Select(pair => GetNameKey(pair.PhotoPath)), StringComparer.OrdinalIgnoreCase);
-        var matchedFiles = new HashSet<string>(pairs.SelectMany(pair => new[] { pair.PhotoPath, pair.VideoPath }), StringComparer.OrdinalIgnoreCase);
+        var matchedNames = new HashSet<string>(pairs.Select(pair => pair.Name), StringComparer.OrdinalIgnoreCase);
         return new PairingResult
         {
             Pairs = pairs,
-            UnmatchedPhotoCount = photos.Count(f => !matchedNames.Contains(GetNameKey(f))),
-            UnmatchedVideoCount = videos.Count(f => !matchedNames.Contains(GetNameKey(f))),
-            // 同名但未被选中的备选格式，只清理实际参与合成的那个文件，这些一律保留
-            SkippedDuplicateCount = photos.Concat(videos).Count(f => matchedNames.Contains(GetNameKey(f)) && !matchedFiles.Contains(f))
+            UnmatchedPhotoCount = photos.Count(filePath => !matchedNames.Contains(GetNameKey(filePath))),
+            UnmatchedVideoCount = videos.Count(filePath => !matchedNames.Contains(GetNameKey(filePath)))
         };
     }
 
@@ -44,21 +64,21 @@ public static class MediaPairMatcher
     private static string GetNameKey(string filePath) => Path.GetFileNameWithoutExtension(filePath);
 
     /// <summary>
-    /// 同名文件按扩展名优先级只保留一个
+    /// 照片扩展名优先级
     /// </summary>
-    /// <param name="files">文件列表</param>
-    /// <param name="extensionPriority">扩展名优先级，越靠前优先级越高</param>
-    /// <returns>去重后的文件列表</returns>
-    private static List<string> PickPreferredByName(List<string> files, string[] extensionPriority)
-    {
-        return files.GroupBy(GetNameKey, StringComparer.OrdinalIgnoreCase)
-                    .Select(group => group.OrderBy(GetExtensionRank).ThenBy(f => f, StringComparer.OrdinalIgnoreCase).First())
-                    .ToList();
+    private static int GetPhotoRank(string filePath) => GetExtensionRank(filePath, MediaFileTypes.PhotoExtensionPriority);
 
-        int GetExtensionRank(string filePath)
-        {
-            var rank = Array.FindIndex(extensionPriority, e => e.Equals(Path.GetExtension(filePath), StringComparison.OrdinalIgnoreCase));
-            return rank < 0 ? extensionPriority.Length : rank;
-        }
+    /// <summary>
+    /// 视频扩展名优先级
+    /// </summary>
+    private static int GetVideoRank(string filePath) => GetExtensionRank(filePath, MediaFileTypes.VideoExtensionPriority);
+
+    /// <summary>
+    /// 扩展名在优先级列表中的排名，越靠前排名越小
+    /// </summary>
+    private static int GetExtensionRank(string filePath, string[] extensionPriority)
+    {
+        var rank = Array.FindIndex(extensionPriority, extension => extension.Equals(Path.GetExtension(filePath), StringComparison.OrdinalIgnoreCase));
+        return rank < 0 ? extensionPriority.Length : rank;
     }
 }

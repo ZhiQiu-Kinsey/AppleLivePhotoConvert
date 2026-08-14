@@ -35,18 +35,26 @@ public sealed class FfmpegVideoConverter : IVideoConverter, IImageConverter
     }
 
     /// <inheritdoc />
-    public async Task ConvertToMp4Async(string sourcePath, string destinationPath, CancellationToken cancellationToken = default)
+    public async Task ConvertToMp4Async(string sourcePath, string destinationPath, bool forceTranscode = false, CancellationToken cancellationToken = default)
     {
-        // iPhone 的 MOV 本身就是 H.264/HEVC + AAC，换容器即可，无需重新编码
-        var remux = await ProcessRunner.RunAsync(_executablePath, BuildRemuxArguments(sourcePath, destinationPath), cancellationToken);
-        if (remux.Success)
+        string? remuxError = null;
+        if (!forceTranscode)
         {
-            return;
+            // iPhone 的 MOV 本身就是 H.264/HEVC + AAC，换容器即可，无需重新编码
+            var remux = await ProcessRunner.RunAsync(_executablePath, BuildRemuxArguments(sourcePath, destinationPath), cancellationToken);
+            if (remux.Success)
+            {
+                return;
+            }
+
+            // 换容器失败（例如编码格式不被 MP4 容器接受），回退到重新编码
+            remuxError = Summarize(remux.StandardError);
+            TryDeletePartialOutput(destinationPath);
         }
 
-        // 换容器失败（例如编码格式不被 MP4 容器接受），回退到重新编码
-        TryDeletePartialOutput(destinationPath);
-
+        // 强制转码时跳过换容器：前置摄像头视频带镜像矩阵（行列式为负），
+        // 安卓相册等 MP4 播放器不识别镜像矩阵，只有重新编码才能让 FFmpeg 的
+        // autorotate 把镜像与旋转一起烧进像素，输出无方向元数据的标准 MP4。
         var transcode = await ProcessRunner.RunAsync(_executablePath, BuildTranscodeArguments(sourcePath, destinationPath), cancellationToken);
         if (transcode.Success)
         {
@@ -54,7 +62,8 @@ public sealed class FfmpegVideoConverter : IVideoConverter, IImageConverter
         }
 
         TryDeletePartialOutput(destinationPath);
-        throw new InvalidOperationException($"FFmpeg 转换视频失败。换容器错误：{Summarize(remux.StandardError)}；重新编码错误：{Summarize(transcode.StandardError)}");
+        var remuxDescription = forceTranscode ? "强制转码（前置镜像视频）" : $"换容器错误：{remuxError}";
+        throw new InvalidOperationException($"FFmpeg 转换视频失败。{remuxDescription}；重新编码错误：{Summarize(transcode.StandardError)}");
     }
 
     /// <inheritdoc />
