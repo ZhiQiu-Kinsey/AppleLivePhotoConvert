@@ -36,7 +36,7 @@ public class PairValidatorTests
     [Fact]
     public async Task Should_Use_Cached_ContentIdentifiers_Without_Calling_ExifTool()
     {
-        var pair = MakePair("IMG_0001");
+        var pair = MakePair();
         var photoCi = new Dictionary<string, string> { [pair.PhotoPath] = "CACHED-123" };
         var videoCi = new Dictionary<string, string> { [pair.VideoPath] = "CACHED-123" };
 
@@ -253,7 +253,7 @@ public class PairValidatorTests
             cancellationToken.ThrowIfCancellationRequested();
             ReadContentIdentifierCallCount++;
             var key = kind == ContentIdentifierKind.Photo ? "photo" : "video";
-            return Task.FromResult(ContentIdentifiers.TryGetValue(key, out var value) ? value : null);
+            return Task.FromResult(ContentIdentifiers.GetValueOrDefault(key));
         }
 
         public Task WriteAppleContentIdentifierAsync(string photoPath, string contentIdentifier, CancellationToken cancellationToken = default)

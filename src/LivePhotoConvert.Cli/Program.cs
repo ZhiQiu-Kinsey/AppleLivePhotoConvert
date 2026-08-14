@@ -4,35 +4,31 @@ using LivePhotoConvert.Cli.CommandLine;
 using LivePhotoConvert.Cli.Ui;
 using LivePhotoConvert.Core.Abstractions;
 using LivePhotoConvert.Core.Matching;
+using Spectre.Console.Cli;
 
 namespace LivePhotoConvert.Cli;
 
 /// <summary>
-/// 程序入口
+/// 应用程序主入口与控制台调度中枢
 /// </summary>
 public static class Program
 {
     private static volatile CancellationTokenSource? _activeCts;
 
     /// <summary>
-    /// 入口方法
+    /// 获取当前全局活动的取消令牌
     /// </summary>
-    /// <param name="args">命令行参数</param>
-    /// <returns>退出码</returns>
+    public static CancellationToken ActiveCancellationToken => _activeCts?.Token ?? CancellationToken.None;
+
+    /// <summary>
+    /// 命令行主入口方法
+    /// </summary>
+    /// <param name="args">命令行参数数组</param>
+    /// <returns>进程退出码</returns>
     public static async Task<int> Main(string[] args)
     {
         ConfigureConsole();
 
-        var parsed = CliParser.Parse(args);
-        if (parsed.Error is not null)
-        {
-            ConsoleUi.WriteLine(parsed.Error, ConsoleColor.Red);
-            Console.WriteLine();
-            HelpText.Print();
-            return ExitCodes.InvalidArguments;
-        }
-
-        var options = parsed.Options!;
         using var globalCts = new CancellationTokenSource();
         _activeCts = globalCts;
 
@@ -50,18 +46,47 @@ public static class Program
             }
         };
 
+        // 无任何参数时直接进入现代化交互式终端向导
+        if (args.Length == 0)
+        {
+            try
+            {
+                return await RunInteractiveAsync(globalCts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                AnsiConsole.MarkupLine("[yellow]当前操作已取消。[/]");
+                return ExitCodes.Canceled;
+            }
+            catch (Exception ex)
+            {
+                var logPath = ErrorLogger.Log(ex, "交互式菜单运行异常");
+                AnsiConsole.MarkupLine($"[yellow][[！]] 执行遇到异常，详细信息已记录至日志文件：{logPath.EscapeMarkup()}[/]");
+                return ExitCodes.Failure;
+            }
+        }
+
+        // 基于 Spectre.Console.Cli 强大的声明式命令行调度中枢
+        var app = new CommandApp();
+        app.Configure(config =>
+        {
+            config.SetApplicationName("LivePhotoConvert");
+            config.SetApplicationVersion(typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "2.0.0");
+
+            config.AddCommand<MergeCommand>("merge")
+                .WithDescription("将实况照片与微视频合成为标准动态照片 (Motion Photo)");
+
+            config.AddCommand<SplitCommand>("split")
+                .WithDescription("将动态照片拆分为独立照片与视频（支持 Android 与 Apple 格式）");
+
+            config.AddCommand<ToolsCommand>("tools")
+                .WithAlias("download-tools")
+                .WithDescription("检查、下载与管理外部依赖工具 (ExifTool / FFmpeg)");
+        });
+
         try
         {
-            return options.Command switch
-            {
-                CliCommand.Help => PrintHelp(),
-                CliCommand.Version => PrintVersion(),
-                CliCommand.DownloadTools => await RunDownloadToolsAsync(options, interactive: false, globalCts.Token),
-                CliCommand.Interactive => await RunInteractiveAsync(globalCts.Token),
-                CliCommand.Merge => await RunMergeAsync(options, interactive: false, globalCts.Token),
-                CliCommand.Split => await RunSplitAsync(options, interactive: false, globalCts.Token),
-                _ => ExitCodes.InvalidArguments
-            };
+            return await app.RunAsync(args);
         }
         catch (OperationCanceledException)
         {
@@ -70,11 +95,12 @@ public static class Program
         }
         catch (Exception ex)
         {
-            var logPath = ErrorLogger.Log(ex, "程序主流程异常");
+            var logPath = ErrorLogger.Log(ex, "命令行指令执行异常");
             AnsiConsole.MarkupLine($"[yellow][[！]] 执行遇到异常，详细信息已记录至日志文件：{logPath.EscapeMarkup()}[/]");
             return ExitCodes.Failure;
         }
     }
+
 
     /// <summary>
     /// 初始化控制台
@@ -182,9 +208,9 @@ public static class Program
     }
 
     /// <summary>
-    /// 执行合成
+    /// 执行合成流水线
     /// </summary>
-    private static async Task<int> RunMergeAsync(CliOptions options, bool interactive, CancellationToken cancellationToken)
+    internal static async Task<int> RunMergeAsync(CliOptions options, bool interactive, CancellationToken cancellationToken)
     {
         ConsoleUi.PrintHeader("合成动态照片");
 
@@ -334,7 +360,7 @@ public static class Program
     /// <summary>
     /// 执行拆分
     /// </summary>
-    private static async Task<int> RunSplitAsync(CliOptions options, bool interactive, CancellationToken cancellationToken)
+    internal static async Task<int> RunSplitAsync(CliOptions options, bool interactive, CancellationToken cancellationToken)
     {
         ConsoleUi.PrintHeader("拆分动态照片");
 
@@ -437,7 +463,7 @@ public static class Program
     /// <summary>
     /// 检查并下载外部工具
     /// </summary>
-    private static async Task<int> RunDownloadToolsAsync(CliOptions options, bool interactive, CancellationToken cancellationToken, bool waitOnComplete = true)
+    internal static async Task<int> RunDownloadToolsAsync(CliOptions options, bool interactive, CancellationToken cancellationToken, bool waitOnComplete = true)
     {
         ConsoleUi.PrintHeader("外部依赖工具检查与下载");
 
@@ -664,26 +690,8 @@ public static class Program
 
         return exitCode;
     }
-
-    /// <summary>
-    /// 打印帮助
-    /// </summary>
-    private static int PrintHelp()
-    {
-        HelpText.Print();
-        return ExitCodes.Success;
-    }
-
-    /// <summary>
-    /// 打印版本
-    /// </summary>
-    private static int PrintVersion()
-    {
-        var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "未知";
-        Console.WriteLine($"动态照片工具箱 {version}");
-        return ExitCodes.Success;
-    }
 }
+
 
 /// <summary>
 /// 退出码

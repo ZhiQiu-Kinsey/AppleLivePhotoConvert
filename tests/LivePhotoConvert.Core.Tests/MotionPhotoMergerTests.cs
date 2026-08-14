@@ -143,7 +143,7 @@ public class MotionPhotoMergerTests
         public Task<string?> TryReadContentIdentifierAsync(string filePath, ContentIdentifierKind kind, CancellationToken cancellationToken = default)
         {
             var key = kind == ContentIdentifierKind.Photo ? "photo" : "video";
-            return Task.FromResult(ContentIdentifiers.TryGetValue(key, out var value) ? value : null);
+            return Task.FromResult(ContentIdentifiers.GetValueOrDefault(key));
         }
 
         public Task WriteAppleContentIdentifierAsync(string photoPath, string contentIdentifier, CancellationToken cancellationToken = default) =>

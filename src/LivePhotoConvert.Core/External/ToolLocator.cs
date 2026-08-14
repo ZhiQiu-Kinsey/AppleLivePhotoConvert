@@ -16,6 +16,7 @@ public static class ToolLocator
         {
             return File.Exists(explicitPath) && IsValidTool(explicitPath) ? Path.GetFullPath(explicitPath) : null;
         }
+
         var baseDirectory = AppContext.BaseDirectory;
         var processDir = Path.GetDirectoryName(Environment.ProcessPath);
         var baseDirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { baseDirectory };
@@ -23,12 +24,14 @@ public static class ToolLocator
         {
             baseDirs.Add(processDir);
         }
+
         var candidates = new List<string>();
         foreach (var dir in baseDirs)
         {
             candidates.Add(Path.Combine(dir, fileName));
             candidates.AddRange(subDirectories.Select(sub => Path.Combine(dir, sub, fileName)));
         }
+
         candidates.Add(Path.Combine(ToolDownloader.LocalAppDataToolDirectory, fileName));
         var found = candidates.FirstOrDefault(path => File.Exists(path) && IsValidTool(path));
         return found is not null ? Path.GetFullPath(found) : FindOnPath(fileName);
@@ -43,6 +46,7 @@ public static class ToolLocator
         {
             return false;
         }
+
         try
         {
             var fileName = Path.GetFileName(path);
@@ -52,6 +56,7 @@ public static class ToolLocator
             {
                 return true;
             }
+
             using var proc = new Process();
             proc.StartInfo = new ProcessStartInfo
             {
@@ -62,13 +67,22 @@ public static class ToolLocator
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
+
             if (proc.Start())
             {
                 if (proc.WaitForExit(2000))
                 {
                     return proc.ExitCode == 0;
                 }
-                proc.Kill();
+
+                try
+                {
+                    proc.Kill(entireProcessTree: true);
+                }
+                catch
+                {
+                    // 忽略进程杀除异常
+                }
             }
 
             return false;
@@ -89,22 +103,32 @@ public static class ToolLocator
         {
             return null;
         }
-        foreach (var directory in path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+
+        foreach (var range in path.AsSpan().Split(Path.PathSeparator))
         {
+            var directorySpan = path.AsSpan(range).Trim();
+            if (directorySpan.IsEmpty)
+            {
+                continue;
+            }
+
             string candidate;
             try
             {
-                candidate = Path.Combine(directory, fileName);
+                candidate = Path.Combine(directorySpan.ToString(), fileName);
             }
             catch (ArgumentException)
             {
                 continue;
             }
+
             if (File.Exists(candidate) && IsValidTool(candidate))
             {
                 return Path.GetFullPath(candidate);
             }
         }
+
         return null;
     }
 }
+

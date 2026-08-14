@@ -1,35 +1,48 @@
 using System.Globalization;
 using LivePhotoConvert.Core.Abstractions;
+using LivePhotoConvert.Core.Io;
 
 namespace LivePhotoConvert.Core.External;
 
 /// <summary>
-/// 基于 ExifTool 的元数据读写
+/// 基于 ExifTool 常驻进程会话的元数据读写与高性能解析引擎
 /// </summary>
 public sealed class ExifTool : IExifTool
 {
+    /// <summary>
+    /// 静态缓存的 EXIF 标准日期格式数组（避免每次解析日期时重复创建数组）
+    /// </summary>
+    private static readonly string[] ExifDateFormats =
+    [
+        "yyyy:MM:dd HH:mm:ss",
+        "yyyy:MM:dd HH:mm:sszzz",
+        "yyyy-MM-dd HH:mm:ss",
+        "yyyy-MM-ddTHH:mm:ss",
+        "yyyy-MM-ddTHH:mm:sszzz"
+    ];
+
     private readonly ExifToolSession _session;
 
     /// <summary>
-    /// 创建实例
+    /// 初始化 ExifTool 会话实例
     /// </summary>
-    /// <param name="executablePath">ExifTool 可执行文件路径</param>
+    /// <param name="executablePath">ExifTool 可执行文件的绝对路径</param>
     private ExifTool(string executablePath)
     {
         _session = new ExifToolSession(executablePath, ExifToolConfig.EnsureCreated());
     }
 
     /// <summary>
-    /// ExifTool 的可执行文件名
+    /// 当前操作系统的 ExifTool 可执行文件名（Windows 下为 exiftool.exe，类 Unix 下为 exiftool）
     /// </summary>
     public static string ExecutableName => OperatingSystem.IsWindows() ? "exiftool.exe" : "exiftool";
 
     /// <summary>
-    /// 定位 ExifTool 并创建实例
+    /// 定位 ExifTool 并创建会话实例
     /// </summary>
-    /// <param name="executablePath">显式指定的路径，为空时自动查找</param>
-    /// <returns>实例</returns>
-    /// <exception cref="FileNotFoundException">未找到 ExifTool</exception>
+    /// <param name="executablePath">用户显式指定的路径，为空时自动在程序目录、tools 子目录及环境变量 PATH 中定位</param>
+    /// <returns>可用的 ExifTool 实例</returns>
+    /// <exception cref="FileNotFoundException">未找到 ExifTool 可执行程序</exception>
     public static ExifTool Create(string? executablePath = null)
     {
         var path = ToolLocator.Find(ExecutableName, executablePath, "ExifTool", "exiftool", "tools")
@@ -44,7 +57,7 @@ public sealed class ExifTool : IExifTool
 
         var offset = videoOffset.ToString(CultureInfo.InvariantCulture);
         // 固定 1.5 秒（1,500,000 微秒）作为代表帧时间戳
-        var timestampUs = "1500000";
+        const string timestampUs = "1500000";
 
         var tempXmpPath = Path.Combine(Path.GetTempPath(), "LivePhotoConvert", $"xmp_{Guid.NewGuid():N}.xml");
         var xmpContent = $"""
@@ -105,14 +118,7 @@ public sealed class ExifTool : IExifTool
         }
         finally
         {
-            try
-            {
-                File.Delete(tempXmpPath);
-            }
-            catch
-            {
-                // 忽略清理临时文件时的异常
-            }
+            FileHelper.TryDeleteFile(tempXmpPath);
         }
     }
 
@@ -169,10 +175,19 @@ public sealed class ExifTool : IExifTool
         var containerText = containerResponse.StandardOutput.Trim();
         if (!string.IsNullOrEmpty(containerText))
         {
-            var lines = containerText.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            if (lines.Length > 0 && long.TryParse(lines[^1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var containerOffset))
+            long? lastParsedOffset = null;
+            foreach (var line in containerText.AsSpan().EnumerateLines())
             {
-                return containerOffset;
+                var trimmed = line.Trim();
+                if (!trimmed.IsEmpty && long.TryParse(trimmed, NumberStyles.Integer, CultureInfo.InvariantCulture, out var containerOffset))
+                {
+                    lastParsedOffset = containerOffset;
+                }
+            }
+
+            if (lastParsedOffset.HasValue)
+            {
+                return lastParsedOffset.Value;
             }
         }
 
@@ -196,7 +211,12 @@ public sealed class ExifTool : IExifTool
         return string.IsNullOrEmpty(text) ? null : text;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 为照片写入 Apple Live Photo 唯一配对标识 (ContentIdentifier)
+    /// </summary>
+    /// <param name="photoPath">照片路径</param>
+    /// <param name="contentIdentifier">生成的配对 UUID</param>
+    /// <param name="cancellationToken">取消令牌</param>
     public async Task WriteAppleContentIdentifierAsync(string photoPath, string contentIdentifier, CancellationToken cancellationToken = default)
     {
         List<string> arguments =
@@ -210,7 +230,12 @@ public sealed class ExifTool : IExifTool
         ThrowIfFailed(response, "写入 Apple 照片标识");
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 为 QuickTime 视频写入 Apple Live Photo 唯一配对标识 (ContentIdentifier) 与静态帧时间锚点
+    /// </summary>
+    /// <param name="videoPath">QuickTime MOV 视频路径</param>
+    /// <param name="contentIdentifier">生成的配对 UUID</param>
+    /// <param name="cancellationToken">取消令牌</param>
     public async Task WriteAppleVideoMetadataAsync(string videoPath, string contentIdentifier, CancellationToken cancellationToken = default)
     {
         List<string> arguments =
@@ -235,7 +260,7 @@ public sealed class ExifTool : IExifTool
             List<string> arguments = ["-s3", tag, filePath];
             var response = await _session.ExecuteAsync(arguments, cancellationToken);
             var text = response.StandardOutput.Trim();
-            if (!string.IsNullOrEmpty(text) && TryParseExifDate(text, out var date))
+            if (!string.IsNullOrEmpty(text) && TryParseExifDate(text.AsSpan(), out var date))
             {
                 return date;
             }
@@ -267,9 +292,10 @@ public sealed class ExifTool : IExifTool
             // 后置摄像头视频的矩阵是恒等或纯旋转（行列式为正），只有前置摄像头才会出现镜像矩阵。
             List<string> arguments = ["-a", "-s3", "-MatrixStructure", videoPath];
             var response = await _session.ExecuteAsync(arguments, cancellationToken);
-            foreach (var line in response.StandardOutput.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            foreach (var line in response.StandardOutput.AsSpan().EnumerateLines())
             {
-                if (TryParseMatrixDeterminant(line, out var determinant) && determinant < 0)
+                var trimmed = line.Trim();
+                if (!trimmed.IsEmpty && TryParseMatrixDeterminant(trimmed, out var determinant) && determinant < 0)
                 {
                     return true;
                 }
@@ -289,56 +315,69 @@ public sealed class ExifTool : IExifTool
     }
 
     /// <summary>
-    /// 解析 ExifTool 输出的 MatrixStructure 行并计算行列式 (a*d - b*c)
+    /// 零分配解析 ExifTool 输出的 QuickTime MatrixStructure 变换矩阵并计算行列式 (ad - bc)
     /// </summary>
-    /// <param name="line">形如 "0 1 0 1 0 0 0 0 1" 的 3x3 矩阵行</param>
-    /// <param name="determinant">行列式值</param>
-    /// <returns>是否成功解析</returns>
-    private static bool TryParseMatrixDeterminant(string line, out double determinant)
+    /// <remarks>
+    /// QuickTime 仿射变换矩阵按行主序包含 9 个数值：<br/>
+    /// [a, b, u]<br/>
+    /// [c, d, v]<br/>
+    /// [x, y, w]<br/>
+    /// 其中 2D 线性变换由前 2x2 子矩阵 (a,b,c,d) 决定。若行列式 ad - bc &lt; 0 则说明存在水平/垂直镜像翻转。
+    /// </remarks>
+    /// <param name="line">形如 "0 1 0 1 0 0 0 0 1" 的 3x3 矩阵行切片</param>
+    /// <param name="determinant">输出计算得到的行列式值</param>
+    /// <returns>是否成功解析出合法矩阵</returns>
+    private static bool TryParseMatrixDeterminant(ReadOnlySpan<char> line, out double determinant)
     {
         determinant = 0;
-        var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (parts.Length < 5)
+        Span<double> values = stackalloc double[5];
+        var count = 0;
+
+        foreach (var range in line.Split(' '))
+        {
+            var token = line[range].Trim();
+            if (token.IsEmpty)
+            {
+                continue;
+            }
+
+            if (count < 5)
+            {
+                if (!double.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out values[count]))
+                {
+                    return false;
+                }
+                count++;
+            }
+        }
+
+        if (count < 5)
         {
             return false;
         }
 
-        // 3x3 矩阵按行主序输出：a b u / c d v / x y w，镜像只取决于 a、b、c、d
-        if (!double.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var a)
-            || !double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var b)
-            || !double.TryParse(parts[3], NumberStyles.Float, CultureInfo.InvariantCulture, out var c)
-            || !double.TryParse(parts[4], NumberStyles.Float, CultureInfo.InvariantCulture, out var d))
-        {
-            return false;
-        }
-
-        determinant = a * d - b * c;
+        // 3x3 矩阵按行主序输出：a(0), b(1), u(2), c(3), d(4)。镜像只取决于 a*d - b*c
+        determinant = values[0] * values[4] - values[1] * values[3];
         return true;
     }
 
     /// <summary>
-    /// 解析 ExifTool 输出的日期字符串
+    /// 尝试解析 ExifTool 输出的各种格式的时间字符串
     /// </summary>
-    private static bool TryParseExifDate(string text, out DateTime date)
-    {
-        // ExifTool 通常输出 "2024:01:15 14:30:00" 格式
-        string[] formats =
-        [
-            "yyyy:MM:dd HH:mm:ss",
-            "yyyy:MM:dd HH:mm:sszzz",
-            "yyyy-MM-dd HH:mm:ss",
-            "yyyy-MM-ddTHH:mm:ss",
-            "yyyy-MM-ddTHH:mm:sszzz"
-        ];
-        return DateTime.TryParseExact(text, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out date);
-    }
+    /// <param name="text">时间文本切片</param>
+    /// <param name="date">解析出的 DateTime</param>
+    /// <returns>是否成功解析</returns>
+    private static bool TryParseExifDate(ReadOnlySpan<char> text, out DateTime date) =>
+        DateTime.TryParseExact(text, ExifDateFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out date);
 
     /// <inheritdoc />
     public ValueTask DisposeAsync() => _session.DisposeAsync();
 
     /// <summary>
-    /// 当 ExifTool 报错时抛出异常
+    /// 当 ExifTool 执行报错时抛出异常（采用零分配 EnumerateLines 过滤无害的 Warning 警告）
     /// </summary>
+    /// <param name="response">ExifTool 会话响应</param>
+    /// <param name="operation">当前操作名称描述</param>
     private static void ThrowIfFailed(ExifToolResponse response, string operation)
     {
         if (string.IsNullOrWhiteSpace(response.StandardError))
@@ -346,10 +385,17 @@ public sealed class ExifTool : IExifTool
             return;
         }
 
-        // Warning 不影响正常写入
-        var isRealError = response.StandardError
-                                  .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                                  .Any(line => !line.StartsWith("Warning:", StringComparison.OrdinalIgnoreCase));
+        // Warning 通常为非致命元数据提示，不影响正常写入
+        var isRealError = false;
+        foreach (var line in response.StandardError.AsSpan().EnumerateLines())
+        {
+            var trimmed = line.Trim();
+            if (!trimmed.IsEmpty && !trimmed.StartsWith("Warning:", StringComparison.OrdinalIgnoreCase))
+            {
+                isRealError = true;
+                break;
+            }
+        }
 
         if (isRealError)
         {
@@ -358,7 +404,7 @@ public sealed class ExifTool : IExifTool
     }
 
     /// <summary>
-    /// 把输出与错误拼成便于阅读的描述
+    /// 将标准输出与标准错误拼接成便于日志与异常排查的可读文本
     /// </summary>
     private static string Describe(ExifToolResponse response)
     {
@@ -373,3 +419,5 @@ public sealed class ExifTool : IExifTool
         };
     }
 }
+
+

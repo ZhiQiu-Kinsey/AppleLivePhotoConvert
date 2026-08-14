@@ -6,11 +6,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <Authors>Kinsey.Qiu</Authors>
-    <Version>2.3.0</Version>
-    <AssemblyVersion>2.3.0.0</AssemblyVersion>
-    <FileVersion>2.3.0.0</FileVersion>
+    <Version>2.4.0</Version>
+    <AssemblyVersion>2.4.0.0</AssemblyVersion>
+    <FileVersion>2.4.0.0</FileVersion>
     <PackageProjectUrl>https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert</PackageProjectUrl>
     <RepositoryUrl>https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert</RepositoryUrl>
   </PropertyGroup>

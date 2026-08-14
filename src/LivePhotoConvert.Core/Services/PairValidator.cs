@@ -18,10 +18,7 @@ namespace LivePhotoConvert.Core.Services;
 /// <param name="exifTool">元数据读写</param>
 /// <param name="photoContentIdentifiers">已预读的照片 ContentIdentifier 映射缓存（可选）</param>
 /// <param name="videoContentIdentifiers">已预读的视频 ContentIdentifier 映射缓存（可选）</param>
-public sealed class PairValidator(
-    IExifTool exifTool,
-    IReadOnlyDictionary<string, string>? photoContentIdentifiers = null,
-    IReadOnlyDictionary<string, string>? videoContentIdentifiers = null)
+public sealed class PairValidator(IExifTool exifTool,IReadOnlyDictionary<string, string>? photoContentIdentifiers = null,IReadOnlyDictionary<string, string>? videoContentIdentifiers = null)
 {
     /// <summary>
     /// 拍摄时间差允许的最大秒数
@@ -53,7 +50,7 @@ public sealed class PairValidator(
         // ── 信号 1：ContentIdentifier ──
         try
         {
-            string? photoId = null;
+            string? photoId;
             if (photoContentIdentifiers is not null)
             {
                 photoContentIdentifiers.TryGetValue(pair.PhotoPath, out photoId);
@@ -68,7 +65,7 @@ public sealed class PairValidator(
                     pair.PhotoPath, ContentIdentifierKind.Photo, cancellationToken);
             }
 
-            string? videoId = null;
+            string? videoId;
             if (videoContentIdentifiers is not null)
             {
                 videoContentIdentifiers.TryGetValue(pair.VideoPath, out videoId);

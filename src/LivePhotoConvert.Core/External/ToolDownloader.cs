@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Formats.Tar;
 using System.IO.Compression;
+using LivePhotoConvert.Core.Io;
 
 namespace LivePhotoConvert.Core.External;
 
@@ -76,11 +77,7 @@ public static class ToolDownloader
                 // 2. 完整解压主程序及运行库依赖到 targetDir
                 ExtractAllFromArchive(tempArchiveFile, targetDir, finalExePath, tool);
                 // 3. 真实启动探测校验，确保可执行文件 100% 满血可用
-                if (ToolLocator.IsValidTool(finalExePath))
-                {
-                    return finalExePath;
-                }
-                throw new InvalidOperationException($"解压后的 {tool.TargetExecutableName} 无法正常启动执行。");
+                return ToolLocator.IsValidTool(finalExePath) ? finalExePath : throw new InvalidOperationException($"解压后的 {tool.TargetExecutableName} 无法正常启动执行。");
             }
             catch (OperationCanceledException)
             {
@@ -93,7 +90,7 @@ public static class ToolDownloader
             }
             finally
             {
-                TryDeleteFile(tempArchiveFile);
+                FileHelper.TryDeleteFile(tempArchiveFile);
             }
         }
 
@@ -262,22 +259,5 @@ public static class ToolDownloader
             return false;
         }
     }
-
-    /// <summary>
-    /// 静默删除临时文件
-    /// </summary>
-    private static void TryDeleteFile(string path)
-    {
-        try
-        {
-            if (File.Exists(path))
-            {
-                File.Delete(path);
-            }
-        }
-        catch
-        {
-            // 临时文件清理失败不影响主逻辑
-        }
-    }
 }
+

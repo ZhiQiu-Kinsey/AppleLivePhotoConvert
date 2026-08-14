@@ -170,14 +170,6 @@ static class ConsoleUi
     }
 
     /// <summary>
-    /// 请求用户确认 (同步重载兼容)
-    /// </summary>
-    public static bool Confirm(string message)
-    {
-        return AnsiConsole.Confirm(message, defaultValue: false);
-    }
-
-    /// <summary>
     /// 以指定颜色输出一行文本
     /// </summary>
     /// <param name="message">文本</param>

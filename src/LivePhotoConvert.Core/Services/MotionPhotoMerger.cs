@@ -7,31 +7,34 @@ using LivePhotoConvert.Core.Models;
 namespace LivePhotoConvert.Core.Services;
 
 /// <summary>
-/// 把照片与视频合成为动态照片
+/// 动态照片合成核心调度服务（将 iPhone 实况照片或其他成对的图片与微视频合成为符合 Google GCamera 规范的 Motion Photo）
 /// </summary>
-/// <remarks>
-/// 创建合成器
-/// </remarks>
-/// <param name="exifTool">元数据读写</param>
-/// <param name="imageConverter">图片转换</param>
-/// <param name="videoConverter">视频转换</param>
-/// <param name="progress">进度回调</param>
+/// <param name="exifTool">EXIF 与 XMP 元数据读写服务</param>
+/// <param name="imageConverter">图像解码与转码服务</param>
+/// <param name="videoConverter">视频转码与容器封装服务</param>
+/// <param name="progress">进度与状态汇报回调（可选）</param>
 public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageConverter, IVideoConverter videoConverter, IProgressReporter? progress = null)
 {
     private readonly IProgressReporter _progress = progress ?? NullProgressReporter.Instance;
 
     /// <summary>
-    /// 「解析可用输出名 + 写入」必须是原子操作，否则并行时两个分组可能选中同一个输出路径
+    /// 多线程并发输出时的文件名原子预留同步锁
     /// </summary>
     private readonly Lock _outputGate = new();
 
     /// <summary>
-    /// 合成动态照片
+    /// 执行动态照片的批量并发合成流水线
     /// </summary>
-    /// <param name="pairing">匹配结果</param>
-    /// <param name="options">合成参数</param>
+    /// <remarks>
+    /// 合成流水线分为三个核心阶段：<br/>
+    /// 1. <b>并行校验阶段</b>：对所有候选媒体对进行时间戳与时长校验，剔除无关的同名照片/视频；<br/>
+    /// 2. <b>分组仲裁阶段</b>：优先采纳 ContentIdentifier 确定性配对，同名多格式自动选举最高画质组（如 HEIC 优于 JPG）；<br/>
+    /// 3. <b>并行合成与清理阶段</b>：转码格式 $\to$ 原子占位 $\to$ 二进制流拼接 $\to$ 注入 XMP $\to$ 校验有效性 $\to$ 同步时间戳 $\to$ 安全归档原文件。
+    /// </remarks>
+    /// <param name="pairing">由匹配引擎初步分析得到的媒体配对结果</param>
+    /// <param name="options">合成控制选项（包含并发度、输出目录、覆盖策略、原文件清理动作等）</param>
     /// <param name="cancellationToken">取消令牌</param>
-    /// <returns>合成结果汇总</returns>
+    /// <returns>包含成功数、跳过项、失败明细与清理计数的 <see cref="MergeReport"/></returns>
     public async Task<MergeReport> MergeAsync(PairingResult pairing, MergeOptions options, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(pairing);
@@ -43,10 +46,10 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
         var skippedItems = new ConcurrentBag<FailureRecord>();
         var validator = options.SkipValidation ? null : new PairValidator(exifTool, pairing.PhotoContentIdentifiers, pairing.VideoContentIdentifiers);
         var candidates = pairing.Pairs;
-        var total = 0;
-        var completed = 0;
+        int total;
         var succeeded = 0;
         var cleanedFiles = 0;
+
         // 临时目录建在系统高速本地临时目录下，避免在外部驱动器/移动硬盘上高并发创建产生 I/O 拥堵
         var tempDirectory = Path.Combine(Path.GetTempPath(), "LivePhotoConvert", $"temp-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDirectory);
@@ -96,7 +99,7 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
             }
 
             total = chosen.Count + skippedItems.Count;
-            completed = skippedItems.Count;
+            var completed = skippedItems.Count;
 
             // 同名但不同内容的照片（iCloud 下载可能出现 IMG_0456.JPG 与 IMG_0456.JPEG 两张不同实况），
             // 输出名用扩展名区分，避免互相覆盖
@@ -110,8 +113,10 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
                 {
                     try
                     {
-                        await MergeOneAsync(pair, outputNames[pair], options, tempDirectory, token);
+                        var outputBaseName = outputNames[pair];
+                        await MergeOneAsync(pair, outputBaseName, options, tempDirectory, token);
                         Interlocked.Increment(ref succeeded);
+
                         // 只有合成成功并通过校验的这一组才会被清理，未匹配的文件绝不会进入这里
                         var cleanup = cleaner.Clean([pair.PhotoPath, pair.VideoPath]);
                         Interlocked.Add(ref cleanedFiles, cleanup.CleanedCount);
@@ -126,7 +131,6 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
                     }
                     catch (Exception ex)
                     {
-                        ErrorLogger.Log(ex, $"合成动态照片失败: {pair.Name}");
                         failures.Add(new FailureRecord(Path.GetFileName(pair.PhotoPath), ex.Message));
                     }
                     finally
@@ -137,7 +141,7 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
         }
         finally
         {
-            TryDeleteDirectory(tempDirectory);
+            FileHelper.TryDeleteDirectory(tempDirectory);
         }
 
         return new MergeReport
@@ -152,11 +156,12 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
     }
 
     /// <summary>
-    /// 合成单组照片与视频
+    /// 合成单组照片与视频为 Google 格式动态照片
     /// </summary>
-    /// <param name="pair">照片与视频</param>
-    /// <param name="options">合成参数</param>
-    /// <param name="tempDirectory">临时目录</param>
+    /// <param name="pair">当前待合成的媒体对</param>
+    /// <param name="outputBaseName">输出文件的基础名称（不含 MVIMG_ 前缀与 .jpg 扩展名）</param>
+    /// <param name="options">合成控制选项</param>
+    /// <param name="tempDirectory">线程隔离的临时工作目录</param>
     /// <param name="cancellationToken">取消令牌</param>
     private async Task MergeOneAsync(MediaPair pair, string outputBaseName, MergeOptions options, string tempDirectory, CancellationToken cancellationToken)
     {
@@ -165,7 +170,7 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
         string? outputPath = null;
         try
         {
-            // 安卓动态照片格式要求封面为 JPEG，HEIC 与 PNG 都需要先转换
+            // 安卓动态照片格式规范要求封面必须为标准 JPEG，HEIC 与 PNG 都需要先转码
             var photoPath = pair.PhotoPath;
             if (!MediaFileTypes.IsJpeg(photoPath))
             {
@@ -178,18 +183,20 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
             if (!MediaFileTypes.IsMp4(videoPath))
             {
                 temporaryVideo = Path.Combine(tempDirectory, $"{Guid.NewGuid():N}.mp4");
-                // 前置摄像头视频带镜像矩阵，安卓播放器不识别，需转码把方向烧进像素
+                // 检查是否为带有 2D 镜像矩阵的前置摄像头视频，若存在镜像则强制重新编码烧录像素
                 var isMirrored = await exifTool.IsMirroredVideoAsync(videoPath, cancellationToken);
                 await videoConverter.ConvertToMp4Async(videoPath, temporaryVideo, isMirrored, cancellationToken);
                 videoPath = temporaryVideo;
             }
 
-            outputPath = ReserveOutputPath(options, outputBaseName);
+            // 在并发锁保护下原子解析并占位目标文件，杜绝多线程重名竞态
+            outputPath = UniquePath.ReserveAtomic(options.OutputDirectory, $"MVIMG_{outputBaseName}.jpg", options.Overwrite, _outputGate);
             var (photoLength, totalLength) = await BinaryFile.ConcatAsync(photoPath, videoPath, outputPath, cancellationToken);
 
+            // 写入 Google GCamera XMP 动态照片元数据与微视频偏移量
             await exifTool.WriteMotionPhotoTagsAsync(outputPath, totalLength - photoLength, cancellationToken);
 
-            // 写入元数据后校验输出文件（确保文件包含完整的封面与内嵌视频）
+            // 写入元数据后校验输出文件（确保文件完整包含封面与内嵌视频）
             var finalLength = new FileInfo(outputPath).Length;
             var videoLength = totalLength - photoLength;
             if (finalLength <= videoLength + 1024)
@@ -197,36 +204,19 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
                 throw new InvalidDataException($"合成校验失败：输出文件 {finalLength} 字节异常过小，未能完整包含封面与内嵌视频。");
             }
 
-            // 让合成后的照片保留原照片的时间，相册按时间排序时才不会乱。
-            // 若原图片因第三方工具中转导致修改时间失真，回退参考配对的 .MOV 视频原始时间。
-            try
-            {
-                var photoCreationTime = File.GetCreationTime(pair.PhotoPath);
-                var photoWriteTime = File.GetLastWriteTime(pair.PhotoPath);
-                var videoCreationTime = File.GetCreationTime(pair.VideoPath);
-                var videoWriteTime = File.GetLastWriteTime(pair.VideoPath);
-
-                var earliestCreation = photoCreationTime < videoCreationTime ? photoCreationTime : videoCreationTime;
-                var earliestWrite = photoWriteTime < videoWriteTime ? photoWriteTime : videoWriteTime;
-
-                File.SetCreationTime(outputPath, earliestCreation);
-                File.SetLastWriteTime(outputPath, earliestWrite);
-            }
-            catch (Exception)
-            {
-                // 时间没设上不影响动态照片本身
-            }
+            // 让合成后的照片保留原照片或视频中更早的时间戳，相册按时间排序时才不会乱
+            FileTimestamp.SyncEarliest(outputPath, pair.PhotoPath, pair.VideoPath);
         }
         catch (Exception)
         {
-            // 失败时清掉写了一半的输出，避免在输出目录留下无法播放的残次品
-            TryDeleteFile(outputPath);
+            // 失败时清理写了一半的半成品输出，避免在输出目录留下损坏无法播放的文件
+            FileHelper.TryDeleteFile(outputPath);
             throw;
         }
         finally
         {
-            TryDeleteFile(temporaryPhoto);
-            TryDeleteFile(temporaryVideo);
+            FileHelper.TryDeleteFile(temporaryPhoto);
+            FileHelper.TryDeleteFile(temporaryVideo);
         }
     }
 
@@ -234,7 +224,7 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
     /// 为选中的分组解析唯一输出名：同名但不同内容的照片（扩展名不同）用扩展名区分
     /// </summary>
     /// <param name="pairs">选中的分组</param>
-    /// <returns>分组到输出基础名（不含扩展名）的映射</returns>
+    /// <returns>分组到输出基础名（不含扩展名）的映射字典</returns>
     private static Dictionary<MediaPair, string> ResolveOutputNames(IReadOnlyList<MediaPair> pairs)
     {
         var result = new Dictionary<MediaPair, string>();
@@ -256,63 +246,5 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
         }
 
         return result;
-    }
-
-    /// <summary>
-    /// 确定输出路径，并在非覆盖模式下占住这个文件名
-    /// </summary>
-    /// <param name="options">合成参数</param>
-    /// <param name="baseName">原照片的文件名（不含扩展名）</param>
-    /// <returns>输出路径</returns>
-    private string ReserveOutputPath(MergeOptions options, string baseName)
-    {
-        var fileName = $"MVIMG_{baseName}.jpg";
-        if (options.Overwrite)
-        {
-            return Path.Combine(options.OutputDirectory, fileName);
-        }
-        // 解析出可用文件名后立刻创建占位文件，避免并行的另一组解析到同一个名字
-        lock (_outputGate)
-        {
-            var path = UniquePath.Resolve(options.OutputDirectory, fileName);
-            File.Create(path).Dispose();
-            return path;
-        }
-    }
-
-    /// <summary>
-    /// 尽力删除临时文件
-    /// </summary>
-    /// <param name="path">文件路径，可为空</param>
-    private static void TryDeleteFile(string? path)
-    {
-        if (path is null)
-        {
-            return;
-        }
-        try
-        {
-            File.Delete(path);
-        }
-        catch (Exception)
-        {
-            // 临时目录整体会被删除，单个文件删不掉不影响结果
-        }
-    }
-
-    /// <summary>
-    /// 尽力删除临时目录
-    /// </summary>
-    /// <param name="path">目录路径</param>
-    private static void TryDeleteDirectory(string path)
-    {
-        try
-        {
-            Directory.Delete(path, recursive: true);
-        }
-        catch (Exception)
-        {
-            // 删不掉只会留下一个空的临时目录，不影响已合成的照片
-        }
     }
 }

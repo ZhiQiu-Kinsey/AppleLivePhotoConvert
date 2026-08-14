@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Collections.Frozen;
 using LivePhotoConvert.Core.Abstractions;
 using LivePhotoConvert.Core.Io;
 using LivePhotoConvert.Core.Matching;
@@ -7,45 +8,43 @@ using LivePhotoConvert.Core.Models;
 namespace LivePhotoConvert.Core.Services;
 
 /// <summary>
-/// 把动态照片拆分回照片与视频
+/// 动态照片拆分调度服务（支持将 Android/Google 动态照片无损解包为独立图片与视频，或重构封装为 iOS 兼容的 Apple Live Photo 实况照片）
 /// </summary>
-/// <remarks>
-/// 创建拆分器
-/// </remarks>
-/// <param name="exifTool">元数据读写</param>
-/// <param name="videoConverter">视频转换器，转为 Apple Live Photo 格式时使用</param>
-/// <param name="progress">进度回调</param>
+/// <param name="exifTool">EXIF 与 XMP 元数据读写服务</param>
+/// <param name="videoConverter">视频转换与重封装服务（转为 Apple Live Photo 模式时必需）</param>
+/// <param name="progress">进度与状态汇报回调（可选）</param>
 public sealed class MotionPhotoSplitter(IExifTool exifTool, IVideoConverter? videoConverter = null, IProgressReporter? progress = null)
 {
     /// <summary>
-    /// 可能包含内嵌视频的文件扩展名
+    /// 可能包含内嵌微视频的候选图片扩展名集合
     /// </summary>
-    private static readonly string[] CandidateExtensions = [".jpg", ".jpeg", ".heic"];
+    private static readonly FrozenSet<string> CandidateExtensions = new[] { ".jpg", ".jpeg", ".heic" }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
+
     private readonly IProgressReporter _progress = progress ?? NullProgressReporter.Instance;
 
     /// <summary>
-    /// 照片与视频必须成对使用同一个文件名后缀，解析与占位要一次做完
+    /// 并发拆分输出时的成对文件名原子占位锁
     /// </summary>
     private readonly Lock _outputGate = new();
 
     /// <summary>
-    /// 扫描输入目录中可能是动态照片的文件
+    /// 扫描输入目录中所有可能为动态照片的图片文件列表
     /// </summary>
-    /// <param name="inputDirectory">输入目录</param>
-    /// <returns>候选文件路径</returns>
+    /// <param name="inputDirectory">输入目录路径</param>
+    /// <returns>按字母序排列的候选文件完整路径列表</returns>
     public static IReadOnlyList<string> FindCandidates(string inputDirectory) =>
     [
         .. Directory.EnumerateFiles(inputDirectory, "*", SearchOption.TopDirectoryOnly)
-                    .Where(path => CandidateExtensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase))
+                    .Where(path => CandidateExtensions.Contains(Path.GetExtension(path)))
                     .Order(StringComparer.OrdinalIgnoreCase)
     ];
 
     /// <summary>
-    /// 拆分动态照片
+    /// 执行动态照片的批量并发拆分流水线
     /// </summary>
-    /// <param name="options">拆分参数</param>
+    /// <param name="options">拆分控制选项（包含目标格式、输入输出路径、并发度、覆盖策略等）</param>
     /// <param name="cancellationToken">取消令牌</param>
-    /// <returns>拆分结果汇总</returns>
+    /// <returns>包含成功数、跳过非实况图片数及失败明细的 <see cref="SplitReport"/></returns>
     public async Task<SplitReport> SplitAsync(SplitOptions options, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -92,7 +91,7 @@ public sealed class MotionPhotoSplitter(IExifTool exifTool, IVideoConverter? vid
         }
         finally
         {
-            TryDeleteDirectory(tempDirectory);
+            FileHelper.TryDeleteDirectory(tempDirectory);
         }
 
         return new SplitReport
@@ -105,13 +104,13 @@ public sealed class MotionPhotoSplitter(IExifTool exifTool, IVideoConverter? vid
     }
 
     /// <summary>
-    /// 拆分单个文件
+    /// 拆分单个动态照片文件
     /// </summary>
-    /// <param name="imagePath">动态照片路径</param>
-    /// <param name="options">拆分参数</param>
-    /// <param name="tempDirectory">临时目录</param>
+    /// <param name="imagePath">待拆分的动态照片路径</param>
+    /// <param name="options">拆分控制选项</param>
+    /// <param name="tempDirectory">临时工作目录</param>
     /// <param name="cancellationToken">取消令牌</param>
-    /// <returns>是否确实拆分了；文件不是动态照片时返回 <c>false</c></returns>
+    /// <returns>若成功识别并完成拆分返回 <c>true</c>；若文件为普通非动态照片则跳过并返回 <c>false</c></returns>
     private async Task<bool> SplitOneAsync(string imagePath, SplitOptions options, string tempDirectory, CancellationToken cancellationToken)
     {
         var videoLength = await exifTool.TryReadMicroVideoOffsetAsync(imagePath, cancellationToken);
@@ -129,20 +128,24 @@ public sealed class MotionPhotoSplitter(IExifTool exifTool, IVideoConverter? vid
 
         var photoLength = totalLength - videoLength.Value;
         var baseName = Path.GetFileNameWithoutExtension(imagePath);
-        // 嗅探照片与视频实际的二进制格式
+
+        // 嗅探照片与视频实际的二进制格式（防止扩展名被篡改或封面非 JPEG）
         var photoExt = await SniffExtensionAsync(imagePath, 0, (int)Math.Min(photoLength, 64), h => MediaFileTypes.DetectPhotoExtension(h, Path.GetExtension(imagePath)), cancellationToken);
         var videoExt = await SniffExtensionAsync(imagePath, photoLength, (int)Math.Min(videoLength.Value, 64), h => MediaFileTypes.DetectVideoExtension(h), cancellationToken);
+
         if (options.TargetFormat == SplitTargetFormat.Apple)
         {
             if (videoConverter is null)
             {
                 throw new InvalidOperationException("未配置视频转换器，无法转换为 Apple Live Photo 格式。");
             }
-            var (photoPath, videoPath) = ReserveOutputPaths(options, baseName, photoExt, ".mov");
+
+            // 原子成对预留输出文件
+            var (photoPath, videoPath) = UniquePath.ReservePairAtomic(options.OutputDirectory, baseName, photoExt, ".mov", options.Overwrite, _outputGate);
             string? tempVideo = null;
             try
             {
-                // 照片直接截取并清理动态照片标记
+                // 照片直接流式截取并清理残留的 GCamera 动态照片标记
                 await BinaryFile.CopySegmentAsync(imagePath, photoPath, 0, photoLength, cancellationToken);
                 await exifTool.RemoveMotionPhotoTagsAsync(photoPath, cancellationToken);
 
@@ -153,59 +156,68 @@ public sealed class MotionPhotoSplitter(IExifTool exifTool, IVideoConverter? vid
                 // 无损重封装为 QuickTime MOV 容器
                 await videoConverter.RemuxToMovAsync(tempVideo, videoPath, cancellationToken);
 
-                // 生成全局唯一配对 UUID 并写入照片与视频
+                // 生成全局唯一的配对 UUID 并写入照片 EXIF 与 QuickTime 视频 Keys
                 var contentIdentifier = Guid.NewGuid().ToString().ToUpperInvariant();
                 await exifTool.WriteAppleContentIdentifierAsync(photoPath, contentIdentifier, cancellationToken);
                 await exifTool.WriteAppleVideoMetadataAsync(videoPath, contentIdentifier, cancellationToken);
 
-                PreserveTimestamps(imagePath, photoPath, videoPath);
+                // 同步原动态照片的拍摄时间戳
+                FileTimestamp.Sync(imagePath, photoPath, videoPath);
                 return true;
             }
             catch (Exception)
             {
-                TryDeleteFile(photoPath);
-                TryDeleteFile(videoPath);
+                FileHelper.TryDeleteFile(photoPath);
+                FileHelper.TryDeleteFile(videoPath);
                 throw;
             }
             finally
             {
-                TryDeleteFile(tempVideo);
+                FileHelper.TryDeleteFile(tempVideo);
             }
         }
         else
         {
-            // 标准安卓格式无损解包
-            var (photoPath, videoPath) = ReserveOutputPaths(options, baseName, photoExt, videoExt);
+            // 标准安卓格式无损解包（生成封面 .jpg 与微视频 .mp4）
+            var (photoPath, videoPath) = UniquePath.ReservePairAtomic(options.OutputDirectory, baseName, photoExt, videoExt, options.Overwrite, _outputGate);
             try
             {
-                // 照片在前
+                // 1. 照片流式截取（前半段）
                 await BinaryFile.CopySegmentAsync(imagePath, photoPath, 0, photoLength, cancellationToken);
-                // 拆出来的照片仍带着动态照片标记，清掉才是一张普通图片
+                // 拆出来的照片仍带着动态照片标记，清除后方为标准静态图片
                 await exifTool.RemoveMotionPhotoTagsAsync(photoPath, cancellationToken);
-                // 视频在后
+
+                // 2. 视频流式截取（后半段）
                 await BinaryFile.CopySegmentAsync(imagePath, videoPath, photoLength, videoLength.Value, cancellationToken);
 
-                PreserveTimestamps(imagePath, photoPath, videoPath);
+                // 同步原动态照片的拍摄时间戳
+                FileTimestamp.Sync(imagePath, photoPath, videoPath);
                 return true;
             }
             catch (Exception)
             {
-                TryDeleteFile(photoPath);
-                TryDeleteFile(videoPath);
+                FileHelper.TryDeleteFile(photoPath);
+                FileHelper.TryDeleteFile(videoPath);
                 throw;
             }
         }
     }
 
     /// <summary>
-    /// 从文件指定偏移读取头部字节并嗅探扩展名
+    /// 从文件指定偏移位置读取少量头部特征字节并进行零分配格式嗅探
     /// </summary>
+    /// <param name="filePath">文件全路径</param>
+    /// <param name="offset">数据起始偏移（字节）</param>
+    /// <param name="length">读取长度（字节）</param>
+    /// <param name="sniffer">嗅探器委托函数</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>检测出的扩展名字符串（含句点）</returns>
     private static async Task<string> SniffExtensionAsync(string filePath, long offset, int length, Func<ReadOnlySpan<byte>, string> sniffer, CancellationToken cancellationToken)
     {
         var bufferLength = Math.Min(64, length);
         if (bufferLength <= 0)
         {
-            return sniffer(ReadOnlySpan<byte>.Empty);
+            return sniffer([]);
         }
 
         var buffer = new byte[bufferLength];
@@ -213,111 +225,5 @@ public sealed class MotionPhotoSplitter(IExifTool exifTool, IVideoConverter? vid
         stream.Seek(offset, SeekOrigin.Begin);
         var read = await stream.ReadAsync(buffer.AsMemory(0, bufferLength), cancellationToken);
         return sniffer(buffer.AsSpan(0, read));
-    }
-
-    /// <summary>
-    /// 继承原照片的时间戳，确保在相册中查看时按时间正确排序
-    /// </summary>
-    private static void PreserveTimestamps(string sourcePath, string photoPath, string videoPath)
-    {
-        try
-        {
-            var creationTime = File.GetCreationTime(sourcePath);
-            var lastWriteTime = File.GetLastWriteTime(sourcePath);
-
-            File.SetCreationTime(photoPath, creationTime);
-            File.SetLastWriteTime(photoPath, lastWriteTime);
-
-            File.SetCreationTime(videoPath, creationTime);
-            File.SetLastWriteTime(videoPath, lastWriteTime);
-        }
-        catch (Exception)
-        {
-            // 部分文件系统不支持设置时间，不影响文件本身
-        }
-    }
-
-    /// <summary>
-    /// 确定成对的输出路径，并在非覆盖模式下占住这两个文件名
-    /// </summary>
-    /// <param name="options">拆分参数</param>
-    /// <param name="baseName">原文件名（不含扩展名）</param>
-    /// <param name="photoExt">照片扩展名</param>
-    /// <param name="videoExt">视频扩展名</param>
-    /// <returns>照片与视频的输出路径</returns>
-    /// <exception cref="IOException">尝试次数耗尽仍未找到可用文件名</exception>
-    private (string PhotoPath, string VideoPath) ReserveOutputPaths(SplitOptions options, string baseName, string photoExt, string videoExt)
-    {
-        if (options.Overwrite)
-        {
-            return (Path.Combine(options.OutputDirectory, $"{baseName}{photoExt}"), Path.Combine(options.OutputDirectory, $"{baseName}{videoExt}"));
-        }
-
-        // 照片和视频要用同一个后缀，因此不能各自独立解析文件名
-        lock (_outputGate)
-        {
-            for (var index = 0; index < int.MaxValue; index++)
-            {
-                var suffix = index == 0 ? string.Empty : $"_{index}";
-                var photoPath = Path.Combine(options.OutputDirectory, $"{baseName}{suffix}{photoExt}");
-                var videoPath = Path.Combine(options.OutputDirectory, $"{baseName}{suffix}{videoExt}");
-                if (Occupied(photoPath) || Occupied(videoPath))
-                {
-                    continue;
-                }
-
-                // 立刻占位，避免并行的另一个文件解析到同一组名字
-                File.Create(photoPath).Dispose();
-                File.Create(videoPath).Dispose();
-                return (photoPath, videoPath);
-            }
-
-            throw new IOException($"无法为 {baseName} 找到不冲突的输出文件名。");
-        }
-
-        static bool Occupied(string path) => File.Exists(path) || Directory.Exists(path);
-    }
-
-    /// <summary>
-    /// 尽力删除文件
-    /// </summary>
-    /// <param name="path">文件路径</param>
-    private static void TryDeleteFile(string? path)
-    {
-        if (path is null)
-        {
-            return;
-        }
-
-        try
-        {
-            if (File.Exists(path))
-            {
-                File.Delete(path);
-            }
-        }
-        catch (Exception)
-        {
-            // 删不掉只会留下一个残缺文件，不影响其他文件的处理
-        }
-    }
-
-    /// <summary>
-    /// 尽力删除临时目录
-    /// </summary>
-    /// <param name="path">目录路径</param>
-    private static void TryDeleteDirectory(string path)
-    {
-        try
-        {
-            if (Directory.Exists(path))
-            {
-                Directory.Delete(path, recursive: true);
-            }
-        }
-        catch (Exception)
-        {
-            // 临时目录清理失败不影响主流程
-        }
     }
 }

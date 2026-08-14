@@ -12,10 +12,7 @@ static class SpectreDownloadRunner
     /// <param name="customMirror">用户指定的镜像代理前缀</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>生成的可执行文件完整路径；若取消或失败则返回 <c>null</c></returns>
-    public static async Task<string?> DownloadAsync(
-        ToolDownloadInfo tool,
-        string? customMirror = null,
-        CancellationToken cancellationToken = default)
+    public static async Task<string?> DownloadAsync(ToolDownloadInfo tool,string? customMirror = null,CancellationToken cancellationToken = default)
     {
         try
         {

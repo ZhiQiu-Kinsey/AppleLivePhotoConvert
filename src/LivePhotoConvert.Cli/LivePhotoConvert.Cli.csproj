@@ -8,13 +8,15 @@
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode>full</TrimMode>
     <ApplicationIcon>LivePhotoConvert.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
     <PlatformTarget>x64</PlatformTarget>
     <ProduceReferenceAssembly>False</ProduceReferenceAssembly>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Description>动态照片工具箱，支持动态照片的合成与拆分</Description>
   </PropertyGroup>
 
+
   <ItemGroup>
+    <PackageReference Include="Spectre.Console.Cli" Version="0.49.1" />
     <ProjectReference Include="..\LivePhotoConvert.Core\LivePhotoConvert.Core.csproj" />
     <PackageReference Include="Spectre.Console" Version="0.49.1" />
   </ItemGroup>

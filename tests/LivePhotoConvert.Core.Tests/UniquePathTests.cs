@@ -79,4 +79,46 @@ public class UniquePathTests
 
         Assert.Equal(temp.Combine("data_1"), path);
     }
+
+    /// <summary>
+    /// 测试 ReserveAtomic 是否能在锁保护下原子创建占位文件，并在重名时递增序号占位
+    /// </summary>
+    [Fact]
+    public void ReserveAtomic_Should_Create_Placeholder_File()
+    {
+        using var temp = new TempDirectory();
+        var gate = new Lock();
+
+        var path1 = UniquePath.ReserveAtomic(temp.Root, "photo.jpg", overwrite: false, gate);
+        Assert.True(File.Exists(path1));
+        Assert.Equal(temp.Combine("photo.jpg"), path1);
+
+        var path2 = UniquePath.ReserveAtomic(temp.Root, "photo.jpg", overwrite: false, gate);
+        Assert.True(File.Exists(path2));
+        Assert.Equal(temp.Combine("photo_1.jpg"), path2);
+    }
+
+    /// <summary>
+    /// 测试 ReservePairAtomic 是否能成对原子占位照片与视频，并确保两者使用相同的后缀序号
+    /// </summary>
+    [Fact]
+    public void ReservePairAtomic_Should_Create_Paired_Placeholder_Files()
+    {
+        using var temp = new TempDirectory();
+        var gate = new Lock();
+
+        var (photo1, video1) = UniquePath.ReservePairAtomic(temp.Root, "IMG_0001", ".jpg", ".mov", overwrite: false, gate);
+        Assert.True(File.Exists(photo1));
+        Assert.True(File.Exists(video1));
+        Assert.Equal(temp.Combine("IMG_0001.jpg"), photo1);
+        Assert.Equal(temp.Combine("IMG_0001.mov"), video1);
+
+        var (photo2, video2) = UniquePath.ReservePairAtomic(temp.Root, "IMG_0001", ".jpg", ".mov", overwrite: false, gate);
+        Assert.True(File.Exists(photo2));
+        Assert.True(File.Exists(video2));
+        Assert.Equal(temp.Combine("IMG_0001_1.jpg"), photo2);
+        Assert.Equal(temp.Combine("IMG_0001_1.mov"), video2);
+    }
 }
+
+
