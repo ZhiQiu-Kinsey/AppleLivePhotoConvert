@@ -66,11 +66,24 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
                     validations[pair] = result;
                 });
 
-            // ── 阶段 2：按文件名分组，每组选第一个校验通过的候选 ──
-            // 候选已按扩展名优先级排序，因此同名多格式（如 .heic 与 .jpg）优先取画质更好的；
-            // 若首选与视频并非同一张实况照片（校验不通过），自动回退到同名的下一个候选。
+            // ── 阶段 2：选择参与合成的分组 ──
+            // ContentIdentifier 精确配对的候选是确定的 1:1 配对，直接采用；
+            // 其余同名候选按扩展名优先级排序，每组选第一个校验通过的（同名多格式取画质更好的）。
             var chosen = new List<MediaPair>();
-            foreach (var group in candidates.GroupBy(pair => pair.Name, StringComparer.OrdinalIgnoreCase))
+            foreach (var pair in candidates.Where(pair => pair.IsContentIdentifierMatched))
+            {
+                if (validations[pair].IsAccepted)
+                {
+                    chosen.Add(pair);
+                }
+                else
+                {
+                    skippedItems.Add(new FailureRecord(pair.Name, string.Join("；", validations[pair].Reasons)));
+                }
+            }
+
+            foreach (var group in candidates.Where(pair => !pair.IsContentIdentifierMatched)
+                                            .GroupBy(pair => pair.Name, StringComparer.OrdinalIgnoreCase))
             {
                 var selected = group.FirstOrDefault(pair => validations[pair].IsAccepted);
                 if (selected is null)
@@ -89,6 +102,10 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
                 }
             }
 
+            // 同名但不同内容的照片（iCloud 下载可能出现 IMG_0456.JPG 与 IMG_0456.JPEG 两张不同实况），
+            // 输出名用扩展名区分，避免互相覆盖
+            var outputNames = ResolveOutputNames(chosen);
+
             // ── 阶段 3：并行合成选中的分组 ──
             await Parallel.ForEachAsync(
                 chosen,
@@ -97,7 +114,7 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
                 {
                     try
                     {
-                        await MergeOneAsync(pair, options, tempDirectory, token);
+                        await MergeOneAsync(pair, outputNames[pair], options, tempDirectory, token);
                         Interlocked.Increment(ref succeeded);
                         // 只有合成成功并通过校验的这一组才会被清理，未匹配的文件绝不会进入这里
                         var cleanup = cleaner.Clean([pair.PhotoPath, pair.VideoPath]);
@@ -145,7 +162,7 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
     /// <param name="options">合成参数</param>
     /// <param name="tempDirectory">临时目录</param>
     /// <param name="cancellationToken">取消令牌</param>
-    private async Task MergeOneAsync(MediaPair pair, MergeOptions options, string tempDirectory, CancellationToken cancellationToken)
+    private async Task MergeOneAsync(MediaPair pair, string outputBaseName, MergeOptions options, string tempDirectory, CancellationToken cancellationToken)
     {
         string? temporaryPhoto = null;
         string? temporaryVideo = null;
@@ -171,7 +188,7 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
                 videoPath = temporaryVideo;
             }
 
-            outputPath = ReserveOutputPath(options, pair.Name);
+            outputPath = ReserveOutputPath(options, outputBaseName);
             var (photoLength, totalLength) = await BinaryFile.ConcatAsync(photoPath, videoPath, outputPath, cancellationToken);
 
             await exifTool.WriteMotionPhotoTagsAsync(outputPath, totalLength - photoLength, cancellationToken);
@@ -215,6 +232,34 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
             TryDeleteFile(temporaryPhoto);
             TryDeleteFile(temporaryVideo);
         }
+    }
+
+    /// <summary>
+    /// 为选中的分组解析唯一输出名：同名但不同内容的照片（扩展名不同）用扩展名区分
+    /// </summary>
+    /// <param name="pairs">选中的分组</param>
+    /// <returns>分组到输出基础名（不含扩展名）的映射</returns>
+    private static Dictionary<MediaPair, string> ResolveOutputNames(IReadOnlyList<MediaPair> pairs)
+    {
+        var result = new Dictionary<MediaPair, string>();
+        foreach (var group in pairs.GroupBy(pair => pair.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            if (group.Count() == 1)
+            {
+                result[group.First()] = group.Key;
+                continue;
+            }
+
+            // 同名但照片文件不同（如 IMG_0456.JPG 与 IMG_0456.JPEG 是两张不同的实况照片），
+            // 用照片扩展名区分输出名
+            foreach (var pair in group)
+            {
+                var extension = Path.GetExtension(pair.PhotoPath).TrimStart('.').ToLowerInvariant();
+                result[pair] = $"{pair.Name}.{extension}";
+            }
+        }
+
+        return result;
     }
 
     /// <summary>

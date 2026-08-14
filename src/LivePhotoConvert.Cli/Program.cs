@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Text;
 using LivePhotoConvert.Cli.CommandLine;
 using LivePhotoConvert.Cli.Ui;
+using LivePhotoConvert.Core.Abstractions;
 using LivePhotoConvert.Core.Matching;
 
 namespace LivePhotoConvert.Cli;
@@ -202,7 +203,21 @@ public static class Program
 
         WarnIfSameDirectory(input, output);
 
-        var pairing = MediaPairMatcher.Match(Directory.EnumerateFiles(input, "*", SearchOption.TopDirectoryOnly));
+        // 提前初始化 ExifTool：配对需要读取照片与视频的 ContentIdentifier
+        var exifTool = await EnsureExifToolAsync(options, interactive, cancellationToken);
+        if (exifTool is null || cancellationToken.IsCancellationRequested)
+        {
+            return WaitForReturn(ExitCodes.Failure, interactive);
+        }
+
+        await using var exifToolDisposer = exifTool;
+
+        // 读取所有照片与视频的 ContentIdentifier，优先按 CI 精确配对，
+        // 避免 iCloud 下载导致文件名错位（如照片 IMG_0011-1、视频 IMG_0011）而漏配对
+        var inputFiles = Directory.EnumerateFiles(input, "*", SearchOption.TopDirectoryOnly).ToList();
+        var (photoContentIdentifiers, videoContentIdentifiers) = await ReadContentIdentifiersAsync(exifTool, inputFiles, cancellationToken);
+
+        var pairing = MediaPairMatcher.Match(inputFiles, photoContentIdentifiers, videoContentIdentifiers);
         var matchedGroupCount = pairing.Pairs.Select(pair => pair.Name).Distinct(StringComparer.OrdinalIgnoreCase).Count();
         Console.WriteLine($"匹配到 {matchedGroupCount} 组动态照片。");
         Console.WriteLine($"未匹配的照片 {pairing.UnmatchedPhotoCount} 个，未匹配的视频 {pairing.UnmatchedVideoCount} 个，均不会被合成或清理。");
@@ -231,14 +246,6 @@ public static class Program
             AnsiConsole.MarkupLine("[yellow]转换已取消。[/]");
             return WaitForReturn(ExitCodes.Canceled, interactive);
         }
-
-        var exifTool = await EnsureExifToolAsync(options, interactive, cancellationToken);
-        if (exifTool is null || cancellationToken.IsCancellationRequested)
-        {
-            return WaitForReturn(ExitCodes.Failure, interactive);
-        }
-
-        await using var exifToolDisposer = exifTool;
 
         var videoConverter = await EnsureFfmpegAsync(options, interactive, cancellationToken);
         if (videoConverter is null || cancellationToken.IsCancellationRequested)
@@ -279,6 +286,49 @@ public static class Program
         PrintFailures("以下原始文件清理失败，请手动处理（动态照片已合成成功，不受影响）：", report.CleanupFailures);
 
         return WaitForReturn(report.Failures.Count > 0 || report.SkippedItems.Count > 0 ? ExitCodes.PartialFailure : ExitCodes.Success, interactive);
+    }
+
+    /// <summary>
+    /// 批量读取照片与视频的 ContentIdentifier，用于精确配对
+    /// </summary>
+    private static async Task<(Dictionary<string, string> Photo, Dictionary<string, string> Video)> ReadContentIdentifiersAsync(
+        IExifTool exifTool, IReadOnlyList<string> files, CancellationToken cancellationToken)
+    {
+        var photo = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var video = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var file in files)
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                break;
+            }
+
+            try
+            {
+                if (MediaFileTypes.IsPhoto(file))
+                {
+                    var ci = await exifTool.TryReadContentIdentifierAsync(file, ContentIdentifierKind.Photo, cancellationToken);
+                    if (!string.IsNullOrWhiteSpace(ci))
+                    {
+                        photo[file] = ci;
+                    }
+                }
+                else if (MediaFileTypes.IsVideo(file))
+                {
+                    var ci = await exifTool.TryReadContentIdentifierAsync(file, ContentIdentifierKind.Video, cancellationToken);
+                    if (!string.IsNullOrWhiteSpace(ci))
+                    {
+                        video[file] = ci;
+                    }
+                }
+            }
+            catch
+            {
+                // 单个文件读取失败不影响整体配对
+            }
+        }
+
+        return (photo, video);
     }
 
     /// <summary>

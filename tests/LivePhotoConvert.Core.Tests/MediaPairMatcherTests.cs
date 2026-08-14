@@ -142,6 +142,24 @@ public class MediaPairMatcherTests
     }
 
     /// <summary>
+    /// 文件名不同但 ContentIdentifier 一致时，应按 CI 精确配对（iCloud 下载常导致文件名错位）
+    /// </summary>
+    [Fact]
+    public void Should_Match_By_ContentIdentifier_When_FileNames_Differ()
+    {
+        var photoCi = new Dictionary<string, string> { [@"D:\in\IMG_0011-1.JPEG"] = "ABC-123" };
+        var videoCi = new Dictionary<string, string> { [@"D:\in\IMG_0011.MOV"] = "ABC-123" };
+        var result = MediaPairMatcher.Match(
+            [@"D:\in\IMG_0011-1.JPEG", @"D:\in\IMG_0011.MOV"],
+            photoCi,
+            videoCi);
+
+        var pair = Assert.Single(result.Pairs);
+        Assert.Equal(@"D:\in\IMG_0011-1.JPEG", pair.PhotoPath);
+        Assert.Equal(@"D:\in\IMG_0011.MOV", pair.VideoPath);
+    }
+
+    /// <summary>
     /// 测试空列表输入应该得到空的结果。
     /// </summary>
     [Fact]

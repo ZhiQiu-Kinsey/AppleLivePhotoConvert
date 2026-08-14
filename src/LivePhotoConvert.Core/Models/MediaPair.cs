@@ -5,7 +5,8 @@ namespace LivePhotoConvert.Core.Models;
 /// </summary>
 /// <param name="PhotoPath">照片路径</param>
 /// <param name="VideoPath">视频路径</param>
-public sealed record MediaPair(string PhotoPath, string VideoPath)
+/// <param name="IsContentIdentifierMatched">是否由 ContentIdentifier 精确配对（此时为确定的 1:1 配对，不再参与同名候选合并）</param>
+public sealed record MediaPair(string PhotoPath, string VideoPath, bool IsContentIdentifierMatched = false)
 {
     /// <summary>
     /// 用于匹配的文件名（不含扩展名）
@@ -22,7 +23,7 @@ public sealed record PairingResult
     /// 待合成的候选分组，按文件名与扩展名优先级排序
     /// </summary>
     /// <remarks>
-    /// 同名文件可能存在多个候选（例如同时存在 IMG_0001.heic、IMG_0001.jpg 与 IMG_0001.mov），
+    /// 优先由 ContentIdentifier 精确配对（确定的 1:1 配对），剩余同名文件按扩展名优先级生成候选，
     /// 合成阶段会逐个校验并只取每组中第一个通过校验的候选。
     /// </remarks>
     public required IReadOnlyList<MediaPair> Pairs { get; init; }
