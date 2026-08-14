@@ -37,7 +37,7 @@ sealed class ExifToolSession(string executablePath, string configPath) : IAsyncD
     private Channel<string>? _standardOutput;
     private Channel<string>? _standardError;
     private int _sequence;
-    private bool _disposed;
+    private volatile bool _disposed;
 
     /// <summary>
     /// 执行一条 ExifTool 命令

@@ -31,6 +31,26 @@ public class PairValidatorTests
     }
 
     /// <summary>
+    /// 当传入 ContentIdentifier 字典缓存时，应直接使用缓存而不调用 ExifTool
+    /// </summary>
+    [Fact]
+    public async Task Should_Use_Cached_ContentIdentifiers_Without_Calling_ExifTool()
+    {
+        var pair = MakePair("IMG_0001");
+        var photoCi = new Dictionary<string, string> { [pair.PhotoPath] = "CACHED-123" };
+        var videoCi = new Dictionary<string, string> { [pair.VideoPath] = "CACHED-123" };
+
+        var exifTool = new FakeExifTool(); // 未在 FakeExifTool 中设置任何 ContentIdentifier
+        var validator = new PairValidator(exifTool, photoCi, videoCi);
+
+        var result = await validator.ValidateAsync(pair, TestContext.Current.CancellationToken);
+
+        Assert.True(result.IsAccepted);
+        Assert.Contains(result.Reasons, r => r.Contains("CACHED-123"));
+        Assert.Equal(0, exifTool.ReadContentIdentifierCallCount);
+    }
+
+    /// <summary>
     /// ContentIdentifier 不一致时应直接拒绝
     /// </summary>
     [Fact]
@@ -191,11 +211,27 @@ public class PairValidatorTests
     }
 
     /// <summary>
+    /// 当取消令牌被触发时，应正确抛出 OperationCanceledException 而不是被捕获吞掉
+    /// </summary>
+    [Fact]
+    public async Task Should_Propagate_OperationCanceledException_When_Canceled()
+    {
+        var exifTool = new FakeExifTool();
+        var validator = new PairValidator(exifTool);
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            validator.ValidateAsync(MakePair(), cts.Token));
+    }
+
+    /// <summary>
     /// 用于测试的假 ExifTool 实现
     /// </summary>
     private sealed class FakeExifTool : IExifTool
     {
         public Dictionary<string, string> ContentIdentifiers { get; } = new();
+        public int ReadContentIdentifierCallCount { get; private set; }
         public DateTime? PhotoCreateDate { get; init; }
         public DateTime? VideoCreateDate { get; init; }
         public TimeSpan? VideoDuration { get; init; }
@@ -206,23 +242,35 @@ public class PairValidatorTests
         public Task RemoveMotionPhotoTagsAsync(string imagePath, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
 
-        public Task<long?> TryReadMicroVideoOffsetAsync(string imagePath, CancellationToken cancellationToken = default) =>
-            Task.FromResult<long?>(null);
+        public Task<long?> TryReadMicroVideoOffsetAsync(string imagePath, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult<long?>(null);
+        }
 
         public Task<string?> TryReadContentIdentifierAsync(string filePath, ContentIdentifierKind kind, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            ReadContentIdentifierCallCount++;
             var key = kind == ContentIdentifierKind.Photo ? "photo" : "video";
             return Task.FromResult(ContentIdentifiers.TryGetValue(key, out var value) ? value : null);
         }
 
-        public Task WriteAppleContentIdentifierAsync(string photoPath, string contentIdentifier, CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+        public Task WriteAppleContentIdentifierAsync(string photoPath, string contentIdentifier, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.CompletedTask;
+        }
 
-        public Task WriteAppleVideoMetadataAsync(string videoPath, string contentIdentifier, CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+        public Task WriteAppleVideoMetadataAsync(string videoPath, string contentIdentifier, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.CompletedTask;
+        }
 
         public Task<DateTime?> TryReadCreateDateAsync(string filePath, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             // 根据文件扩展名判断是照片还是视频
             var ext = Path.GetExtension(filePath);
             var isVideo = ext.Equals(".mov", StringComparison.OrdinalIgnoreCase) ||
@@ -230,8 +278,11 @@ public class PairValidatorTests
             return Task.FromResult(isVideo ? VideoCreateDate : PhotoCreateDate);
         }
 
-        public Task<TimeSpan?> TryReadDurationAsync(string filePath, CancellationToken cancellationToken = default) =>
-            Task.FromResult(VideoDuration);
+        public Task<TimeSpan?> TryReadDurationAsync(string filePath, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(VideoDuration);
+        }
 
         public Task<bool> IsMirroredVideoAsync(string videoPath, CancellationToken cancellationToken = default) =>
             Task.FromResult(false);

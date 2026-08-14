@@ -16,7 +16,12 @@ namespace LivePhotoConvert.Core.Services;
 /// ContentIdentifier 一致是最强正向信号，直接通过；所有维度均不可评估时降级为仅文件名匹配。
 /// </remarks>
 /// <param name="exifTool">元数据读写</param>
-public sealed class PairValidator(IExifTool exifTool)
+/// <param name="photoContentIdentifiers">已预读的照片 ContentIdentifier 映射缓存（可选）</param>
+/// <param name="videoContentIdentifiers">已预读的视频 ContentIdentifier 映射缓存（可选）</param>
+public sealed class PairValidator(
+    IExifTool exifTool,
+    IReadOnlyDictionary<string, string>? photoContentIdentifiers = null,
+    IReadOnlyDictionary<string, string>? videoContentIdentifiers = null)
 {
     /// <summary>
     /// 拍摄时间差允许的最大秒数
@@ -41,16 +46,42 @@ public sealed class PairValidator(IExifTool exifTool)
     /// <returns>校验结果</returns>
     public async Task<PairValidationResult> ValidateAsync(MediaPair pair, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var reasons = new List<string>();
         var evaluatedAny = false;
 
         // ── 信号 1：ContentIdentifier ──
         try
         {
-            var photoId = await exifTool.TryReadContentIdentifierAsync(
-                pair.PhotoPath, ContentIdentifierKind.Photo, cancellationToken);
-            var videoId = await exifTool.TryReadContentIdentifierAsync(
-                pair.VideoPath, ContentIdentifierKind.Video, cancellationToken);
+            string? photoId = null;
+            if (photoContentIdentifiers is not null)
+            {
+                photoContentIdentifiers.TryGetValue(pair.PhotoPath, out photoId);
+                if (string.IsNullOrWhiteSpace(photoId))
+                {
+                    photoId = null;
+                }
+            }
+            else
+            {
+                photoId = await exifTool.TryReadContentIdentifierAsync(
+                    pair.PhotoPath, ContentIdentifierKind.Photo, cancellationToken);
+            }
+
+            string? videoId = null;
+            if (videoContentIdentifiers is not null)
+            {
+                videoContentIdentifiers.TryGetValue(pair.VideoPath, out videoId);
+                if (string.IsNullOrWhiteSpace(videoId))
+                {
+                    videoId = null;
+                }
+            }
+            else
+            {
+                videoId = await exifTool.TryReadContentIdentifierAsync(
+                    pair.VideoPath, ContentIdentifierKind.Video, cancellationToken);
+            }
 
             if (photoId is not null && videoId is not null)
             {
@@ -78,6 +109,10 @@ public sealed class PairValidator(IExifTool exifTool)
                 reasons.Add($"仅{(photoId is not null ? "照片" : "视频")}含 ContentIdentifier，不像是同一张实况照片");
                 return PairValidationResult.Reject(reasons);
             }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (Exception)
         {
@@ -114,6 +149,10 @@ public sealed class PairValidator(IExifTool exifTool)
                 reasons.Add("照片和视频均无拍摄时间，跳过此项校验");
             }
         }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
         catch (Exception)
         {
             reasons.Add("读取拍摄时间失败，跳过此项校验");
@@ -146,6 +185,10 @@ public sealed class PairValidator(IExifTool exifTool)
             {
                 reasons.Add("无法读取视频时长，跳过此项校验");
             }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (Exception)
         {

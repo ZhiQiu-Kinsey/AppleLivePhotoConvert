@@ -37,4 +37,14 @@ public sealed record PairingResult
     /// 未匹配到照片的视频数量（例如 iPhone 导出的长视频），这些文件不会被合成或清理
     /// </summary>
     public required int UnmatchedVideoCount { get; init; }
+
+    /// <summary>
+    /// 照片路径到 ContentIdentifier 的映射缓存（若有）
+    /// </summary>
+    public IReadOnlyDictionary<string, string>? PhotoContentIdentifiers { get; init; }
+
+    /// <summary>
+    /// 视频路径到 ContentIdentifier 的映射缓存（若有）
+    /// </summary>
+    public IReadOnlyDictionary<string, string>? VideoContentIdentifiers { get; init; }
 }

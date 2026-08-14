@@ -160,6 +160,36 @@ public class MediaPairMatcherTests
     }
 
     /// <summary>
+    /// 当多个照片与视频共享相同的 ContentIdentifier 时，应优先选择更高优先级的格式（HEIC > JPG，MOV > MP4）进行配对
+    /// </summary>
+    [Fact]
+    public void Should_Prioritize_Higher_Rank_Formats_When_Multiple_Files_Share_Same_ContentIdentifier()
+    {
+        var photoCi = new Dictionary<string, string>
+        {
+            [@"D:\in\IMG_0001.jpg"] = "CI-001",
+            [@"D:\in\IMG_0001.heic"] = "CI-001"
+        };
+        var videoCi = new Dictionary<string, string>
+        {
+            [@"D:\in\IMG_0001.mp4"] = "CI-001",
+            [@"D:\in\IMG_0001.mov"] = "CI-001"
+        };
+
+        var result = MediaPairMatcher.Match(
+            [@"D:\in\IMG_0001.jpg", @"D:\in\IMG_0001.heic", @"D:\in\IMG_0001.mp4", @"D:\in\IMG_0001.mov"],
+            photoCi,
+            videoCi);
+
+        var pair = Assert.Single(result.Pairs);
+        Assert.Equal(@"D:\in\IMG_0001.heic", pair.PhotoPath);
+        Assert.Equal(@"D:\in\IMG_0001.mov", pair.VideoPath);
+        Assert.True(pair.IsContentIdentifierMatched);
+        Assert.Equal(1, result.UnmatchedPhotoCount);
+        Assert.Equal(1, result.UnmatchedVideoCount);
+    }
+
+    /// <summary>
     /// 测试空列表输入应该得到空的结果。
     /// </summary>
     [Fact]

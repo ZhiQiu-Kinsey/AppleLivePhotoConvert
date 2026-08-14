@@ -43,4 +43,29 @@ public class MediaFileTypesTests
         var ext = MediaFileTypes.DetectVideoExtension(mp4Header);
         Assert.Equal(".mp4", ext);
     }
+
+    [Fact]
+    public void Should_Return_True_For_Valid_Jpeg_File()
+    {
+        using var tempDir = new TempDirectory();
+        var validJpeg = tempDir.CreateFile("test.jpg", [0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10]);
+        Assert.True(MediaFileTypes.IsJpeg(validJpeg));
+    }
+
+    [Fact]
+    public void Should_Return_False_For_Misnamed_Non_Jpeg_File()
+    {
+        using var tempDir = new TempDirectory();
+        // 实际上是 HEIC，但被错误命名为 .jpg
+        var misnamedJpg = tempDir.CreateFile("test.jpg", [0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70]);
+        Assert.False(MediaFileTypes.IsJpeg(misnamedJpg));
+    }
+
+    [Fact]
+    public void Should_Return_False_For_Non_Jpeg_Extension()
+    {
+        using var tempDir = new TempDirectory();
+        var heicFile = tempDir.CreateFile("test.heic", [0x00, 0x00, 0x00, 0x18]);
+        Assert.False(MediaFileTypes.IsJpeg(heicFile));
+    }
 }

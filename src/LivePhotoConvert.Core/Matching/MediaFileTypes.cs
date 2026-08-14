@@ -41,15 +41,31 @@ public static class MediaFileTypes
     public static bool IsVideo(string filePath) => VideoExtensions.Contains(Path.GetExtension(filePath));
 
     /// <summary>
-    /// 判断是否已经是 JPEG
+    /// 判断文件是否确实为标准 JPEG 图片（结合扩展名与文件头部魔数校验）
     /// </summary>
-    /// <remarks>安卓动态照片格式要求封面为 JPEG，其余格式都需要先转换。</remarks>
+    /// <remarks>安卓动态照片格式要求封面为 JPEG，其余格式或被错误重命名的图片都需要先转换。</remarks>
     /// <param name="filePath">文件路径</param>
-    /// <returns>是否为 JPEG</returns>
+    /// <returns>是否为真实有效的 JPEG 图片</returns>
     public static bool IsJpeg(string filePath)
     {
         var extension = Path.GetExtension(filePath);
-        return extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) || extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase);
+        if (!extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) &&
+            !extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        try
+        {
+            using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            Span<byte> header = stackalloc byte[3];
+            var read = stream.Read(header);
+            return read >= 3 && header[0] == 0xFF && header[1] == 0xD8 && header[2] == 0xFF;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     /// <summary>

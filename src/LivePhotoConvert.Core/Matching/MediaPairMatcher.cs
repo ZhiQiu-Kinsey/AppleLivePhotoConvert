@@ -42,7 +42,7 @@ public static class MediaPairMatcher
                 .GroupBy(video => videoContentIdentifiers[video], StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(
                     group => group.Key,
-                    group => group.OrderBy(GetVideoRank).ThenBy(path => path, StringComparer.OrdinalIgnoreCase).First(),
+                    group => group.OrderBy(GetVideoRank).ThenBy(path => path, StringComparer.OrdinalIgnoreCase).ToList(),
                     StringComparer.OrdinalIgnoreCase);
 
             var photosByCi = photos
@@ -51,15 +51,25 @@ public static class MediaPairMatcher
 
             foreach (var photoGroup in photosByCi)
             {
-                if (!videosByCi.TryGetValue(photoGroup.Key, out var video))
+                if (!videosByCi.TryGetValue(photoGroup.Key, out var videoCandidates) || videoCandidates.Count == 0)
                 {
                     continue;
                 }
 
                 var photo = photoGroup.OrderBy(GetPhotoRank).ThenBy(path => path, StringComparer.OrdinalIgnoreCase).First();
+                var video = videoCandidates.First();
                 pairs.Add(new MediaPair(photo, video, IsContentIdentifierMatched: true));
-                usedPhotos.Add(photo);
-                usedVideos.Add(video);
+
+                // 该 CI 下所有照片与视频均已归属此实况照片，全部标记为已使用，防止残留的低优先级同名格式在第二步兜底时被二度配对
+                foreach (var p in photoGroup)
+                {
+                    usedPhotos.Add(p);
+                }
+
+                foreach (var v in videoCandidates)
+                {
+                    usedVideos.Add(v);
+                }
             }
         }
 
@@ -95,7 +105,9 @@ public static class MediaPairMatcher
         {
             Pairs = pairs,
             UnmatchedPhotoCount = photos.Count(photo => !matchedPhotos.Contains(photo)),
-            UnmatchedVideoCount = videos.Count(video => !matchedVideos.Contains(video))
+            UnmatchedVideoCount = videos.Count(video => !matchedVideos.Contains(video)),
+            PhotoContentIdentifiers = photoContentIdentifiers,
+            VideoContentIdentifiers = videoContentIdentifiers
         };
     }
 

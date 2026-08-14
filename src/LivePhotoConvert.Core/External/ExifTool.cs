@@ -277,6 +277,10 @@ public sealed class ExifTool : IExifTool
 
             return false;
         }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
         catch (Exception)
         {
             // 矩阵读取失败时按无需镜像处理，保持原有的无损换容器行为

@@ -41,10 +41,9 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
         var failures = new ConcurrentBag<FailureRecord>();
         var cleanupFailures = new ConcurrentBag<FailureRecord>();
         var skippedItems = new ConcurrentBag<FailureRecord>();
-        var validator = options.SkipValidation ? null : new PairValidator(exifTool);
+        var validator = options.SkipValidation ? null : new PairValidator(exifTool, pairing.PhotoContentIdentifiers, pairing.VideoContentIdentifiers);
         var candidates = pairing.Pairs;
-        // 同名文件可能生成多个候选（按扩展名优先级排序），最终每个文件名只合成一组
-        var total = candidates.Select(pair => pair.Name).Distinct(StringComparer.OrdinalIgnoreCase).Count();
+        var total = 0;
         var completed = 0;
         var succeeded = 0;
         var cleanedFiles = 0;
@@ -88,19 +87,16 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
                 var selected = group.FirstOrDefault(pair => validations[pair].IsAccepted);
                 if (selected is null)
                 {
-                    foreach (var pair in group)
-                    {
-                        skippedItems.Add(new FailureRecord(group.Key, string.Join("；", validations[pair].Reasons)));
-                    }
+                    var reasons = group.SelectMany(p => validations[p].Reasons).Distinct();
+                    skippedItems.Add(new FailureRecord(group.Key, string.Join("；", reasons)));
                     continue;
                 }
 
                 chosen.Add(selected);
-                foreach (var other in group.Where(pair => !pair.Equals(selected)))
-                {
-                    skippedItems.Add(new FailureRecord(group.Key, $"同名候选 {Path.GetFileName(other.PhotoPath)} + {Path.GetFileName(other.VideoPath)} 未采用，已选用 {Path.GetFileName(selected.PhotoPath)} + {Path.GetFileName(selected.VideoPath)}"));
-                }
             }
+
+            total = chosen.Count + skippedItems.Count;
+            completed = skippedItems.Count;
 
             // 同名但不同内容的照片（iCloud 下载可能出现 IMG_0456.JPG 与 IMG_0456.JPEG 两张不同实况），
             // 输出名用扩展名区分，避免互相覆盖
