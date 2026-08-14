@@ -10,6 +10,7 @@
     <ApplicationIcon>LivePhotoConvert.ico</ApplicationIcon>
     <PlatformTarget>x64</PlatformTarget>
     <ProduceReferenceAssembly>False</ProduceReferenceAssembly>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Description>动态照片工具箱，支持动态照片的合成与拆分</Description>
   </PropertyGroup>
 

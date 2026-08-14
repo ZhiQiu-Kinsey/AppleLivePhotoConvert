@@ -38,7 +38,7 @@ public static class MediaPairMatcher
         if (photoContentIdentifiers is not null && videoContentIdentifiers is not null)
         {
             var videosByCi = videos
-                .Where(video => TryGetCi(videoContentIdentifiers, video, out _))
+                .Where(video => TryGetCi(videoContentIdentifiers, video))
                 .GroupBy(video => videoContentIdentifiers[video], StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(
                     group => group.Key,
@@ -46,7 +46,7 @@ public static class MediaPairMatcher
                     StringComparer.OrdinalIgnoreCase);
 
             var photosByCi = photos
-                .Where(photo => TryGetCi(photoContentIdentifiers, photo, out _))
+                .Where(photo => TryGetCi(photoContentIdentifiers, photo))
                 .GroupBy(photo => photoContentIdentifiers[photo], StringComparer.OrdinalIgnoreCase);
 
             foreach (var photoGroup in photosByCi)
@@ -89,13 +89,7 @@ public static class MediaPairMatcher
 
             var orderedPhotos = photoGroup.OrderBy(GetPhotoRank).ThenBy(path => path, StringComparer.OrdinalIgnoreCase);
             var orderedVideos = sameNameVideos.OrderBy(GetVideoRank).ThenBy(path => path, StringComparer.OrdinalIgnoreCase);
-            foreach (var photo in orderedPhotos)
-            {
-                foreach (var video in orderedVideos)
-                {
-                    pairs.Add(new MediaPair(photo, video));
-                }
-            }
+            pairs.AddRange(from photo in orderedPhotos from video in orderedVideos select new MediaPair(photo, video));
         }
 
         // 统计未匹配的文件（从未出现在任何配对里的照片/视频）
@@ -114,16 +108,9 @@ public static class MediaPairMatcher
     /// <summary>
     /// 从映射中取出非空的 ContentIdentifier
     /// </summary>
-    private static bool TryGetCi(IReadOnlyDictionary<string, string> map, string filePath, out string ci)
+    private static bool TryGetCi(IReadOnlyDictionary<string, string> map, string filePath)
     {
-        if (map.TryGetValue(filePath, out var value) && !string.IsNullOrWhiteSpace(value))
-        {
-            ci = value;
-            return true;
-        }
-
-        ci = string.Empty;
-        return false;
+        return map.TryGetValue(filePath, out var value) && !string.IsNullOrWhiteSpace(value);
     }
 
     /// <summary>

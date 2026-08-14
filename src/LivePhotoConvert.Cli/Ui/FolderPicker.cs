@@ -6,7 +6,7 @@ namespace LivePhotoConvert.Cli.Ui;
 /// Windows 原生文件夹选择对话框（纯 Win32 P/Invoke，支持默认路径预选中，100% 兼容 Native AOT）
 /// </summary>
 [SupportedOSPlatform("windows")]
-static class FolderPicker
+static partial class FolderPicker
 {
     private const uint BifReturnOnlyFsDirs = 0x0001;
     private const uint BifNewDialogStyle = 0x0040;
@@ -15,41 +15,40 @@ static class FolderPicker
 
     private delegate int BrowseCallbackProc(IntPtr hwnd, uint uMsg, IntPtr lParam, IntPtr lpData);
 
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    [StructLayout(LayoutKind.Sequential)]
     private struct BrowseInfo
     {
         public IntPtr hwndOwner;
         public IntPtr pidlRoot;
         public IntPtr pszDisplayName;
-        [MarshalAs(UnmanagedType.LPWStr)]
-        public string? lpszTitle;
+        public IntPtr lpszTitle;
         public uint ulFlags;
         public IntPtr lpfn;
         public IntPtr lParam;
         public int iImage;
     }
 
-    [DllImport("shell32.dll", EntryPoint = "SHBrowseForFolderW", CharSet = CharSet.Unicode)]
-    private static extern IntPtr SHBrowseForFolder(ref BrowseInfo bi);
+    [LibraryImport("shell32.dll", EntryPoint = "SHBrowseForFolderW")]
+    private static partial IntPtr SHBrowseForFolder(ref BrowseInfo bi);
 
-    [DllImport("shell32.dll", EntryPoint = "SHGetPathFromIDListW", CharSet = CharSet.Unicode)]
+    [LibraryImport("shell32.dll", EntryPoint = "SHGetPathFromIDListW")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SHGetPathFromIDList(IntPtr pidl, [Out] char[] pszPath);
+    private static unsafe partial bool SHGetPathFromIDList(IntPtr pidl, char* pszPath);
 
-    [DllImport("user32.dll", EntryPoint = "SendMessageW", CharSet = CharSet.Unicode)]
-    private static extern IntPtr SendMessageW(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+    [LibraryImport("user32.dll", EntryPoint = "SendMessageW")]
+    private static partial IntPtr SendMessageW(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
 
-    [DllImport("ole32.dll")]
-    private static extern int OleInitialize(IntPtr pvReserved);
+    [LibraryImport("ole32.dll")]
+    private static partial int OleInitialize(IntPtr pvReserved);
 
-    [DllImport("ole32.dll")]
-    private static extern void OleUninitialize();
+    [LibraryImport("ole32.dll")]
+    private static partial void OleUninitialize();
 
-    [DllImport("ole32.dll")]
-    private static extern void CoTaskMemFree(IntPtr pv);
+    [LibraryImport("ole32.dll")]
+    private static partial void CoTaskMemFree(IntPtr pv);
 
-    [DllImport("user32.dll")]
-    private static extern IntPtr GetForegroundWindow();
+    [LibraryImport("user32.dll")]
+    private static partial IntPtr GetForegroundWindow();
 
     /// <summary>
     /// 弹出原生文件夹选择对话框
@@ -65,6 +64,7 @@ static class FolderPicker
             OleInitialize(IntPtr.Zero);
             var displayNameBuffer = Marshal.AllocHGlobal(520);
             IntPtr initialDirPtr = IntPtr.Zero;
+            IntPtr titlePtr = IntPtr.Zero;
             BrowseCallbackProc? callback = null;
 
             try
@@ -82,12 +82,13 @@ static class FolderPicker
                     };
                 }
 
+                titlePtr = Marshal.StringToHGlobalUni(title);
                 var bi = new BrowseInfo
                 {
                     hwndOwner = GetForegroundWindow(),
                     pidlRoot = IntPtr.Zero,
                     pszDisplayName = displayNameBuffer,
-                    lpszTitle = title,
+                    lpszTitle = titlePtr,
                     ulFlags = BifReturnOnlyFsDirs | BifNewDialogStyle,
                     lpfn = callback is not null ? Marshal.GetFunctionPointerForDelegate(callback) : IntPtr.Zero,
                     lParam = initialDirPtr,
@@ -100,11 +101,17 @@ static class FolderPicker
                     try
                     {
                         var pathBuffer = new char[1024];
-                        if (SHGetPathFromIDList(pidl, pathBuffer))
+                        unsafe
                         {
-                            var raw = new string(pathBuffer);
-                            var end = raw.IndexOf('\0');
-                            selected = end >= 0 ? raw[..end] : raw;
+                            fixed (char* pBuffer = pathBuffer)
+                            {
+                                if (SHGetPathFromIDList(pidl, pBuffer))
+                                {
+                                    var raw = new string(pathBuffer);
+                                    var end = raw.IndexOf('\0');
+                                    selected = end >= 0 ? raw[..end] : raw;
+                                }
+                            }
                         }
                     }
                     finally
@@ -119,6 +126,11 @@ static class FolderPicker
             }
             finally
             {
+                if (titlePtr != IntPtr.Zero)
+                {
+                    Marshal.FreeHGlobal(titlePtr);
+                }
+
                 if (initialDirPtr != IntPtr.Zero)
                 {
                     Marshal.FreeHGlobal(initialDirPtr);
