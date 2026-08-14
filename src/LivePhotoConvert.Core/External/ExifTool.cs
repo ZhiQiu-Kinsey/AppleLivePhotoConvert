@@ -258,6 +258,60 @@ public sealed class ExifTool : IExifTool
         return null;
     }
 
+    /// <inheritdoc />
+    public async Task<bool> IsMirroredVideoAsync(string videoPath, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // 读取所有轨道的变换矩阵，任一轨道带镜像（行列式为负）即视为镜像视频。
+            // 后置摄像头视频的矩阵是恒等或纯旋转（行列式为正），只有前置摄像头才会出现镜像矩阵。
+            List<string> arguments = ["-a", "-s3", "-MatrixStructure", videoPath];
+            var response = await _session.ExecuteAsync(arguments, cancellationToken);
+            foreach (var line in response.StandardOutput.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                if (TryParseMatrixDeterminant(line, out var determinant) && determinant < 0)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+        catch (Exception)
+        {
+            // 矩阵读取失败时按无需镜像处理，保持原有的无损换容器行为
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 解析 ExifTool 输出的 MatrixStructure 行并计算行列式 (a*d - b*c)
+    /// </summary>
+    /// <param name="line">形如 "0 1 0 1 0 0 0 0 1" 的 3x3 矩阵行</param>
+    /// <param name="determinant">行列式值</param>
+    /// <returns>是否成功解析</returns>
+    private static bool TryParseMatrixDeterminant(string line, out double determinant)
+    {
+        determinant = 0;
+        var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length < 5)
+        {
+            return false;
+        }
+
+        // 3x3 矩阵按行主序输出：a b u / c d v / x y w，镜像只取决于 a、b、c、d
+        if (!double.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var a)
+            || !double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var b)
+            || !double.TryParse(parts[3], NumberStyles.Float, CultureInfo.InvariantCulture, out var c)
+            || !double.TryParse(parts[4], NumberStyles.Float, CultureInfo.InvariantCulture, out var d))
+        {
+            return false;
+        }
+
+        determinant = a * d - b * c;
+        return true;
+    }
+
     /// <summary>
     /// 解析 ExifTool 输出的日期字符串
     /// </summary>

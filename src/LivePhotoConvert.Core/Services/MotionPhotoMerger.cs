@@ -42,7 +42,9 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
         var cleanupFailures = new ConcurrentBag<FailureRecord>();
         var skippedItems = new ConcurrentBag<FailureRecord>();
         var validator = options.SkipValidation ? null : new PairValidator(exifTool);
-        var total = pairing.Pairs.Count;
+        var candidates = pairing.Pairs;
+        // 同名文件可能生成多个候选（按扩展名优先级排序），最终每个文件名只合成一组
+        var total = candidates.Select(pair => pair.Name).Distinct(StringComparer.OrdinalIgnoreCase).Count();
         var completed = 0;
         var succeeded = 0;
         var cleanedFiles = 0;
@@ -51,26 +53,68 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
         Directory.CreateDirectory(tempDirectory);
         try
         {
+            // ── 阶段 1：并行校验所有候选，判断照片与视频是否确属同一张实况照片 ──
+            var validations = new ConcurrentDictionary<MediaPair, PairValidationResult>();
             await Parallel.ForEachAsync(
-                pairing.Pairs,
+                candidates,
+                new ParallelOptions { MaxDegreeOfParallelism = options.Parallelism, CancellationToken = cancellationToken },
+                async (pair, token) =>
+                {
+                    var result = validator is null
+                        ? PairValidationResult.Accept([])
+                        : await validator.ValidateAsync(pair, token);
+                    validations[pair] = result;
+                });
+
+            // ── 阶段 2：选择参与合成的分组 ──
+            // ContentIdentifier 精确配对的候选是确定的 1:1 配对，直接采用；
+            // 其余同名候选按扩展名优先级排序，每组选第一个校验通过的（同名多格式取画质更好的）。
+            var chosen = new List<MediaPair>();
+            foreach (var pair in candidates.Where(pair => pair.IsContentIdentifierMatched))
+            {
+                if (validations[pair].IsAccepted)
+                {
+                    chosen.Add(pair);
+                }
+                else
+                {
+                    skippedItems.Add(new FailureRecord(pair.Name, string.Join("；", validations[pair].Reasons)));
+                }
+            }
+
+            foreach (var group in candidates.Where(pair => !pair.IsContentIdentifierMatched)
+                                            .GroupBy(pair => pair.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                var selected = group.FirstOrDefault(pair => validations[pair].IsAccepted);
+                if (selected is null)
+                {
+                    foreach (var pair in group)
+                    {
+                        skippedItems.Add(new FailureRecord(group.Key, string.Join("；", validations[pair].Reasons)));
+                    }
+                    continue;
+                }
+
+                chosen.Add(selected);
+                foreach (var other in group.Where(pair => !pair.Equals(selected)))
+                {
+                    skippedItems.Add(new FailureRecord(group.Key, $"同名候选 {Path.GetFileName(other.PhotoPath)} + {Path.GetFileName(other.VideoPath)} 未采用，已选用 {Path.GetFileName(selected.PhotoPath)} + {Path.GetFileName(selected.VideoPath)}"));
+                }
+            }
+
+            // 同名但不同内容的照片（iCloud 下载可能出现 IMG_0456.JPG 与 IMG_0456.JPEG 两张不同实况），
+            // 输出名用扩展名区分，避免互相覆盖
+            var outputNames = ResolveOutputNames(chosen);
+
+            // ── 阶段 3：并行合成选中的分组 ──
+            await Parallel.ForEachAsync(
+                chosen,
                 new ParallelOptions { MaxDegreeOfParallelism = options.Parallelism, CancellationToken = cancellationToken },
                 async (pair, token) =>
                 {
                     try
                     {
-                        // 配对校验：不通过时跳过该组，不中断整体流程
-                        if (validator is not null)
-                        {
-                            var validation = await validator.ValidateAsync(pair, token);
-                            if (!validation.IsAccepted)
-                            {
-                                var reason = string.Join("；", validation.Reasons);
-                                skippedItems.Add(new FailureRecord(pair.Name, reason));
-                                return;
-                            }
-                        }
-
-                        await MergeOneAsync(pair, options, tempDirectory, token);
+                        await MergeOneAsync(pair, outputNames[pair], options, tempDirectory, token);
                         Interlocked.Increment(ref succeeded);
                         // 只有合成成功并通过校验的这一组才会被清理，未匹配的文件绝不会进入这里
                         var cleanup = cleaner.Clean([pair.PhotoPath, pair.VideoPath]);
@@ -118,7 +162,7 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
     /// <param name="options">合成参数</param>
     /// <param name="tempDirectory">临时目录</param>
     /// <param name="cancellationToken">取消令牌</param>
-    private async Task MergeOneAsync(MediaPair pair, MergeOptions options, string tempDirectory, CancellationToken cancellationToken)
+    private async Task MergeOneAsync(MediaPair pair, string outputBaseName, MergeOptions options, string tempDirectory, CancellationToken cancellationToken)
     {
         string? temporaryPhoto = null;
         string? temporaryVideo = null;
@@ -138,11 +182,13 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
             if (!MediaFileTypes.IsMp4(videoPath))
             {
                 temporaryVideo = Path.Combine(tempDirectory, $"{Guid.NewGuid():N}.mp4");
-                await videoConverter.ConvertToMp4Async(videoPath, temporaryVideo, cancellationToken);
+                // 前置摄像头视频带镜像矩阵，安卓播放器不识别，需转码把方向烧进像素
+                var isMirrored = await exifTool.IsMirroredVideoAsync(videoPath, cancellationToken);
+                await videoConverter.ConvertToMp4Async(videoPath, temporaryVideo, isMirrored, cancellationToken);
                 videoPath = temporaryVideo;
             }
 
-            outputPath = ReserveOutputPath(options, pair.Name);
+            outputPath = ReserveOutputPath(options, outputBaseName);
             var (photoLength, totalLength) = await BinaryFile.ConcatAsync(photoPath, videoPath, outputPath, cancellationToken);
 
             await exifTool.WriteMotionPhotoTagsAsync(outputPath, totalLength - photoLength, cancellationToken);
@@ -186,6 +232,34 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
             TryDeleteFile(temporaryPhoto);
             TryDeleteFile(temporaryVideo);
         }
+    }
+
+    /// <summary>
+    /// 为选中的分组解析唯一输出名：同名但不同内容的照片（扩展名不同）用扩展名区分
+    /// </summary>
+    /// <param name="pairs">选中的分组</param>
+    /// <returns>分组到输出基础名（不含扩展名）的映射</returns>
+    private static Dictionary<MediaPair, string> ResolveOutputNames(IReadOnlyList<MediaPair> pairs)
+    {
+        var result = new Dictionary<MediaPair, string>();
+        foreach (var group in pairs.GroupBy(pair => pair.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            if (group.Count() == 1)
+            {
+                result[group.First()] = group.Key;
+                continue;
+            }
+
+            // 同名但照片文件不同（如 IMG_0456.JPG 与 IMG_0456.JPEG 是两张不同的实况照片），
+            // 用照片扩展名区分输出名
+            foreach (var pair in group)
+            {
+                var extension = Path.GetExtension(pair.PhotoPath).TrimStart('.').ToLowerInvariant();
+                result[pair] = $"{pair.Name}.{extension}";
+            }
+        }
+
+        return result;
     }
 
     /// <summary>

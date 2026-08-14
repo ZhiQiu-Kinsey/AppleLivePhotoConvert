@@ -25,8 +25,9 @@ public interface IVideoConverter
     /// <remarks>优先无损换容器，失败时回退到重新编码。</remarks>
     /// <param name="sourcePath">源视频路径</param>
     /// <param name="destinationPath">目标路径</param>
+    /// <param name="forceTranscode">强制重新编码；前置摄像头视频带镜像矩阵时需转码烧入方向</param>
     /// <param name="cancellationToken">取消令牌</param>
-    Task ConvertToMp4Async(string sourcePath, string destinationPath, CancellationToken cancellationToken = default);
+    Task ConvertToMp4Async(string sourcePath, string destinationPath, bool forceTranscode = false, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 将视频转换为 Apple QuickTime MOV 格式

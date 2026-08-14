@@ -84,4 +84,17 @@ public interface IExifTool : IAsyncDisposable
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>视频时长；无法读取时返回 <c>null</c></returns>
     Task<TimeSpan?> TryReadDurationAsync(string filePath, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 判断视频是否带镜像变换矩阵（iPhone 前置摄像头视频的典型特征）
+    /// </summary>
+    /// <remarks>
+    /// 前置摄像头视频的 QuickTime 变换矩阵行列式为负（含镜像），
+    /// 安卓相册等 MP4 播放器不识别镜像矩阵，会导致内嵌视频方向颠倒，
+    /// 因此需要检测出来改走重新编码把方向烧进像素。
+    /// </remarks>
+    /// <param name="videoPath">视频文件路径</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>是否含镜像矩阵；无法读取时返回 <c>false</c>（按无需镜像处理）</returns>
+    Task<bool> IsMirroredVideoAsync(string videoPath, CancellationToken cancellationToken = default);
 }
