@@ -85,7 +85,7 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
                 chosen.Add(selected);
                 foreach (var other in group.Where(pair => !pair.Equals(selected)))
                 {
-                    skippedItems.Add(new FailureRecord(group.Key, $"同名候选 {Path.GetFileName(other.PhotoPath)} 未采用，已选用 {Path.GetFileName(selected.PhotoPath)}"));
+                    skippedItems.Add(new FailureRecord(group.Key, $"同名候选 {Path.GetFileName(other.PhotoPath)} + {Path.GetFileName(other.VideoPath)} 未采用，已选用 {Path.GetFileName(selected.PhotoPath)} + {Path.GetFileName(selected.VideoPath)}"));
                 }
             }
 

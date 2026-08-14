@@ -94,6 +94,27 @@ public class PairValidatorTests
     }
 
     /// <summary>
+    /// 无 ContentIdentifier，拍摄时间差超过 3 秒即拒绝（即使视频时长正常）
+    /// </summary>
+    [Fact]
+    public async Task Should_Reject_When_Timestamp_Exceeds_Threshold_Even_If_Duration_Normal()
+    {
+        var baseTime = new DateTime(2024, 6, 15, 14, 30, 0);
+        var exifTool = new FakeExifTool
+        {
+            PhotoCreateDate = baseTime,
+            VideoCreateDate = baseTime.AddSeconds(10),
+            VideoDuration = TimeSpan.FromSeconds(2.5)
+        };
+        var validator = new PairValidator(exifTool);
+
+        var result = await validator.ValidateAsync(MakePair(), TestContext.Current.CancellationToken);
+
+        Assert.False(result.IsAccepted);
+        Assert.Contains(result.Reasons, r => r.Contains("拍摄时间差"));
+    }
+
+    /// <summary>
     /// 无 ContentIdentifier，拍摄时间差超过 3 秒且视频超长时应拒绝
     /// </summary>
     [Fact]
@@ -111,7 +132,47 @@ public class PairValidatorTests
         var result = await validator.ValidateAsync(MakePair(), TestContext.Current.CancellationToken);
 
         Assert.False(result.IsAccepted);
-        Assert.Contains(result.Reasons, r => r.Contains("可疑"));
+        Assert.Contains(result.Reasons, r => r.Contains("拍摄时间差"));
+    }
+
+    /// <summary>
+    /// 仅照片或仅视频单边含拍摄时间时应拒绝（真照片与真视频都应带拍摄时间）
+    /// </summary>
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async Task Should_Reject_When_Only_One_Side_Has_CreateDate(bool photoHasDate, bool videoHasDate)
+    {
+        var exifTool = new FakeExifTool
+        {
+            PhotoCreateDate = photoHasDate ? new DateTime(2024, 6, 15, 14, 30, 0) : null,
+            VideoCreateDate = videoHasDate ? new DateTime(2024, 6, 15, 14, 30, 0) : null,
+            VideoDuration = TimeSpan.FromSeconds(2.5)
+        };
+        var validator = new PairValidator(exifTool);
+
+        var result = await validator.ValidateAsync(MakePair(), TestContext.Current.CancellationToken);
+
+        Assert.False(result.IsAccepted);
+        Assert.Contains(result.Reasons, r => r.Contains("拍摄时间"));
+    }
+
+    /// <summary>
+    /// 无 ContentIdentifier、无时间差、但视频时长超过 30 秒时应拒绝
+    /// </summary>
+    [Fact]
+    public async Task Should_Reject_When_Video_Too_Long()
+    {
+        var exifTool = new FakeExifTool
+        {
+            VideoDuration = TimeSpan.FromSeconds(60)
+        };
+        var validator = new PairValidator(exifTool);
+
+        var result = await validator.ValidateAsync(MakePair(), TestContext.Current.CancellationToken);
+
+        Assert.False(result.IsAccepted);
+        Assert.Contains(result.Reasons, r => r.Contains("视频时长"));
     }
 
     /// <summary>
@@ -127,27 +188,6 @@ public class PairValidatorTests
 
         Assert.True(result.IsAccepted);
         Assert.Contains(result.Reasons, r => r.Contains("降级"));
-    }
-
-    /// <summary>
-    /// 时间差超出阈值但视频时长正常（< 5 秒）时应通过
-    /// </summary>
-    [Fact]
-    public async Task Should_Accept_When_Timestamp_Suspicious_But_Duration_Normal()
-    {
-        var baseTime = new DateTime(2024, 6, 15, 14, 30, 0);
-        var exifTool = new FakeExifTool
-        {
-            PhotoCreateDate = baseTime,
-            VideoCreateDate = baseTime.AddSeconds(10),
-            VideoDuration = TimeSpan.FromSeconds(2.5)
-        };
-        var validator = new PairValidator(exifTool);
-
-        var result = await validator.ValidateAsync(MakePair(), TestContext.Current.CancellationToken);
-
-        // 1 suspicious (timestamp) + 1 normal (duration) = not all suspicious → accept
-        Assert.True(result.IsAccepted);
     }
 
     /// <summary>
