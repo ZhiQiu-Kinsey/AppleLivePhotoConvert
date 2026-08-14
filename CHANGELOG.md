@@ -4,6 +4,35 @@
 
 ---
 
+## [2.4.0] - 2026-08-15
+
+### 🚀 命令行框架现代化（Spectre.Console.Cli）
+- **消除手写重复解析器**：彻底移除手写的 250 行 `CliParser.cs` 与 100 行硬编码 `HelpText.cs`；
+- **声明式命令与强类型参数**：全面接入 `Spectre.Console.Cli` 框架，重构 `merge`、`split`、`tools` 独立子命令与 `Settings` 类，提供强类型校验与格式约束；
+- **终端 UI 升级**：自动生成现代、自适应终端换行、具备丰富色彩与语法高亮的 `--help` 帮助界面；
+- **双模体验保留**：无参数直接启动时自动进入交互式菜单向导，带参数时直接调度 CLI 流水线。
+
+### 🖥️ Windows 原生现代弹窗与高分屏优化（FolderPicker）
+- **查看文件夹内部内容**：移除 Windows 强制仅显示文件夹的限制，双击进入目录时完整显示内部所有照片、视频及其缩略图，支持直接确认当前目录或选中任一文件确认；
+- **高分屏极致清晰（PerMonitorV2）**：集成 `app.manifest` 与运行时 API，开启 Windows 原生每显示器高 DPI 感知，彻底杜绝 2K/4K 屏幕及高缩放比（125%~200%）下窗口和字体的发虚与模糊；
+- **修复取消回退逻辑**：精准捕获用户主动点击取消事件，杜绝取消后二次弹出旧版树形对话框。
+
+### 🧹 消除重复造轮子与 BCL 现代化
+- **回收站安全删除**：废除 30 年前过时的非托管 Win32 `SHFileOperationW` 调用与 `ShFileOpStruct` 结构体，直接调用 .NET BCL 官方标准库 `Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile`；
+- **进程管理调度升级**：利用 .NET 10 原生 `ProcessStartInfo.ArgumentList` 与 `WaitForExitAsync(cancellationToken)` 异步双流读取，并在取消时强制销毁整个进程树（`entireProcessTree: true`），杜绝孤儿进程驻留；
+- **公共 I/O 抽象抽离**：提取 `FileHelper.TryDeleteFile` / `TryDeleteDirectory` 与 `FileTimestamp.Sync` / `FileTimestamp.SyncEarliest`，消除各业务模块重复编写的清理和时间戳同步逻辑。
+
+### ⚡ 高性能与零堆内存分配优化
+- **Frozen 极速集合**：扩展名检查与优先级映射升级为 `FrozenSet<string>` 与 `FrozenDictionary<string, int>`，检索提速至 $O(1)$；
+- **零分配格式嗅探**：使用 UTF-8 字节切片（`"heic"u8`、`"qt  "u8`）与位运算 `(b | 0x20)` 进行无堆分配魔数比对；
+- **流式物理预分配与内存池**：在 `BinaryFile` 流复制与拼接中引入 `PreallocationSize` 预分配与 `ArrayPool<byte>.Shared` 内存租借，降低 NTFS 磁盘碎片并消除大文件拼接 GC 压力。
+
+### 🧪 测试与真实相册全量验证
+- **单元测试扩充**：全量单元测试 100% 通过；
+- **真实数据实测**：在 100 组真实 iPhone 实况照片（HEIC+MOV、JPG+MOV、UUID 名）上实测批量合成、Android 解包、Apple 重构等 6 种场景，合成与拆分成功率均达 100%。
+
+---
+
 ## [2.3.0] - 2026-08-14
 
 ### 🐛 修复：前置摄像头自拍视频方向颠倒
