@@ -13,7 +13,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="License" /></a>
   <img src="https://img.shields.io/badge/Platform-Windows%20x64-0078D6?style=flat-square&logo=windows" alt="Platform" />
   <img src="https://img.shields.io/badge/Native%20AOT-Supported-success?style=flat-square" alt="Native AOT" />
-  <a href="https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert/actions/workflows/ci.yml"><img src="https://img.shields.io/badge/Tests-86%20Passed-success?style=flat-square&logo=githubactions&logoColor=white" alt="Tests" /></a>
+  <a href="https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert/actions/workflows/ci.yml"><img src="https://img.shields.io/badge/Tests-90%20Passed-success?style=flat-square&logo=githubactions&logoColor=white" alt="Tests" /></a>
 </p>
 
 <p align="center">
@@ -29,12 +29,16 @@
   - **双格式拆分模式**：
     - **标准安卓格式 (`android`)**：原生无损提取封面与内嵌视频（`.jpg/.heic` + `.mp4`）。
     - **苹果实况格式 (`apple`)**：将安卓动态照片转换为 Apple Live Photo 兼容格式（`.jpg/.heic` + `.mov`），自动生成并注入配对的 `ContentIdentifier` UUID，**可直接导入 iPhone/Mac 相册长按动态播放**。
+- 🗜️ **动态照片瘦身与 HEIC 格式转换 (`strip` 模式)**：
+  - **剥离内嵌视频**：自动探测并剥离小米/Google 动态照片尾部内嵌的 MP4 视频，清洗 XMP/EXIF 动态标识（含小米 `0x8897` 专属标签），还原为纯静态图片；
+  - **HEIC 高效转码**：集成 `heif-enc` (基于 libheif / x265) 进行高质量压缩，在纯图片基础上进一步缩减 50%~70% 体积，**综合空间释放率高达 60% ~ 96%**；
+  - **时间戳与 EXIF 绝对保真**：100% 保持文件系统原始拍摄/修改时间（`CreationTime` / `LastWriteTime`），完整保留相机型号、GPS 经纬度/海拔等所有元数据。
 - ⚡ **无损流复制与高效转换**：
   - 视频优先采用流复制（`-c:v copy`），音频自动转码为标准 AAC，**毫秒级极速处理且视频画质 0 损失**。
 - 🚀 **极小体积与原生机器码**：
   - 基于 .NET 10 **Native AOT** 纯原生机器码编译，免安装绿色压缩包开箱即用，冷启动达到毫秒级。
 - 📥 **智能依赖一键就绪**：
-  - 内置国内加速镜像（阿里云 CDN）下载源，首次启动自动检测并一键静默安装配置 `ExifTool` 与 `FFmpeg`。
+  - 内置国内加速镜像（阿里云 CDN、GitHub 镜像代理）下载源，首次启动自动检测并一键静默安装配置 `ExifTool`、`FFmpeg` 与 `heif-enc`。
 - 🖥️ **现代化双模交互**：
   - **交互式菜单**：基于 Spectre.Console 的彩色终端界面，集成 **Windows 原生文件夹弹窗选择器** 与拖拽支持。
   - **CLI 命令行参数**：支持完整静默参数、并发控制、批处理脚本集成。
