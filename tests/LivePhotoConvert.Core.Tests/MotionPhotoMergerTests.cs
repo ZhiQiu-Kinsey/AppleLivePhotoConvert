@@ -104,6 +104,12 @@ public class MotionPhotoMergerTests
             File.WriteAllBytes(destinationPath, new byte[2048]);
             return Task.CompletedTask;
         }
+
+        public Task ConvertToHeicAsync(string sourcePath, string destinationPath, int quality = 90, CancellationToken cancellationToken = default)
+        {
+            File.WriteAllBytes(destinationPath, new byte[1024]);
+            return Task.CompletedTask;
+        }
     }
 
     /// <summary>

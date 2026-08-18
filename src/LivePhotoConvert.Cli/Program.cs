@@ -79,6 +79,9 @@ public static class Program
             config.AddCommand<SplitCommand>("split")
                 .WithDescription("将动态照片拆分为独立照片与视频（支持 Android 与 Apple 格式）");
 
+            config.AddCommand<StripCommand>("strip")
+                .WithDescription("批量剥离动态照片内嵌视频并转换图片为 HEIC 格式（释放存储空间）");
+
             config.AddCommand<ToolsCommand>("tools")
                 .WithAlias("download-tools")
                 .WithDescription("检查、下载与管理外部依赖工具 (ExifTool / FFmpeg)");
@@ -149,13 +152,14 @@ public static class Program
             ConsoleUi.PrintHeader("欢迎使用动态照片工具箱");
 
             var prompt = new SelectionPrompt<string>().Title("[yellow]请选择要执行的操作 (使用方向键 ↑/↓ 选择，回车确认)：[/]")
-                                                      .PageSize(6)
+                                                      .PageSize(7)
                                                       .AddChoices(
                                                       [
                                                           "1. 合成动态照片 (苹果实况照片 → 安卓动态照片)",
                                                           "2. 拆分动态照片 (安卓动态照片 → 照片 + 视频)",
-                                                          "3. 检查并下载外部依赖工具 (ExifTool 与 FFmpeg)",
-                                                          "4. 退出程序"
+                                                          "3. 瘦身优化 (剥离动态照片视频 + 转换 HEIC，释放存储空间)",
+                                                          "4. 检查并下载外部依赖工具 (ExifTool 与 FFmpeg)",
+                                                          "5. 退出程序"
                                                       ]);
 
             string choice;
@@ -169,7 +173,7 @@ public static class Program
                 return ExitCodes.Success;
             }
 
-            if (choice.StartsWith("4", StringComparison.Ordinal))
+            if (choice.StartsWith("5", StringComparison.Ordinal))
             {
                 AnsiConsole.MarkupLine("[grey]程序退出。[/]");
                 return ExitCodes.Success;
@@ -189,6 +193,10 @@ public static class Program
                     await RunSplitAsync(new CliOptions { Command = CliCommand.Split }, interactive: true, stepCts.Token);
                 }
                 else if (choice.StartsWith("3", StringComparison.Ordinal))
+                {
+                    await RunStripAsync(new CliOptions { Command = CliCommand.Strip }, interactive: true, stepCts.Token);
+                }
+                else if (choice.StartsWith("4", StringComparison.Ordinal))
                 {
                     await RunDownloadToolsAsync(new CliOptions { Command = CliCommand.DownloadTools }, interactive: true, stepCts.Token);
                 }
@@ -445,6 +453,140 @@ public static class Program
     }
 
     /// <summary>
+    /// 执行瘦身优化流水线（剥离动态照片视频 + 可选转换 HEIC）
+    /// </summary>
+    internal static async Task<int> RunStripAsync(CliOptions options, bool interactive, CancellationToken cancellationToken)
+    {
+        ConsoleUi.PrintHeader("瘦身优化");
+
+        var input = await ResolveInputDirectoryAsync(options.Input, "请选择待处理的照片目录", null, cancellationToken);
+        if (input is null || cancellationToken.IsCancellationRequested)
+        {
+            return WaitForReturn(ExitCodes.Canceled, interactive);
+        }
+
+        var isInPlace = string.IsNullOrEmpty(options.Output);
+        string? output = null;
+
+        if (!isInPlace || (!interactive && !string.IsNullOrEmpty(options.Output)))
+        {
+            output = await ResolveOutputDirectoryAsync(options.Output, "请选择输出目录", input, cancellationToken);
+            if (output is null || cancellationToken.IsCancellationRequested)
+            {
+                return WaitForReturn(ExitCodes.Canceled, interactive);
+            }
+
+            isInPlace = false;
+        }
+        else if (interactive)
+        {
+            // 交互模式下，询问是否就地修改
+            var useInPlace = await ConsoleUi.ConfirmAsync("是否就地修改原文件？（选 No 可指定输出目录）", cancellationToken);
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return WaitForReturn(ExitCodes.Canceled, interactive);
+            }
+
+            if (!useInPlace)
+            {
+                output = await ResolveOutputDirectoryAsync(null, "请选择输出目录", input, cancellationToken);
+                if (output is null || cancellationToken.IsCancellationRequested)
+                {
+                    return WaitForReturn(ExitCodes.Canceled, interactive);
+                }
+
+                isInPlace = false;
+            }
+        }
+
+        var candidates = MotionPhotoStripper.FindCandidates(input);
+        Console.WriteLine($"找到 {candidates.Count} 个待检查的图片文件。");
+        if (candidates.Count == 0)
+        {
+            ConsoleUi.WriteLine("输入目录中没有可处理的图片文件。", ConsoleColor.Yellow);
+            return WaitForReturn(ExitCodes.Success, interactive);
+        }
+
+        if (isInPlace)
+        {
+            ConsoleUi.WriteLine("⚠ 就地修改模式：原始文件将被直接替换，操作不可撤销！", ConsoleColor.Yellow);
+        }
+
+        Console.WriteLine($"转换 HEIC：{(options.ConvertToHeic ? $"是 (质量 {options.HeicQuality})" : "否，仅剥离视频")}");
+
+        if (!options.AssumeYes && !await ConsoleUi.ConfirmAsync("是否开始处理？", cancellationToken))
+        {
+            AnsiConsole.MarkupLine("[yellow]操作已取消。[/]");
+            return WaitForReturn(ExitCodes.Canceled, interactive);
+        }
+
+        var exifTool = await EnsureExifToolAsync(options, interactive, cancellationToken);
+        if (exifTool is null || cancellationToken.IsCancellationRequested)
+        {
+            return WaitForReturn(ExitCodes.Failure, interactive);
+        }
+
+        await using var exifToolDisposer = exifTool;
+
+        IImageConverter imageConverter = MagickImageConverter.Instance;
+        if (options.ConvertToHeic)
+        {
+            var heifEnc = await EnsureHeifEncAsync(options, interactive, cancellationToken);
+            if (heifEnc is null || cancellationToken.IsCancellationRequested)
+            {
+                return WaitForReturn(ExitCodes.Failure, interactive);
+            }
+
+            imageConverter = heifEnc;
+        }
+
+        var progress = new ConsoleProgressReporter();
+        var stripper = new MotionPhotoStripper(exifTool, imageConverter, progress);
+
+        var stripOptions = new StripOptions
+        {
+            InputDirectory = input,
+            OutputDirectory = output,
+            ConvertToHeic = options.ConvertToHeic,
+            HeicQuality = options.HeicQuality,
+            Overwrite = options.Overwrite,
+            Parallelism = options.Parallelism ?? MergeOptions.DefaultParallelism
+        };
+
+        ConsoleUi.PrintHeader("正在处理");
+        var report = await stripper.StripAsync(stripOptions, cancellationToken);
+        progress.Complete();
+
+        Console.WriteLine();
+        Console.WriteLine($"处理完成：共 {report.Total} 个文件");
+        Console.WriteLine($"  剥离视频：{report.StrippedCount} 个");
+        Console.WriteLine($"  转换 HEIC：{report.ConvertedCount} 个");
+        Console.WriteLine($"  跳过（无需处理）：{report.Skipped} 个");
+        if (isInPlace && report.SavedBytes > 0)
+        {
+            ConsoleUi.WriteLine($"  节省空间：{FormatBytes(report.SavedBytes)}", ConsoleColor.Green);
+        }
+
+        PrintFailures("以下文件处理失败：", report.Failures);
+
+        return WaitForReturn(report.Failures.Count > 0 ? ExitCodes.PartialFailure : ExitCodes.Success, interactive);
+    }
+
+    /// <summary>
+    /// 将字节数格式化为人类可读的大小字符串（自动选择 B/KB/MB/GB 单位）
+    /// </summary>
+    private static string FormatBytes(long bytes)
+    {
+        return bytes switch
+        {
+            >= 1L << 30 => $"{bytes / (double)(1L << 30):F2} GB",
+            >= 1L << 20 => $"{bytes / (double)(1L << 20):F2} MB",
+            >= 1L << 10 => $"{bytes / (double)(1L << 10):F2} KB",
+            _ => $"{bytes} B"
+        };
+    }
+
+    /// <summary>
     /// 确保首次启动时外部依赖工具就绪；若全部就绪则静默直接进入菜单，若缺失则引导自动下载
     /// </summary>
     private static async Task EnsureToolsOnStartupAsync(CliOptions options, CancellationToken cancellationToken)
@@ -469,12 +611,14 @@ public static class Program
 
         var exifToolPath = ToolLocator.Find(ExifTool.ExecutableName, options.ExifToolPath, "ExifTool", "exiftool", "tools");
         var ffmpegPath = ToolLocator.Find(FfmpegVideoConverter.ExecutableName, options.FfmpegPath, "ffmpeg", "FFmpeg", "bin", "tools");
+        var heifEncPath = ToolLocator.Find(HeifEncImageConverter.ExecutableName, options.HeifEncPath, "heif-enc", "libheif", "bin", "tools");
 
         Console.WriteLine($"ExifTool 状态：{(exifToolPath is not null ? $"已就绪 ({exifToolPath})" : "未找到")}");
         Console.WriteLine($"FFmpeg   状态：{(ffmpegPath is not null ? $"已就绪 ({ffmpegPath})" : "未找到")}");
+        Console.WriteLine($"heif-enc 状态：{(heifEncPath is not null ? $"已就绪 ({heifEncPath})" : "未找到 (瘦身转换 HEIC 时使用)")}");
         Console.WriteLine();
 
-        if (exifToolPath is not null && ffmpegPath is not null)
+        if (exifToolPath is not null && ffmpegPath is not null && heifEncPath is not null)
         {
             ConsoleUi.WriteLine("所有外部工具均已就绪，无需重复下载。", ConsoleColor.Green);
             return waitOnComplete ? WaitForReturn(ExitCodes.Success, interactive) : ExitCodes.Success;
@@ -498,6 +642,14 @@ public static class Program
         {
             await SpectreDownloadRunner.DownloadAsync(
                 ExternalToolMetadata.FFmpeg,
+                options.CustomMirror,
+                cancellationToken);
+        }
+
+        if (heifEncPath is null && !cancellationToken.IsCancellationRequested)
+        {
+            await SpectreDownloadRunner.DownloadAsync(
+                ExternalToolMetadata.HeifEnc,
                 options.CustomMirror,
                 cancellationToken);
         }
@@ -567,6 +719,38 @@ public static class Program
         if (!cancellationToken.IsCancellationRequested)
         {
             PrintMissingToolHelp("FFmpeg", FfmpegVideoConverter.ExecutableName, ExternalToolMetadata.FFmpeg.ManualDownloadHelpUrl);
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// 确保 heif-enc 可用，未找到时根据配置自动下载或输出中文引导
+    /// </summary>
+    private static async Task<HeifEncImageConverter?> EnsureHeifEncAsync(CliOptions options, bool interactive, CancellationToken cancellationToken)
+    {
+        var existingPath = ToolLocator.Find(HeifEncImageConverter.ExecutableName, options.HeifEncPath, "heif-enc", "libheif", "bin", "tools");
+        if (existingPath is not null)
+        {
+            return HeifEncImageConverter.Create(existingPath);
+        }
+
+        var shouldDownload = options.AutoDownload || (interactive && await ConsoleUi.ConfirmAsync("未检测到 heif-enc HEIC 编码组件，是否立即自动下载安装？", cancellationToken));
+        if (shouldDownload && !cancellationToken.IsCancellationRequested)
+        {
+            var downloaded = await SpectreDownloadRunner.DownloadAsync(
+                ExternalToolMetadata.HeifEnc,
+                options.CustomMirror,
+                cancellationToken);
+
+            if (downloaded is not null)
+            {
+                return HeifEncImageConverter.Create(downloaded);
+            }
+        }
+
+        if (!cancellationToken.IsCancellationRequested)
+        {
+            PrintMissingToolHelp("heif-enc", HeifEncImageConverter.ExecutableName, ExternalToolMetadata.HeifEnc.ManualDownloadHelpUrl);
         }
         return null;
     }

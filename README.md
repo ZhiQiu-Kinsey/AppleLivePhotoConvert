@@ -86,7 +86,16 @@ LivePhotoConvert split -i "D:\MotionPhotos" -o "D:\Output" -f android
 # 4. 拆分为苹果实况照片格式 (.jpg + .mov，写入 Live Photo 元数据)
 LivePhotoConvert split -i "D:\MotionPhotos" -o "D:\AppleLivePhotos" -f apple
 
-# 5. 提前检查或下载外部依赖工具
+# 5. 瘦身优化：剥离动态照片内嵌视频并转换为 HEIC 格式（就地修改，释放 60%~96% 空间）
+LivePhotoConvert strip -i "D:\Photos"
+
+# 6. 瘦身优化输出到新目录（保留原文件）
+LivePhotoConvert strip -i "D:\Photos" -o "D:\Optimized"
+
+# 7. 仅剥离视频，不转 HEIC
+LivePhotoConvert strip -i "D:\Photos" --no-heic
+
+# 8. 提前检查或下载外部依赖工具 (ExifTool / FFmpeg / heif-enc)
 LivePhotoConvert tools --auto-download
 ```
 
@@ -94,17 +103,20 @@ LivePhotoConvert tools --auto-download
 
 | 选项 | 别名 | 适用命令 | 说明 |
 | :--- | :--- | :--- | :--- |
-| `--input <目录>` | `-i` | `merge` / `split` | 输入目录路径（省略时自动弹出原生文件夹选择框） |
-| `--output <目录>` | `-o` | `merge` / `split` | 输出目录路径（省略时自动弹出原生文件夹选择框） |
+| `--input <目录>` | `-i` | `merge` / `split` / `strip` | 输入目录路径（省略时自动弹出原生文件夹选择框） |
+| `--output <目录>` | `-o` | `merge` / `split` / `strip` | 输出目录路径（`strip` 省略时为就地修改模式） |
 | `--format <格式>` | `-f` | `split` | 拆分目标格式：`android`（标准安卓格式，默认）或 `apple`（苹果实况照片） |
+| `--no-heic` | | `strip` | 跳过 HEIC 格式转换，仅剥离动态照片中的内嵌视频 |
+| `--quality <数值>` | `-q` | `strip` | HEIC 压缩质量 (1–100，默认 65，画质接近无损且体积大幅缩小) |
 | `--source-action <方式>`| `-s` | `merge` | 合成成功后原始文件处理策略：`keep`（保留，默认）、`move`（移动）、`recycle`（回收站）、`delete`（永久删除） |
 | `--no-verify` | | `merge` | 跳过智能配对校验，强制仅按文件名匹配（默认启用 ContentIdentifier、拍摄时间差、视频时长多信号校验） |
-| `--parallel <数量>` | `-p` | `merge` / `split` | 并行并发处理文件数（默认根据 CPU 核心数自动调优） |
-| `--overwrite` | | `merge` / `split` | 输出目录存在同名文件时直接覆盖（默认自动追加 `_1`、`_2` 后缀） |
-| `--auto-download` | | 全部 | 缺少 ExifTool 或 FFmpeg 时自动通过加速镜像下载安装 |
+| `--parallel <数量>` | `-p` | 全部 | 并行并发处理文件数（默认根据 CPU 核心数自动调优） |
+| `--overwrite` | | 全部 | 输出目录存在同名文件时直接覆盖（默认自动追加 `_1`、`_2` 后缀） |
+| `--auto-download` | | 全部 | 缺少 ExifTool、FFmpeg 或 heif-enc 时自动通过加速镜像下载安装 |
 | `--mirror <前缀>` | | `tools` | 自定义 GitHub 镜像代理前缀（如 `https://ghfast.top/`） |
 | `--exiftool <路径>` | | 全部 | 显式指定 ExifTool 可执行文件路径 |
 | `--ffmpeg <路径>` | | 全部 | 显式指定 FFmpeg 可执行文件路径 |
+| `--heif-enc <路径>` | | `strip` / 全部 | 显式指定 heif-enc 可执行文件路径 |
 | `--yes` | `-y` | 全部 | 跳过开始前的确认提示，便于脚本自动化执行 |
 
 > [!NOTE]

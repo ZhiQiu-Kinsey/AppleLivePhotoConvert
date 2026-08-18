@@ -150,12 +150,52 @@ public static class ToolDownloader
     private static void ExtractAllFromArchive(string archivePath, string targetDirectory, string finalExePath, ToolDownloadInfo tool)
     {
         var isGzip = false;
+        var is7z = false;
         using (var stream = File.OpenRead(archivePath))
         {
-            var header = new byte[2];
-            if (stream.Read(header, 0, 2) == 2 && header[0] == 0x1F && header[1] == 0x8B)
+            var header = new byte[6];
+            var read = stream.Read(header, 0, 6);
+            if (read >= 2 && header[0] == 0x1F && header[1] == 0x8B)
             {
                 isGzip = true;
+            }
+            else if (read >= 6 && header[0] == 0x37 && header[1] == 0x7A && header[2] == 0xBC && header[3] == 0xAF && header[4] == 0x27 && header[5] == 0x1C)
+            {
+                is7z = true;
+            }
+        }
+
+        if (is7z || archivePath.EndsWith(".7z", StringComparison.OrdinalIgnoreCase))
+        {
+            var tempExtractDir = Path.Combine(targetDirectory, $"extract_{Guid.NewGuid():N}");
+            Directory.CreateDirectory(tempExtractDir);
+            try
+            {
+                var tarExe = ToolLocator.Find("tar.exe") ?? "tar.exe";
+                var result = ProcessRunner.RunAsync(tarExe, ["-xf", archivePath, "-C", tempExtractDir]).GetAwaiter().GetResult();
+                if (!result.Success)
+                {
+                    throw new InvalidOperationException($"解压 .7z 压缩包失败：{result.StandardError}");
+                }
+
+                // 递归遍历解压内容，扁平化复制所有 exe 和 dll 到 targetDirectory
+                foreach (var file in Directory.EnumerateFiles(tempExtractDir, "*", SearchOption.AllDirectories))
+                {
+                    var fileName = Path.GetFileName(file);
+                    var destPath = Path.Combine(targetDirectory, fileName);
+                    File.Copy(file, destPath, overwrite: true);
+                }
+
+                if (File.Exists(finalExePath))
+                {
+                    return;
+                }
+
+                throw new InvalidOperationException($"在 7z 压缩包中未匹配到目标可执行文件 {tool.TargetExecutableName}。");
+            }
+            finally
+            {
+                FileHelper.TryDeleteDirectory(tempExtractDir);
             }
         }
 

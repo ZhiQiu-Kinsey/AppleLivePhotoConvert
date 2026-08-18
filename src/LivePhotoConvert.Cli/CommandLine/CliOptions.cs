@@ -33,7 +33,12 @@ enum CliCommand
     /// <summary>
     /// 下载并管理外部工具 (ExifTool / FFmpeg)
     /// </summary>
-    DownloadTools
+    DownloadTools,
+
+    /// <summary>
+    /// 瘦身优化：剥离动态照片视频并转换 HEIC
+    /// </summary>
+    Strip
 }
 
 /// <summary>
@@ -107,7 +112,22 @@ sealed record CliOptions
     public SplitTargetFormat SplitFormat { get; init; } = SplitTargetFormat.Android;
 
     /// <summary>
+    /// 显式指定的 heif-enc 路径
+    /// </summary>
+    public string? HeifEncPath { get; init; }
+
+    /// <summary>
     /// 是否显式指定了拆分格式参数
     /// </summary>
     public bool ExplicitSplitFormat { get; init; }
+
+    /// <summary>
+    /// 是否将图片转换为 HEIC 格式（瘦身命令使用）
+    /// </summary>
+    public bool ConvertToHeic { get; init; } = true;
+
+    /// <summary>
+    /// HEIC 压缩质量 (1–100)（瘦身命令使用）
+    /// </summary>
+    public int HeicQuality { get; init; } = 65;
 }

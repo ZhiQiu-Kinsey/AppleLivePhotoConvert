@@ -39,6 +39,13 @@ public class CommonSettings : CommandSettings
     public string? FfmpegPath { get; init; }
 
     /// <summary>
+    /// 显式指定的 heif-enc 可执行文件路径
+    /// </summary>
+    [Description("显式指定 heif-enc 可执行文件的绝对路径")]
+    [CommandOption("--heif-enc <PATH>")]
+    public string? HeifEncPath { get; init; }
+
+    /// <summary>
     /// 跳过所有前置与删除确认提示
     /// </summary>
     [Description("跳过所有前置与删除确认提示")]
@@ -210,5 +217,75 @@ public sealed class ToolsCommand : AsyncCommand<ToolsSettings>
         };
 
         return await Program.RunDownloadToolsAsync(options, interactive: false, Program.ActiveCancellationToken);
+    }
+}
+
+/// <summary>
+/// 动态照片瘦身命令的选项设置
+/// </summary>
+public sealed class StripSettings : CommonSettings
+{
+    /// <summary>
+    /// 待处理的照片所在输入目录
+    /// </summary>
+    [Description("待处理的照片所在输入目录")]
+    [CommandOption("-i|--input <PATH>")]
+    public string? Input { get; init; }
+
+    /// <summary>
+    /// 处理后照片的输出目录（省略则就地修改原文件）
+    /// </summary>
+    [Description("处理后照片的输出目录（省略则就地修改原文件，⚠ 不可撤销）")]
+    [CommandOption("-o|--output <PATH>")]
+    public string? Output { get; init; }
+
+    /// <summary>
+    /// 跳过 HEIC 转换，仅剥离视频
+    /// </summary>
+    [Description("跳过 HEIC 转换，仅剥离动态照片中的内嵌视频")]
+    [CommandOption("--no-heic")]
+    public bool NoHeic { get; init; }
+
+    /// <summary>
+    /// HEIC 压缩质量
+    /// </summary>
+    [Description("HEIC 压缩质量 (1-100，默认 65，越高画质越好体积越大)")]
+    [CommandOption("-q|--quality <N>")]
+    public int? Quality { get; init; }
+
+    /// <summary>
+    /// 目标文件已存在时是否覆盖
+    /// </summary>
+    [Description("输出目录存在同名文件时直接覆盖")]
+    [CommandOption("--overwrite")]
+    public bool Overwrite { get; init; }
+}
+
+/// <summary>
+/// 瘦身命令控制器
+/// </summary>
+public sealed class StripCommand : AsyncCommand<StripSettings>
+{
+    /// <inheritdoc />
+    public override async Task<int> ExecuteAsync(CommandContext context, StripSettings settings)
+    {
+        var options = new CliOptions
+        {
+            Command = CliCommand.Strip,
+            Input = settings.Input,
+            Output = settings.Output,
+            ConvertToHeic = !settings.NoHeic,
+            HeicQuality = settings.Quality ?? 65,
+            Overwrite = settings.Overwrite,
+            AutoDownload = settings.AutoDownload,
+            CustomMirror = settings.CustomMirror,
+            ExifToolPath = settings.ExifToolPath,
+            FfmpegPath = settings.FfmpegPath,
+            HeifEncPath = settings.HeifEncPath,
+            AssumeYes = settings.AssumeYes,
+            Parallelism = settings.Parallelism
+        };
+
+        return await Program.RunStripAsync(options, interactive: false, Program.ActiveCancellationToken);
     }
 }

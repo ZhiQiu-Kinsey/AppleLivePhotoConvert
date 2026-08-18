@@ -52,16 +52,18 @@ public static class ToolLocator
             var fileName = Path.GetFileName(path);
             var isExifTool = fileName.Contains("exiftool", StringComparison.OrdinalIgnoreCase);
             var isFfmpeg = fileName.Contains("ffmpeg", StringComparison.OrdinalIgnoreCase);
-            if (!isExifTool && !isFfmpeg)
+            var isHeifEnc = fileName.Contains("heif-enc", StringComparison.OrdinalIgnoreCase);
+            if (!isExifTool && !isFfmpeg && !isHeifEnc)
             {
                 return true;
             }
 
+            var args = isExifTool ? "-ver" : (isFfmpeg ? "-version" : "-v");
             using var proc = new Process();
             proc.StartInfo = new ProcessStartInfo
             {
                 FileName = path,
-                Arguments = isExifTool ? "-ver" : "-version",
+                Arguments = args,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,

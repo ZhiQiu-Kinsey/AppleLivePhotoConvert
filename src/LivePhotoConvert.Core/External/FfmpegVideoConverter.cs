@@ -107,6 +107,15 @@ public sealed class FfmpegVideoConverter : IVideoConverter, IImageConverter
         }
     }
 
+    /// <inheritdoc />
+    /// <remarks>
+    /// FFmpeg 的 HEIC 编码支持有限，此处委托给 Magick.NET 原生实现以确保最佳质量与兼容性。
+    /// </remarks>
+    public Task ConvertToHeicAsync(string sourcePath, string destinationPath, int quality = 90, CancellationToken cancellationToken = default)
+    {
+        return MagickImageConverter.Instance.ConvertToHeicAsync(sourcePath, destinationPath, quality, cancellationToken);
+    }
+
     /// <summary>
     /// 构建极速无损换容器为 MP4 的 FFmpeg 参数（视频流直接 copy，音频转换为标准 AAC）
     /// </summary>

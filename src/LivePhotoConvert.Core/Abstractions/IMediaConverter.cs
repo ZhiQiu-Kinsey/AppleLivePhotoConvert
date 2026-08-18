@@ -12,6 +12,15 @@ public interface IImageConverter
     /// <param name="destinationPath">目标路径</param>
     /// <param name="cancellationToken">取消令牌</param>
     Task ConvertToJpegAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 将图片转换为 HEIC 格式（高效率图像编码，体积约为 JPEG 的 40%–60%，画质几乎无损）
+    /// </summary>
+    /// <param name="sourcePath">源图片路径</param>
+    /// <param name="destinationPath">目标路径</param>
+    /// <param name="quality">压缩质量 (1–100)，默认 90</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    Task ConvertToHeicAsync(string sourcePath, string destinationPath, int quality = 90, CancellationToken cancellationToken = default);
 }
 
 /// <summary>

@@ -113,4 +113,25 @@ public static class ExternalToolMetadata
                    || !OperatingSystem.IsWindows() && (normalized.EndsWith("/bin/ffmpeg", StringComparison.OrdinalIgnoreCase) || string.Equals(normalized, "ffmpeg", StringComparison.OrdinalIgnoreCase));
         },
         ManualDownloadHelpUrl: "https://ffmpeg.org/download.html");
+
+    /// <summary>
+    /// heif-enc (libheif) 的下载元数据（Windows）
+    /// </summary>
+    public static readonly ToolDownloadInfo HeifEnc = new(
+        ToolName: "heif-enc",
+        TargetExecutableName: OperatingSystem.IsWindows() ? "heif-enc.exe" : "heif-enc",
+        Sources:
+        [
+            new ToolDownloadSource("国内 GitHub 加速镜像 (ghfast.top)", "https://ghfast.top/https://github.com/pphh77/libheif-Windowsbinary/releases/download/v1.23.1/libheif-1.23.1-win64.7z", IsGitHubRelease: true),
+            new ToolDownloadSource("国内 GitHub 加速镜像 2 (ghproxy.net)", "https://ghproxy.net/https://github.com/pphh77/libheif-Windowsbinary/releases/download/v1.23.1/libheif-1.23.1-win64.7z", IsGitHubRelease: true),
+            new ToolDownloadSource("GitHub 官方源", "https://github.com/pphh77/libheif-Windowsbinary/releases/download/v1.23.1/libheif-1.23.1-win64.7z", IsGitHubRelease: true)
+        ],
+        ZipEntryFilter: entry =>
+        {
+            var normalized = entry.Replace('\\', '/');
+            return normalized.EndsWith("/heif-enc.exe", StringComparison.OrdinalIgnoreCase)
+                   || string.Equals(normalized, "heif-enc.exe", StringComparison.OrdinalIgnoreCase)
+                   || !OperatingSystem.IsWindows() && (normalized.EndsWith("/heif-enc", StringComparison.OrdinalIgnoreCase) || string.Equals(normalized, "heif-enc", StringComparison.OrdinalIgnoreCase));
+        },
+        ManualDownloadHelpUrl: "https://github.com/pphh77/libheif-Windowsbinary/releases");
 }

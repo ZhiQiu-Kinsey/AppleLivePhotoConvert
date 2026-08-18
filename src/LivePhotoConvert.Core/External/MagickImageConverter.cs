@@ -25,4 +25,17 @@ public sealed class MagickImageConverter : IImageConverter
 
         return Task.CompletedTask;
     }
+
+    /// <inheritdoc />
+    public Task ConvertToHeicAsync(string sourcePath, string destinationPath, int quality = 90, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        using var image = new MagickImage(sourcePath);
+        image.Format = MagickFormat.Heic;
+        image.Quality = (uint)quality;
+        image.Write(destinationPath);
+
+        return Task.CompletedTask;
+    }
 }
