@@ -34,58 +34,30 @@ public sealed class FfmpegVideoConverter : IVideoConverter, IImageConverter
     }
 
     /// <inheritdoc />
-    public async Task ConvertToMp4Async(string sourcePath, string destinationPath, bool forceTranscode = false, CancellationToken cancellationToken = default)
-    {
-        string? remuxError = null;
-        if (!forceTranscode)
-        {
-            // 绝大多数 iPhone 的 MOV 视频流本身就是标准的 H.264/HEVC 编码，音频为 AAC，
-            // 直接执行流复制（-c:v copy）换容器只需数毫秒，且保持 100% 原画质无损。
-            var remux = await ProcessRunner.RunAsync(_executablePath, BuildRemuxArguments(sourcePath, destinationPath), cancellationToken);
-            if (remux.Success)
-            {
-                return;
-            }
-
-            // 换容器失败（例如原视频包含不被 MP4 容器接受的特殊编码流），自动回退至完整重新编码
-            remuxError = Summarize(remux.StandardError);
-            FileHelper.TryDeleteFile(destinationPath);
-        }
-
-        // 强制转码场景：iPhone 前置自拍摄像头录制的视频带有 2D 镜像变换矩阵（行列式为负）。
-        // 安卓系统相册和大多数播放器无法识别 QuickTime 镜像矩阵，会导致画面显示颠倒/左右翻转。
-        // 此时必须通过 FFmpeg 重新编码，触发 FFmpeg 内部的 autorotate 滤镜把镜像与旋转直接烧录进视频像素。
-        var transcode = await ProcessRunner.RunAsync(_executablePath, BuildTranscodeArguments(sourcePath, destinationPath), cancellationToken);
-        if (transcode.Success)
-        {
-            return;
-        }
-
-        FileHelper.TryDeleteFile(destinationPath);
-        var remuxDescription = forceTranscode ? "强制转码（前置镜像视频）" : $"换容器错误：{remuxError}";
-        throw new InvalidOperationException($"FFmpeg 转换视频失败。{remuxDescription}；重新编码错误：{Summarize(transcode.StandardError)}");
-    }
+    /// <remarks>
+    /// 绝大多数 iPhone 的 MOV 视频流本身就是标准的 H.264/HEVC 编码，直接换容器即可；<br/>
+    /// 前置摄像头视频带 2D 镜像变换矩阵（行列式为负），安卓相册不识别，需强制重新编码把方向烧进像素。
+    /// </remarks>
+    public Task ConvertToMp4Async(string sourcePath, string destinationPath, bool forceTranscode = false, CancellationToken cancellationToken = default) =>
+        RemuxOrTranscodeAsync(
+            sourcePath,
+            destinationPath,
+            remuxArguments: forceTranscode ? null : BuildMuxArguments(sourcePath, destinationPath, "copy", "aac", audioBitrate: "192k"),
+            transcodeArguments: BuildMuxArguments(sourcePath, destinationPath, "libx264", "aac", pixelFormat: "yuv420p"),
+            operation: "转换视频",
+            remuxDescription: forceTranscode ? "强制转码（前置镜像视频）" : "换容器错误",
+            cancellationToken);
 
     /// <inheritdoc />
-    public async Task RemuxToMovAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken = default)
-    {
-        // MP4 转换为 Apple QuickTime MOV 容器，通常仅需重封装（-c copy），极速无损
-        var remux = await ProcessRunner.RunAsync(_executablePath, BuildRemuxMovArguments(sourcePath, destinationPath), cancellationToken);
-        if (remux.Success && File.Exists(destinationPath))
-        {
-            return;
-        }
-        FileHelper.TryDeleteFile(destinationPath);
-
-        // 极端情况下若包含不兼容流，自动回退到标准 H.264 + AAC 重新编码封装为 MOV
-        var transcode = await ProcessRunner.RunAsync(_executablePath, BuildTranscodeMovArguments(sourcePath, destinationPath), cancellationToken);
-        if (transcode.Success && File.Exists(destinationPath))
-        {
-            return;
-        }
-        FileHelper.TryDeleteFile(destinationPath);
-        throw new InvalidOperationException($"FFmpeg 封装 MOV 视频失败。换容器错误：{Summarize(remux.StandardError)}；重新编码错误：{Summarize(transcode.StandardError)}");
-    }
+    public Task RemuxToMovAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken = default) =>
+        RemuxOrTranscodeAsync(
+            sourcePath,
+            destinationPath,
+            remuxArguments: BuildMuxArguments(sourcePath, destinationPath, "copy", "pcm_s16le", movContainer: true),
+            transcodeArguments: BuildMuxArguments(sourcePath, destinationPath, "libx264", "pcm_s16le", movContainer: true, pixelFormat: "yuv420p"),
+            operation: "封装 MOV 视频",
+            remuxDescription: "换容器错误",
+            cancellationToken);
 
     /// <inheritdoc />
     public async Task ConvertToJpegAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken = default)
@@ -117,68 +89,86 @@ public sealed class FfmpegVideoConverter : IVideoConverter, IImageConverter
     }
 
     /// <summary>
-    /// 构建极速无损换容器为 MP4 的 FFmpeg 参数（视频流直接 copy，音频转换为标准 AAC）
+    /// 先尝试流复制换容器，失败后自动回退到重新编码；两阶段均失败时清理半成品并抛出异常
     /// </summary>
-    private static IReadOnlyList<string> BuildRemuxArguments(string sourcePath, string destinationPath) =>
-    [
-        "-i", sourcePath,
-        "-c:v", "copy",
-        "-c:a", "aac",
-        "-b:a", "192k",
-        "-map", "0:v:0",
-        "-map", "0:a:0?",
-        "-movflags", "+faststart",
-        "-y",
-        destinationPath
-    ];
+    /// <param name="sourcePath">源视频路径</param>
+    /// <param name="destinationPath">目标输出路径</param>
+    /// <param name="remuxArguments">换容器参数；传 null 表示跳过换容器直接重新编码（强制转码场景）</param>
+    /// <param name="transcodeArguments">重新编码参数</param>
+    /// <param name="operation">用于异常信息的操作描述</param>
+    /// <param name="remuxDescription">换容器阶段的异常前缀描述（如「换容器错误」「强制转码」）</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    private async Task RemuxOrTranscodeAsync(
+        string sourcePath,
+        string destinationPath,
+        IReadOnlyList<string>? remuxArguments,
+        IReadOnlyList<string> transcodeArguments,
+        string operation,
+        string remuxDescription,
+        CancellationToken cancellationToken)
+    {
+        string? remuxError = null;
+        if (remuxArguments is not null)
+        {
+            var remux = await ProcessRunner.RunAsync(_executablePath, remuxArguments, cancellationToken);
+            if (remux.Success && File.Exists(destinationPath))
+            {
+                return;
+            }
+
+            remuxError = Summarize(remux.StandardError);
+            FileHelper.TryDeleteFile(destinationPath);
+        }
+
+        var transcode = await ProcessRunner.RunAsync(_executablePath, transcodeArguments, cancellationToken);
+        if (transcode.Success && File.Exists(destinationPath))
+        {
+            return;
+        }
+
+        FileHelper.TryDeleteFile(destinationPath);
+        var remuxPart = remuxArguments is null ? remuxDescription : $"{remuxDescription}：{remuxError}";
+        throw new InvalidOperationException($"FFmpeg {operation}失败。{remuxPart}；重新编码错误：{Summarize(transcode.StandardError)}");
+    }
 
     /// <summary>
-    /// 构建重新编码为标准兼容 MP4 (H.264 + YUV420P) 的 FFmpeg 参数
+    /// 构建 FFmpeg 换容器/转码参数（-c:v copy 换容器 或 libx264 转码；-c:a aac/pcm_s16le）
     /// </summary>
-    private static IReadOnlyList<string> BuildTranscodeArguments(string sourcePath, string destinationPath) =>
-    [
-        "-i", sourcePath,
-        "-c:v", "libx264",
-        "-pix_fmt", "yuv420p",
-        "-c:a", "aac",
-        "-map", "0:v:0",
-        "-map", "0:a:0?",
-        "-movflags", "+faststart",
-        "-y",
-        destinationPath
-    ];
+    private static IReadOnlyList<string> BuildMuxArguments(
+        string sourcePath,
+        string destinationPath,
+        string videoCodec,
+        string audioCodec,
+        bool movContainer = false,
+        string? pixelFormat = null,
+        string? audioBitrate = null)
+    {
+        List<string> arguments = ["-i", sourcePath, "-c:v", videoCodec];
+        if (pixelFormat is not null)
+        {
+            arguments.Add("-pix_fmt");
+            arguments.Add(pixelFormat);
+        }
 
-    /// <summary>
-    /// 构建将 MP4 重封装为 QuickTime MOV 格式的参数
-    /// </summary>
-    private static IReadOnlyList<string> BuildRemuxMovArguments(string sourcePath, string destinationPath) =>
-    [
-        "-i", sourcePath,
-        "-c", "copy",
-        "-map", "0:v:0",
-        "-map", "0:a:0?",
-        "-movflags", "+faststart",
-        "-f", "mov",
-        "-y",
-        destinationPath
-    ];
+        arguments.Add("-c:a");
+        arguments.Add(audioCodec);
+        if (audioBitrate is not null)
+        {
+            arguments.Add("-b:a");
+            arguments.Add(audioBitrate);
+        }
 
-    /// <summary>
-    /// 构建重新编码并输出为 QuickTime MOV 格式的参数
-    /// </summary>
-    private static IReadOnlyList<string> BuildTranscodeMovArguments(string sourcePath, string destinationPath) =>
-    [
-        "-i", sourcePath,
-        "-c:v", "libx264",
-        "-pix_fmt", "yuv420p",
-        "-c:a", "aac",
-        "-map", "0:v:0",
-        "-map", "0:a:0?",
-        "-movflags", "+faststart",
-        "-f", "mov",
-        "-y",
-        destinationPath
-    ];
+        arguments.AddRange(["-map", "0:v:0", "-map", "0:a:0?", "-movflags", "+faststart"]);
+        if (movContainer)
+        {
+            arguments.Add("-f");
+            arguments.Add("mov");
+        }
+
+        arguments.Add("-y");
+        arguments.Add(destinationPath);
+        return arguments;
+    }
 
     /// <summary>
     /// 零堆分配从 FFmpeg 的复杂 stderr 输出中提取最后一条关键错误概要
@@ -203,5 +193,3 @@ public sealed class FfmpegVideoConverter : IVideoConverter, IImageConverter
         return lastNonEmptyLine.IsEmpty ? error : lastNonEmptyLine.ToString();
     }
 }
-
-

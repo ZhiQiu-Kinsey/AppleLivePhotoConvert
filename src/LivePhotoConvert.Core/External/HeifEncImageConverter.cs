@@ -41,8 +41,10 @@ public sealed class HeifEncImageConverter : IImageConverter
     }
 
     /// <inheritdoc />
-    public async Task ConvertToHeicAsync(string sourcePath, string destinationPath, int quality = 65, CancellationToken cancellationToken = default)
+    public async Task ConvertToHeicAsync(string sourcePath, string destinationPath, int quality = 90, CancellationToken cancellationToken = default)
     {
+        ArgumentOutOfRangeException.ThrowIfLessThan(quality, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(quality, 100);
         cancellationToken.ThrowIfCancellationRequested();
 
         // heif-enc -q <quality> <source> -o <destination>

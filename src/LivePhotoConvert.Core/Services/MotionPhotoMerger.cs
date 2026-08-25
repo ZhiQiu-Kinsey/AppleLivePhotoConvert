@@ -176,6 +176,8 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
             {
                 temporaryPhoto = Path.Combine(tempDirectory, $"{Guid.NewGuid():N}.jpg");
                 await imageConverter.ConvertToJpegAsync(photoPath, temporaryPhoto, cancellationToken);
+                // 确保将原 HEIC/PNG 的全部 EXIF、GPS、MakerNotes 与颜色配置文件等元数据完整复制到转码后的 JPEG
+                await exifTool.CopyAllTagsAsync(photoPath, temporaryPhoto, cancellationToken);
                 photoPath = temporaryPhoto;
             }
 
@@ -228,11 +230,12 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
     private static Dictionary<MediaPair, string> ResolveOutputNames(IReadOnlyList<MediaPair> pairs)
     {
         var result = new Dictionary<MediaPair, string>();
-        foreach (var group in pairs.GroupBy(pair => pair.Name, StringComparer.OrdinalIgnoreCase))
+        foreach (var grouping in pairs.GroupBy(pair => pair.Name, StringComparer.OrdinalIgnoreCase))
         {
-            if (group.Count() == 1)
+            var group = grouping.ToArray();
+            if (group.Length == 1)
             {
-                result[group.First()] = group.Key;
+                result[group[0]] = grouping.Key;
                 continue;
             }
 

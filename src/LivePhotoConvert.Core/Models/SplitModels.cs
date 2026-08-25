@@ -11,7 +11,7 @@ public enum SplitTargetFormat
     Android,
 
     /// <summary>
-    /// 苹果实况照片格式：转换为 Apple Live Photo 兼容格式（.jpg/.heic + .mov），写入配对 Content Identifier
+    /// 苹果实况照片格式：转换为 Apple Live Photo 兼容格式（.HEIC + .MOV），JPEG 封面自动转码为 HEIC，写入配对 Content Identifier
     /// </summary>
     Apple
 }
@@ -40,6 +40,11 @@ public sealed record SplitOptions
     /// 输出目录已存在同名文件时是否直接覆盖；为 <c>false</c> 时自动追加 _1、_2 后缀
     /// </summary>
     public bool Overwrite { get; init; }
+
+    /// <summary>
+    /// Apple 实况照片输出时的 HEIC 压缩质量 (1–100)，默认 90
+    /// </summary>
+    public int HeicQuality { get; init; } = 90;
 
     /// <summary>
     /// 并行处理的文件数量

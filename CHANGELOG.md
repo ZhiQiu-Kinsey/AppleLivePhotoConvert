@@ -4,6 +4,33 @@
 
 ---
 
+## [2.6.0] - 2026-08-25
+
+### 🍎 Apple 实况还原优化（`split -f apple`）
+- **原生大写扩展名**：输出统一为 Apple 原生 `.HEIC` + `.MOV` 配对；
+- **封面自动转码 HEIC**：源封面为 JPEG 时自动转码为 HEIC（可调 `-q/--quality`，默认 90），转码保留 EXIF/GPS/相机元数据；
+- **原生 PCM 音频**：视频重封装/转码音频统一为 `pcm_s16le`（Apple 原生 `lpcm`/`sowt`），无音轨时自动跳过；
+- **QuickTime 深度元数据同步**：通过 `-tagsFromFile` 将照片的 `DateTimeOriginal`、`GPSPosition`、`Make`、`Model`、`Software` 完整同步为视频的 `CreateDate`、`MediaCreateDate`、`Keys:CreationDate`、`Keys:GPSCoordinates` 等标签；
+- **修复 QuickTime 时间戳时区偏移**：写入 mvhd/mdhd 时间时显式启用 `-api QuickTimeUTC=1`，确保与 Apple 原片一致按 UTC 存储。
+
+### 🖼️ HEIC 默认画质提升（65 → 90）
+- 依据 libheif/heif-enc 视觉无损区间（80~90），全链路默认画质统一为 90（接口契约、领域模型、CLI、交互提示、双语文档）；
+- 交互模式支持手动输入 1-100 质量值（回车使用默认 90）；
+- 新增质量范围校验（1-100），越界参数即时报错。
+
+### 🧬 合成阶段全量元数据复制
+- HEIC/PNG 封面转码 JPEG 后调用 `CopyAllTagsAsync`（`-all:all -unsafe -icc_profile`），确保 Apple MakerNotes、镜头参数、Display P3 ICC 配置完整复制，杜绝元数据丢失与转码偏色。
+
+### 🧹 其它修复
+- `tools` 命令补齐 `--heif-enc` 路径透传；
+- 移除无效的 `-Keys:StillImageTime=0` 写入（ExifTool 非可写标签，Apple 原片亦无此键）；
+- 更正文档与注释中 Apple 视频端配对描述及重封装措辞。
+
+### 🧪 测试
+- 补充 Apple 大写扩展名、HEIC 转码与元数据同步断言，单元测试全量通过。
+
+---
+
 ## [2.5.0] - 2026-08-18
 
 ### ✨ 新增：动态照片瘦身优化 (`strip` 命令)

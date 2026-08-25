@@ -68,7 +68,7 @@
 | Mode / Command | Input Files | Output Files | Supported Platforms & Viewers | Typical Use Case |
 | :--- | :--- | :--- | :--- | :--- |
 | **Merge (`merge`)** | iPhone export (`HEIC/JPG` + `MOV`) | Single Motion Photo (`MVIMG_*.jpg`) | Xiaomi HyperOS / MIUI Gallery<br>Google Photos<br>Windows 11 Photos<br>Samsung Gallery | Migrating from iPhone to Android, or viewing Live Photos on PC |
-| **Apple Restore (`split -f apple`)** | Android Motion Photo (`.jpg/.heic`) | Apple Live Photo (`.jpg/.heic` + `.mov`) | iPhone Photos (iOS)<br>Mac Photos (macOS)<br>iCloud Web | Migrating from Android to iPhone, restoring long-press animation |
+| **Apple Restore (`split -f apple`)** | Android Motion Photo (`.jpg/.heic`) | Apple Live Photo (`.HEIC` + `.MOV`) | iPhone Photos (iOS)<br>Mac Photos (macOS)<br>iCloud Web | Migrating from Android to iPhone, restoring long-press animation |
 | **Android Unpack (`split -f android`)** | Android Motion Photo (`.jpg/.heic`) | Cover Still + Video (`.jpg` + `.mp4`) | Any media player, Premiere, CapCut | Extracting video clips or still covers for editing |
 | **Space Optimizer (`strip`)** | Motion Photos / JPEGs | High-Efficiency HEIC (`.heic`) or clean JPG | Systems with HEIC decoding support | Freeing up 60%~96% disk space while keeping EXIF & timestamps |
 
@@ -149,7 +149,7 @@ LivePhotoConvert merge [options]
 #### 2. `split` (Unpack / Restore Motion Photos)
 Scans Motion Photos and separates them:
 - `-f android` (default): Outputs `.jpg/.heic` + `.mp4`.
-- `-f apple`: Outputs `.jpg/.heic` + `.mov` and injects identical `ContentIdentifier` UUIDs.
+- `-f apple`: Outputs `.HEIC` + `.MOV` (JPEG cover auto-transcoded to HEIC) and injects identical `ContentIdentifier` UUIDs.
 ```bash
 LivePhotoConvert split [options]
 ```
@@ -178,7 +178,7 @@ LivePhotoConvert tools [options]
 | `--format <format>` | `-f` | `split` | `android` | Split target format: `android` (extract MP4) or `apple` (iOS Live Photo MOV) |
 | `--source-action <mode>` | `-a` / `-s` | `merge` | `keep` | Action for source files on success: `keep`, `move`, `recycle`, `delete` |
 | `--no-heic` | | `strip` | `false` | Skip HEIC conversion and only strip embedded video streams |
-| `--quality <num>` | `-q` | `strip` | `65` | HEIC compression quality (`1`–`100`, recommended `60-75` for near-lossless ratio) |
+| `--quality <num>` | `-q` | `split`, `strip` | `90` | HEIC compression quality (`1`–`100`, default `90` for near-lossless fidelity) |
 | `--skip-validation` / `--no-verify` | | `merge` | `false` | Skip ContentIdentifier & timestamp validation, match solely by filename |
 | `--parallel <num>` | `-p` | All | CPU Cores | Number of parallel processing workers (defaults to CPU core count) |
 | `--overwrite` | | All | `false` | Overwrite existing files in output directory instead of appending numeric suffixes |
@@ -246,7 +246,7 @@ The decompiled code checks for a specific Exif tag:
 
 Apple Live Photos consist of a still image and a QuickTime MOV video linked by a globally unique UUID:
 1. **Photo**: Injected as `ContentIdentifier` within MakerNotes or Exif metadata;
-2. **Video**: Injected into the QuickTime MOV metadata track under `com.apple.quicktime.content.identifier` alongside `still-image-time = 0`;
+2. **Video**: Injected into the QuickTime MOV metadata track under `com.apple.quicktime.content.identifier`;
 3. The `split -f apple` mode automatically assigns and writes paired UUIDs, ensuring imported files are recognized as native Live Photos on iOS and macOS.
 
 ---

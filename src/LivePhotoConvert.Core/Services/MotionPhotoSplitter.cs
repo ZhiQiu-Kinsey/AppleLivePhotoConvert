@@ -12,8 +12,9 @@ namespace LivePhotoConvert.Core.Services;
 /// </summary>
 /// <param name="exifTool">EXIF 与 XMP 元数据读写服务</param>
 /// <param name="videoConverter">视频转换与重封装服务（转为 Apple Live Photo 模式时必需）</param>
+/// <param name="imageConverter">图片格式转换服务（Apple 模式下将 JPEG 封面转为 HEIC 时必需）</param>
 /// <param name="progress">进度与状态汇报回调（可选）</param>
-public sealed class MotionPhotoSplitter(IExifTool exifTool, IVideoConverter? videoConverter = null, IProgressReporter? progress = null)
+public sealed class MotionPhotoSplitter(IExifTool exifTool, IVideoConverter? videoConverter = null, IImageConverter? imageConverter = null, IProgressReporter? progress = null)
 {
     /// <summary>
     /// 可能包含内嵌微视频的候选图片扩展名集合
@@ -130,8 +131,8 @@ public sealed class MotionPhotoSplitter(IExifTool exifTool, IVideoConverter? vid
         var baseName = Path.GetFileNameWithoutExtension(imagePath);
 
         // 嗅探照片与视频实际的二进制格式（防止扩展名被篡改或封面非 JPEG）
-        var photoExt = await SniffExtensionAsync(imagePath, 0, (int)Math.Min(photoLength, 64), h => MediaFileTypes.DetectPhotoExtension(h, Path.GetExtension(imagePath)), cancellationToken);
-        var videoExt = await SniffExtensionAsync(imagePath, photoLength, (int)Math.Min(videoLength.Value, 64), h => MediaFileTypes.DetectVideoExtension(h), cancellationToken);
+        var photoExt = SniffExtension(imagePath, 0, (int)Math.Min(photoLength, 64), h => MediaFileTypes.DetectPhotoExtension(h, Path.GetExtension(imagePath)));
+        var videoExt = SniffExtension(imagePath, photoLength, (int)Math.Min(videoLength.Value, 64), h => MediaFileTypes.DetectVideoExtension(h));
 
         if (options.TargetFormat == SplitTargetFormat.Apple)
         {
@@ -140,26 +141,43 @@ public sealed class MotionPhotoSplitter(IExifTool exifTool, IVideoConverter? vid
                 throw new InvalidOperationException("未配置视频转换器，无法转换为 Apple Live Photo 格式。");
             }
 
-            // 原子成对预留输出文件
-            var (photoPath, videoPath) = UniquePath.ReservePairAtomic(options.OutputDirectory, baseName, photoExt, ".mov", options.Overwrite, _outputGate);
+            // Apple 实况照片要求 HEIC + MOV 配对，若原封面为 JPEG 则需转码为 HEIC
+            var needsHeicConversion = !photoExt.Equals(".heic", StringComparison.OrdinalIgnoreCase);
+            if (needsHeicConversion && imageConverter is null)
+            {
+                throw new InvalidOperationException("未配置图片转换器，无法将 JPEG 封面转换为 HEIC 格式。");
+            }
+
+            // 原子成对预留输出文件（始终使用 Apple 原生大写扩展名 .HEIC + .MOV）
+            var (photoPath, videoPath) = UniquePath.ReservePairAtomic(options.OutputDirectory, baseName, ".HEIC", ".MOV", options.Overwrite, _outputGate);
             string? tempVideo = null;
+            string? tempPhoto = null;
             try
             {
-                // 照片直接流式截取并清理残留的 GCamera 动态照片标记
-                await BinaryFile.CopySegmentAsync(imagePath, photoPath, 0, photoLength, cancellationToken);
-                await exifTool.RemoveMotionPhotoTagsAsync(photoPath, cancellationToken);
+                if (needsHeicConversion)
+                {
+                    // 先提取原始 JPEG 封面到临时文件，再转码为 HEIC
+                    tempPhoto = Path.Combine(tempDirectory, $"{Guid.NewGuid():N}{photoExt}");
+                    await ExtractCoverAsync(imagePath, tempPhoto, photoLength, cancellationToken);
+                    await imageConverter!.ConvertToHeicAsync(tempPhoto, photoPath, options.HeicQuality, cancellationToken);
+                }
+                else
+                {
+                    // 已经是 HEIC，直接流式截取并清理残留的 GCamera 动态照片标记
+                    await ExtractCoverAsync(imagePath, photoPath, photoLength, cancellationToken);
+                }
 
                 // 提取内嵌视频到临时文件
                 tempVideo = Path.Combine(tempDirectory, $"{Guid.NewGuid():N}{videoExt}");
                 await BinaryFile.CopySegmentAsync(imagePath, tempVideo, photoLength, videoLength.Value, cancellationToken);
 
-                // 无损重封装为 QuickTime MOV 容器
+                // 视频流复制、音频转码 PCM，重封装为 Apple QuickTime MOV 容器
                 await videoConverter.RemuxToMovAsync(tempVideo, videoPath, cancellationToken);
 
                 // 生成全局唯一的配对 UUID 并写入照片 EXIF 与 QuickTime 视频 Keys
                 var contentIdentifier = Guid.NewGuid().ToString().ToUpperInvariant();
                 await exifTool.WriteAppleContentIdentifierAsync(photoPath, contentIdentifier, cancellationToken);
-                await exifTool.WriteAppleVideoMetadataAsync(videoPath, contentIdentifier, cancellationToken);
+                await exifTool.WriteAppleVideoMetadataAsync(videoPath, photoPath, contentIdentifier, cancellationToken);
 
                 // 同步原动态照片的拍摄时间戳
                 FileTimestamp.Sync(imagePath, photoPath, videoPath);
@@ -174,6 +192,7 @@ public sealed class MotionPhotoSplitter(IExifTool exifTool, IVideoConverter? vid
             finally
             {
                 FileHelper.TryDeleteFile(tempVideo);
+                FileHelper.TryDeleteFile(tempPhoto);
             }
         }
         else
@@ -182,10 +201,8 @@ public sealed class MotionPhotoSplitter(IExifTool exifTool, IVideoConverter? vid
             var (photoPath, videoPath) = UniquePath.ReservePairAtomic(options.OutputDirectory, baseName, photoExt, videoExt, options.Overwrite, _outputGate);
             try
             {
-                // 1. 照片流式截取（前半段）
-                await BinaryFile.CopySegmentAsync(imagePath, photoPath, 0, photoLength, cancellationToken);
-                // 拆出来的照片仍带着动态照片标记，清除后方为标准静态图片
-                await exifTool.RemoveMotionPhotoTagsAsync(photoPath, cancellationToken);
+                // 1. 照片流式截取（前半段）并清理残留的动态照片标记
+                await ExtractCoverAsync(imagePath, photoPath, photoLength, cancellationToken);
 
                 // 2. 视频流式截取（后半段）
                 await BinaryFile.CopySegmentAsync(imagePath, videoPath, photoLength, videoLength.Value, cancellationToken);
@@ -204,15 +221,23 @@ public sealed class MotionPhotoSplitter(IExifTool exifTool, IVideoConverter? vid
     }
 
     /// <summary>
-    /// 从文件指定偏移位置读取少量头部特征字节并进行零分配格式嗅探
+    /// 流式截取封面照片前段并清理残留的 GCamera 动态照片标记
+    /// </summary>
+    private async Task ExtractCoverAsync(string imagePath, string photoPath, long photoLength, CancellationToken cancellationToken)
+    {
+        await BinaryFile.CopySegmentAsync(imagePath, photoPath, 0, photoLength, cancellationToken);
+        await exifTool.RemoveMotionPhotoTagsAsync(photoPath, cancellationToken);
+    }
+
+    /// <summary>
+    /// 从文件指定偏移位置读取少量头部特征字节并进行零分配格式嗅探（stackalloc 零堆分配）
     /// </summary>
     /// <param name="filePath">文件全路径</param>
     /// <param name="offset">数据起始偏移（字节）</param>
     /// <param name="length">读取长度（字节）</param>
     /// <param name="sniffer">嗅探器委托函数</param>
-    /// <param name="cancellationToken">取消令牌</param>
     /// <returns>检测出的扩展名字符串（含句点）</returns>
-    private static async Task<string> SniffExtensionAsync(string filePath, long offset, int length, Func<ReadOnlySpan<byte>, string> sniffer, CancellationToken cancellationToken)
+    private static string SniffExtension(string filePath, long offset, int length, Func<ReadOnlySpan<byte>, string> sniffer)
     {
         var bufferLength = Math.Min(64, length);
         if (bufferLength <= 0)
@@ -220,10 +245,10 @@ public sealed class MotionPhotoSplitter(IExifTool exifTool, IVideoConverter? vid
             return sniffer([]);
         }
 
-        var buffer = new byte[bufferLength];
-        await using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, useAsync: true);
+        Span<byte> buffer = stackalloc byte[bufferLength];
+        using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096);
         stream.Seek(offset, SeekOrigin.Begin);
-        var read = await stream.ReadAsync(buffer.AsMemory(0, bufferLength), cancellationToken);
-        return sniffer(buffer.AsSpan(0, read));
+        var read = stream.Read(buffer);
+        return sniffer(buffer[..read]);
     }
 }

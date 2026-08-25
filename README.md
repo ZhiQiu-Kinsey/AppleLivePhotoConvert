@@ -68,7 +68,7 @@
 | 模式 / 命令 | 输入源文件 | 输出目标文件 | 兼容平台 / 播放支持 | 核心应用场景 |
 | :--- | :--- | :--- | :--- | :--- |
 | **合成 (`merge`)** | iPhone 导出片 (`HEIC/JPG` + `MOV`) | 单文件动态照片 (`MVIMG_*.jpg`) | 小米澎湃 OS / MIUI 相册<br>Google Photos<br>Windows 11 照片<br>三星相册 | 苹果手机换机至安卓，或需在 PC/安卓上查看动态照片 |
-| **苹果还原 (`split -f apple`)** | 安卓动态照片 (`.jpg/.heic`) | 苹果实况对 (`.jpg/.heic` + `.mov`) | iPhone 照片 App (iOS)<br>Mac 照片 App (macOS)<br>iCloud Web | 安卓换机至 iPhone，长按即可恢复实况动态效果 |
+| **苹果还原 (`split -f apple`)** | 安卓动态照片 (`.jpg/.heic`) | 苹果实况对 (`.HEIC` + `.MOV`) | iPhone 照片 App (iOS)<br>Mac 照片 App (macOS)<br>iCloud Web | 安卓换机至 iPhone，长按即可恢复实况动态效果 |
 | **安卓解包 (`split -f android`)** | 安卓动态照片 (`.jpg/.heic`) | 静态图片 + 视频 (`.jpg` + `.mp4`) | 全平台播放器、剪辑软件 (PR/剪映) | 提取动态照片中的微视频素材进行视频剪辑或保存封面 |
 | **瘦身优化 (`strip`)** | 动态照片 / JPEG 图片 | 高画质 HEIC (`.heic`) 或纯 JPG | 全平台支持 HEIC 解码的系统与设备 | 手机相册空间告急，批量释放 60%~96% 存储空间 |
 
@@ -149,7 +149,7 @@ LivePhotoConvert merge [选项]
 #### 2. `split` (拆分动态照片)
 扫描输入目录中的动态照片并将其解包：
 - `-f android`（默认）：输出 `.jpg/.heic` + `.mp4`。
-- `-f apple`：输出 `.jpg/.heic` + `.mov`，并为照片与视频双向注入相同的 `ContentIdentifier` UUID。
+- `-f apple`：输出 `.HEIC` + `.MOV`（JPEG 封面自动转码为 HEIC），并为照片与视频双向注入相同的 `ContentIdentifier` UUID。
 ```bash
 LivePhotoConvert split [选项]
 ```
@@ -178,7 +178,7 @@ LivePhotoConvert tools [选项]
 | `--format <格式>` | `-f` | `split` | `android` | 拆分格式：`android`（提取 MP4）或 `apple`（生成 iOS 实况 MOV） |
 | `--source-action <策略>` | `-a` / `-s` | `merge` | `keep` | 合成成功后原文件处理策略：`keep`（保留）、`move`（移动至已处理）、`recycle`（放入回收站）、`delete`（永久删除） |
 | `--no-heic` | | `strip` | `false` | 跳过 HEIC 格式转换，仅剥离动态照片中的内嵌视频并保留原图格式 |
-| `--quality <数值>` | `-q` | `strip` | `65` | HEIC 压缩质量（`1`–`100`，推荐 `60-75`，画质视觉无损且体积大幅缩减） |
+| `--quality <数值>` | `-q` | `split`, `strip` | `90` | HEIC 压缩质量（`1`–`100`，默认 `90` 视觉无损，Apple 拆分与瘦身转码时使用） |
 | `--skip-validation` / `--no-verify` | | `merge` | `false` | 跳过 ContentIdentifier 与时间差校验，强制仅按文件名主干匹配 |
 | `--parallel <数量>` | `-p` | 全部 | CPU 核心数 | 最大并发处理任务数（默认根据 CPU 核心数自动调优） |
 | `--overwrite` | | 全部 | `false` | 输出目录存在同名文件时直接覆盖（默认自动追加 `_1`、`_2` 序号防覆盖） |
@@ -246,7 +246,7 @@ LivePhotoConvert tools [选项]
 
 苹果 Live Photo 由一张静态图片和一个 QuickTime MOV 视频组成，系统相册依赖全局唯一的 UUID 进行强校验绑定：
 1. **图片端**：在 MakerNotes 或 Exif 元数据中注入 `ContentIdentifier`（例如 `1E874403-E522-4589-948A-E97AC157F32D`）；
-2. **视频端**：在 QuickTime MOV 容器的元数据轨道 `com.apple.quicktime.content.identifier` 中写入相同 UUID，并设置 `still-image-time = 0`；
+2. **视频端**：在 QuickTime MOV 容器的元数据轨道 `com.apple.quicktime.content.identifier` 中写入相同 UUID；
 3. 当使用本工具的 `split -f apple` 模式时，程序会自动生成唯一 UUID 并同步写入两端，确保导入 iPhone 或 Mac 照片库后可正常识别为原生实况照片。
 
 ---

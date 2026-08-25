@@ -37,6 +37,14 @@ public interface IExifTool : IAsyncDisposable
     Task RemoveMotionPhotoTagsAsync(string imagePath, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// 将源文件的全部元数据（EXIF、GPS、MakerNotes、XMP、ICC 颜色配置文件等）完整复制到目标文件
+    /// </summary>
+    /// <param name="sourcePath">源文件路径</param>
+    /// <param name="destinationPath">目标文件路径</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    Task CopyAllTagsAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// 读取 MicroVideoOffset 标签
     /// </summary>
     /// <param name="imagePath">图片路径</param>
@@ -62,12 +70,13 @@ public interface IExifTool : IAsyncDisposable
     Task WriteAppleContentIdentifierAsync(string photoPath, string contentIdentifier, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 为 QuickTime 视频写入 Apple Live Photo 唯一标识 (ContentIdentifier)
+    /// 为 QuickTime 视频写入 Apple Live Photo 唯一标识 (ContentIdentifier) 并从照片同步拍摄时间与设备元数据
     /// </summary>
     /// <param name="videoPath">QuickTime 视频文件路径</param>
+    /// <param name="photoPath">配对的照片文件路径（可选，用于同步拍摄时间、GPS 和相机信息）</param>
     /// <param name="contentIdentifier">全局唯一标识符</param>
     /// <param name="cancellationToken">取消令牌</param>
-    Task WriteAppleVideoMetadataAsync(string videoPath, string contentIdentifier, CancellationToken cancellationToken = default);
+    Task WriteAppleVideoMetadataAsync(string videoPath, string? photoPath, string contentIdentifier, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 读取文件的拍摄/创建时间

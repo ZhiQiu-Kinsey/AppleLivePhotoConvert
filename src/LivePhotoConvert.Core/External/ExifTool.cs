@@ -147,6 +147,23 @@ public sealed class ExifTool : IExifTool
     }
 
     /// <inheritdoc />
+    public async Task CopyAllTagsAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken = default)
+    {
+        List<string> arguments =
+        [
+            "-tagsFromFile", sourcePath,
+            "-all:all",
+            "-unsafe",
+            "-icc_profile",
+            "-overwrite_original",
+            destinationPath
+        ];
+
+        var response = await _session.ExecuteAsync(arguments, cancellationToken);
+        ThrowIfFailed(response, "复制全量元数据");
+    }
+
+    /// <inheritdoc />
     public async Task<long?> TryReadMicroVideoOffsetAsync(string imagePath, CancellationToken cancellationToken = default)
     {
         List<string> arguments =
@@ -231,23 +248,43 @@ public sealed class ExifTool : IExifTool
     }
 
     /// <summary>
-    /// 为 QuickTime 视频写入 Apple Live Photo 唯一配对标识 (ContentIdentifier) 与静态帧时间锚点
+    /// 为 QuickTime 视频写入 Apple Live Photo 唯一配对标识 (ContentIdentifier) 并从照片同步拍摄时间与设备元数据
     /// </summary>
     /// <param name="videoPath">QuickTime MOV 视频路径</param>
+    /// <param name="photoPath">配对的照片文件路径（可选，用于同步拍摄时间、GPS 和相机信息）</param>
     /// <param name="contentIdentifier">生成的配对 UUID</param>
     /// <param name="cancellationToken">取消令牌</param>
-    public async Task WriteAppleVideoMetadataAsync(string videoPath, string contentIdentifier, CancellationToken cancellationToken = default)
+    public async Task WriteAppleVideoMetadataAsync(string videoPath, string? photoPath, string contentIdentifier, CancellationToken cancellationToken = default)
     {
-        List<string> arguments =
-        [
+        List<string> arguments = [];
+        if (!string.IsNullOrEmpty(photoPath))
+        {
+            arguments.AddRange([
+                // QuickTime 时间标签以 UTC(1904) 存储，Apple 原片亦为 UTC；不加该 API 会写入本地时间导致时区偏移
+                "-api", "QuickTimeUTC=1",
+                "-tagsFromFile", photoPath,
+                "-QuickTime:CreateDate<DateTimeOriginal",
+                "-QuickTime:ModifyDate<DateTimeOriginal",
+                "-TrackCreateDate<DateTimeOriginal",
+                "-TrackModifyDate<DateTimeOriginal",
+                "-MediaCreateDate<DateTimeOriginal",
+                "-MediaModifyDate<DateTimeOriginal",
+                "-Keys:CreationDate<DateTimeOriginal",
+                "-Keys:GPSCoordinates<GPSPosition",
+                "-Keys:Make<Make",
+                "-Keys:Model<Model",
+                "-Keys:Software<Software"
+            ]);
+        }
+
+        arguments.AddRange([
             $"-Keys:ContentIdentifier={contentIdentifier}",
-            "-Keys:StillImageTime=0",
             "-overwrite_original",
             videoPath
-        ];
+        ]);
 
         var response = await _session.ExecuteAsync(arguments, cancellationToken);
-        ThrowIfFailed(response, "写入 Apple 视频标识");
+        ThrowIfFailed(response, "写入 Apple 视频标识与元数据");
     }
 
     /// <inheritdoc />

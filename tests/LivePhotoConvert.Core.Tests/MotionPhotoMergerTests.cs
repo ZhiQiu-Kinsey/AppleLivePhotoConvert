@@ -95,6 +95,47 @@ public class MotionPhotoMergerTests
     }
 
     /// <summary>
+    /// 测试当源图片为 HEIC 格式时，合成流水线应将其转码为 JPEG 并完整复制元数据
+    /// </summary>
+    [Fact]
+    public async Task MergeAsync_WhenPhotoIsHeic_ShouldConvertJpegAndCopyAllTags()
+    {
+        using var tempDir = new TempDirectory();
+        var photoBytes = new byte[2048];
+        var videoBytes = new byte[5000];
+
+        // 构造 HEIC 头部
+        photoBytes[4] = (byte)'f'; photoBytes[5] = (byte)'t'; photoBytes[6] = (byte)'y'; photoBytes[7] = (byte)'p';
+        photoBytes[8] = (byte)'h'; photoBytes[9] = (byte)'e'; photoBytes[10] = (byte)'i'; photoBytes[11] = (byte)'c';
+
+        var heicPath = tempDir.CreateFile("IMG_0001.heic", photoBytes);
+        var movPath = tempDir.CreateFile("IMG_0001.mov", videoBytes);
+
+        var outputDir = tempDir.Combine("output");
+        var pairing = MediaPairMatcher.Match([heicPath, movPath]);
+
+        var fakeExif = new FakeExifTool();
+        var fakeImg = new FakeImageConverter();
+        var fakeVideo = new FakeVideoConverter();
+
+        var merger = new MotionPhotoMerger(fakeExif, fakeImg, fakeVideo);
+        var options = new MergeOptions
+        {
+            InputDirectory = tempDir.Root,
+            OutputDirectory = outputDir,
+            SourceFileAction = SourceFileAction.Keep,
+            SkipValidation = true
+        };
+
+        var report = await merger.MergeAsync(pairing, options, TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, report.Total);
+        Assert.Equal(1, report.Succeeded);
+        Assert.Empty(report.Failures);
+        Assert.True(fakeExif.CopyAllTagsCalled, "HEIC 封面转码 JPEG 时必须调用 CopyAllTagsAsync 保证元数据不丢失");
+    }
+
+    /// <summary>
     /// 用于测试的图片转换器 Mock
     /// </summary>
     private sealed class FakeImageConverter : IImageConverter
@@ -137,11 +178,19 @@ public class MotionPhotoMergerTests
     {
         public Dictionary<string, string> ContentIdentifiers { get; } = new();
 
+        public bool CopyAllTagsCalled { get; private set; }
+
         public Task WriteMotionPhotoTagsAsync(string imagePath, long videoOffset, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
 
         public Task RemoveMotionPhotoTagsAsync(string imagePath, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
+
+        public Task CopyAllTagsAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken = default)
+        {
+            CopyAllTagsCalled = true;
+            return Task.CompletedTask;
+        }
 
         public Task<long?> TryReadMicroVideoOffsetAsync(string imagePath, CancellationToken cancellationToken = default) =>
             Task.FromResult<long?>(null);
@@ -155,7 +204,7 @@ public class MotionPhotoMergerTests
         public Task WriteAppleContentIdentifierAsync(string photoPath, string contentIdentifier, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
 
-        public Task WriteAppleVideoMetadataAsync(string videoPath, string contentIdentifier, CancellationToken cancellationToken = default) =>
+        public Task WriteAppleVideoMetadataAsync(string videoPath, string? photoPath, string contentIdentifier, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
 
         public Task<DateTime?> TryReadCreateDateAsync(string filePath, CancellationToken cancellationToken = default) =>

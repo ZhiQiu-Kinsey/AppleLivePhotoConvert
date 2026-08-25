@@ -129,5 +129,5 @@ sealed record CliOptions
     /// <summary>
     /// HEIC 压缩质量 (1–100)（瘦身命令使用）
     /// </summary>
-    public int HeicQuality { get; init; } = 65;
+    public int HeicQuality { get; init; } = 90;
 }

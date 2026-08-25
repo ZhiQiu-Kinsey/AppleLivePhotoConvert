@@ -58,7 +58,7 @@ public class MotionPhotoSplitterTests
     }
 
     /// <summary>
-    /// 测试 Apple 拆分模式：验证视频被封装为 MOV，且照片与视频写入了相同的 ContentIdentifier 配对 UUID
+    /// 测试 Apple 拆分模式：验证 JPEG 封面转为 HEIC，视频被封装为 MOV，且照片与视频写入了相同的 ContentIdentifier 配对 UUID
     /// </summary>
     [Fact]
     public async Task SplitAsync_AppleFormat_ShouldSplit_Into_Photo_And_Mov_With_Metadata()
@@ -77,7 +77,8 @@ public class MotionPhotoSplitterTests
 
         var fakeExif = new FakeSplitterExifTool { MicroVideoOffset = 250 };
         var fakeVideo = new FakeSplitterVideoConverter();
-        var splitter = new MotionPhotoSplitter(fakeExif, fakeVideo);
+        var fakeImage = new FakeSplitterImageConverter();
+        var splitter = new MotionPhotoSplitter(fakeExif, fakeVideo, fakeImage);
 
         var options = new SplitOptions
         {
@@ -93,14 +94,17 @@ public class MotionPhotoSplitterTests
         Assert.Equal(1, report.Succeeded);
         Assert.Empty(report.Failures);
 
-        var extractedPhoto = Path.Combine(outputDir, "IMG_1234.jpg");
-        var extractedVideo = Path.Combine(outputDir, "IMG_1234.mov");
+        // Apple 实况照片始终输出大写扩展名 .HEIC + .MOV
+        var extractedPhoto = Path.Combine(outputDir, "IMG_1234.HEIC");
+        var extractedVideo = Path.Combine(outputDir, "IMG_1234.MOV");
 
         Assert.True(File.Exists(extractedPhoto));
         Assert.True(File.Exists(extractedVideo));
         Assert.NotNull(fakeExif.WrittenAppleContentIdentifier);
         Assert.NotNull(fakeExif.WrittenAppleVideoContentIdentifier);
         Assert.Equal(fakeExif.WrittenAppleContentIdentifier, fakeExif.WrittenAppleVideoContentIdentifier);
+        Assert.Equal(extractedPhoto, fakeExif.WrittenAppleVideoPhotoPath);
+        Assert.True(fakeImage.ConvertToHeicCalled, "JPEG 封面应被转为 HEIC");
     }
 
     /// <summary>
@@ -151,6 +155,27 @@ public class MotionPhotoSplitterTests
     }
 
     /// <summary>
+    /// 模拟测试用图片格式转换器桩
+    /// </summary>
+    private sealed class FakeSplitterImageConverter : IImageConverter
+    {
+        public bool ConvertToHeicCalled { get; private set; }
+
+        public Task ConvertToJpegAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken = default)
+        {
+            File.Copy(sourcePath, destinationPath, overwrite: true);
+            return Task.CompletedTask;
+        }
+
+        public Task ConvertToHeicAsync(string sourcePath, string destinationPath, int quality = 90, CancellationToken cancellationToken = default)
+        {
+            ConvertToHeicCalled = true;
+            File.Copy(sourcePath, destinationPath, overwrite: true);
+            return Task.CompletedTask;
+        }
+    }
+
+    /// <summary>
     /// 模拟测试用 ExifTool 桩
     /// </summary>
     private sealed class FakeSplitterExifTool : IExifTool
@@ -158,11 +183,15 @@ public class MotionPhotoSplitterTests
         public long? MicroVideoOffset { get; set; }
         public string? WrittenAppleContentIdentifier { get; private set; }
         public string? WrittenAppleVideoContentIdentifier { get; private set; }
+        public string? WrittenAppleVideoPhotoPath { get; private set; }
 
         public Task WriteMotionPhotoTagsAsync(string imagePath, long videoOffset, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
 
         public Task RemoveMotionPhotoTagsAsync(string imagePath, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task CopyAllTagsAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
 
         public Task<long?> TryReadMicroVideoOffsetAsync(string imagePath, CancellationToken cancellationToken = default) =>
@@ -177,9 +206,10 @@ public class MotionPhotoSplitterTests
             return Task.CompletedTask;
         }
 
-        public Task WriteAppleVideoMetadataAsync(string videoPath, string contentIdentifier, CancellationToken cancellationToken = default)
+        public Task WriteAppleVideoMetadataAsync(string videoPath, string? photoPath, string contentIdentifier, CancellationToken cancellationToken = default)
         {
             WrittenAppleVideoContentIdentifier = contentIdentifier;
+            WrittenAppleVideoPhotoPath = photoPath;
             return Task.CompletedTask;
         }
 

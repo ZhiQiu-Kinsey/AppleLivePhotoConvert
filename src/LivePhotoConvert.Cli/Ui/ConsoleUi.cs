@@ -146,13 +146,30 @@ static class ConsoleUi
                      .UseConverter(format => format switch
                      {
                          SplitTargetFormat.Android => "1. 标准安卓格式 (.jpg/.heic + .mp4，原生无损提取，适合备份与通用播放)",
-                         SplitTargetFormat.Apple => "2. 苹果实况照片 (.jpg/.heic + .mov，写入 Live Photo 元数据，可导入 iOS/Mac 动态播放)",
+                         SplitTargetFormat.Apple => "2. 苹果实况照片 (.HEIC + .MOV，写入 Live Photo 元数据，可导入 iOS/Mac 动态播放)",
                          _ => format.ToString()
                      })
                      .AddChoices(
                          SplitTargetFormat.Android,
                          SplitTargetFormat.Apple
                      );
+
+        return await prompt.ShowAsync(AnsiConsole.Console, cancellationToken);
+    }
+
+    /// <summary>
+    /// 询问 HEIC 压缩质量（支持即时取消，直接回车使用默认值 90）
+    /// </summary>
+    /// <param name="defaultQuality">默认质量值</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>用户输入的质量值 (1–100)</returns>
+    public static async Task<int> AskHeicQualityAsync(int defaultQuality = 90, CancellationToken cancellationToken = default)
+    {
+        var prompt = new TextPrompt<int>($"[yellow]请输入 HEIC 压缩质量 (1-100，直接回车使用默认值 {defaultQuality}，越高画质越好体积越大)：[/]")
+                     .DefaultValue(defaultQuality)
+                     .Validate(q => q is >= 1 and <= 100
+                         ? ValidationResult.Success()
+                         : ValidationResult.Error("[red]质量值必须在 1 到 100 之间[/]"));
 
         return await prompt.ShowAsync(AnsiConsole.Console, cancellationToken);
     }

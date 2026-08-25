@@ -405,6 +405,17 @@ public static class Program
             }
         }
 
+        // Apple 实况照片模式下，交互询问 HEIC 压缩质量
+        var heicQuality = options.HeicQuality;
+        if (targetFormat == SplitTargetFormat.Apple && interactive)
+        {
+            heicQuality = await ConsoleUi.AskHeicQualityAsync(options.HeicQuality, cancellationToken);
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return WaitForReturn(ExitCodes.Canceled, interactive);
+            }
+        }
+
         if (!options.AssumeYes && !await ConsoleUi.ConfirmAsync("是否开始拆分？", cancellationToken))
         {
             AnsiConsole.MarkupLine("[yellow]拆分已取消。[/]");
@@ -420,6 +431,7 @@ public static class Program
         await using var exifToolDisposer = exifTool;
 
         FfmpegVideoConverter? videoConverter = null;
+        IImageConverter? imageConverter = null;
         if (targetFormat == SplitTargetFormat.Apple)
         {
             videoConverter = await EnsureFfmpegAsync(options, interactive, cancellationToken);
@@ -427,10 +439,18 @@ public static class Program
             {
                 return WaitForReturn(ExitCodes.Failure, interactive);
             }
+
+            var heifEnc = await EnsureHeifEncAsync(options, interactive, cancellationToken);
+            if (heifEnc is null || cancellationToken.IsCancellationRequested)
+            {
+                return WaitForReturn(ExitCodes.Failure, interactive);
+            }
+
+            imageConverter = heifEnc;
         }
 
         var progress = new ConsoleProgressReporter();
-        var splitter = new MotionPhotoSplitter(exifTool, videoConverter, progress);
+        var splitter = new MotionPhotoSplitter(exifTool, videoConverter, imageConverter, progress);
 
         var splitOptions = new SplitOptions
         {
@@ -438,6 +458,7 @@ public static class Program
             OutputDirectory = output,
             TargetFormat = targetFormat,
             Overwrite = options.Overwrite,
+            HeicQuality = heicQuality,
             Parallelism = options.Parallelism ?? MergeOptions.DefaultParallelism
         };
 
@@ -511,8 +532,18 @@ public static class Program
         {
             ConsoleUi.WriteLine("⚠ 就地修改模式：原始文件将被直接替换，操作不可撤销！", ConsoleColor.Yellow);
         }
+        // 交互模式下，允许用户自定义 HEIC 压缩质量
+        var heicQuality = options.HeicQuality;
+        if (options.ConvertToHeic && interactive)
+        {
+            heicQuality = await ConsoleUi.AskHeicQualityAsync(options.HeicQuality, cancellationToken);
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return WaitForReturn(ExitCodes.Canceled, interactive);
+            }
+        }
 
-        Console.WriteLine($"转换 HEIC：{(options.ConvertToHeic ? $"是 (质量 {options.HeicQuality})" : "否，仅剥离视频")}");
+        Console.WriteLine($"转换 HEIC：{(options.ConvertToHeic ? $"是 (质量 {heicQuality})" : "否，仅剥离视频")}");
 
         if (!options.AssumeYes && !await ConsoleUi.ConfirmAsync("是否开始处理？", cancellationToken))
         {
@@ -548,7 +579,7 @@ public static class Program
             InputDirectory = input,
             OutputDirectory = output,
             ConvertToHeic = options.ConvertToHeic,
-            HeicQuality = options.HeicQuality,
+            HeicQuality = heicQuality,
             Overwrite = options.Overwrite,
             Parallelism = options.Parallelism ?? MergeOptions.DefaultParallelism
         };

@@ -42,7 +42,7 @@ jobs:
           Remove-Item -Path "dist/aot/*.pdb" -Force -ErrorAction SilentlyContinue
 
           # 提取版本号并打包为 ZIP 归档
-          $tag = "${{ github.ref_name || inputs.tag_name }}"
+          $tag = "${{ inputs.tag_name || github.ref_name }}"
           if (-not $tag) { $tag = "win-x64" }
           $zipName = "LivePhotoConvert-$tag-win-x64.zip"
           Compress-Archive -Path "dist/aot/*" -DestinationPath $zipName -Force
@@ -51,8 +51,8 @@ jobs:
       - name: 创建 GitHub Release 并上传 ZIP 压缩包
         uses: softprops/action-gh-release@v2
         with:
-          name: LivePhotoConvert ${{ github.ref_name || inputs.tag_name }}
-          tag_name: ${{ github.ref_name || inputs.tag_name }}
+          name: LivePhotoConvert ${{ inputs.tag_name || github.ref_name }}
+          tag_name: ${{ inputs.tag_name || github.ref_name }}
           draft: false
           prerelease: false
           generate_release_notes: true

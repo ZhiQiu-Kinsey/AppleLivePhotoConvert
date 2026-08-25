@@ -21,9 +21,9 @@ public sealed record StripOptions
     public bool ConvertToHeic { get; init; } = true;
 
     /// <summary>
-    /// HEIC 压缩质量 (1–100)，默认 65（画质接近无损，体积比原始 JPEG 减少约 50%–70%）
+    /// HEIC 压缩质量 (1–100)，默认 90（视觉几乎无损，体积比原始 JPEG 减少约 40%–60%）
     /// </summary>
-    public int HeicQuality { get; init; } = 65;
+    public int HeicQuality { get; init; } = 90;
 
     /// <summary>
     /// 输出目录已存在同名文件时是否直接覆盖；为 <c>false</c> 时自动追加 _1、_2 后缀

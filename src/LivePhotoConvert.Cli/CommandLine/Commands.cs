@@ -133,6 +133,13 @@ public sealed class SplitSettings : CommonSettings
     [Description("输出目录存在同名文件时直接覆盖")]
     [CommandOption("--overwrite")]
     public bool Overwrite { get; init; }
+
+    /// <summary>
+    /// HEIC 压缩质量（Apple 实况照片模式下将 JPEG 转为 HEIC 时使用）
+    /// </summary>
+    [Description("HEIC 压缩质量 (1-100，默认 90，Apple 格式将 JPEG 封面转为 HEIC 时使用)")]
+    [CommandOption("-q|--quality <N>")]
+    public int? Quality { get; init; }
 }
 
 /// <summary>
@@ -186,10 +193,12 @@ public sealed class SplitCommand : AsyncCommand<SplitSettings>
             SplitFormat = settings.Format ?? SplitTargetFormat.Android,
             ExplicitSplitFormat = settings.Format.HasValue,
             Overwrite = settings.Overwrite,
+            HeicQuality = settings.Quality ?? 90,
             AutoDownload = settings.AutoDownload,
             CustomMirror = settings.CustomMirror,
             ExifToolPath = settings.ExifToolPath,
             FfmpegPath = settings.FfmpegPath,
+            HeifEncPath = settings.HeifEncPath,
             AssumeYes = settings.AssumeYes,
             Parallelism = settings.Parallelism
         };
@@ -213,6 +222,7 @@ public sealed class ToolsCommand : AsyncCommand<ToolsSettings>
             CustomMirror = settings.CustomMirror,
             ExifToolPath = settings.ExifToolPath,
             FfmpegPath = settings.FfmpegPath,
+            HeifEncPath = settings.HeifEncPath,
             AssumeYes = settings.AssumeYes
         };
 
@@ -249,7 +259,7 @@ public sealed class StripSettings : CommonSettings
     /// <summary>
     /// HEIC 压缩质量
     /// </summary>
-    [Description("HEIC 压缩质量 (1-100，默认 65，越高画质越好体积越大)")]
+    [Description("HEIC 压缩质量 (1-100，默认 90，越高画质越好体积越大)")]
     [CommandOption("-q|--quality <N>")]
     public int? Quality { get; init; }
 
@@ -275,7 +285,7 @@ public sealed class StripCommand : AsyncCommand<StripSettings>
             Input = settings.Input,
             Output = settings.Output,
             ConvertToHeic = !settings.NoHeic,
-            HeicQuality = settings.Quality ?? 65,
+            HeicQuality = settings.Quality ?? 90,
             Overwrite = settings.Overwrite,
             AutoDownload = settings.AutoDownload,
             CustomMirror = settings.CustomMirror,
