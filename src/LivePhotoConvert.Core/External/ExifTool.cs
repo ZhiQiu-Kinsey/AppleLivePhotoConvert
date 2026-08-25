@@ -259,6 +259,9 @@ public sealed class ExifTool : IExifTool
         List<string> arguments = [];
         if (!string.IsNullOrEmpty(photoPath))
         {
+            // 读取照片 GPS 经纬度与海拔，构造含海拔的完整坐标（Apple ISO6709 需 lat/lon/alt 三段式）
+            var gpsCoordinates = await TryReadGpsCoordinatesAsync(photoPath, cancellationToken);
+
             arguments.AddRange([
                 // QuickTime 时间标签以 UTC(1904) 存储，Apple 原片亦为 UTC；不加该 API 会写入本地时间导致时区偏移
                 "-api", "QuickTimeUTC=1",
@@ -269,8 +272,15 @@ public sealed class ExifTool : IExifTool
                 "-TrackModifyDate<DateTimeOriginal",
                 "-MediaCreateDate<DateTimeOriginal",
                 "-MediaModifyDate<DateTimeOriginal",
-                "-Keys:CreationDate<DateTimeOriginal",
-                "-Keys:GPSCoordinates<GPSPosition",
+                "-Keys:CreationDate<DateTimeOriginal"
+            ]);
+
+            // 优先写含海拔的完整坐标；照片无 GPS 时退回仅经纬度拷贝
+            arguments.Add(gpsCoordinates is not null
+                ? $"-Keys:GPSCoordinates={gpsCoordinates}"
+                : "-Keys:GPSCoordinates<GPSPosition");
+
+            arguments.AddRange([
                 "-Keys:Make<Make",
                 "-Keys:Model<Model",
                 "-Keys:Software<Software"
@@ -285,6 +295,47 @@ public sealed class ExifTool : IExifTool
 
         var response = await _session.ExecuteAsync(arguments, cancellationToken);
         ThrowIfFailed(response, "写入 Apple 视频标识与元数据");
+    }
+
+    /// <summary>
+    /// 读取照片的 GPS 经纬度与海拔，拼接为 Apple QuickTime 所需的完整坐标字符串（lat, lon, alt）
+    /// </summary>
+    /// <param name="photoPath">照片文件路径</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>完整坐标字符串（含海拔）；照片无 GPS 时返回 <c>null</c></returns>
+    private async Task<string?> TryReadGpsCoordinatesAsync(string photoPath, CancellationToken cancellationToken)
+    {
+        List<string> arguments = ["-s3", "-GPSPosition", "-GPSAltitude", photoPath];
+        var response = await _session.ExecuteAsync(arguments, cancellationToken);
+        ThrowIfFailed(response, "读取 GPS 坐标");
+
+        string? position = null;
+        string? altitude = null;
+        foreach (var line in response.StandardOutput.AsSpan().EnumerateLines())
+        {
+            var trimmed = line.Trim();
+            if (trimmed.IsEmpty)
+            {
+                continue;
+            }
+
+            if (position is null)
+            {
+                position = trimmed.ToString();
+            }
+            else
+            {
+                altitude = trimmed.ToString();
+                break;
+            }
+        }
+
+        if (position is null)
+        {
+            return null;
+        }
+
+        return altitude is null ? position : $"{position}, {altitude}";
     }
 
     /// <inheritdoc />
