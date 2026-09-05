@@ -92,14 +92,21 @@ public class ToolDownloaderTests
     }
 
     /// <summary>
-    /// 测试 ExifTool 和 FFmpeg 的所有预置下载源均配置了合法的 HTTPS URL 与非空名称
+    /// 测试 ExifTool、FFmpeg 和 HeifEnc 的所有预置下载源均配置了合法的 HTTPS URL 与非空名称
     /// </summary>
     [Theory]
     [InlineData("ExifTool")]
     [InlineData("FFmpeg")]
+    [InlineData("HeifEnc")]
     public void DownloadSources_Should_Have_Valid_Https_Urls(string toolName)
     {
-        var tool = toolName == "ExifTool" ? ExternalToolMetadata.ExifTool : ExternalToolMetadata.FFmpeg;
+        var tool = toolName switch
+        {
+            "ExifTool" => ExternalToolMetadata.ExifTool,
+            "FFmpeg" => ExternalToolMetadata.FFmpeg,
+            "HeifEnc" => ExternalToolMetadata.HeifEnc,
+            _ => throw new ArgumentException(toolName)
+        };
 
         Assert.NotEmpty(tool.Sources);
         foreach (var source in tool.Sources)

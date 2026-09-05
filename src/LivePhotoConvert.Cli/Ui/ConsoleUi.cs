@@ -134,6 +134,32 @@ static class ConsoleUi
     }
 
     /// <summary>
+    /// 询问合成后动态照片的文件命名方式（支持即时取消）
+    /// </summary>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>用户选择的命名方式</returns>
+    public static async Task<MergeNamingFormat> AskNamingFormatAsync(CancellationToken cancellationToken = default)
+    {
+        var prompt = new SelectionPrompt<MergeNamingFormat>()
+            .Title("[yellow]请选择合成后动态照片的文件命名方式 (使用 ↑/↓ 选择，回车确认)：[/]")
+            .PageSize(5)
+            .UseConverter(format => format switch
+            {
+                MergeNamingFormat.XiaomiWithOriginal => "[green][[推荐]][/] 小米时间戳带原名 (MVIMG_20260905_124144_IMG_0001.jpg，防网盘时间丢失，相册智能归档)",
+                MergeNamingFormat.Original => "保持原始文件名 (MVIMG_IMG_0001.jpg，默认向后兼容，保持与原图编号一致)",
+                MergeNamingFormat.XiaomiClean => "纯小米相机时间戳 (MVIMG_20260905_124144.jpg，小米原生相机命名规范)",
+                _ => format.ToString()
+            })
+            .AddChoices(
+                MergeNamingFormat.XiaomiWithOriginal,
+                MergeNamingFormat.Original,
+                MergeNamingFormat.XiaomiClean
+            );
+
+        return await prompt.ShowAsync(AnsiConsole.Console, cancellationToken);
+    }
+
+    /// <summary>
     /// 询问拆分输出的目标格式（支持即时取消）
     /// </summary>
     /// <param name="cancellationToken">取消令牌</param>

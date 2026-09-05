@@ -76,7 +76,7 @@ public static class ExternalToolMetadata
         Sources:
         [
             new ToolDownloadSource("阿里云国内高速镜像 (npmmirror)", "https://registry.npmmirror.com/exiftool-vendored.exe/-/exiftool-vendored.exe-13.59.2.tgz"),
-            new ToolDownloadSource("国内 GitHub 加速镜像 (ghfast.top)", "https://ghfast.top/https://github.com/exiftool/exiftool/archive/refs/tags/13.59.zip", IsGitHubRelease: true),
+            new ToolDownloadSource("国内 GitHub 加速镜像 (gh-proxy.com)", "https://gh-proxy.com/https://github.com/exiftool/exiftool/archive/refs/tags/13.59.zip", IsGitHubRelease: true),
             new ToolDownloadSource("GitHub 官方源", "https://github.com/exiftool/exiftool/archive/refs/tags/13.59.zip", IsGitHubRelease: true)
         ],
         ZipEntryFilter: entry =>
@@ -100,8 +100,8 @@ public static class ExternalToolMetadata
         Sources:
         [
             new ToolDownloadSource("阿里云国内高速镜像 (npmmirror)", "https://registry.npmmirror.com/@ffmpeg-binary/win32-x64/-/win32-x64-7.0.0.tgz"),
-            new ToolDownloadSource("国内 GitHub 加速镜像 (ghfast.top)", "https://ghfast.top/https://github.com/GyanD/codexffmpeg/releases/download/7.0.2/ffmpeg-7.0.2-essentials_build.zip", IsGitHubRelease: true),
-            new ToolDownloadSource("国内 GitHub BtbN 镜像 (ghfast.top)", "https://ghfast.top/https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip", IsGitHubRelease: true),
+            new ToolDownloadSource("国内 GitHub 加速镜像 (gh-proxy.com)", "https://gh-proxy.com/https://github.com/GyanD/codexffmpeg/releases/download/7.0.2/ffmpeg-7.0.2-essentials_build.zip", IsGitHubRelease: true),
+            new ToolDownloadSource("国内 GitHub BtbN 镜像 (gh-proxy.com)", "https://gh-proxy.com/https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip", IsGitHubRelease: true),
             new ToolDownloadSource("GitHub 官方源", "https://github.com/GyanD/codexffmpeg/releases/download/7.0.2/ffmpeg-7.0.2-essentials_build.zip", IsGitHubRelease: true)
         ],
         ZipEntryFilter: entry =>
@@ -122,8 +122,9 @@ public static class ExternalToolMetadata
         TargetExecutableName: OperatingSystem.IsWindows() ? "heif-enc.exe" : "heif-enc",
         Sources:
         [
-            new ToolDownloadSource("国内 GitHub 加速镜像 (ghfast.top)", "https://ghfast.top/https://github.com/pphh77/libheif-Windowsbinary/releases/download/v1.23.1/libheif-1.23.1-win64.7z", IsGitHubRelease: true),
+            new ToolDownloadSource("国内 GitHub 加速镜像 1 (gh-proxy.com)", "https://gh-proxy.com/https://github.com/pphh77/libheif-Windowsbinary/releases/download/v1.23.1/libheif-1.23.1-win64.7z", IsGitHubRelease: true),
             new ToolDownloadSource("国内 GitHub 加速镜像 2 (ghproxy.net)", "https://ghproxy.net/https://github.com/pphh77/libheif-Windowsbinary/releases/download/v1.23.1/libheif-1.23.1-win64.7z", IsGitHubRelease: true),
+            new ToolDownloadSource("国内 GitHub 加速镜像 3 (gh.ddlc.top)", "https://gh.ddlc.top/https://github.com/pphh77/libheif-Windowsbinary/releases/download/v1.23.1/libheif-1.23.1-win64.7z", IsGitHubRelease: true),
             new ToolDownloadSource("GitHub 官方源", "https://github.com/pphh77/libheif-Windowsbinary/releases/download/v1.23.1/libheif-1.23.1-win64.7z", IsGitHubRelease: true)
         ],
         ZipEntryFilter: entry =>

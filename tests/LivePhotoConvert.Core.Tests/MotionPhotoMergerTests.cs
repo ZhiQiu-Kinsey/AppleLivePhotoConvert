@@ -132,7 +132,86 @@ public class MotionPhotoMergerTests
         Assert.Equal(1, report.Total);
         Assert.Equal(1, report.Succeeded);
         Assert.Empty(report.Failures);
-        Assert.True(fakeExif.CopyAllTagsCalled, "HEIC 封面转码 JPEG 时必须调用 CopyAllTagsAsync 保证元数据不丢失");
+        Assert.True(fakeExif.CopyCoverTagsCalled, "HEIC 封面转码 JPEG 时必须调用 CopyCoverTagsAsync 保证元数据不丢失且方向不被二次旋转");
+    }
+
+    [Theory]
+    [InlineData(MergeNamingFormat.Original, "MVIMG_IMG_0001.jpg")]
+    [InlineData(MergeNamingFormat.XiaomiWithOriginal, "MVIMG_20260905_124144_IMG_0001.jpg")]
+    [InlineData(MergeNamingFormat.XiaomiClean, "MVIMG_20260905_124144.jpg")]
+    public async Task MergeAsync_Should_Respect_NamingFormat_When_ExifDate_Available(
+        MergeNamingFormat namingFormat,
+        string expectedFileName)
+    {
+        using var tempDir = new TempDirectory();
+        var photoPath = tempDir.CreateFile("IMG_0001.jpg", new byte[2048]);
+        var movPath = tempDir.CreateFile("IMG_0001.mov", new byte[5000]);
+
+        var outputDir = tempDir.Combine("output");
+        var pairing = MediaPairMatcher.Match([photoPath, movPath]);
+
+        var fakeExif = new FakeExifTool
+        {
+            CreateDate = new DateTime(2026, 9, 5, 12, 41, 44)
+        };
+        var fakeImg = new FakeImageConverter();
+        var fakeVideo = new FakeVideoConverter();
+
+        var merger = new MotionPhotoMerger(fakeExif, fakeImg, fakeVideo);
+        var options = new MergeOptions
+        {
+            InputDirectory = tempDir.Root,
+            OutputDirectory = outputDir,
+            SourceFileAction = SourceFileAction.Keep,
+            SkipValidation = true,
+            NamingFormat = namingFormat
+        };
+
+        var report = await merger.MergeAsync(pairing, options, TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, report.Total);
+        Assert.Equal(1, report.Succeeded);
+        Assert.Empty(report.Failures);
+
+        var expectedPath = Path.Combine(outputDir, expectedFileName);
+        Assert.True(File.Exists(expectedPath), $"预期输出文件 {expectedFileName} 不存在，实际输出目录文件: {string.Join(", ", Directory.GetFiles(outputDir))}");
+    }
+
+    [Fact]
+    public async Task MergeAsync_Should_Fallback_To_FileNameDate_When_Exif_Missing()
+    {
+        using var tempDir = new TempDirectory();
+        var photoPath = tempDir.CreateFile("IMG_20240815_143000.jpg", new byte[2048]);
+        var movPath = tempDir.CreateFile("IMG_20240815_143000.mov", new byte[5000]);
+
+        var outputDir = tempDir.Combine("output");
+        var pairing = MediaPairMatcher.Match([photoPath, movPath]);
+
+        var fakeExif = new FakeExifTool
+        {
+            CreateDate = null // 无 EXIF 拍摄时间
+        };
+        var fakeImg = new FakeImageConverter();
+        var fakeVideo = new FakeVideoConverter();
+
+        var merger = new MotionPhotoMerger(fakeExif, fakeImg, fakeVideo);
+        var options = new MergeOptions
+        {
+            InputDirectory = tempDir.Root,
+            OutputDirectory = outputDir,
+            SourceFileAction = SourceFileAction.Keep,
+            SkipValidation = true,
+            NamingFormat = MergeNamingFormat.XiaomiWithOriginal
+        };
+
+        var report = await merger.MergeAsync(pairing, options, TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, report.Total);
+        Assert.Equal(1, report.Succeeded);
+        Assert.Empty(report.Failures);
+
+        var expectedPath = Path.Combine(outputDir, "MVIMG_20240815_143000_IMG_20240815_143000.jpg");
+        Assert.True(File.Exists(expectedPath), $"应从文件名回退解析时间并生成正确格式: {string.Join(", ", Directory.GetFiles(outputDir))}");
     }
 
     /// <summary>
@@ -179,6 +258,7 @@ public class MotionPhotoMergerTests
         public Dictionary<string, string> ContentIdentifiers { get; } = new();
 
         public bool CopyAllTagsCalled { get; private set; }
+        public bool CopyCoverTagsCalled { get; private set; }
 
         public Task WriteMotionPhotoTagsAsync(string imagePath, long videoOffset, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
@@ -189,6 +269,12 @@ public class MotionPhotoMergerTests
         public Task CopyAllTagsAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken = default)
         {
             CopyAllTagsCalled = true;
+            return Task.CompletedTask;
+        }
+
+        public Task CopyCoverTagsAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken = default)
+        {
+            CopyCoverTagsCalled = true;
             return Task.CompletedTask;
         }
 
@@ -207,8 +293,10 @@ public class MotionPhotoMergerTests
         public Task WriteAppleVideoMetadataAsync(string videoPath, string? photoPath, string contentIdentifier, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
 
+        public DateTime? CreateDate { get; set; }
+
         public Task<DateTime?> TryReadCreateDateAsync(string filePath, CancellationToken cancellationToken = default) =>
-            Task.FromResult<DateTime?>(null);
+            Task.FromResult(CreateDate);
 
         public Task<TimeSpan?> TryReadDurationAsync(string filePath, CancellationToken cancellationToken = default) =>
             Task.FromResult<TimeSpan?>(TimeSpan.FromSeconds(2.5));

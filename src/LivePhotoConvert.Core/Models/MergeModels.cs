@@ -37,9 +37,45 @@ public sealed record MergeOptions
     public int Parallelism { get; init; } = DefaultParallelism;
 
     /// <summary>
+    /// 输出动态照片的文件命名规则（默认保持原始原名 MVIMG_{原始文件名}.jpg）
+    /// </summary>
+    public MergeNamingFormat NamingFormat { get; init; } = MergeNamingFormat.Original;
+
+    /// <summary>
     /// 默认并行度，取 CPU 核心数的一半并限制在 1~4 之间，避免解码与转码同时抢占过多内存
     /// </summary>
     public static int DefaultParallelism => Math.Clamp(Environment.ProcessorCount / 2, 1, 4);
+}
+
+/// <summary>
+/// 合成动态照片时的输出文件名命名规则
+/// </summary>
+public enum MergeNamingFormat
+{
+    /// <summary>
+    /// 保持原始名称：MVIMG_{原始文件名}.jpg（默认兼顾向前兼容）
+    /// </summary>
+    Original = 0,
+
+    /// <summary>
+    /// 小米时间戳带原名：MVIMG_YYYYMMDD_HHMMSS_{原始文件名}.jpg（推荐，相册智能归档且杜绝同秒重名冲突）
+    /// </summary>
+    XiaomiWithOriginal = 1,
+
+    /// <summary>
+    /// 小米推荐命名别名（与 XiaomiWithOriginal 等价）
+    /// </summary>
+    Xiaomi = 1,
+
+    /// <summary>
+    /// 纯小米相机时间戳：MVIMG_YYYYMMDD_HHMMSS.jpg（小米原生相机风格，同秒自动追加 _1 序号）
+    /// </summary>
+    XiaomiClean = 2,
+
+    /// <summary>
+    /// 纯时间戳命名别名（与 XiaomiClean 等价）
+    /// </summary>
+    Clean = 2
 }
 
 /// <summary>

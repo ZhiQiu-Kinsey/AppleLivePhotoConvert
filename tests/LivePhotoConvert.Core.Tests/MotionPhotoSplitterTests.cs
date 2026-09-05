@@ -194,6 +194,9 @@ public class MotionPhotoSplitterTests
         public Task CopyAllTagsAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
 
+        public Task CopyCoverTagsAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
         public Task<long?> TryReadMicroVideoOffsetAsync(string imagePath, CancellationToken cancellationToken = default) =>
             Task.FromResult(MicroVideoOffset);
 

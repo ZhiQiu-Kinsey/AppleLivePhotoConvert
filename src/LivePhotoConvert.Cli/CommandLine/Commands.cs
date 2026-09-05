@@ -99,6 +99,13 @@ public sealed class MergeSettings : CommonSettings
     [Description("跳过内容特征与时间差校验，强制仅按文件名主干进行宽松配对")]
     [CommandOption("--skip-validation|--no-verify")]
     public bool SkipValidation { get; init; }
+
+    /// <summary>
+    /// 合成文件的命名格式
+    /// </summary>
+    [Description("合成文件的命名格式：Original (默认，保留原始文件名)、Xiaomi (推荐，按EXIF时间戳+原名)、XiaomiClean (纯时间戳)")]
+    [CommandOption("-n|--naming|--naming-format <FORMAT>")]
+    public MergeNamingFormat? NamingFormat { get; init; }
 }
 
 /// <summary>
@@ -170,7 +177,8 @@ public sealed class MergeCommand : AsyncCommand<MergeSettings>
             ExifToolPath = settings.ExifToolPath,
             FfmpegPath = settings.FfmpegPath,
             AssumeYes = settings.AssumeYes,
-            Parallelism = settings.Parallelism
+            Parallelism = settings.Parallelism,
+            NamingFormat = settings.NamingFormat
         };
 
         return await Program.RunMergeAsync(options, interactive: false, Program.ActiveCancellationToken);

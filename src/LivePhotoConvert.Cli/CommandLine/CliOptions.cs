@@ -130,4 +130,9 @@ sealed record CliOptions
     /// HEIC 压缩质量 (1–100)（瘦身命令使用）
     /// </summary>
     public int HeicQuality { get; init; } = 90;
+
+    /// <summary>
+    /// 合成动态照片的文件命名方式，未指定时在交互模式下询问
+    /// </summary>
+    public MergeNamingFormat? NamingFormat { get; init; }
 }

@@ -142,6 +142,12 @@ public static class ToolDownloader
                 progress?.Report(new DownloadProgressReport(source.Name, totalRead, totalBytes, currentSpeed));
             }
         }
+
+        if (totalRead == 0 || (totalBytes.HasValue && totalBytes.Value > 0 && totalRead < totalBytes.Value))
+        {
+            var expectedText = totalBytes.HasValue ? $"{totalBytes.Value} 字节" : "未知大小";
+            throw new IOException($"下载数据未完成：实际接收 {totalRead} 字节，预期 {expectedText}，网络连接提前中断或返回空响应。");
+        }
     }
 
     /// <summary>

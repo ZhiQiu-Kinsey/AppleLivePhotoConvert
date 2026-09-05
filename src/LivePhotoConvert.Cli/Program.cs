@@ -275,6 +275,14 @@ public static class Program
             return WaitForReturn(ExitCodes.Canceled, interactive);
         }
 
+        // 命令行没指定命名格式时，交互模式下提供选择，非交互模式下保持默认原始命名
+        var namingFormat = options.NamingFormat ?? (interactive ? await ConsoleUi.AskNamingFormatAsync(cancellationToken) : MergeNamingFormat.Original);
+
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return WaitForReturn(ExitCodes.Canceled, interactive);
+        }
+
         if (!options.AssumeYes && !await ConsoleUi.ConfirmAsync("是否开始转换？", cancellationToken))
         {
             AnsiConsole.MarkupLine("[yellow]转换已取消。[/]");
@@ -297,7 +305,8 @@ public static class Program
             SourceFileAction = sourceAction,
             Overwrite = options.Overwrite,
             SkipValidation = options.SkipValidation,
-            Parallelism = options.Parallelism ?? MergeOptions.DefaultParallelism
+            Parallelism = options.Parallelism ?? MergeOptions.DefaultParallelism,
+            NamingFormat = namingFormat
         };
 
         ConsoleUi.PrintHeader("正在合成");

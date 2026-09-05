@@ -19,6 +19,8 @@ public sealed class MagickImageConverter : IImageConverter
         cancellationToken.ThrowIfCancellationRequested();
 
         using var image = new MagickImage(sourcePath);
+        // 自动根据图像内置 EXIF 朝向或 Transform 旋转物理像素，确保像素在内存中 100% 物理转正
+        image.AutoOrient();
         image.Format = MagickFormat.Jpeg;
         image.Quality = 95;
         image.Write(destinationPath);

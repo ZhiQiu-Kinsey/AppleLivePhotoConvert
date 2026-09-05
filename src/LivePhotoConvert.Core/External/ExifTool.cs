@@ -164,6 +164,28 @@ public sealed class ExifTool : IExifTool
     }
 
     /// <inheritdoc />
+    public async Task CopyCoverTagsAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken = default)
+    {
+        List<string> arguments =
+        [
+            "-tagsFromFile", sourcePath,
+            "-all:all",
+            "--Orientation",
+            "--ExifImageWidth",
+            "--ExifImageHeight",
+            "-unsafe",
+            "-icc_profile",
+            "-Orientation=1",
+            "-n",
+            "-overwrite_original",
+            destinationPath
+        ];
+
+        var response = await _session.ExecuteAsync(arguments, cancellationToken);
+        ThrowIfFailed(response, "复制封面元数据");
+    }
+
+    /// <inheritdoc />
     public async Task<long?> TryReadMicroVideoOffsetAsync(string imagePath, CancellationToken cancellationToken = default)
     {
         List<string> arguments =

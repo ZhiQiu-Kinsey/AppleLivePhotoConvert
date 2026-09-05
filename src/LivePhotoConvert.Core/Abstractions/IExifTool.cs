@@ -45,6 +45,15 @@ public interface IExifTool : IAsyncDisposable
     Task CopyAllTagsAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// 将源图片的元数据（GPS、MakerNotes、ICC 配置文件等）复制到转码后的封面 JPEG，
+    /// 同时排除旧的 Orientation 与像素宽高标签，并将 Orientation 显式重置为 1（正常不旋转），避免相册产生二次旋转颠倒
+    /// </summary>
+    /// <param name="sourcePath">源图片路径</param>
+    /// <param name="destinationPath">目标封面路径</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    Task CopyCoverTagsAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// 读取 MicroVideoOffset 标签
     /// </summary>
     /// <param name="imagePath">图片路径</param>

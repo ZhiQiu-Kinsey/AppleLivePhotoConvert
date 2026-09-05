@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Globalization;
 using LivePhotoConvert.Core.Abstractions;
 using LivePhotoConvert.Core.Io;
 using LivePhotoConvert.Core.Matching;
@@ -101,9 +102,8 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
             total = chosen.Count + skippedItems.Count;
             var completed = skippedItems.Count;
 
-            // 同名但不同内容的照片（iCloud 下载可能出现 IMG_0456.JPG 与 IMG_0456.JPEG 两张不同实况），
-            // 输出名用扩展名区分，避免互相覆盖
-            var outputNames = ResolveOutputNames(chosen);
+            // 根据选项解析输出文件名：支持原名、小米时间戳带原名、纯小米时间戳等多种模式
+            var outputNames = await ResolveOutputNamesAsync(chosen, options.NamingFormat, cancellationToken);
 
             // ── 阶段 3：并行合成选中的分组 ──
             await Parallel.ForEachAsync(
@@ -176,8 +176,9 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
             {
                 temporaryPhoto = Path.Combine(tempDirectory, $"{Guid.NewGuid():N}.jpg");
                 await imageConverter.ConvertToJpegAsync(photoPath, temporaryPhoto, cancellationToken);
-                // 确保将原 HEIC/PNG 的全部 EXIF、GPS、MakerNotes 与颜色配置文件等元数据完整复制到转码后的 JPEG
-                await exifTool.CopyAllTagsAsync(photoPath, temporaryPhoto, cancellationToken);
+                // 确保将原 HEIC/PNG 的全部 EXIF、GPS、MakerNotes 与颜色配置文件等元数据完整复制到转码后的 JPEG，
+                // 同时排除原图旧的 Orientation / 宽高标签并将 Orientation 固定为 1（正常不旋转），防止相册在已转正的像素上二次旋转导致横向或颠倒
+                await exifTool.CopyCoverTagsAsync(photoPath, temporaryPhoto, cancellationToken);
                 photoPath = temporaryPhoto;
             }
 
@@ -223,19 +224,27 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
     }
 
     /// <summary>
-    /// 为选中的分组解析唯一输出名：同名但不同内容的照片（扩展名不同）用扩展名区分
+    /// 为选中的分组解析唯一输出名：支持原始命名、小米时间戳带原名、纯小米时间戳等多种模式
     /// </summary>
     /// <param name="pairs">选中的分组</param>
-    /// <returns>分组到输出基础名（不含扩展名）的映射字典</returns>
-    private static Dictionary<MediaPair, string> ResolveOutputNames(IReadOnlyList<MediaPair> pairs)
+    /// <param name="namingFormat">输出命名格式规则</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>分组到输出基础名（不含 MVIMG_ 前缀与 .jpg 扩展名）的映射字典</returns>
+    private async Task<Dictionary<MediaPair, string>> ResolveOutputNamesAsync(
+        IReadOnlyList<MediaPair> pairs,
+        MergeNamingFormat namingFormat,
+        CancellationToken cancellationToken)
     {
         var result = new Dictionary<MediaPair, string>();
+        var baseNames = new Dictionary<MediaPair, string>();
+
+        // 1. 先确定同名同内容区分用的基础标识
         foreach (var grouping in pairs.GroupBy(pair => pair.Name, StringComparer.OrdinalIgnoreCase))
         {
             var group = grouping.ToArray();
             if (group.Length == 1)
             {
-                result[group[0]] = grouping.Key;
+                baseNames[group[0]] = grouping.Key;
                 continue;
             }
 
@@ -244,10 +253,73 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
             foreach (var pair in group)
             {
                 var extension = Path.GetExtension(pair.PhotoPath).TrimStart('.').ToLowerInvariant();
-                result[pair] = $"{pair.Name}.{extension}";
+                baseNames[pair] = $"{pair.Name}.{extension}";
             }
         }
 
+        if (namingFormat == MergeNamingFormat.Original)
+        {
+            return baseNames;
+        }
+
+        // 2. 对于小米风格时间戳命名，依次提取拍摄时间并拼接
+        foreach (var pair in pairs)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var timeString = await ResolveTimeStringAsync(pair, cancellationToken);
+            var baseName = baseNames[pair];
+
+            result[pair] = namingFormat switch
+            {
+                MergeNamingFormat.XiaomiWithOriginal => $"{timeString}_{baseName}",
+                MergeNamingFormat.XiaomiClean => timeString,
+                _ => baseName
+            };
+        }
+
         return result;
+    }
+
+    /// <summary>
+    /// 四级梯级提取最精准的拍摄时间字符串 (yyyyMMdd_HHmmss)
+    /// </summary>
+    private async Task<string> ResolveTimeStringAsync(MediaPair pair, CancellationToken cancellationToken)
+    {
+        // 第 1 级：照片 EXIF 拍摄时间
+        var photoDate = await exifTool.TryReadCreateDateAsync(pair.PhotoPath, cancellationToken);
+        if (photoDate.HasValue)
+        {
+            return photoDate.Value.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
+        }
+
+        // 第 2 级：视频 QuickTime 轨道拍摄时间
+        var videoDate = await exifTool.TryReadCreateDateAsync(pair.VideoPath, cancellationToken);
+        if (videoDate.HasValue)
+        {
+            return videoDate.Value.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
+        }
+
+        // 第 3 级：全通道文件名时间解析引擎 (FileNameDateTimeParser)
+        if (FileNameDateTimeParser.TryParse(pair.PhotoPath, out var parsedFromPhoto))
+        {
+            return parsedFromPhoto.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
+        }
+        if (FileNameDateTimeParser.TryParse(pair.VideoPath, out var parsedFromVideo))
+        {
+            return parsedFromVideo.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
+        }
+
+        // 第 4 级：文件系统物理时间最早值兜底
+        try
+        {
+            var pCreated = File.GetCreationTime(pair.PhotoPath);
+            var pWrite = File.GetLastWriteTime(pair.PhotoPath);
+            var earliest = pCreated < pWrite ? pCreated : pWrite;
+            return earliest.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
+        }
+        catch
+        {
+            return DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
+        }
     }
 }
