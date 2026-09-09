@@ -1,0 +1,42 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dialogs="using:LivePhotoConvert.Desktop.ViewModels.Dialogs"
+             x:Class="LivePhotoConvert.Desktop.Views.Dialogs.BackupConfirmDialog"
+             x:CompileBindings="True"
+             x:DataType="dialogs:BackupConfirmDialogViewModel"
+        xmlns:ic="using:FluentIcons.Avalonia">
+
+  <Border Background="#CC0F172A" Padding="16">
+    <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="24" Padding="24" MaxWidth="460" HorizontalAlignment="Center" VerticalAlignment="Center"
+            BorderBrush="{DynamicResource WarningBorderBrush}" BorderThickness="1" BoxShadow="0 20 40 0 #40000000">
+      <StackPanel Spacing="16">
+        <Grid ColumnDefinitions="Auto,*">
+          <Border Grid.Column="0" Width="40" Height="40" CornerRadius="12" Background="#FEF3C7" VerticalAlignment="Center">
+            <ic:SymbolIcon Symbol="Warning" FontSize="20" Foreground="{DynamicResource WarningBrush}"/>
+          </Border>
+          <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center" Spacing="2">
+            <TextBlock Text="{DynamicResource BackupDialogTitle}" FontWeight="Black" FontSize="14" Foreground="#92400E" />
+            <TextBlock Text="{DynamicResource BackupDialogDesc}" FontSize="11" Foreground="{DynamicResource WarningBrush}" />
+          </StackPanel>
+        </Grid>
+
+        <Border Background="{DynamicResource WarningSoftBrush}" CornerRadius="12" Padding="12" BorderBrush="{DynamicResource WarningBorderBrush}" BorderThickness="1">
+          <StackPanel Spacing="6" TextElement.FontSize="11" TextElement.Foreground="#78350F">
+            <TextBlock Text="{DynamicResource BackupRiskTitle}" FontWeight="Bold" Foreground="#92400E" />
+            <TextBlock Text="{DynamicResource BackupRiskPoint1}" TextWrapping="Wrap" />
+            <TextBlock Text="{DynamicResource BackupRiskPoint2}" TextWrapping="Wrap" FontWeight="SemiBold" Foreground="#065F46" />
+          </StackPanel>
+        </Border>
+
+        <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
+          <Button Grid.Column="0" Classes="nav-btn" Command="{CompiledBinding CancelCommand}" HorizontalAlignment="Left">
+            <TextBlock Text="{DynamicResource BackupDialogCancel}" FontSize="12" FontWeight="SemiBold" />
+          </Button>
+          <Button Grid.Column="1" Classes="primary-btn" Background="{DynamicResource WarningBrush}" Command="{CompiledBinding ConfirmCommand}">
+            <TextBlock Text="{DynamicResource BackupDialogConfirm}" FontSize="12" FontWeight="Bold" />
+          </Button>
+        </Grid>
+      </StackPanel>
+    </Border>
+  </Border>
+</UserControl>

@@ -16,6 +16,11 @@ public enum SourceFileAction
     Move = 1,
 
     /// <summary>
+    /// 移动到输入目录下的子文件夹（与 Move 等价）
+    /// </summary>
+    MoveToSubfolder = 1,
+
+    /// <summary>
     /// 删除到回收站（仅 Windows）
     /// </summary>
     Recycle = 2,

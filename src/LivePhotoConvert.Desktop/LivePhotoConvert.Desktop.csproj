@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>LivePhotoConvert.ico</ApplicationIcon>
+
+    <!-- Native AOT 与 Avalonia 编译期编译绑定规范 -->
+    <PublishAot>true</PublishAot>
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>full</TrimMode>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <AvaloniaXamlReportTrimErrors>true</AvaloniaXamlReportTrimErrors>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.2" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.2" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.2" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.2" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="FluentIcons.Avalonia" Version="2.1.339.1" />
+    <PackageReference Include="FluentIcons.Avalonia.Fluent" Version="2.1.339.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LivePhotoConvert.Core\LivePhotoConvert.Core.csproj" />
+  </ItemGroup>
+
+  <!-- 关于页赞赏码：从文档素材嵌入桌面程序集，发布后无需依赖外部文件。 -->
+  <ItemGroup>
+    <AvaloniaResource Include="..\..\docs\sponsor-qrcode.png" Link="Assets\sponsor-qrcode.png" />
+  </ItemGroup>
+
+</Project>

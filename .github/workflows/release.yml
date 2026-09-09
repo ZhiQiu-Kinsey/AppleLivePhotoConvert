@@ -4,7 +4,7 @@ on:
   push:
     tags:
       - 'v*'
-      - '[0-9]+.*'
+      - '[0-9]*.[0-9]*.*'
   workflow_dispatch:
     inputs:
       tag_name:
@@ -35,7 +35,7 @@ jobs:
 
       - name: 编译发布 Native AOT 原生程序包
         run: |
-          dotnet publish src/LivePhotoConvert.Cli/LivePhotoConvert.Cli.csproj `
+          dotnet publish src/LivePhotoConvert.Desktop/LivePhotoConvert.Desktop.csproj `
             /p:PublishProfile=win-x64-aot `
             -o dist/aot
           # 清除调试符号 pdb 文件

@@ -31,6 +31,11 @@ public sealed class SourceFileCleaner
     /// </summary>
     public const string MergedFolderName = "已合成";
 
+    /// <summary>
+    /// 移动模式下，存放已拆分原始文件的子文件夹名称
+    /// </summary>
+    public const string SplitFolderName = "已拆分";
+
     private readonly SourceFileAction _action;
     private readonly string? _mergedDirectory;
     private readonly string? _initializationError;
@@ -45,23 +50,25 @@ public sealed class SourceFileCleaner
     /// </summary>
     /// <param name="action">处理方式</param>
     /// <param name="inputDirectory">输入目录，移动模式下子文件夹建在此目录下</param>
-    public SourceFileCleaner(SourceFileAction action, string inputDirectory)
+    /// <param name="subfolderName">移动模式下的子文件夹名称，默认 "已合成"</param>
+    public SourceFileCleaner(SourceFileAction action, string inputDirectory, string subfolderName = MergedFolderName)
     {
         _action = action;
-        if (action != SourceFileAction.Move)
+        // MoveToSubfolder 是 Move 的枚举别名（同为 1），只需判断 Move
+        if (action is not SourceFileAction.Move)
         {
             return;
         }
 
-        _mergedDirectory = Path.Combine(inputDirectory, MergedFolderName);
+        _mergedDirectory = Path.Combine(inputDirectory, subfolderName);
         try
         {
             Directory.CreateDirectory(_mergedDirectory);
         }
         catch (Exception ex)
         {
-            // 子文件夹建不出来时不向外抛，避免把清理问题误报成合成失败
-            _initializationError = $"无法创建 \"{MergedFolderName}\" 子文件夹，{ex.Message}";
+            // 子文件夹建不出来时不向外抛，避免把清理问题误报成合成/拆分失败
+            _initializationError = $"无法创建 \"{subfolderName}\" 子文件夹，{ex.Message}";
         }
     }
 

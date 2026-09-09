@@ -55,24 +55,51 @@ public static class ProcessRunner
             startInfo.ArgumentList.Add(argument);
         }
 
-        using var process = new Process { StartInfo = startInfo };
+        using var process = new Process();
+        process.StartInfo = startInfo;
         process.Start();
 
         // 异步并行读取双输出流，防止管道缓冲区死锁
         var stdoutTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
         var stderrTask = process.StandardError.ReadToEndAsync(cancellationToken);
 
+        string stdout = string.Empty;
+        string stderr = string.Empty;
         try
         {
             await process.WaitForExitAsync(cancellationToken);
         }
         catch (OperationCanceledException)
         {
+            // 取消令牌触发：递归销毁进程树。异常在此抛出，
+            // 两个输出流读取任务交由下方 finally 等待结束，避免释放 Process 时产生未观察异常。
             TryKill(process);
             throw;
         }
+        finally
+        {
+            // 无论正常结束还是取消，都必须等待两个输出流读取任务结束，
+            // 否则 Process 被释放时后台读取会抛 ObjectDisposedException 并最终成为未观察异常。
+            try
+            {
+                stdout = await stdoutTask;
+            }
+            catch (OperationCanceledException)
+            {
+                stdout = string.Empty;
+            }
 
-        return new ProcessResult(process.ExitCode, await stdoutTask, await stderrTask);
+            try
+            {
+                stderr = await stderrTask;
+            }
+            catch (OperationCanceledException)
+            {
+                stderr = string.Empty;
+            }
+        }
+
+        return new ProcessResult(process.ExitCode, stdout, stderr);
     }
 
     /// <summary>

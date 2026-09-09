@@ -1,0 +1,197 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LivePhotoConvert.Desktop.ViewModels"
+        xmlns:dialogs="using:LivePhotoConvert.Desktop.ViewModels.Dialogs"
+        xmlns:views="using:LivePhotoConvert.Desktop.Views"
+        xmlns:dialogViews="using:LivePhotoConvert.Desktop.Views.Dialogs"
+        x:Class="LivePhotoConvert.Desktop.Views.MainWindow"
+        x:CompileBindings="True"
+        x:DataType="vm:MainWindowViewModel"
+        Title="{DynamicResource AppTitle}"
+        Width="1280" Height="820"
+        MinWidth="960" MinHeight="640"
+        CanResize="True"
+        WindowStartupLocation="CenterScreen"
+        ExtendClientAreaToDecorationsHint="True"
+        WindowDecorations="BorderOnly"
+        Win32Properties.WindowCornerPreference="Round"
+        Background="{DynamicResource CanvasBrush}"
+        xmlns:ic="using:FluentIcons.Avalonia">
+
+
+  <Grid RowDefinitions="40,*">
+
+    <!-- Visual container -->
+    <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1" Padding="14,0,0,0"
+            WindowDecorationProperties.ElementRole="TitleBar">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <!-- Layout panel -->
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <Border Width="22" Height="22" CornerRadius="6">
+            <Border.Background>
+              <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                <GradientStop Offset="0" Color="{DynamicResource AccentGradientStartColor}" />
+                <GradientStop Offset="1" Color="{DynamicResource AccentGradientEndColor}" />
+              </LinearGradientBrush>
+            </Border.Background>
+            <TextBlock Text="LP" Foreground="{DynamicResource OnAccentBrush}" FontWeight="Black" FontSize="11"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <TextBlock Text="{DynamicResource AppTitle}" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+          <Border Width="1" Height="12" Background="{DynamicResource LineStrongBrush}" VerticalAlignment="Center" />
+          <TextBlock Text="{DynamicResource AppSubtitle}" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" MaxWidth="160" TextTrimming="CharacterEllipsis" />
+        </StackPanel>
+
+        <!-- 引擎状态指示器（居中，与左右两侧保持间距防重叠） -->
+        <Border Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center"
+                Margin="10,0,10,0"
+                Background="{DynamicResource HoverBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="12" Padding="10,3">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <StackPanel Orientation="Horizontal" Spacing="5">
+              <Border Width="6" Height="6" CornerRadius="3" Background="{DynamicResource SuccessBrush}" VerticalAlignment="Center" IsVisible="{Binding ToolsVm.IsExifToolReady}" />
+              <Border Width="6" Height="6" CornerRadius="3" Background="{DynamicResource DangerBrush}" VerticalAlignment="Center" IsVisible="{Binding !ToolsVm.IsExifToolReady}" />
+              <TextBlock Text="ExifTool" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="5">
+              <Border Width="6" Height="6" CornerRadius="3" Background="{DynamicResource SuccessBrush}" VerticalAlignment="Center" IsVisible="{Binding ToolsVm.IsFfmpegReady}" />
+              <Border Width="6" Height="6" CornerRadius="3" Background="{DynamicResource DangerBrush}" VerticalAlignment="Center" IsVisible="{Binding !ToolsVm.IsFfmpegReady}" />
+              <TextBlock Text="FFmpeg" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="5">
+              <Border Width="6" Height="6" CornerRadius="3" Background="{DynamicResource SuccessBrush}" VerticalAlignment="Center" IsVisible="{Binding ToolsVm.IsHeifEncReady}" />
+              <Border Width="6" Height="6" CornerRadius="3" Background="{DynamicResource DangerBrush}" VerticalAlignment="Center" IsVisible="{Binding !ToolsVm.IsHeifEncReady}" />
+              <TextBlock Text="heif-enc" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- 窗口系统控制按钮（贴合最右上角，无内边距，标准 Fluent/Windows 样式） -->
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="0" VerticalAlignment="Stretch" HorizontalAlignment="Right">
+          <Button Classes="caption-btn" Command="{Binding MinimizeWindowCommand}"
+                  WindowDecorationProperties.ElementRole="MinimizeButton">
+            <Rectangle Width="10" Height="1" Fill="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Button>
+          <Button Classes="caption-btn" Command="{Binding MaximizeWindowCommand}"
+                  WindowDecorationProperties.ElementRole="MaximizeButton">
+            <Panel Width="10" Height="10" HorizontalAlignment="Center" VerticalAlignment="Center">
+              <Border Width="10" Height="10" BorderBrush="{DynamicResource TextSecondaryBrush}" BorderThickness="1"
+                      IsVisible="{Binding !IsWindowMaximized}" />
+              <Grid Width="10" Height="10" IsVisible="{Binding IsWindowMaximized}">
+                <Border Width="7.5" Height="7.5" Margin="2.5,0,0,2.5" BorderBrush="{DynamicResource TextSecondaryBrush}" BorderThickness="1" />
+                <Border Width="7.5" Height="7.5" Margin="0,2.5,2.5,0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource TextSecondaryBrush}" BorderThickness="1" />
+              </Grid>
+            </Panel>
+          </Button>
+          <Button Classes="caption-close-btn" Command="{Binding CloseWindowCommand}"
+                  WindowDecorationProperties.ElementRole="CloseButton">
+            <ic:SymbolIcon Symbol="Dismiss" FontSize="11" Foreground="{Binding $parent[Button].Foreground}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          </Button>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- 2. 主体工作区 (左侧 200px 导航 Rail + 右侧内容画布) -->
+    <Grid Grid.Row="1" ColumnDefinitions="200,*">
+
+      <!-- 2.1 左侧导航栏 -->
+      <Border Grid.Column="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,1,0" Padding="12">
+        <Grid RowDefinitions="Auto,*,Auto">
+          <!-- Layout panel -->
+          <StackPanel Grid.Row="0" Spacing="4">
+            <TextBlock Text="{DynamicResource NavCategoryBusiness}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}" Margin="8,4,8,8" />
+
+            <!-- 实况互转 -->
+            <Button Classes="nav-btn" Classes.selected="{Binding IsConvertTabSelected}" Command="{Binding SelectTabCommand}" CommandParameter="0">
+              <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
+                <ic:SymbolIcon Symbol="ArrowSwap" FontSize="16" Grid.Column="0" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
+                <TextBlock Grid.Column="1" Text="{DynamicResource NavConvert}" FontSize="12" Margin="10,0,0,0" VerticalAlignment="Center" />
+                <Border Grid.Column="2" Background="{DynamicResource AccentSoftBrush}" CornerRadius="8" Padding="6,2" VerticalAlignment="Center" IsVisible="{Binding ConvertVm.HasPhotos}">
+                  <TextBlock Text="{Binding ConvertVm.ReadyCount}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentTextBrush}" VerticalAlignment="Center" />
+                </Border>
+              </Grid>
+            </Button>
+
+            <!-- 空间瘦身 -->
+            <Button Classes="nav-btn" Classes.selected="{Binding IsStripTabSelected}" Command="{Binding SelectTabCommand}" CommandParameter="1">
+              <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
+                <ic:SymbolIcon Symbol="Archive" FontSize="16" Grid.Column="0" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
+                <TextBlock Grid.Column="1" Text="{DynamicResource NavStrip}" FontSize="12" Margin="10,0,0,0" VerticalAlignment="Center" />
+              </Grid>
+            </Button>
+
+            <!-- 依赖引擎 -->
+            <Button Classes="nav-btn" Classes.selected="{Binding IsToolsTabSelected}" Command="{Binding SelectTabCommand}" CommandParameter="2">
+              <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
+                <ic:SymbolIcon Symbol="Wrench" FontSize="16" Grid.Column="0" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
+                <TextBlock Grid.Column="1" Text="{DynamicResource NavTools}" FontSize="12" Margin="10,0,0,0" VerticalAlignment="Center" />
+                <Border Grid.Column="2" Width="6" Height="6" CornerRadius="3" Background="{DynamicResource SuccessBrush}" VerticalAlignment="Center" IsVisible="{Binding ToolsVm.AllToolsReady}" />
+                <Border Grid.Column="2" Width="6" Height="6" CornerRadius="3" Background="{DynamicResource DangerBrush}" VerticalAlignment="Center" IsVisible="{Binding !ToolsVm.AllToolsReady}" />
+              </Grid>
+            </Button>
+
+            <!-- 批次报告 -->
+            <Button Classes="nav-btn" Classes.selected="{Binding IsReportTabSelected}" Command="{Binding SelectTabCommand}" CommandParameter="3">
+              <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
+                <ic:SymbolIcon Symbol="DocumentBulletList" FontSize="16" Grid.Column="0" Foreground="{DynamicResource VioletBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
+                <TextBlock Grid.Column="1" Text="{DynamicResource NavReport}" FontSize="12" Margin="10,0,0,0" VerticalAlignment="Center" />
+              </Grid>
+            </Button>
+          </StackPanel>
+
+          <!-- 常驻左下角偏好设置入口（主题与语言已在设置页提供，此处保持单一入口） -->
+          <Button Grid.Row="2" Classes="nav-btn" Classes.selected="{Binding IsSettingsTabSelected}"
+                  Command="{Binding SelectTabCommand}" CommandParameter="4">
+            <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
+              <ic:SymbolIcon Symbol="Settings" FontSize="16" Grid.Column="0" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
+              <TextBlock Grid.Column="1" Text="{DynamicResource NavSettings}" FontSize="12" Margin="10,0,0,0" VerticalAlignment="Center" />
+            </Grid>
+          </Button>
+      
+        </Grid>
+      </Border>
+
+      <!-- Convert tab -->
+      <Panel Grid.Column="1">
+        <Panel IsVisible="{Binding IsConvertTabSelected}">
+          <views:ConvertView DataContext="{Binding ConvertVm}" />
+        </Panel>
+        <Panel IsVisible="{Binding IsStripTabSelected}">
+          <views:StripView DataContext="{Binding StripVm}" />
+        </Panel>
+        <Panel IsVisible="{Binding IsToolsTabSelected}">
+          <views:ToolsView DataContext="{Binding ToolsVm}" />
+        </Panel>
+        <Panel IsVisible="{Binding IsReportTabSelected}">
+          <views:ReportView DataContext="{Binding ReportVm}" />
+        </Panel>
+        <Panel IsVisible="{Binding IsSettingsTabSelected}">
+          <views:SettingsView DataContext="{Binding SettingsVm}" />
+        </Panel>
+
+        <!-- Dynamic content host -->
+        <ContentControl Content="{Binding ActiveDialog}"
+                        IsVisible="{Binding ActiveDialog, Converter={x:Static ObjectConverters.IsNotNull}}">
+          <ContentControl.DataTemplates>
+            <DataTemplate DataType="dialogs:DeleteConfirmDialogViewModel">
+              <dialogViews:DeleteConfirmDialog />
+            </DataTemplate>
+            <DataTemplate DataType="dialogs:LowDiskSpaceDialogViewModel">
+              <dialogViews:LowDiskSpaceDialog />
+            </DataTemplate>
+            <DataTemplate DataType="dialogs:BackupConfirmDialogViewModel">
+              <dialogViews:BackupConfirmDialog />
+            </DataTemplate>
+            <DataTemplate DataType="dialogs:ArbitrateDialogViewModel">
+              <dialogViews:ArbitrateDialog />
+            </DataTemplate>
+            <DataTemplate DataType="dialogs:QuickLookDialogViewModel">
+              <dialogViews:QuickLookDialog />
+            </DataTemplate>
+          </ContentControl.DataTemplates>
+        </ContentControl>
+      </Panel>
+
+    </Grid>
+
+  </Grid>
+</Window>

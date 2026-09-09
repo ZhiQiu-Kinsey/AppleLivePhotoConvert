@@ -12,7 +12,6 @@
 | [`desktop_prd_and_ui_ux_spec.md`](./desktop_prd_and_ui_ux_spec.md) | **产品需求文档 (PRD) 与 UI/UX 架构设计规范 (v2.0.0)**（工业级定稿，涵盖 Avalonia 12、Native AOT 扁平化虚拟化、Core 契约补齐与银行级防灾矩阵） |
 | [`architecture_audit_report.md`](./architecture_audit_report.md) | **架构与底层多媒体引擎深度审计报告**（P0/P1 漏洞定位、白名单契约、轻量只读预估、单例悬停播放器） |
 | [`ux_safety_audit_report.md`](./ux_safety_audit_report.md) | **产品体验、人机工学与数据防灾审计报告**（长流程生命周期、多选模式解耦、破坏性操作防灾铁律） |
-| [`references/`](./references/) | **设计参考基准截图**（Windows 11 微软照片应用原生紧凑工具栏与三维弹出菜单） |
 
 ---
 

@@ -1,0 +1,154 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="using:LivePhotoConvert.Desktop.Models"
+             x:Class="LivePhotoConvert.Desktop.Controls.PhotoCardControl"
+             x:CompileBindings="True"
+             x:DataType="models:PhotoCardItemViewModel"
+        xmlns:ic="using:FluentIcons.Avalonia">
+
+  <UserControl.Styles>
+    <!-- 卡片根边框：常态描边色，待人工裁决切换警示色 -->
+    <Style Selector="Border.cardRoot">
+      <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+    </Style>
+    <Style Selector="Border.cardRoot.suspicious">
+      <Setter Property="BorderBrush" Value="{DynamicResource WarningBorderBrush}" />
+    </Style>
+  </UserControl.Styles>
+
+  <Border Classes="cardRoot"
+          Classes.suspicious="{CompiledBinding HasSuspiciousWarning}"
+          Background="{DynamicResource SurfaceBrush}"
+          BorderThickness="1"
+          CornerRadius="16"
+          ClipToBounds="True"
+          Margin="4">
+
+    <Grid RowDefinitions="Auto,Auto">
+      <!-- 顶部图片与动图渲染视口（自适应原生画幅 vs 方形裁剪） -->
+      <Panel Grid.Row="0" ClipToBounds="True">
+        <!-- 圆角裁剪容器 -->
+        <Border CornerRadius="16,16,0,0" ClipToBounds="True">
+          <Panel>
+            <!-- 1. 自然原生画幅模式：高度随原图宽高比自适应撑开，卡片跟随图片原始尺寸，零黑边 -->
+            <Image Source="{CompiledBinding DisplayImage}"
+                   RenderOptions.BitmapInterpolationMode="HighQuality"
+                   IsVisible="{CompiledBinding IsNaturalCrop}"
+                   Stretch="Uniform"
+                   HorizontalAlignment="Stretch"
+                   VerticalAlignment="Top" />
+
+            <!-- 2. 方形 (1:1) 模式：固定 200 高度，居中裁剪填满 -->
+            <Panel Height="200" IsVisible="{CompiledBinding IsSquareCrop}">
+              <Image Source="{CompiledBinding DisplayImage}"
+                     RenderOptions.BitmapInterpolationMode="HighQuality"
+                     Stretch="UniformToFill"
+                     HorizontalAlignment="Center"
+                     VerticalAlignment="Center" />
+            </Panel>
+
+            <!-- 缩略图未就绪时的占位底色 -->
+            <Border Background="{DynamicResource CanvasBrush}" MinHeight="160"
+                    IsVisible="{CompiledBinding DisplayImage, Converter={x:Static ObjectConverters.IsNull}}">
+              <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6" Margin="0,30">
+                <ic:SymbolIcon Symbol="Camera" FontSize="32" Foreground="{DynamicResource TextTertiaryBrush}"/>
+                <TextBlock Text="{CompiledBinding FileName}" Foreground="{DynamicResource TextMutedBrush}" FontSize="11" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="160" />
+              </StackPanel>
+            </Border>
+          </Panel>
+        </Border>
+
+        <!-- 实况徽章 -->
+        <Border Background="#80000000" CornerRadius="12" Padding="8,4"
+                HorizontalAlignment="Left" VerticalAlignment="Top" Margin="8"
+                IsVisible="{CompiledBinding !HasSuspiciousWarning}">
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <ic:SymbolIcon Symbol="Live" FontSize="12" Foreground="#38BDF8"/>
+            <TextBlock Text="{DynamicResource CardLiveBadge}" Foreground="{DynamicResource OnAccentBrush}" FontSize="10" FontWeight="Bold" />
+          </StackPanel>
+        </Border>
+
+        <!-- 警示徽章 -->
+        <Border Background="{DynamicResource WarningBrush}" CornerRadius="12" Padding="8,4"
+                HorizontalAlignment="Left" VerticalAlignment="Top" Margin="8"
+                IsVisible="{CompiledBinding HasSuspiciousWarning}">
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <ic:SymbolIcon Symbol="Warning" FontSize="12" Foreground="{DynamicResource OnAccentBrush}"/>
+            <TextBlock Text="{DynamicResource CardTimeMismatch}" Foreground="{DynamicResource OnAccentBrush}" FontSize="10" FontWeight="Bold" />
+          </StackPanel>
+        </Border>
+
+        <!-- 时长角标 -->
+        <Border Background="#99000000" CornerRadius="6" Padding="6,2"
+                HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="8">
+          <TextBlock Text="{CompiledBinding DurationText}" Foreground="{DynamicResource OnAccentBrush}" FontSize="10" FontWeight="SemiBold" />
+        </Border>
+
+        <!-- 选择复选框 -->
+        <Button Command="{CompiledBinding ToggleSelectCommand}"
+                Background="Transparent"
+                BorderThickness="0"
+                Padding="0"
+                Width="28" Height="28"
+                HorizontalAlignment="Right" VerticalAlignment="Top" Margin="8"
+                Cursor="Hand"
+                ToolTip.Tip="{DynamicResource CardToggleSelectTip}">
+          <Panel>
+            <Border Width="24" Height="24" CornerRadius="12" Background="{DynamicResource AccentBrush}"
+                    IsVisible="{CompiledBinding IsSelected}">
+              <ic:SymbolIcon Symbol="Checkmark" FontSize="12" Foreground="{DynamicResource OnAccentBrush}"/>
+            </Border>
+            <Border Width="24" Height="24" CornerRadius="12" Background="#66000000"
+                    BorderBrush="{DynamicResource SurfaceBrush}" BorderThickness="1.5"
+                    IsVisible="{CompiledBinding !IsSelected}">
+              <ic:SymbolIcon Symbol="Circle" FontSize="14" Foreground="Transparent"/>
+            </Border>
+          </Panel>
+        </Button>
+      </Panel>
+
+      <!-- 信息面板（固定 78 高度，保证所有卡片总高 258px 绝对整齐） -->
+      <Border Grid.Row="1" Height="78" Padding="12,10" Background="{DynamicResource SurfaceBrush}">
+        <StackPanel Spacing="6">
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel Grid.Column="0" Spacing="2">
+              <TextBlock Text="{CompiledBinding FileName}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
+              <TextBlock Text="{CompiledBinding SizeSummary}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+
+            <Panel Grid.Column="1">
+              <Border Background="{DynamicResource SuccessSoftBrush}" BorderBrush="{DynamicResource SuccessBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="6,2"
+                      IsVisible="{CompiledBinding !HasSuspiciousWarning}">
+                <TextBlock Text="{CompiledBinding PairingStatusText}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" />
+              </Border>
+
+              <Button Command="{CompiledBinding RequestArbitrateCommand}"
+                      Background="{DynamicResource WarningSoftBrush}" BorderBrush="{DynamicResource WarningBorderBrush}" BorderThickness="1"
+                      CornerRadius="6" Padding="6,2"
+                      IsVisible="{CompiledBinding HasSuspiciousWarning}"
+                      Cursor="Hand">
+                <TextBlock Text="{DynamicResource CardArbitrateBtn}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource WarningBrush}" />
+              </Button>
+            </Panel>
+          </Grid>
+
+          <!-- 分隔线 -->
+          <Border Height="1" Background="{DynamicResource HoverBrush}" Margin="0,2" />
+
+          <Grid ColumnDefinitions="Auto,*,Auto">
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4">
+              <ic:SymbolIcon Symbol="Clock" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"/>
+              <TextBlock Text="{CompiledBinding FormattedTime}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
+            </StackPanel>
+
+            <TextBlock Grid.Column="1" Text="{CompiledBinding DeviceInfo}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}"
+                       TextAlignment="Center" TextTrimming="CharacterEllipsis" Margin="4,0" VerticalAlignment="Center" />
+
+            <TextBlock Grid.Column="2" Text="{CompiledBinding ResolutionText}" FontSize="10" FontWeight="SemiBold"
+                       Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
+          </Grid>
+        </StackPanel>
+      </Border>
+    </Grid>
+  </Border>
+</UserControl>

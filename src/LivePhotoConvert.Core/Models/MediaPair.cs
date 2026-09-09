@@ -39,6 +39,16 @@ public sealed record PairingResult
     public required int UnmatchedVideoCount { get; init; }
 
     /// <summary>
+    /// 未匹配到视频的照片文件列表
+    /// </summary>
+    public IReadOnlyList<string> PhotosWithoutVideo { get; init; } = [];
+
+    /// <summary>
+    /// 未匹配到照片的视频文件列表
+    /// </summary>
+    public IReadOnlyList<string> VideosWithoutPhoto { get; init; } = [];
+
+    /// <summary>
     /// 照片路径到 ContentIdentifier 的映射缓存（若有）
     /// </summary>
     public IReadOnlyDictionary<string, string>? PhotoContentIdentifiers { get; init; }
@@ -48,3 +58,27 @@ public sealed record PairingResult
     /// </summary>
     public IReadOnlyDictionary<string, string>? VideoContentIdentifiers { get; init; }
 }
+
+/// <summary>
+/// 忽略路径大小写与正反斜杠差异的 MediaPair 比对器
+/// </summary>
+public sealed class MediaPairPathEqualityComparer : IEqualityComparer<MediaPair>
+{
+    public static readonly MediaPairPathEqualityComparer Instance = new();
+
+    public bool Equals(MediaPair? x, MediaPair? y)
+    {
+        if (ReferenceEquals(x, y)) return true;
+        if (x is null || y is null) return false;
+        return string.Equals(Normalize(x.PhotoPath), Normalize(y.PhotoPath), StringComparison.OrdinalIgnoreCase)
+            && string.Equals(Normalize(x.VideoPath), Normalize(y.VideoPath), StringComparison.OrdinalIgnoreCase);
+    }
+
+    public int GetHashCode(MediaPair obj) =>
+        HashCode.Combine(
+            string.GetHashCode(Normalize(obj.PhotoPath), StringComparison.OrdinalIgnoreCase),
+            string.GetHashCode(Normalize(obj.VideoPath), StringComparison.OrdinalIgnoreCase));
+
+    private static string Normalize(string path) => path.Replace('/', '\\').TrimEnd('\\');
+}
+

@@ -215,7 +215,144 @@ public class MotionPhotoMergerTests
     }
 
     /// <summary>
-    /// 用于测试的图片转换器 Mock
+    /// 测试当配置了 ForceAcceptedPairs 白名单时，能绕过时差与时长校验并成功完成合成。
+    /// </summary>
+    [Fact]
+    public async Task MergeAsync_WithForceAcceptedPair_ShouldBypassValidationAndSucceed()
+    {
+        using var tempDir = new TempDirectory();
+        var photoBytes = new byte[2048];
+        var videoBytes = new byte[5000];
+
+        var jpgPath = tempDir.CreateFile("IMG_0001.jpg", photoBytes);
+        var movPath = tempDir.CreateFile("IMG_0001.mov", videoBytes);
+        var outputDir = tempDir.Combine("output");
+
+        var pair = new MediaPair(jpgPath, movPath);
+        var pairing = new PairingResult
+        {
+            Pairs = [pair],
+            UnmatchedPhotoCount = 0,
+            UnmatchedVideoCount = 0
+        };
+
+        // 构造时差 10 秒（远超 3 秒阈值），若正常走 PairValidator 会被直接拒绝
+        var fakeExif = new FakeExifTool();
+        fakeExif.FileDates[Path.GetFileName(jpgPath)] = new DateTime(2024, 1, 1, 12, 0, 0, DateTimeKind.Utc);
+        fakeExif.FileDates[Path.GetFileName(movPath)] = new DateTime(2024, 1, 1, 12, 0, 10, DateTimeKind.Utc);
+
+        var fakeImg = new FakeImageConverter();
+        var fakeVideo = new FakeVideoConverter();
+        var merger = new MotionPhotoMerger(fakeExif, fakeImg, fakeVideo);
+
+        var options = new MergeOptions
+        {
+            InputDirectory = tempDir.Root,
+            OutputDirectory = outputDir,
+            SourceFileAction = SourceFileAction.Keep,
+            SkipValidation = false,
+            ForceAcceptedPairs = new HashSet<MediaPair> { pair }
+        };
+
+        var report = await merger.MergeAsync(pairing, options, TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, report.Total);
+        Assert.Equal(1, report.Succeeded);
+        Assert.Empty(report.SkippedItems);
+        Assert.Empty(report.Failures);
+    }
+
+    /// <summary>
+    /// 测试当同名存在多种格式时（如 HEIC 与 JPG），白名单中的候选对（JPG）优先于默认规则优先级更高的候选对（HEIC）。
+    /// </summary>
+    [Fact]
+    public async Task MergeAsync_WithForceAcceptedPair_ShouldPrioritizeWhitelistedCandidateOverHigherRankedFormat()
+    {
+        using var tempDir = new TempDirectory();
+        var photoBytes = new byte[2048];
+        var videoBytes = new byte[5000];
+
+        var heicPath = tempDir.CreateFile("IMG_0001.heic", photoBytes);
+        var jpgPath = tempDir.CreateFile("IMG_0001.jpg", photoBytes);
+        var movPath = tempDir.CreateFile("IMG_0001.mov", videoBytes);
+        var outputDir = tempDir.Combine("output");
+
+        var pairing = MediaPairMatcher.Match([heicPath, jpgPath, movPath]);
+        Assert.Equal(2, pairing.Pairs.Count);
+
+        var fakeExif = new FakeExifTool();
+        var fakeImg = new FakeImageConverter();
+        var fakeVideo = new FakeVideoConverter();
+        var merger = new MotionPhotoMerger(fakeExif, fakeImg, fakeVideo);
+
+        var jpgPair = new MediaPair(jpgPath, movPath);
+        var options = new MergeOptions
+        {
+            InputDirectory = tempDir.Root,
+            OutputDirectory = outputDir,
+            SourceFileAction = SourceFileAction.Delete,
+            SkipValidation = false,
+            ForceAcceptedPairs = new HashSet<MediaPair> { jpgPair }
+        };
+
+        var report = await merger.MergeAsync(pairing, options, TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, report.Total);
+        Assert.Equal(1, report.Succeeded);
+        Assert.Empty(report.SkippedItems);
+        Assert.Empty(report.Failures);
+
+        // 验证被删除的是白名单选中的 JPG 原始文件，而 HEIC 未被选中使用依然保留
+        Assert.False(File.Exists(jpgPath), "白名单指定的 JPG 应被合成并由 Delete 策略清理");
+        Assert.True(File.Exists(heicPath), "未被选中的 HEIC 原片应依然存在");
+    }
+
+    /// <summary>
+    /// 测试白名单路径大小写不敏感与反斜杠差异匹配能力。
+    /// </summary>
+    [Fact]
+    public async Task MergeAsync_WithForceAcceptedPair_CaseInsensitivePath_ShouldMatch()
+    {
+        using var tempDir = new TempDirectory();
+        var photoBytes = new byte[2048];
+        var videoBytes = new byte[5000];
+
+        var jpgPath = tempDir.CreateFile("IMG_0001.jpg", photoBytes);
+        var movPath = tempDir.CreateFile("IMG_0001.mov", videoBytes);
+        var outputDir = tempDir.Combine("output");
+
+        var pairing = MediaPairMatcher.Match([jpgPath, movPath]);
+
+        // 模拟单边 ContentIdentifier 导致校验必败的场景
+        var fakeExif = new FakeExifTool
+        {
+            ContentIdentifiers = { ["photo"] = "ID-PHOTO-ONLY" }
+        };
+        var fakeImg = new FakeImageConverter();
+        var fakeVideo = new FakeVideoConverter();
+        var merger = new MotionPhotoMerger(fakeExif, fakeImg, fakeVideo);
+
+        // 使用全大写与正斜杠构造白名单对
+        var forcePair = new MediaPair(jpgPath.ToUpperInvariant().Replace('\\', '/'), movPath.ToUpperInvariant().Replace('\\', '/'));
+
+        var options = new MergeOptions
+        {
+            InputDirectory = tempDir.Root,
+            OutputDirectory = outputDir,
+            SourceFileAction = SourceFileAction.Keep,
+            SkipValidation = false,
+            ForceAcceptedPairs = new HashSet<MediaPair> { forcePair }
+        };
+
+        var report = await merger.MergeAsync(pairing, options, TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, report.Total);
+        Assert.Equal(1, report.Succeeded);
+        Assert.Empty(report.SkippedItems);
+    }
+
+    /// <summary>
+    /// 用于测试的图片转换器桩
     /// </summary>
     private sealed class FakeImageConverter : IImageConverter
     {
@@ -233,7 +370,7 @@ public class MotionPhotoMergerTests
     }
 
     /// <summary>
-    /// 用于测试的视频转换器 Mock
+    /// 用于测试的视频转换器桩
     /// </summary>
     private sealed class FakeVideoConverter : IVideoConverter
     {
@@ -251,11 +388,12 @@ public class MotionPhotoMergerTests
     }
 
     /// <summary>
-    /// 用于测试的 ExifTool 元数据读写 Mock
+    /// 用于测试的 ExifTool 元数据读写桩
     /// </summary>
     private sealed class FakeExifTool : IExifTool
     {
         public Dictionary<string, string> ContentIdentifiers { get; } = new();
+        public Dictionary<string, DateTime> FileDates { get; } = new(StringComparer.OrdinalIgnoreCase);
 
         public bool CopyAllTagsCalled { get; private set; }
         public bool CopyCoverTagsCalled { get; private set; }
@@ -293,13 +431,19 @@ public class MotionPhotoMergerTests
         public Task WriteAppleVideoMetadataAsync(string videoPath, string? photoPath, string contentIdentifier, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
 
-        public DateTime? CreateDate { get; set; }
+        public DateTime? CreateDate { get; init; }
 
-        public Task<DateTime?> TryReadCreateDateAsync(string filePath, CancellationToken cancellationToken = default) =>
-            Task.FromResult(CreateDate);
+        public Task<DateTime?> TryReadCreateDateAsync(string filePath, CancellationToken cancellationToken = default)
+        {
+            if (FileDates.TryGetValue(Path.GetFileName(filePath), out var date))
+            {
+                return Task.FromResult<DateTime?>(date);
+            }
+            return Task.FromResult(CreateDate);
+        }
 
         public Task<TimeSpan?> TryReadDurationAsync(string filePath, CancellationToken cancellationToken = default) =>
-            Task.FromResult<TimeSpan?>(TimeSpan.FromSeconds(2.5));
+            Task.FromResult<TimeSpan?>(null);
 
         public Task<bool> IsMirroredVideoAsync(string videoPath, CancellationToken cancellationToken = default) =>
             Task.FromResult(false);

@@ -1,0 +1,267 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:LivePhotoConvert.Desktop.ViewModels"
+             x:Class="LivePhotoConvert.Desktop.Views.ReportView"
+             x:CompileBindings="True"
+             x:DataType="vm:ReportViewModel"
+             xmlns:ic="using:FluentIcons.Avalonia">
+
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+    <StackPanel Spacing="16" Margin="24" HorizontalAlignment="Stretch">
+
+      <!-- 1. 顶部操作与摘要卡片 -->
+      <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="20" Padding="20"
+              BoxShadow="0 2 8 0 #0D000000">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Grid.Column="0" Spacing="6" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+              <Border Width="36" Height="36" CornerRadius="10" Background="{DynamicResource AccentSoftBrush}" VerticalAlignment="Center">
+                <ic:SymbolIcon Symbol="DocumentBulletList" FontSize="18" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+              </Border>
+              <StackPanel Spacing="2" VerticalAlignment="Center">
+                <TextBlock Text="{DynamicResource ReportTitle}" FontWeight="Black" FontSize="16" Foreground="{DynamicResource TextPrimaryBrush}" />
+                <TextBlock Text="{Binding BatchTimestampText}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" FontFamily="Consolas" />
+              </StackPanel>
+            </StackPanel>
+
+            <!-- 模式与输出路径 -->
+            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+              <Border Background="{DynamicResource HoverBrush}" CornerRadius="6" Padding="8,3">
+                <TextBlock Text="{Binding ModeNameText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+              </Border>
+              <Border Background="{DynamicResource CanvasBrush}" CornerRadius="6" Padding="8,3"
+                      IsVisible="{Binding OutputDirectoryText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                  <ic:SymbolIcon Symbol="Folder" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"/>
+                  <TextBlock Text="{Binding OutputDirectoryText}" FontSize="10" FontFamily="Consolas" Foreground="{DynamicResource TextTertiaryBrush}" MaxWidth="320" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </StackPanel>
+
+          <!-- 顶部快捷操作 -->
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+            <Button Classes="toolbar-btn" Command="{Binding ReturnToConvertCommand}" Padding="12,6">
+              <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <ic:SymbolIcon Symbol="ArrowLeft" FontSize="13" VerticalAlignment="Center" Margin="0,1,0,0"/>
+                <TextBlock Text="{DynamicResource ReportBackBtn}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+              </StackPanel>
+            </Button>
+            <Button Classes="toolbar-btn" Command="{Binding ExportErrorLogCommand}" Padding="12,6"
+                    IsVisible="{Binding HasRecords}">
+              <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <ic:SymbolIcon Symbol="ArrowDownload" FontSize="13" VerticalAlignment="Center" Margin="0,1,0,0"/>
+                <TextBlock Text="{DynamicResource ExportLogBtn}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+              </StackPanel>
+            </Button>
+            <Button Classes="primary-btn" Command="{Binding OpenOutputDirCommand}" Padding="14,6"
+                    IsVisible="{Binding OutputDirectoryText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+              <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <ic:SymbolIcon Symbol="FolderOpen" FontSize="13" Foreground="{DynamicResource OnAccentBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
+                <TextBlock Text="{DynamicResource OpenOutputDirBtn}" FontSize="11" FontWeight="Bold" VerticalAlignment="Center"/>
+              </StackPanel>
+            </Button>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- 2. 空状态：无批次历史 -->
+      <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="20" Padding="40"
+              BoxShadow="0 2 8 0 #0D000000" IsVisible="{Binding !HasRecords}">
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
+          <Border Width="56" Height="56" CornerRadius="28" Background="{DynamicResource HoverBrush}" HorizontalAlignment="Center">
+            <ic:SymbolIcon Symbol="DocumentBulletList" FontSize="26" Foreground="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          </Border>
+          <TextBlock Text="{DynamicResource ReportEmptyTitle}" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center"/>
+          <TextBlock Text="{DynamicResource ReportEmptyDesc}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Center"/>
+          <Button Classes="primary-btn" Command="{Binding ReturnToConvertCommand}" HorizontalAlignment="Center" Margin="0,8,0,0">
+            <TextBlock Text="{DynamicResource ReportGoConvertBtn}" FontSize="11" FontWeight="Bold"/>
+          </Button>
+        </StackPanel>
+      </Border>
+
+      <!-- 3. 核心统计 KPI 卡片组（4 列网格） -->
+      <Grid ColumnDefinitions="*,*,*,*" IsVisible="{Binding HasRecords}">
+        <!-- 处理总数 -->
+        <Border Grid.Column="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="16" Padding="16" Margin="0,0,6,0"
+                BoxShadow="0 2 6 0 #08000000">
+          <StackPanel Spacing="6">
+            <TextBlock Text="{DynamicResource ReportKpiTotal}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextTertiaryBrush}" />
+            <TextBlock Text="{Binding TotalCount}" FontSize="24" FontWeight="Black" FontFamily="Consolas" Foreground="{DynamicResource TextPrimaryBrush}" />
+            <TextBlock Text="{DynamicResource ReportKpiTotalSub}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" />
+          </StackPanel>
+        </Border>
+
+        <!-- 成功数 -->
+        <Border Grid.Column="1" Background="{DynamicResource SuccessSoftBrush}" BorderBrush="{DynamicResource SuccessBorderBrush}" BorderThickness="1" CornerRadius="16" Padding="16" Margin="3,0,3,0"
+                BoxShadow="0 2 6 0 #08000000">
+          <StackPanel Spacing="6">
+            <TextBlock Text="{DynamicResource ReportKpiSuccess}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" />
+            <TextBlock Text="{Binding SuccessCount}" FontSize="24" FontWeight="Black" FontFamily="Consolas" Foreground="{DynamicResource SuccessBrush}" />
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <TextBlock Text="{DynamicResource ReportKpiSuccessRate}" FontSize="10" Foreground="{DynamicResource SuccessBrush}" />
+              <TextBlock Text="{Binding SuccessPercentText}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" FontFamily="Consolas" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- 异常/失败 -->
+        <Border Grid.Column="2" Background="{DynamicResource DangerSoftBrush}" BorderBrush="{DynamicResource DangerBorderBrush}" BorderThickness="1" CornerRadius="16" Padding="16" Margin="3,0,3,0"
+                BoxShadow="0 2 6 0 #08000000">
+          <StackPanel Spacing="6">
+            <TextBlock Text="{DynamicResource ReportKpiFailed}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource DangerBrush}" />
+            <TextBlock Text="{Binding FailedCount}" FontSize="24" FontWeight="Black" FontFamily="Consolas" Foreground="{DynamicResource DangerBrush}" />
+            <TextBlock Text="{DynamicResource ReportKpiFailedSub}" FontSize="10" Foreground="{DynamicResource DangerBrush}" />
+          </StackPanel>
+        </Border>
+
+        <!-- 耗时与吞吐 -->
+        <Border Grid.Column="3" Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBorderBrush}" BorderThickness="1" CornerRadius="16" Padding="16" Margin="6,0,0,0"
+                BoxShadow="0 2 6 0 #08000000">
+          <StackPanel Spacing="6">
+            <TextBlock Text="{DynamicResource ReportKpiDuration}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}" />
+            <TextBlock Text="{Binding TotalDurationText}" FontSize="24" FontWeight="Black" FontFamily="Consolas" Foreground="{DynamicResource AccentTextBrush}" />
+            <TextBlock Text="{Binding AvgSpeedText}" FontSize="10" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource AccentTextBrush}" />
+          </StackPanel>
+        </Border>
+      </Grid>
+
+      <!-- 4. 成功率指标分布指示器 -->
+      <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="16" Padding="18"
+              BoxShadow="0 2 6 0 #08000000" IsVisible="{Binding HasRecords}">
+        <StackPanel Spacing="10">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Grid.Column="0" Text="{DynamicResource ReportDistTitle}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" />
+            <TextBlock Grid.Column="1" Text="{Binding SummaryBadgeText}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" />
+          </Grid>
+
+          <!-- 成功率多段指示条 -->
+          <ProgressBar Value="{Binding SuccessPercent}" Minimum="0" Maximum="100" Height="8" CornerRadius="4" Foreground="{DynamicResource SuccessBrush}" Background="{DynamicResource LineBrush}" />
+
+          <!-- 图例说明 -->
+          <Grid ColumnDefinitions="*,*,*">
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
+              <Border Width="8" Height="8" CornerRadius="4" Background="{DynamicResource SuccessBrush}" VerticalAlignment="Center"/>
+              <TextBlock Text="{DynamicResource ReportLegendSuccess}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"/>
+              <TextBlock Text="{Binding SuccessCount}" FontSize="10" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+              <TextBlock Text="{Binding SuccessPercentText}" FontSize="10" FontFamily="Consolas" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+              <Border Width="8" Height="8" CornerRadius="4" Background="{DynamicResource WarningBrush}" VerticalAlignment="Center"/>
+              <TextBlock Text="{DynamicResource ReportLegendSkipped}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"/>
+              <TextBlock Text="{Binding SkippedCount}" FontSize="10" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
+              <Border Width="8" Height="8" CornerRadius="4" Background="{DynamicResource DangerBrush}" VerticalAlignment="Center"/>
+              <TextBlock Text="{DynamicResource ReportLegendFailed}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"/>
+              <TextBlock Text="{Binding FailedCount}" FontSize="10" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource DangerBrush}" VerticalAlignment="Center"/>
+            </StackPanel>
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <!-- 5. 详细明细数据清单 -->
+      <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="20"
+              BoxShadow="0 2 8 0 #0D000000" ClipToBounds="True" IsVisible="{Binding HasRecords}">
+        <StackPanel>
+          <!-- 筛选控制顶栏 -->
+          <Border Background="{DynamicResource CanvasBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1" Padding="16,12">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+              <!-- 分段控制器 -->
+              <Border Grid.Column="0" Classes="segmented-group">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                  <Button Classes="segmented-item" Classes.active="{Binding IsAllFilterSelected}"
+                          Command="{Binding SetFilterCommand}" CommandParameter="0">
+                    <TextBlock Text="{DynamicResource ReportDetailAll}" FontSize="11" />
+                  </Button>
+                  <Button Classes="segmented-item" Classes.active="{Binding IsFailedFilterSelected}"
+                          Command="{Binding SetFilterCommand}" CommandParameter="1">
+                    <TextBlock Text="{DynamicResource ReportDetailFailedOnly}" FontSize="11" />
+                  </Button>
+                  <Button Classes="segmented-item" Classes.active="{Binding IsSuccessFilterSelected}"
+                          Command="{Binding SetFilterCommand}" CommandParameter="2">
+                    <TextBlock Text="{DynamicResource ReportDetailSuccessOnly}" FontSize="11" />
+                  </Button>
+                </StackPanel>
+              </Border>
+
+              <TextBlock Grid.Column="1" Text="{DynamicResource ReportDetailTitle}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+
+              <Button Grid.Column="2" Classes="nav-btn" Command="{Binding ExportErrorLogCommand}" Padding="8,4" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                  <ic:SymbolIcon Symbol="ArrowDownload" FontSize="12" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
+                  <TextBlock Text="{DynamicResource ExportLogBtn}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+            </Grid>
+          </Border>
+
+          <!-- 明细列表 -->
+          <ItemsControl ItemsSource="{Binding FilteredRecords}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:ReportItemRecord">
+                <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1" Padding="16,12">
+                  <Grid ColumnDefinitions="Auto,*,Auto">
+                    <!-- 状态标志 -->
+                    <Panel Grid.Column="0" VerticalAlignment="Center">
+                      <Border Background="{DynamicResource SuccessSoftBrush}" BorderBrush="{DynamicResource SuccessBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="8,4" MinWidth="60"
+                              IsVisible="{Binding IsSuccess}">
+                        <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center" VerticalAlignment="Center">
+                          <ic:SymbolIcon Symbol="Checkmark" FontSize="11" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
+                          <TextBlock Text="{Binding StatusText}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                      </Border>
+                      <Border Background="{DynamicResource DangerSoftBrush}" BorderBrush="{DynamicResource DangerBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="8,4" MinWidth="60"
+                              IsVisible="{Binding IsFailed}">
+                        <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center" VerticalAlignment="Center">
+                          <ic:SymbolIcon Symbol="Dismiss" FontSize="11" Foreground="{DynamicResource DangerBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
+                          <TextBlock Text="{Binding StatusText}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource DangerBrush}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                      </Border>
+                      <Border Background="{DynamicResource WarningSoftBrush}" BorderBrush="{DynamicResource WarningBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="8,4" MinWidth="60"
+                              IsVisible="{Binding IsSkipped}">
+                        <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center" VerticalAlignment="Center">
+                          <ic:SymbolIcon Symbol="Warning" FontSize="11" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
+                          <TextBlock Text="{Binding StatusText}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                      </Border>
+                    </Panel>
+
+                    <!-- 文件名与说明 -->
+                    <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center" Spacing="3">
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="{Binding FileName}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" FontFamily="Consolas" />
+                        <Border Background="{DynamicResource CanvasBrush}" CornerRadius="4" Padding="6,1"
+                                IsVisible="{Binding SourceFormat, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                          <TextBlock Text="{Binding SourceFormat}" FontSize="9" FontFamily="Consolas" Foreground="{DynamicResource TextTertiaryBrush}" />
+                        </Border>
+                        <TextBlock Text="➔" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}"
+                                   IsVisible="{Binding TargetFormat, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                        <Border Background="{DynamicResource AccentSoftBrush}" CornerRadius="4" Padding="6,1"
+                                IsVisible="{Binding TargetFormat, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                          <TextBlock Text="{Binding TargetFormat}" FontSize="9" FontWeight="SemiBold" FontFamily="Consolas" Foreground="{DynamicResource AccentTextBrush}" />
+                        </Border>
+                      </StackPanel>
+                      <TextBlock Text="{Binding DetailReason}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" />
+                    </StackPanel>
+
+                    <!-- 操作 -->
+                    <Button Grid.Column="2" Classes="toolbar-btn"
+                            Command="{Binding $parent[UserControl].((vm:ReportViewModel)DataContext).ForceRetryItemCommand}"
+                            CommandParameter="{Binding}"
+                            IsVisible="{Binding CanForceRetry}">
+                      <TextBlock Text="{DynamicResource ForceRetryBtn}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
+                    </Button>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

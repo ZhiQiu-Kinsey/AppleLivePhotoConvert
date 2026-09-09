@@ -1,0 +1,367 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+
+  <!-- 应用标题与全局导航 -->
+  <sys:String x:Key="AppTitle">LivePhotoConvert</sys:String>
+  <sys:String x:Key="AppSubtitle">桌面端专业实况照片工坊</sys:String>
+  <sys:String x:Key="NavConvert">实况互转</sys:String>
+  <sys:String x:Key="NavStrip">空间瘦身</sys:String>
+  <sys:String x:Key="NavTools">依赖引擎</sys:String>
+  <sys:String x:Key="NavReport">批次报告</sys:String>
+  <sys:String x:Key="NavSettings">偏好设置</sys:String>
+  <sys:String x:Key="ThemeLight">浅色</sys:String>
+  <sys:String x:Key="ThemeDark">深色</sys:String>
+  <sys:String x:Key="LangZh">中文</sys:String>
+  <sys:String x:Key="LangEn">EN</sys:String>
+
+  <!-- 漏斗与方向 -->
+  <sys:String x:Key="ConvertDirectionLabel">转换方向:</sys:String>
+  <sys:String x:Key="DirAppleToAndroid">苹果 → 安卓</sys:String>
+  <sys:String x:Key="DirAndroidToApple">安卓 → 苹果</sys:String>
+  <sys:String x:Key="DirExtract">提取单文件</sys:String>
+  <sys:String x:Key="BtnAppleToAndroid">开始转换为安卓动态照片</sys:String>
+  <sys:String x:Key="BtnAndroidToApple">开始转换为苹果实况照片</sys:String>
+  <sys:String x:Key="BtnExtract">开始提取独立封面与视频</sys:String>
+  <sys:String x:Key="SelectedSummaryFormat">已选 {0} 项 ({1})</sys:String>
+
+  <!-- 工具栏与相册卡片 -->
+  <sys:String x:Key="ToolbarAlbumTitle">相册实况胶卷</sys:String>
+  <sys:String x:Key="ToolbarSelect">选择</sys:String>
+  <sys:String x:Key="ToolbarSelectActive">完成选择</sys:String>
+  <sys:String x:Key="ToolbarPlayTip">连续试播视口内实况短视频</sys:String>
+  <sys:String x:Key="ToolbarSort">排序</sys:String>
+  <sys:String x:Key="SortDateTaken">拍摄日期</sys:String>
+  <sys:String x:Key="SortDateCreated">创建日期</sys:String>
+  <sys:String x:Key="SortDateModified">修改日期</sys:String>
+  <sys:String x:Key="SortName">名字</sys:String>
+  <sys:String x:Key="SortAsc">升序</sys:String>
+  <sys:String x:Key="SortDesc">降序</sys:String>
+  <sys:String x:Key="ToolbarFilter">筛选</sys:String>
+  <sys:String x:Key="FilterAllFormat">全部照片 ({0})</sys:String>
+  <sys:String x:Key="FilterSuspiciousFormat">仅待人工裁决 ({0})</sys:String>
+  <sys:String x:Key="FilterSelected">仅已选中项</sys:String>
+  <sys:String x:Key="FilterBannerPrefix">当前已应用筛选视图：</sys:String>
+  <sys:String x:Key="FilterBannerSuffix">· 已勾选项目不受影响</sys:String>
+  <sys:String x:Key="FilterClear">清除筛选</sys:String>
+  <sys:String x:Key="ToolbarView">视图</sys:String>
+  <sys:String x:Key="CropNatural">自适应原生画幅</sys:String>
+  <sys:String x:Key="CropSquare">方形 (1:1)</sys:String>
+  <sys:String x:Key="ScaleSmall">紧凑小网格 (多图一览)</sys:String>
+  <sys:String x:Key="ScaleMedium">标准网格</sys:String>
+  <sys:String x:Key="ScaleLarge">超大卡片 (细节鉴赏)</sys:String>
+  <sys:String x:Key="GroupDate">按日期分组</sys:String>
+  <sys:String x:Key="GroupMonth">按月份汇总</sys:String>
+  <sys:String x:Key="GroupYear">按年份足迹</sys:String>
+  <sys:String x:Key="GroupNone">连续平铺 (不分组)</sys:String>
+  <sys:String x:Key="ToolbarMore">更多</sys:String>
+  <sys:String x:Key="SelectAll">全选所有照片</sys:String>
+  <sys:String x:Key="DeselectAll">取消全选</sys:String>
+  <sys:String x:Key="ToggleAllCollapse">全部折叠 / 展开</sys:String>
+  <sys:String x:Key="RefreshAlbum">重新扫描刷新相册</sys:String>
+  <sys:String x:Key="SelectToday">选定本日</sys:String>
+
+  <!-- 控制台与输出 -->
+  <sys:String x:Key="ConsoleTitle">任务转换控制台</sys:String>
+  <sys:String x:Key="ConsoleConfig">转换配置</sys:String>
+  <sys:String x:Key="NamingFormatTitle">生成文件命名格式</sys:String>
+  <sys:String x:Key="NamingFormatOriginal">保持原文件名 (MVIMG_{原名}.jpg)</sys:String>
+  <sys:String x:Key="NamingFormatDateName">拍摄日期 + 原始照片名 (推荐: MVIMG_日期_原名.jpg)</sys:String>
+  <sys:String x:Key="NamingFormatClean">纯相机时间戳 (MVIMG_年月日_时分秒.jpg)</sys:String>
+  <sys:String x:Key="SourceActionTitle">转换成功后源文件处理</sys:String>
+  <sys:String x:Key="SourceActionKeep">保留原始文件 (安全推荐 · 绝不破坏原片)</sys:String>
+  <sys:String x:Key="SourceActionSubfolder">归档到原目录 _original/ 备份文件夹</sys:String>
+  <sys:String x:Key="SourceActionRecycle">移入系统回收站 (可随时撤回)</sys:String>
+  <sys:String x:Key="SourceActionDelete">永久物理删除源文件 (不可找回，谨慎操作)</sys:String>
+  <sys:String x:Key="DeleteWarningTitle">物理删除原片警报</sys:String>
+  <sys:String x:Key="DeleteWarningDesc">原 iPhone 实况照片将被永久彻底清除，点击转换时需输入确认词解锁。</sys:String>
+  <sys:String x:Key="AutoAppendIndexTitle">遇同名文件自动追加 _1 序号</sys:String>
+  <sys:String x:Key="AutoAppendIndexDesc">关闭后将直接覆盖已有同名文件</sys:String>
+  <sys:String x:Key="HeicQualityTitle">苹果实况封面画质 (HEIC)</sys:String>
+  <sys:String x:Key="HeicQualityDesc">JPEG 封面转码为苹果 HEIC 时的画质因数。</sys:String>
+  <sys:String x:Key="OutputDirLabel">输出目录:</sys:String>
+  <sys:String x:Key="ChangeOutputDirBtn">更改</sys:String>
+  <sys:String x:Key="OpenOutputDirTip">在文件资源管理器中打开</sys:String>
+  <sys:String x:Key="KeepSubfoldersLabel">保持原相册子目录层级</sys:String>
+  <sys:String x:Key="KeepSubfoldersTip">保持原相册子目录层级 (防止平铺重名)</sys:String>
+  <sys:String x:Key="ConvertRunningPrefix">正在流式封装微视频并写入相册元数据：</sys:String>
+  <sys:String x:Key="CancelTaskBtn">取消任务</sys:String>
+
+  <!-- 空间瘦身 -->
+  <sys:String x:Key="NoAlbumOrPhotoSelected">尚未选择相册或照片</sys:String>
+  <sys:String x:Key="StripBannerTitle">空间瘦身优化工坊</sys:String>
+  <sys:String x:Key="StripBannerDesc">剥离动态照片中冗余的内嵌短视频流（高保真静态封面 100% 完好留存），释放 70%~90% 存储空间。</sys:String>
+  <sys:String x:Key="StripStagePreview">1. 待瘦身分析</sys:String>
+  <sys:String x:Key="StripStageRunning">2. 正在瘦身中</sys:String>
+  <sys:String x:Key="StripStageCompleted">3. 成果汇报</sys:String>
+  <sys:String x:Key="CurtainCompareTitle">画质深度对比沙盒 (前后覆盖滑动对比)</sys:String>
+  <sys:String x:Key="CurtainCompareDesc">左右拖拽中轴分割线，直接肉眼比对原实况图与瘦身后 HEIC 的发丝与纹理细节：</sys:String>
+  <sys:String x:Key="InPlaceStripTitle">就地覆盖原照片 (破坏性替换)</sys:String>
+  <sys:String x:Key="InPlaceStripDesc">开启后直接覆盖原片，关闭则安全导出至独立目录</sys:String>
+  <sys:String x:Key="SafeExportDirTitle">安全导出目录 (保留原含视频副本)：</sys:String>
+  <sys:String x:Key="SpaceEstimateTitle">空间释放预估</sys:String>
+  <sys:String x:Key="OriginalSizeLabel">原相册总体积:</sys:String>
+  <sys:String x:Key="StrippedSizeLabel">瘦身后预计体积:</sys:String>
+  <sys:String x:Key="SavedSizeLabel">预计释放磁盘空间:</sys:String>
+  <sys:String x:Key="StartStripBtn">开始执行相册瘦身</sys:String>
+  <sys:String x:Key="StripRunningTitle">正在流式剥离微视频并转码 HEIC...</sys:String>
+  <sys:String x:Key="PauseBtn">暂停</sys:String>
+  <sys:String x:Key="AbortBtn">中止任务</sys:String>
+  <sys:String x:Key="CelebrationTitle">空间瘦身圆满完成！</sys:String>
+  <sys:String x:Key="CelebrationDesc">已为您的电脑成功抢救回巨量存储空间，所有照片画质清晰如初。</sys:String>
+  <sys:String x:Key="OpenOutputDirBtn">打开输出文件夹查看</sys:String>
+  <sys:String x:Key="ContinueStripBtn">继续瘦身其他相册</sys:String>
+
+  <!-- 依赖引擎 -->
+  <sys:String x:Key="ToolsTitle">核心依赖引擎管理</sys:String>
+  <sys:String x:Key="ToolsDesc">检测并管理实况互转引擎：ExifTool、FFmpeg 与 heif-enc。</sys:String>
+  <sys:String x:Key="RescanToolsBtn">重新扫描检测引擎</sys:String>
+  <sys:String x:Key="MirrorTitle">GitHub 国内下载加速镜像</sys:String>
+  <sys:String x:Key="MirrorDesc">从常用预设节点挑选，或手动输入您的私有加速代理</sys:String>
+  <sys:String x:Key="AutoDownloadLabel">缺失时静默自动拉取</sys:String>
+  <sys:String x:Key="TestPingBtn">测试连通性</sys:String>
+
+  <!-- 批次报告 -->
+  <sys:String x:Key="ReportTitle">执行汇总报告</sys:String>
+  <sys:String x:Key="SkippedTitle">跳过与待定文件明细</sys:String>
+  <sys:String x:Key="ExportLogBtn">导出错误日志</sys:String>
+  <sys:String x:Key="ForceRetryBtn">单项强制补转</sys:String>
+
+  <!-- 防灾弹窗 -->
+  <sys:String x:Key="DeleteDialogTitle">高危警报：即将彻底删除原照片！</sys:String>
+  <sys:String x:Key="DeleteDialogDesc">此操作不可撤销！原照片将直接从磁盘永久粉碎</sys:String>
+  <sys:String x:Key="DeleteDialogInputLabel">请输入大写确认词 DELETE 以解除安全锁定：</sys:String>
+  <sys:String x:Key="DeleteDialogCancel">取消，改用回收站</sys:String>
+  <sys:String x:Key="DeleteDialogConfirm">确认永久删除原片</sys:String>
+
+  <sys:String x:Key="LowDiskDialogTitle">磁盘空间不足预警 (ENOSPC)</sys:String>
+  <sys:String x:Key="LowDiskDialogDesc">目标磁盘剩余容量不足以安全完成转换</sys:String>
+  <sys:String x:Key="LowDiskDialogDismiss">我知道了</sys:String>
+
+  <sys:String x:Key="BackupDialogTitle">高危防灾确认：就地覆盖原照片</sys:String>
+  <sys:String x:Key="BackupDialogDesc">开启此项将永久剥离并删除相册内嵌的短视频！</sys:String>
+  <sys:String x:Key="BackupDialogCancel">取消，推荐安全导出</sys:String>
+  <sys:String x:Key="BackupDialogConfirm">我已知晓风险，开启就地覆盖</sys:String>
+
+  <sys:String x:Key="ArbitrateDialogTitle">异常实况同屏裁决与核验 (时差超标)</sys:String>
+  <sys:String x:Key="ArbitrateDialogDesc">双屏同帧比对静态原图与视频首帧，确保属于同一快门瞬间</sys:String>
+  <sys:String x:Key="ArbitrateReject">并非同一实况 (作为独立图影拆分)</sys:String>
+  <sys:String x:Key="ArbitrateConfirm">确认属于同一实况 (强制配对入白名单)</sys:String>
+
+  <sys:String x:Key="SettingsPageTitle">全局偏好设置</sys:String>
+  <sys:String x:Key="ThemeTitle">界面外观主题</sys:String>
+  <sys:String x:Key="LangTitle">系统语言</sys:String>
+  <sys:String x:Key="ConcurrencyTitle">并行并发转换任务数</sys:String>
+  <sys:String x:Key="SaveSettingsBtn">保存设置</sys:String>
+
+  <!-- CompactToolbar Keys -->
+  <sys:String x:Key="ToolbarSelectTip">切换多选模式 (不冲刷已勾选项目)</sys:String>
+  <sys:String x:Key="ToolbarSortTip">排序方式</sys:String>
+  <sys:String x:Key="ToolbarFilterTip">筛选</sys:String>
+  <sys:String x:Key="ToolbarViewTip">视图布局与卡片比例</sys:String>
+  <sys:String x:Key="ToolbarMoreTip">更多选项</sys:String>
+  <sys:String x:Key="CropFill">铺满裁切填充</sys:String>
+  <sys:String x:Key="TimelineGroupByDate">按拍摄日期分组折叠</sys:String>
+  <sys:String x:Key="TimelineGroupByNone">平铺瀑布流</sys:String>
+  <sys:String x:Key="CropNaturalShort">等高 (原始比例)</sys:String>
+  <sys:String x:Key="CropFillShort">方形 (1:1)</sys:String>
+  <sys:String x:Key="ScaleSmallShort">小 (4 列密排)</sys:String>
+  <sys:String x:Key="ScaleMediumShort">中等 (3 列标准)</sys:String>
+  <sys:String x:Key="ScaleLargeShort">大 (2 列大图)</sys:String>
+  <sys:String x:Key="GroupByDate">按日期分组</sys:String>
+  <sys:String x:Key="GroupByMonth">按月份汇总</sys:String>
+  <sys:String x:Key="GroupByYear">按年份足迹</sys:String>
+  <sys:String x:Key="GroupByNone">连续平铺 (不分组)</sys:String>
+  <sys:String x:Key="SelectAllShort">全选</sys:String>
+  <sys:String x:Key="DeselectAllShort">不选择任何项目</sys:String>
+  <sys:String x:Key="ToggleAllCollapseShort">全部折叠/展开分组</sys:String>
+  <sys:String x:Key="RefreshAlbumShort">刷新相册</sys:String>
+
+  <!-- ConvertView Keys -->
+  <sys:String x:Key="SelectGroupTip">快捷勾选本组内所有实况照片</sys:String>
+  <sys:String x:Key="ConsoleSubtitle">就绪待命</sys:String>
+  <sys:String x:Key="DeleteSourceAlertTitle">物理删除原片警报</sys:String>
+  <sys:String x:Key="DeleteSourceAlertDesc">原 iPhone 实况照片将被永久彻底清除，点击转换时需输入确认词解锁。</sys:String>
+
+  <!-- StripView Keys -->
+  <sys:String x:Key="DragLeftCompare">拖向左侧比对瘦身 HEIC 效果</sys:String>
+  <sys:String x:Key="DragRightCompare">拖向右侧比对原始照片细节</sys:String>
+  <sys:String x:Key="OutputDirModeTitle">输出目录模式</sys:String>
+  <sys:String x:Key="BrowseBtn">浏览...</sys:String>
+  <sys:String x:Key="BeforeSizeLabel">瘦身前总体积</sys:String>
+  <sys:String x:Key="AfterSizeLabel">瘦身后总体积</sys:String>
+  <sys:String x:Key="AfterQualityLabel">超高画质 HEIC</sys:String>
+  <sys:String x:Key="NetSavedLabel">净节省释放空间</sys:String>
+
+  <!-- ToolsView Keys -->
+  <sys:String x:Key="ExifToolDesc">注入 XMP 动态照片标签与 QuickTime UTC 时区元数据。</sys:String>
+  <sys:String x:Key="FfmpegDesc">视频无损流复制与格式解封装。</sys:String>
+  <sys:String x:Key="HeifEncDesc">高画质 HEIC/HEIF 图像编码器。</sys:String>
+  <sys:String x:Key="CustomPathBtn">自定义指定路径...</sys:String>
+  <sys:String x:Key="InstallToolBtn">一键安装</sys:String>
+  <sys:String x:Key="InstallingStatus">正在下载...</sys:String>
+  <sys:String x:Key="InstallStartingFormat">正在安装 {0}，请保持网络畅通...</sys:String>
+  <sys:String x:Key="InstallCompletedFormat">{0} 安装完成</sys:String>
+  <sys:String x:Key="InstallFailedFormat">{0} 安装失败：{1}</sys:String>
+  <sys:String x:Key="InstallCanceled">已取消安装</sys:String>
+  <sys:String x:Key="ToolPathInvalidFormat">所选文件不是可用的引擎可执行文件：{0}</sys:String>
+  <sys:String x:Key="ToolPathAppliedFormat">已指定 {0} 的可执行文件路径</sys:String>
+  <sys:String x:Key="PickerToolExecutableTitle">选择引擎可执行文件</sys:String>
+
+  <!-- CurtainCompare Keys -->
+  <sys:String x:Key="CurtainAfterTitle">瘦身后静态 HEIC</sys:String>
+  <sys:String x:Key="CurtainAfterBadge">瘦身后</sys:String>
+  <sys:String x:Key="CurtainBeforeTitle">原动态照片 (含内嵌视频)</sys:String>
+  <sys:String x:Key="CurtainBeforeBadge">原片</sys:String>
+
+  <!-- PhotoCard Keys -->
+  <sys:String x:Key="CardHoverPlaying">正在动态回放</sys:String>
+  <sys:String x:Key="CardLiveBadge">实况</sys:String>
+  <sys:String x:Key="CardTimeMismatch">拍摄时间不吻合</sys:String>
+  <sys:String x:Key="CardArbitrateBtn">人工确认配对</sys:String>
+  <sys:String x:Key="CardToggleSelectTip">点击勾选/取消选择</sys:String>
+
+  <!-- QuickLook Keys -->
+  <sys:String x:Key="QuickLookLiveBadge">实况 Live Photo</sys:String>
+  <sys:String x:Key="QuickLookPlayingDesc">正在试播实况短视频</sys:String>
+  <sys:String x:Key="QuickLookDevice">拍摄设备</sys:String>
+  <sys:String x:Key="QuickLookResolution">分辨率</sys:String>
+  <sys:String x:Key="QuickLookPairing">封装配对</sys:String>
+  <sys:String x:Key="QuickLookSize">存储体积</sys:String>
+  <sys:String x:Key="QuickLookLoopPlay">循环试播实况</sys:String>
+  <sys:String x:Key="QuickLookPause">暂停播放</sys:String>
+  <sys:String x:Key="QuickLookShortcuts">按 Space 暂停/继续 · ← / → 切换 · 按 Esc 关闭</sys:String>
+  <sys:String x:Key="QuickLookPrevTip">上一张 (←)</sys:String>
+  <sys:String x:Key="QuickLookNextTip">下一张 (→)</sys:String>
+
+  <!-- Dialog Secondary Keys -->
+  <sys:String x:Key="DeleteAffectedPrefix">本次受影响源文件：</sys:String>
+  <sys:String x:Key="DeleteAffectedFormat">本次受影响源文件：{0} 组原始照片 ({1})</sys:String>
+  <sys:String x:Key="DeleteIrreversibleDesc">删除后将无法从 Windows 回收站撤回还原。</sys:String>
+  <sys:String x:Key="DeleteInputPlaceholder">键入 DELETE</sys:String>
+  <sys:String x:Key="LowDiskRequiredLabel">预计所需空间 (含防损冗余 1.2倍 + 500MB)：</sys:String>
+  <sys:String x:Key="LowDiskAvailableLabel">目标驱动器当前剩余可用：</sys:String>
+  <sys:String x:Key="LowDiskSolutionDesc">请释放目标驱动器空间或更改输出目录至其他磁盘分区。</sys:String>
+  <sys:String x:Key="BackupRiskTitle">操作影响与不可逆风险：</sys:String>
+  <sys:String x:Key="BackupRiskPoint1">1. 相册内的 Motion Photo 视频流将被彻底清除，仅保留纯静态 HEIC/JPEG 封面；</sys:String>
+  <sys:String x:Key="BackupRiskPoint2">2. 安全保障：底层将自动创建 .livephoto_backup 暂存原片，校验完整后方才清理，断电零损坏。</sys:String>
+  <sys:String x:Key="ArbitratePhotoTitle">静态照片 (HEIC)</sys:String>
+  <sys:String x:Key="ArbitratePhotoDesc">静态高分辨率底片</sys:String>
+  <sys:String x:Key="ArbitrateVideoTitle">视频首帧 (MOV)</sys:String>
+  <sys:String x:Key="ArbitrateVideoDesc">实况视频第 0 毫秒首帧</sys:String>
+  <sys:String x:Key="ArbitrateConclusionLabel">时差分析结论：</sys:String>
+
+  <!-- Settings Dialog Options -->
+  <sys:String x:Key="ThemeLightOption">浅色模式</sys:String>
+  <sys:String x:Key="ThemeDarkOption">深色模式</sys:String>
+  <sys:String x:Key="ThemeAutoOption">跟随系统</sys:String>
+  <sys:String x:Key="LangZhOption">简体中文</sys:String>
+  <sys:String x:Key="LangEnOption">English</sys:String>
+
+  <!-- Settings Dialog Redesign -->
+  <sys:String x:Key="CancelBtn">取消</sys:String>
+  <sys:String x:Key="SettingsConcurrencyDesc">并行处理的实况照片对数（1~16），数值越高速度越快，同时占用的内存与磁盘 IO 也越多。</sys:String>
+  <sys:String x:Key="SettingsPageDesc">主题、语言与转换性能等全局偏好，保存后立即生效。</sys:String>
+  <sys:String x:Key="SettingsSavedHint">已保存</sys:String>
+  <sys:String x:Key="SettingsHeicQualityTitle">HEIC 转码质量</sys:String>
+  <sys:String x:Key="SettingsHeicQualityDesc">空间瘦身与还原模式中转码 HEIC 的画质（50~100），数值越高画质越好、体积越大。</sys:String>
+  <sys:String x:Key="NotifyOnCompleteTitle">转换完成提醒</sys:String>
+  <sys:String x:Key="NotifyOnCompleteDesc">批量转换或瘦身完成后播放提示音。</sys:String>
+  <sys:String x:Key="AutoOpenOutputTitle">转换后打开输出目录</sys:String>
+  <sys:String x:Key="AutoOpenOutputDesc">任务完成后自动在资源管理器中打开输出文件夹。</sys:String>
+  <sys:String x:Key="AutoCleanTempTitle">自动清理临时文件</sys:String>
+  <sys:String x:Key="AutoCleanTempDesc">退出时清理转换过程中产生的临时文件，释放磁盘空间。</sys:String>
+
+  <!-- About Page (inside Settings Dialog) -->
+  <sys:String x:Key="SettingsTabTitle">偏好设置</sys:String>
+  <sys:String x:Key="AboutTabTitle">关于</sys:String>
+  <sys:String x:Key="AboutVersionLabel">版本</sys:String>
+  <sys:String x:Key="AboutAuthorLabel">作者与维护者</sys:String>
+  <sys:String x:Key="AboutAuthorHomeBtn">主页</sys:String>
+  <sys:String x:Key="AboutSponsorTitle">赞赏支持</sys:String>
+  <sys:String x:Key="AboutSponsorDesc">如果这个项目对你有帮助，欢迎扫码支持开发。</sys:String>
+  <sys:String x:Key="AboutRepoBtn">GitHub 仓库</sys:String>
+  <sys:String x:Key="AboutIssuesBtn">反馈问题</sys:String>
+  <sys:String x:Key="AboutReleasesBtn">版本下载</sys:String>
+  <sys:String x:Key="AboutLicenseTitle">开源协议</sys:String>
+  <sys:String x:Key="AboutLicenseDesc">本项目基于 MIT 许可证开源：允许任何人自由使用、复制、修改、合并、发布、分发与销售本软件，唯一条件是保留版权声明与许可声明。软件按「原样」提供，不含任何明示或默示的担保。</sys:String>
+  <sys:String x:Key="AboutViewLicenseBtn">查看协议全文</sys:String>
+  <sys:String x:Key="AboutCopyrightLine">Copyright (c) 2024-2026 Kinsey.Qiu. All rights reserved.</sys:String>
+  <sys:String x:Key="AboutContributorsTitle">贡献者</sys:String>
+  <sys:String x:Key="AboutContributorsHint">感谢每一位参与者，欢迎提交 Pull Request 成为贡献者。</sys:String>
+  <sys:String x:Key="AboutCreditsRuntimeTitle">运行时引擎与内置库</sys:String>
+  <sys:String x:Key="AboutCreditsRuntimeDesc">ExifTool 与 FFmpeg 为外部可执行文件，首次运行时由依赖引擎页面自动检测并可一键下载。</sys:String>
+  <sys:String x:Key="AboutCreditsBuildTitle">构建框架与规范</sys:String>
+  <sys:String x:Key="CreditContributorAuthorDesc">项目作者与主要维护者</sys:String>
+  <sys:String x:Key="CreditExifToolDesc">行业标准的媒体元数据读写引擎</sys:String>
+  <sys:String x:Key="CreditFfmpegDesc">视频无损流复制与容器解封装</sys:String>
+  <sys:String x:Key="CreditLibheifDesc">HEIC / HEIF 编解码（heif-enc 由其构建）</sys:String>
+  <sys:String x:Key="CreditMagickDesc">.NET 平台高性能图像解码与缩略图处理</sys:String>
+  <sys:String x:Key="CreditDotNetDesc">跨平台运行时与 Native AOT 原生编译工具链</sys:String>
+  <sys:String x:Key="CreditAvaloniaDesc">跨平台 XAML 桌面 UI 框架</sys:String>
+  <sys:String x:Key="CreditToolkitDesc">MVVM 源生成器与消息基础设施</sys:String>
+  <sys:String x:Key="CreditFluentIconsDesc">Fluent Design 矢量图标库</sys:String>
+  <sys:String x:Key="CreditMotionPhotoSpecDesc">安卓动态照片官方容器格式规范</sys:String>
+
+  <!-- MainWindow Navigation Category -->
+  <sys:String x:Key="NavCategoryBusiness">业务模块</sys:String>
+
+  <!-- Dynamic Units & Labels -->
+  <sys:String x:Key="UnitLivePhotos">张实况</sys:String>
+  <sys:String x:Key="UnitQuality">质量</sys:String>
+  <sys:String x:Key="CurrentFileLabel">当前文件:</sys:String>
+  <sys:String x:Key="ReleasedLabel">已释放:</sys:String>
+  <sys:String x:Key="PingLatencyLabel">当前响应延迟:</sys:String>
+  <sys:String x:Key="SelectAlbumFolderBtn">选择目录</sys:String>
+
+  <!-- ============================================================= -->
+  <!-- 批次报告 / 空间瘦身 阶段状态（ReportView / StripView 运行时） -->
+  <!-- ============================================================= -->
+  <sys:String x:Key="ReportModeMerge">苹果实况 (HEIC+MOV) ➔ 安卓动态照片</sys:String>
+  <sys:String x:Key="ReportModeApple">安卓实况 ➔ 苹果实况</sys:String>
+  <sys:String x:Key="ReportModeExtract">实况解构 ➔ 提取单文件</sys:String>
+  <sys:String x:Key="ReportTaskName">实况照片批次互转</sys:String>
+  <sys:String x:Key="ReportAvgSpeedFormat">{0:F2} 秒/项</sys:String>
+  <sys:String x:Key="StageStatusReady">沙盒对比与就绪</sys:String>
+  <sys:String x:Key="StageStatusRunning">正在深度瘦身中...</sys:String>
+  <sys:String x:Key="StageStatusDone">瘦身处理完成</sys:String>
+  <sys:String x:Key="StageStatusIdle">待机</sys:String>
+  <sys:String x:Key="ProcessCompletedBadge">处理完成</sys:String>
+  <sys:String x:Key="SplitTargetApple">Apple Live Photo</sys:String>
+  <sys:String x:Key="SplitTargetExtract">独立封面与视频</sys:String>
+  <sys:String x:Key="MergeSuccessDesc">已成功合成为动态照片</sys:String>
+  <sys:String x:Key="SplitSuccessDescFormat">已成功拆分为 {0}</sys:String>
+
+  <!-- QuickLook 扩展播放状态（覆盖原 QuickLookPause / QuickLookLoopPlay 文案） -->
+  <sys:String x:Key="QuickLookLoading">实况载入中...</sys:String>
+  <sys:String x:Key="QuickLookPlaying">实况播放中</sys:String>
+  <sys:String x:Key="QuickLookStatic">静态照片</sys:String>
+  <sys:String x:Key="QuickLookLoop">循环播放</sys:String>
+  <sys:String x:Key="QuickLookPaused">实况已暂停</sys:String>
+
+  <!-- 报告 / 对比 / 弹窗补充文案（消除 XAML 写死中文，两字典需与 LocalizationService 内部目录同步） -->
+  <sys:String x:Key="ReportBackBtn">返回转换</sys:String>
+  <sys:String x:Key="ReportEmptyTitle">暂无批次转换记录</sys:String>
+  <sys:String x:Key="ReportEmptyDesc">在实况互转工作台中导入照片并启动批次后，处理结果将在此全面呈现。</sys:String>
+  <sys:String x:Key="ReportGoConvertBtn">前往实况互转工作台</sys:String>
+  <sys:String x:Key="ReportKpiTotal">处理总量</sys:String>
+  <sys:String x:Key="ReportKpiTotalSub">已完成扫描配对</sys:String>
+  <sys:String x:Key="ReportKpiSuccess">转换成功</sys:String>
+  <sys:String x:Key="ReportKpiSuccessRate">成功率</sys:String>
+  <sys:String x:Key="ReportKpiFailed">异常/跳过</sys:String>
+  <sys:String x:Key="ReportKpiFailedSub">需关注或重试项</sys:String>
+  <sys:String x:Key="ReportKpiDuration">批次总耗时</sys:String>
+  <sys:String x:Key="ReportDistTitle">处理结果分布指标</sys:String>
+  <sys:String x:Key="ReportLegendSuccess">成功:</sys:String>
+  <sys:String x:Key="ReportLegendSkipped">跳过:</sys:String>
+  <sys:String x:Key="ReportLegendFailed">失败:</sys:String>
+  <sys:String x:Key="ReportDetailAll">全部明细</sys:String>
+  <sys:String x:Key="ReportDetailFailedOnly">仅异常/失败</sys:String>
+  <sys:String x:Key="ReportDetailSuccessOnly">仅成功</sys:String>
+  <sys:String x:Key="ReportDetailTitle">详细执行记录清单</sys:String>
+  <sys:String x:Key="StripPickSample">选取单张对比</sys:String>
+  <sys:String x:Key="StripRescanTip">重新扫描分析</sys:String>
+  <sys:String x:Key="CurtainPickSample">导入实况照片进行画质比对</sys:String>
+  <sys:String x:Key="QuickLookCloseTip">关闭 (Esc)</sys:String>
+
+</ResourceDictionary>

@@ -113,7 +113,7 @@ public static class TerminalPreviewGenerator
             g.DrawLine(closePen, btnRight - 54, btnY + 5, btnRight - 44, btnY + 5);
         }
 
-        // 5. 终端控制台内容 (真实 Spectre.Console 输出)
+        // 5. 终端控制台内容 (System.Drawing 绘制的终端预览画面)
         float startX = termRect.X + 32;
         float startY = termRect.Y + 60;
 

@@ -110,4 +110,41 @@ public class SourceFileCleanerTests
 
         Assert.False(Directory.Exists(temp.Combine(SourceFileCleaner.MergedFolderName)));
     }
+
+    /// <summary>
+    /// 测试自定义子文件夹名称（例如 SplitFolderName "已拆分"）能正确创建目录并移入文件。
+    /// </summary>
+    [Fact]
+    public void MoveAction_WithCustomSubfolder_ShouldMoveToSpecifiedFolder()
+    {
+        using var temp = new TempDirectory();
+        var photo = temp.CreateFile("IMG_0001.heic", [1]);
+
+        var cleaner = new SourceFileCleaner(SourceFileAction.Move, temp.Root, SourceFileCleaner.SplitFolderName);
+        var result = cleaner.Clean([photo]);
+
+        Assert.Equal(1, result.CleanedCount);
+        Assert.Empty(result.Failures);
+        Assert.False(File.Exists(photo));
+        Assert.True(File.Exists(temp.Combine(SourceFileCleaner.SplitFolderName, "IMG_0001.heic")));
+    }
+
+    /// <summary>
+    /// 测试 MoveToSubfolder 枚举别名的行为与 Move 完全一致。
+    /// </summary>
+    [Fact]
+    public void MoveToSubfolder_Alias_ShouldWorkIdenticallyToMove()
+    {
+        using var temp = new TempDirectory();
+        var photo = temp.CreateFile("IMG_0002.heic", [1]);
+
+        var cleaner = new SourceFileCleaner(SourceFileAction.MoveToSubfolder, temp.Root);
+        var result = cleaner.Clean([photo]);
+
+        Assert.Equal(1, result.CleanedCount);
+        Assert.Empty(result.Failures);
+        Assert.False(File.Exists(photo));
+        Assert.True(File.Exists(temp.Combine(SourceFileCleaner.MergedFolderName, "IMG_0002.heic")));
+    }
 }
+

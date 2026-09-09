@@ -148,7 +148,7 @@ public static partial class FileNameDateTimeParser
         result = default;
         foreach (Match match in UnixMsRegex().Matches(text))
         {
-            if (long.TryParse(match.Groups[1].ValueSpan, out var ms) && ms >= MinUnixEpochMs && ms <= MaxUnixEpochMs)
+            if (long.TryParse(match.Groups[1].ValueSpan, out var ms) && ms is >= MinUnixEpochMs and <= MaxUnixEpochMs)
             {
                 try
                 {
@@ -173,7 +173,7 @@ public static partial class FileNameDateTimeParser
         result = default;
         foreach (Match match in UnixSecRegex().Matches(text))
         {
-            if (long.TryParse(match.Groups[1].ValueSpan, out var sec) && sec >= MinUnixEpochSec && sec <= MaxUnixEpochSec)
+            if (long.TryParse(match.Groups[1].ValueSpan, out var sec) && sec is >= MinUnixEpochSec and <= MaxUnixEpochSec)
             {
                 try
                 {

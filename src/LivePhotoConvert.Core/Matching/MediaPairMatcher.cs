@@ -103,11 +103,15 @@ public static class MediaPairMatcher
         // 统计未被任何配对采纳的孤立照片与视频数量
         var matchedPhotos = new HashSet<string>(pairs.Select(pair => pair.PhotoPath), StringComparer.OrdinalIgnoreCase);
         var matchedVideos = new HashSet<string>(pairs.Select(pair => pair.VideoPath), StringComparer.OrdinalIgnoreCase);
+        var unmatchedPhotos = photos.Where(photo => !matchedPhotos.Contains(photo)).ToList();
+        var unmatchedVideos = videos.Where(video => !matchedVideos.Contains(video)).ToList();
         return new PairingResult
         {
             Pairs = pairs,
-            UnmatchedPhotoCount = photos.Count(photo => !matchedPhotos.Contains(photo)),
-            UnmatchedVideoCount = videos.Count(video => !matchedVideos.Contains(video)),
+            UnmatchedPhotoCount = unmatchedPhotos.Count,
+            UnmatchedVideoCount = unmatchedVideos.Count,
+            PhotosWithoutVideo = unmatchedPhotos,
+            VideosWithoutPhoto = unmatchedVideos,
             PhotoContentIdentifiers = photoContentIdentifiers,
             VideoContentIdentifiers = videoContentIdentifiers
         };

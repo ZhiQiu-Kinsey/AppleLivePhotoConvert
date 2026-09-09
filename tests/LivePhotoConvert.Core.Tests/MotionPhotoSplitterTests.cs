@@ -26,7 +26,7 @@ public class MotionPhotoSplitterTests
         videoBytes[8] = (byte)'m'; videoBytes[9] = (byte)'p'; videoBytes[10] = (byte)'4'; videoBytes[11] = (byte)'2';
 
         var combinedBytes = photoBytes.Concat(videoBytes).ToArray();
-        var motionPhotoPath = tempDir.CreateFile("MVIMG_20230520.jpg", combinedBytes);
+        tempDir.CreateFile("MVIMG_20230520.jpg", combinedBytes);
 
         var outputDir = tempDir.Combine("output");
 
@@ -71,7 +71,7 @@ public class MotionPhotoSplitterTests
         videoBytes[4] = (byte)'f'; videoBytes[5] = (byte)'t'; videoBytes[6] = (byte)'y'; videoBytes[7] = (byte)'p';
 
         var combinedBytes = photoBytes.Concat(videoBytes).ToArray();
-        var motionPhotoPath = tempDir.CreateFile("IMG_1234.jpg", combinedBytes);
+        tempDir.CreateFile("IMG_1234.jpg", combinedBytes);
 
         var outputDir = tempDir.Combine("output");
 
@@ -137,6 +137,155 @@ public class MotionPhotoSplitterTests
     }
 
     /// <summary>
+    /// 测试默认 Keep 清理策略：拆分成功后原始动态照片文件完整保留在原输入目录，CleanedFileCount 为 0
+    /// </summary>
+    [Fact]
+    public async Task SplitAsync_WithSourceFileActionKeep_ShouldLeaveSourceFilesIntact()
+    {
+        using var tempDir = new TempDirectory();
+
+        var photoBytes = new byte[100];
+        photoBytes[0] = 0xFF; photoBytes[1] = 0xD8; photoBytes[2] = 0xFF;
+        var videoBytes = new byte[200];
+        videoBytes[4] = (byte)'f'; videoBytes[5] = (byte)'t'; videoBytes[6] = (byte)'y'; videoBytes[7] = (byte)'p';
+        videoBytes[8] = (byte)'m'; videoBytes[9] = (byte)'p'; videoBytes[10] = (byte)'4'; videoBytes[11] = (byte)'2';
+
+        var combinedBytes = photoBytes.Concat(videoBytes).ToArray();
+        var motionPhotoPath = tempDir.CreateFile("KEEP_TEST.jpg", combinedBytes);
+        var outputDir = tempDir.Combine("output");
+
+        var fakeExif = new FakeSplitterExifTool { MicroVideoOffset = 200 };
+        var splitter = new MotionPhotoSplitter(fakeExif);
+
+        var options = new SplitOptions
+        {
+            InputDirectory = tempDir.Root,
+            OutputDirectory = outputDir,
+            TargetFormat = SplitTargetFormat.Android,
+            SourceFileAction = SourceFileAction.Keep
+        };
+
+        var report = await splitter.SplitAsync(options, TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, report.Total);
+        Assert.Equal(1, report.Succeeded);
+        Assert.Equal(0, report.CleanedFileCount);
+        Assert.Empty(report.CleanupFailures);
+        Assert.True(File.Exists(motionPhotoPath), "Keep 策略下原文件必须保留");
+    }
+
+    /// <summary>
+    /// 测试 Move / MoveToSubfolder 清理策略：拆分成功后原动态照片被移动到“已拆分”子目录下
+    /// </summary>
+    [Fact]
+    public async Task SplitAsync_WithSourceFileActionMove_ShouldMoveSourceFilesToSplittedSubfolder()
+    {
+        using var tempDir = new TempDirectory();
+
+        var photoBytes = new byte[100];
+        photoBytes[0] = 0xFF; photoBytes[1] = 0xD8; photoBytes[2] = 0xFF;
+        var videoBytes = new byte[200];
+        videoBytes[4] = (byte)'f'; videoBytes[5] = (byte)'t'; videoBytes[6] = (byte)'y'; videoBytes[7] = (byte)'p';
+        videoBytes[8] = (byte)'m'; videoBytes[9] = (byte)'p'; videoBytes[10] = (byte)'4'; videoBytes[11] = (byte)'2';
+
+        var combinedBytes = photoBytes.Concat(videoBytes).ToArray();
+        var motionPhotoPath = tempDir.CreateFile("MOVE_TEST.jpg", combinedBytes);
+        var outputDir = tempDir.Combine("output");
+
+        var fakeExif = new FakeSplitterExifTool { MicroVideoOffset = 200 };
+        var splitter = new MotionPhotoSplitter(fakeExif);
+
+        var options = new SplitOptions
+        {
+            InputDirectory = tempDir.Root,
+            OutputDirectory = outputDir,
+            TargetFormat = SplitTargetFormat.Android,
+            SourceFileAction = SourceFileAction.MoveToSubfolder
+        };
+
+        var report = await splitter.SplitAsync(options, TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, report.Total);
+        Assert.Equal(1, report.Succeeded);
+        Assert.Equal(1, report.CleanedFileCount);
+        Assert.Empty(report.CleanupFailures);
+        Assert.False(File.Exists(motionPhotoPath), "原输入目录中的原文件应被移走");
+        var movedPath = tempDir.Combine(SourceFileCleaner.SplitFolderName, "MOVE_TEST.jpg");
+        Assert.True(File.Exists(movedPath), $"原文件应移入 \"{SourceFileCleaner.SplitFolderName}\" 子目录");
+    }
+
+    /// <summary>
+    /// 测试 Delete 清理策略：拆分成功后原动态照片被物理删除
+    /// </summary>
+    [Fact]
+    public async Task SplitAsync_WithSourceFileActionDelete_ShouldDeleteSourceFiles()
+    {
+        using var tempDir = new TempDirectory();
+
+        var photoBytes = new byte[100];
+        photoBytes[0] = 0xFF; photoBytes[1] = 0xD8; photoBytes[2] = 0xFF;
+        var videoBytes = new byte[200];
+        videoBytes[4] = (byte)'f'; videoBytes[5] = (byte)'t'; videoBytes[6] = (byte)'y'; videoBytes[7] = (byte)'p';
+        videoBytes[8] = (byte)'m'; videoBytes[9] = (byte)'p'; videoBytes[10] = (byte)'4'; videoBytes[11] = (byte)'2';
+
+        var combinedBytes = photoBytes.Concat(videoBytes).ToArray();
+        var motionPhotoPath = tempDir.CreateFile("DELETE_TEST.jpg", combinedBytes);
+        var outputDir = tempDir.Combine("output");
+
+        var fakeExif = new FakeSplitterExifTool { MicroVideoOffset = 200 };
+        var splitter = new MotionPhotoSplitter(fakeExif);
+
+        var options = new SplitOptions
+        {
+            InputDirectory = tempDir.Root,
+            OutputDirectory = outputDir,
+            TargetFormat = SplitTargetFormat.Android,
+            SourceFileAction = SourceFileAction.Delete
+        };
+
+        var report = await splitter.SplitAsync(options, TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, report.Total);
+        Assert.Equal(1, report.Succeeded);
+        Assert.Equal(1, report.CleanedFileCount);
+        Assert.Empty(report.CleanupFailures);
+        Assert.False(File.Exists(motionPhotoPath), "Delete 策略下原文件应被删除");
+    }
+
+    /// <summary>
+    /// 测试当文件非实况照片而被跳过时，即使配置了 Move 策略也绝对不清理原文件
+    /// </summary>
+    [Fact]
+    public async Task SplitAsync_WithSourceFileActionMove_WhenSkipped_ShouldNotCleanSourceFiles()
+    {
+        using var tempDir = new TempDirectory();
+        var normalPhoto = tempDir.CreateFile("REGULAR.jpg", [1, 2, 3, 4]);
+        var outputDir = tempDir.Combine("output");
+
+        var fakeExif = new FakeSplitterExifTool { MicroVideoOffset = null };
+        var splitter = new MotionPhotoSplitter(fakeExif);
+
+        var options = new SplitOptions
+        {
+            InputDirectory = tempDir.Root,
+            OutputDirectory = outputDir,
+            TargetFormat = SplitTargetFormat.Android,
+            SourceFileAction = SourceFileAction.Move
+        };
+
+        var report = await splitter.SplitAsync(options, TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, report.Total);
+        Assert.Equal(0, report.Succeeded);
+        Assert.Equal(1, report.Skipped);
+        Assert.Equal(0, report.CleanedFileCount);
+        Assert.Empty(report.CleanupFailures);
+        Assert.True(File.Exists(normalPhoto), "被跳过的普通图片绝对不应被移动或清理");
+        Assert.False(File.Exists(tempDir.Combine(SourceFileCleaner.SplitFolderName, "REGULAR.jpg")), "子目录中不应存在未拆分的文件");
+        Assert.Empty(Directory.GetFiles(tempDir.Combine(SourceFileCleaner.SplitFolderName)));
+    }
+
+    /// <summary>
     /// 模拟测试用视频转换器桩
     /// </summary>
     private sealed class FakeSplitterVideoConverter : IVideoConverter
@@ -180,7 +329,7 @@ public class MotionPhotoSplitterTests
     /// </summary>
     private sealed class FakeSplitterExifTool : IExifTool
     {
-        public long? MicroVideoOffset { get; set; }
+        public long? MicroVideoOffset { get; init; }
         public string? WrittenAppleContentIdentifier { get; private set; }
         public string? WrittenAppleVideoContentIdentifier { get; private set; }
         public string? WrittenAppleVideoPhotoPath { get; private set; }

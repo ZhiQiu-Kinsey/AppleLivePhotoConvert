@@ -1,0 +1,274 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:LivePhotoConvert.Desktop.ViewModels"
+             xmlns:controls="using:LivePhotoConvert.Desktop.Controls"
+             x:Class="LivePhotoConvert.Desktop.Views.StripView"
+             x:CompileBindings="True"
+             x:DataType="vm:StripViewModel"
+             xmlns:ic="using:FluentIcons.Avalonia">
+
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+    <StackPanel Spacing="16" Margin="24,18" HorizontalAlignment="Stretch">
+
+      <!-- 顶部工坊 Banner 卡片 -->
+      <Border CornerRadius="18" Padding="20,16" BoxShadow="0 4 12 0 #20000000">
+        <Border.Background>
+          <LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%">
+            <GradientStop Offset="0" Color="#059669" />
+            <GradientStop Offset="1" Color="#0D9488" />
+          </LinearGradientBrush>
+        </Border.Background>
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Grid.Column="0" Spacing="4" VerticalAlignment="Center">
+            <TextBlock Text="{DynamicResource StripBannerTitle}" FontWeight="Black" FontSize="18" Foreground="{DynamicResource OnAccentBrush}" />
+            <TextBlock Text="{DynamicResource StripBannerDesc}" FontSize="12" Foreground="#CCFBF1" TextWrapping="Wrap" />
+          </StackPanel>
+
+          <!-- 只读状态徽章（由生命周期自动流转驱动） -->
+          <Border Grid.Column="1" Background="#26000000" CornerRadius="12" Padding="14,6" VerticalAlignment="Center" Margin="16,0,0,0">
+            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+              <ic:SymbolIcon Symbol="Eye" FontSize="14" Foreground="#CCFBF1" VerticalAlignment="Center" Margin="0,1,0,0" IsVisible="{Binding IsStage1}"/>
+              <ic:SymbolIcon Symbol="ArrowSync" FontSize="14" Foreground="#FEF08A" VerticalAlignment="Center" Margin="0,1,0,0" IsVisible="{Binding IsStage2}"/>
+              <ic:SymbolIcon Symbol="CheckmarkCircle" FontSize="14" Foreground="#86EFAC" VerticalAlignment="Center" Margin="0,1,0,0" IsVisible="{Binding IsStage3}"/>
+              <TextBlock Text="{Binding StageStatusText}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource OnAccentBrush}" VerticalAlignment="Center" />
+            </StackPanel>
+          </Border>
+        </Grid>
+      </Border>
+
+      <!-- Stage 1: 待瘦身分析、画质对比与空间释放预估 -->
+      <StackPanel Spacing="16" IsVisible="{Binding IsStage1}">
+        <!-- 目录与样本选择控制条 -->
+        <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="16" Padding="14,10"
+                BoxShadow="0 2 8 0 #08000000">
+          <Grid ColumnDefinitions="Auto,*,Auto">
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+              <Button Classes="primary-btn" Command="{Binding PickStripFolderCommand}" Padding="14,7">
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                  <ic:SymbolIcon Symbol="FolderOpen" FontSize="15" Foreground="{DynamicResource OnAccentBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
+                  <TextBlock Text="{DynamicResource SelectAlbumFolderBtn}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"/>
+                </StackPanel>
+              </Button>
+              <Button Classes="toolbar-btn" Command="{Binding PickSamplePhotoCommand}" Padding="12,7">
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                  <ic:SymbolIcon Symbol="ImageAdd" FontSize="15" VerticalAlignment="Center" Margin="0,1,0,0"/>
+                  <TextBlock Text="{DynamicResource StripPickSample}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                </StackPanel>
+              </Button>
+            </StackPanel>
+
+            <Grid Grid.Column="1" Margin="16,0" VerticalAlignment="Center" ColumnDefinitions="Auto,*">
+              <ic:SymbolIcon Grid.Column="0" Symbol="Document" FontSize="13" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" Margin="0,1,6,0"/>
+              <TextBlock Grid.Column="1" Text="{Binding CurrentInputPathText}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+            </Grid>
+
+            <Button Grid.Column="2" Classes="toolbar-btn" Command="{Binding RefreshAnalysisCommand}" ToolTip.Tip="{DynamicResource StripRescanTip}" Width="32" Height="32" Padding="0">
+              <ic:SymbolIcon Symbol="ArrowClockwise" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Button>
+          </Grid>
+        </Border>
+
+        <!-- 错误横幅提示 -->
+        <Border Background="{DynamicResource DangerSoftBrush}" BorderBrush="{DynamicResource DangerBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="12"
+                IsVisible="{Binding ErrorText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+          <TextBlock Text="{Binding ErrorText}" FontSize="12" Foreground="{DynamicResource DangerBrush}" TextWrapping="Wrap" />
+        </Border>
+
+        <!-- 画质深度对比沙盒卡片（自适应拉伸视口） -->
+        <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="20" Padding="20"
+                BoxShadow="0 2 8 0 #0D000000">
+          <StackPanel Spacing="12">
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel Grid.Column="0" Spacing="3">
+                <TextBlock Text="{DynamicResource CurtainCompareTitle}" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource TextPrimaryBrush}" />
+                <TextBlock Text="{DynamicResource CurtainCompareDesc}" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}" />
+              </StackPanel>
+              <Border Grid.Column="1" Background="{DynamicResource SuccessSoftBrush}" BorderBrush="{DynamicResource SuccessBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="12,5"
+                      IsVisible="{Binding SavedPercentResult, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                <TextBlock Text="{Binding SavedPercentResult}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" />
+              </Border>
+            </Grid>
+
+            <!-- 1:1 覆盖对比控件（高度 420px，随窗口宽度自适应伸缩） -->
+            <controls:CurtainCompareControl Margin="0,4" />
+
+            <!-- 对比中轴位置与提示说明 -->
+            <Grid ColumnDefinitions="Auto,*,Auto" Margin="4,2">
+              <TextBlock Grid.Column="0" Text="{DynamicResource DragLeftCompare}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" />
+              <TextBlock Grid.Column="1" Text="{Binding CurtainPercentageText}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+              <TextBlock Grid.Column="2" Text="{DynamicResource DragRightCompare}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" />
+            </Grid>
+          </StackPanel>
+        </Border>
+
+        <!-- 底部控制与预估看板：双列全宽响应式自适应网格 -->
+        <Grid ColumnDefinitions="*,*">
+          <!-- 左栏：输出目录模式卡片 -->
+          <Border Grid.Column="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="20" Padding="20" Margin="0,0,8,0"
+                  BoxShadow="0 2 8 0 #08000000">
+            <StackPanel Spacing="14">
+              <TextBlock Text="{DynamicResource OutputDirModeTitle}" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource TextPrimaryBrush}" />
+
+              <Border Background="{DynamicResource CanvasBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="12" Padding="14">
+                <Grid ColumnDefinitions="*,Auto">
+                  <StackPanel Grid.Column="0" Spacing="3">
+                    <TextBlock Text="{DynamicResource InPlaceStripTitle}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+                    <TextBlock Text="{DynamicResource InPlaceStripDesc}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
+                  </StackPanel>
+                  <ToggleSwitch Grid.Column="1" IsChecked="{Binding InPlaceStrip, Mode=TwoWay}"
+                                Command="{Binding ToggleInPlaceStripCommand}"
+                                CommandParameter="{Binding $self.IsChecked}" Margin="12,0,0,0" />
+                </Grid>
+              </Border>
+
+              <StackPanel Spacing="6">
+                <TextBlock Text="{DynamicResource SafeExportDirTitle}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextTertiaryBrush}" />
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBox Grid.Column="0" Text="{Binding SafeExportDirectory, Mode=TwoWay}" FontSize="12" FontFamily="Consolas" CornerRadius="8" Padding="10,7" />
+                  <Button Grid.Column="1" Classes="toolbar-btn" Command="{Binding BrowseOutputDirCommand}" Margin="8,0,0,0" Padding="12,7">
+                    <TextBlock Text="{DynamicResource BrowseBtn}" FontSize="12" FontWeight="SemiBold" />
+                  </Button>
+                </Grid>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <!-- 右栏：空间释放预估看板 -->
+          <Border Grid.Column="1" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="20" Padding="20" Margin="8,0,0,0"
+                  BoxShadow="0 2 8 0 #08000000">
+            <Grid RowDefinitions="*,Auto">
+              <StackPanel Grid.Row="0" Spacing="10">
+                <TextBlock Text="{DynamicResource SpaceEstimateTitle}" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource TextPrimaryBrush}" />
+
+                <Border Background="{DynamicResource CanvasBrush}" CornerRadius="10" Padding="12,8">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Grid.Column="0" Text="{DynamicResource OriginalSizeLabel}" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{Binding TotalOriginalText}" FontSize="13" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                  </Grid>
+                </Border>
+
+                <Border Background="{DynamicResource SuccessSoftBrush}" CornerRadius="10" Padding="12,8">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Grid.Column="0" Text="{DynamicResource StrippedSizeLabel}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{Binding EstimatedAfterText}" FontSize="13" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" />
+                  </Grid>
+                </Border>
+
+                <Border Background="{DynamicResource AccentSoftBrush}" CornerRadius="10" Padding="12,8">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Grid.Column="0" Text="{DynamicResource SavedSizeLabel}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource AccentTextBrush}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{Binding EstimatedSavedText}" FontSize="14" FontWeight="Black" FontFamily="Consolas" Foreground="{DynamicResource AccentTextBrush}" VerticalAlignment="Center" />
+                  </Grid>
+                </Border>
+              </StackPanel>
+
+              <!-- 执行大按钮 -->
+              <Button Grid.Row="1" Classes="primary-btn" Background="{DynamicResource SuccessBrush}"
+                      Command="{Binding StartStripExecutionCommand}" HorizontalAlignment="Stretch" Margin="0,16,0,0" Height="42">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+                  <ic:SymbolIcon Symbol="Archive" FontSize="16" Foreground="{DynamicResource OnAccentBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
+                  <TextBlock Text="{DynamicResource StartStripBtn}" FontSize="13" FontWeight="Bold" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+            </Grid>
+          </Border>
+        </Grid>
+      </StackPanel>
+
+      <!-- Stage 2: 实时吞吐进度 -->
+      <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="20" Padding="24"
+              BoxShadow="0 2 8 0 #0D000000"
+              IsVisible="{Binding IsStage2}">
+        <StackPanel Spacing="16">
+          <Grid ColumnDefinitions="Auto,*,Auto">
+            <Border Grid.Column="0" Width="48" Height="48" CornerRadius="14" Background="{DynamicResource SuccessSoftBrush}" VerticalAlignment="Center">
+              <ic:SymbolIcon Symbol="Settings" FontSize="24" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center" Spacing="3">
+              <TextBlock Text="{DynamicResource StripRunningTitle}" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource TextPrimaryBrush}" />
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <TextBlock Text="{DynamicResource CurrentFileLabel}" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}" />
+                <TextBlock Text="{Binding RunningFileName}" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}" FontFamily="Consolas" />
+              </StackPanel>
+            </StackPanel>
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+              <Button Classes="toolbar-btn" Command="{Binding TogglePauseCommand}" Padding="12,6">
+                <TextBlock Text="{DynamicResource PauseBtn}" FontSize="12" FontWeight="Bold" />
+              </Button>
+              <Button Classes="danger-btn" Command="{Binding AbortStripCommand}" Padding="12,6">
+                <TextBlock Text="{DynamicResource AbortBtn}" FontSize="12" FontWeight="Bold" />
+              </Button>
+            </StackPanel>
+          </Grid>
+
+          <StackPanel Spacing="8">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Grid.Column="0" Text="{Binding StripProgressStatusText}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" FontFamily="Consolas" />
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                <TextBlock Text="{DynamicResource ReleasedLabel}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource AccentTextBrush}" />
+                <TextBlock Text="{Binding ReleasedSpaceText}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource AccentTextBrush}" FontFamily="Consolas" />
+              </StackPanel>
+            </Grid>
+            <ProgressBar Value="{Binding StripProgressPercent}" Minimum="0" Maximum="100" Height="8" CornerRadius="4" Foreground="{DynamicResource SuccessBrush}" />
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Grid.Column="0" Text="{Binding InstantThroughputText}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" FontFamily="Consolas" />
+              <TextBlock Grid.Column="1" Text="{Binding RemainingSecondsText}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" FontFamily="Consolas" />
+            </Grid>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <!-- Stage 3: 成果庆贺大卡片 -->
+      <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="20" Padding="32"
+              BoxShadow="0 4 16 0 #10000000"
+              IsVisible="{Binding IsStage3}">
+        <StackPanel Spacing="20" HorizontalAlignment="Center" MaxWidth="720">
+          <Border Width="64" Height="64" CornerRadius="32" Background="{DynamicResource SuccessSoftBrush}" HorizontalAlignment="Center">
+            <ic:SymbolIcon Symbol="Checkmark" FontSize="28" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          </Border>
+
+          <StackPanel Spacing="4" HorizontalAlignment="Center">
+            <TextBlock Text="{DynamicResource CelebrationTitle}" FontWeight="Black" FontSize="18" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center" />
+            <TextBlock Text="{DynamicResource CelebrationDesc}" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Center" />
+          </StackPanel>
+
+          <!-- 三项统计指标卡片 -->
+          <Grid ColumnDefinitions="*,*,*" Margin="0,8">
+            <Border Grid.Column="0" Background="{DynamicResource CanvasBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="16" Padding="16" Margin="0,0,6,0">
+              <StackPanel Spacing="4" HorizontalAlignment="Center">
+                <TextBlock Text="{DynamicResource BeforeSizeLabel}" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Center" />
+                <TextBlock Text="{Binding BeforeTotalResult}" FontSize="17" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+                <TextBlock Text="{Binding BeforeCountText}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" />
+              </StackPanel>
+            </Border>
+            <Border Grid.Column="1" Background="{DynamicResource SuccessSoftBrush}" BorderBrush="{DynamicResource SuccessBorderBrush}" BorderThickness="1" CornerRadius="16" Padding="16" Margin="3,0,3,0">
+              <StackPanel Spacing="4" HorizontalAlignment="Center">
+                <TextBlock Text="{DynamicResource AfterSizeLabel}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center" />
+                <TextBlock Text="{Binding AfterTotalResult}" FontSize="17" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center" />
+                <TextBlock Text="{DynamicResource AfterQualityLabel}" FontSize="11" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center" />
+              </StackPanel>
+            </Border>
+            <Border Grid.Column="2" Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBorderBrush}" BorderThickness="1" CornerRadius="16" Padding="16" Margin="6,0,0,0">
+              <StackPanel Spacing="4" HorizontalAlignment="Center">
+                <TextBlock Text="{DynamicResource NetSavedLabel}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}" HorizontalAlignment="Center" />
+                <TextBlock Text="{Binding NetSavedResult}" FontSize="19" FontWeight="Black" FontFamily="Consolas" Foreground="{DynamicResource AccentTextBrush}" HorizontalAlignment="Center" />
+                <TextBlock Text="{Binding SavedPercentResult}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" />
+              </StackPanel>
+            </Border>
+          </Grid>
+
+          <!-- 操作按钮栏 -->
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12">
+            <Button Classes="primary-btn" Background="{DynamicResource TextPrimaryBrush}" Command="{Binding OpenOutputDirCommand}" Padding="16,8">
+              <TextBlock Text="{DynamicResource OpenOutputDirBtn}" FontSize="12" FontWeight="Bold" />
+            </Button>
+            <Button Classes="toolbar-btn" Command="{Binding ContinueAnotherCommand}" Padding="16,8">
+              <TextBlock Text="{DynamicResource ContinueStripBtn}" FontSize="12" FontWeight="SemiBold" />
+            </Button>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

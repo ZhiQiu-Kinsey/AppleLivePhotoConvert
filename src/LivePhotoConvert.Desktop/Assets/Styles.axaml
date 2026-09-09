@@ -1,0 +1,474 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ic="using:FluentIcons.Avalonia">
+
+  <!--
+    语义化主题调色板（R1 主题根治）。
+    所有颜色均通过 ThemeDictionaries 按 Light/Dark 变体提供，
+    视图层一律使用 DynamicResource 引用语义画刷，实现运行时热切换。
+  -->
+  <Styles.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
+
+        <!-- ========== Light ========== -->
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="CanvasBrush" Color="#F8FAFC" />
+          <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF" />
+          <SolidColorBrush x:Key="HoverBrush" Color="#F1F5F9" />
+          <SolidColorBrush x:Key="LineBrush" Color="#E2E8F0" />
+          <SolidColorBrush x:Key="LineStrongBrush" Color="#CBD5E1" />
+
+          <SolidColorBrush x:Key="TextPrimaryBrush" Color="#0F172A" />
+          <SolidColorBrush x:Key="TextSecondaryBrush" Color="#334155" />
+          <SolidColorBrush x:Key="TextTertiaryBrush" Color="#475569" />
+          <SolidColorBrush x:Key="TextMutedBrush" Color="#94A3B8" />
+
+          <SolidColorBrush x:Key="AccentBrush" Color="#2563EB" />
+          <SolidColorBrush x:Key="AccentPressedBrush" Color="#1D4ED8" />
+          <SolidColorBrush x:Key="AccentTextBrush" Color="#1D4ED8" />
+          <SolidColorBrush x:Key="AccentSoftBrush" Color="#EFF6FF" />
+          <SolidColorBrush x:Key="AccentBorderBrush" Color="#BFDBFE" />
+          <SolidColorBrush x:Key="AccentBrightBrush" Color="#3B82F6" />
+          <Color x:Key="AccentGradientStartColor">#2563EB</Color>
+          <Color x:Key="AccentGradientEndColor">#4F46E5</Color>
+          <SolidColorBrush x:Key="VioletBrush" Color="#7C3AED" />
+
+          <SolidColorBrush x:Key="SuccessBrush" Color="#059669" />
+          <SolidColorBrush x:Key="SuccessSoftBrush" Color="#ECFDF5" />
+          <SolidColorBrush x:Key="SuccessBorderBrush" Color="#A7F3D0" />
+
+          <SolidColorBrush x:Key="WarningBrush" Color="#D97706" />
+          <SolidColorBrush x:Key="WarningSoftBrush" Color="#FFFBEB" />
+          <SolidColorBrush x:Key="WarningBorderBrush" Color="#FDE68A" />
+
+          <SolidColorBrush x:Key="DangerBrush" Color="#DC2626" />
+          <SolidColorBrush x:Key="DangerPressedBrush" Color="#B91C1C" />
+          <SolidColorBrush x:Key="DangerSoftBrush" Color="#FEF2F2" />
+          <SolidColorBrush x:Key="DangerBorderBrush" Color="#FECACA" />
+
+          <SolidColorBrush x:Key="OnAccentBrush" Color="#FFFFFF" />
+        </ResourceDictionary>
+
+        <!-- ========== Dark ========== -->
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="CanvasBrush" Color="#0F172A" />
+          <SolidColorBrush x:Key="SurfaceBrush" Color="#1E293B" />
+          <SolidColorBrush x:Key="HoverBrush" Color="#334155" />
+          <SolidColorBrush x:Key="LineBrush" Color="#334155" />
+          <SolidColorBrush x:Key="LineStrongBrush" Color="#475569" />
+
+          <SolidColorBrush x:Key="TextPrimaryBrush" Color="#F1F5F9" />
+          <SolidColorBrush x:Key="TextSecondaryBrush" Color="#CBD5E1" />
+          <SolidColorBrush x:Key="TextTertiaryBrush" Color="#94A3B8" />
+          <SolidColorBrush x:Key="TextMutedBrush" Color="#64748B" />
+
+          <SolidColorBrush x:Key="AccentBrush" Color="#3B82F6" />
+          <SolidColorBrush x:Key="AccentPressedBrush" Color="#2563EB" />
+          <SolidColorBrush x:Key="AccentTextBrush" Color="#93C5FD" />
+          <SolidColorBrush x:Key="AccentSoftBrush" Color="#1E3A8A" />
+          <SolidColorBrush x:Key="AccentBorderBrush" Color="#1E40AF" />
+          <SolidColorBrush x:Key="AccentBrightBrush" Color="#60A5FA" />
+          <Color x:Key="AccentGradientStartColor">#3B82F6</Color>
+          <Color x:Key="AccentGradientEndColor">#6366F1</Color>
+          <SolidColorBrush x:Key="VioletBrush" Color="#8B5CF6" />
+
+          <SolidColorBrush x:Key="SuccessBrush" Color="#10B981" />
+          <SolidColorBrush x:Key="SuccessSoftBrush" Color="#064E3B" />
+          <SolidColorBrush x:Key="SuccessBorderBrush" Color="#065F46" />
+
+          <SolidColorBrush x:Key="WarningBrush" Color="#F59E0B" />
+          <SolidColorBrush x:Key="WarningSoftBrush" Color="#78350F" />
+          <SolidColorBrush x:Key="WarningBorderBrush" Color="#92400E" />
+
+          <SolidColorBrush x:Key="DangerBrush" Color="#EF4444" />
+          <SolidColorBrush x:Key="DangerPressedBrush" Color="#DC2626" />
+          <SolidColorBrush x:Key="DangerSoftBrush" Color="#7F1D1D" />
+          <SolidColorBrush x:Key="DangerBorderBrush" Color="#991B1B" />
+
+          <SolidColorBrush x:Key="OnAccentBrush" Color="#FFFFFF" />
+        </ResourceDictionary>
+
+      </ResourceDictionary.ThemeDictionaries>
+    </ResourceDictionary>
+  </Styles.Resources>
+
+  <!-- 全局弹出面板 FlyoutPresenter 规范：消除默认双重内边距与双层嵌套边框 -->
+  <Style Selector="FlyoutPresenter">
+    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Padding" Value="6" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+    <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+  </Style>
+
+  <!-- 32px Compact Toolbar Button Style -->
+  <Style Selector="Button.toolbar-btn">
+    <Setter Property="Height" Value="32" />
+    <Setter Property="Padding" Value="8,0" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+
+  <Style Selector="Button.toolbar-btn:pointerover">
+    <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource LineStrongBrush}" />
+  </Style>
+
+  <Style Selector="Button.toolbar-btn.active">
+    <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrightBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+  </Style>
+
+  <!-- 作者栏的赞赏入口：轻量呼吸动画吸引注意，不干扰其他操作。 -->
+  <Style Selector="Button.sponsor-btn">
+    <Setter Property="Height" Value="28" />
+    <Setter Property="Padding" Value="10,0" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Style.Animations>
+      <Animation Duration="0:0:1.8" IterationCount="INFINITE">
+        <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.82" /></KeyFrame>
+        <KeyFrame Cue="50%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+        <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0.82" /></KeyFrame>
+      </Animation>
+    </Style.Animations>
+  </Style>
+
+  <Style Selector="Button.sponsor-btn:pointerover">
+    <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource OnAccentBrush}" />
+  </Style>
+
+  <Style Selector="Button.sponsor-dialog-backdrop">
+    <Setter Property="Background" Value="#990F172A" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="VerticalAlignment" Value="Stretch" />
+    <Setter Property="Cursor" Value="Arrow" />
+  </Style>
+
+  <!-- 遮罩不响应按钮默认的悬停 / 按下换色，始终保持一致。 -->
+  <Style Selector="Button.sponsor-dialog-backdrop:pointerover">
+    <Setter Property="Background" Value="#990F172A" />
+  </Style>
+
+  <Style Selector="Button.sponsor-dialog-backdrop:pressed">
+    <Setter Property="Background" Value="#990F172A" />
+  </Style>
+
+  <Style Selector="Border.sponsor-dialog">
+    <Setter Property="Width" Value="450" />
+    <Setter Property="Padding" Value="22" />
+    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="18" />
+    <Setter Property="BoxShadow" Value="0 20 48 0 #66000000" />
+  </Style>
+
+  <Style Selector="Button.sponsor-dialog-close">
+    <Setter Property="Width" Value="28" />
+    <Setter Property="Height" Value="28" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="7" />
+    <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+
+  <Style Selector="Button.sponsor-dialog-close:pointerover">
+    <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+  </Style>
+
+  <!-- Primary Action Button -->
+  <Style Selector="Button.primary-btn">
+    <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource OnAccentBrush}" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="Padding" Value="16,10" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+
+  <Style Selector="Button.primary-btn:pointerover">
+    <Setter Property="Background" Value="{DynamicResource AccentPressedBrush}" />
+  </Style>
+
+  <!-- Danger Button -->
+  <Style Selector="Button.danger-btn">
+    <Setter Property="Background" Value="{DynamicResource DangerBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource OnAccentBrush}" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="Padding" Value="16,10" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+
+  <Style Selector="Button.danger-btn:pointerover">
+    <Setter Property="Background" Value="{DynamicResource DangerPressedBrush}" />
+  </Style>
+
+  <!-- Nav Item Button Style -->
+  <Style Selector="Button.nav-btn">
+    <Setter Property="Height" Value="40" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="12,8" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+
+  <Style Selector="Button.nav-btn:pointerover">
+    <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+  </Style>
+
+  <Style Selector="Button.nav-btn.selected">
+    <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+    <Setter Property="FontWeight" Value="Bold" />
+  </Style>
+
+  <!-- 现代化全局 ComboBox 风格系统 -->
+  <Style Selector="ComboBox">
+    <Setter Property="MinHeight" Value="34" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Padding" Value="10,6" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+
+  <Style Selector="ComboBox:pointerover">
+    <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource LineStrongBrush}" />
+  </Style>
+
+  <Style Selector="ComboBox:focus /template/ Border#PopupBorder">
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+  </Style>
+
+  <!-- ComboBox 下拉弹出面板与子项样式规范 -->
+  <Style Selector="ComboBoxItem">
+    <Setter Property="MinHeight" Value="32" />
+    <Setter Property="Padding" Value="10,6" />
+    <Setter Property="Margin" Value="4,2" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+
+  <Style Selector="ComboBoxItem:pointerover">
+    <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+  </Style>
+
+  <Style Selector="ComboBoxItem:selected">
+    <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+
+  <!-- 精致胶囊分段控制器 (Segmented Control) 样式规范 -->
+  <Style Selector="Border.segmented-group">
+    <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Padding" Value="3" />
+    <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+
+  <Style Selector="Button.segmented-item">
+    <Setter Property="Height" Value="28" />
+    <Setter Property="Padding" Value="12,4" />
+    <Setter Property="CornerRadius" Value="7" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+
+  <!-- “关于”页鸣谢行按钮 (About Credit Row) -->
+  <Style Selector="Button.credit-row">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="8,6" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+
+  <Style Selector="Button.credit-row:pointerover">
+    <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+  </Style>
+
+  <!-- 胶囊内嵌操作按钮 (Capsule Inner Button) -->
+  <Style Selector="Button.capsule-btn">
+    <Setter Property="Height" Value="22" />
+    <Setter Property="Padding" Value="6,0" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+
+  <Style Selector="Button.capsule-btn:pointerover">
+    <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource LineStrongBrush}" />
+  </Style>
+
+  <Style Selector="Button.capsule-icon-btn">
+    <Setter Property="Width" Value="22" />
+    <Setter Property="Height" Value="22" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+
+  <Style Selector="Button.capsule-icon-btn:pointerover">
+    <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+  </Style>
+
+  <Style Selector="Button.segmented-item:pointerover">
+    <Setter Property="Background" Value="{DynamicResource LineBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+  </Style>
+
+  <Style Selector="Button.segmented-item.active">
+    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+    <Setter Property="FontWeight" Value="Bold" />
+  </Style>
+
+  <!-- 左下角微型分段按钮 (Mini Segmented Item) -->
+  <Style Selector="Button.mini-segmented-btn">
+    <Setter Property="Height" Value="26" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+
+  <Style Selector="Button.mini-segmented-btn:pointerover">
+    <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+  </Style>
+
+  <Style Selector="Button.mini-segmented-btn.active">
+    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+    <Setter Property="FontWeight" Value="Bold" />
+  </Style>
+
+  <!-- 窗口系统控制按钮 (最小化、最大化、关闭) 样式规范 -->
+  <Style Selector="Button.caption-btn">
+    <Setter Property="Width" Value="46" />
+    <Setter Property="Height" Value="40" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+
+  <Style Selector="Button.caption-btn:pointerover">
+    <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+  </Style>
+
+  <Style Selector="Button.caption-btn:pressed">
+    <Setter Property="Background" Value="{DynamicResource LineStrongBrush}" />
+  </Style>
+
+  <!-- 窗口关闭按钮专用样式规范 (悬停 Windows 标准红底白字) -->
+  <Style Selector="Button.caption-close-btn">
+    <Setter Property="Width" Value="46" />
+    <Setter Property="Height" Value="40" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+
+  <Style Selector="Button.caption-close-btn:pointerover">
+    <Setter Property="Background" Value="#E81123" />
+    <Setter Property="Foreground" Value="#FFFFFF" />
+  </Style>
+
+  <Style Selector="Button.caption-close-btn:pointerover ic|SymbolIcon">
+    <Setter Property="Foreground" Value="#FFFFFF" />
+  </Style>
+
+  <Style Selector="Button.caption-close-btn:pressed">
+    <Setter Property="Background" Value="#C42B1C" />
+    <Setter Property="Foreground" Value="#FFFFFF" />
+  </Style>
+
+  <Style Selector="Button.caption-close-btn:pressed ic|SymbolIcon">
+    <Setter Property="Foreground" Value="#FFFFFF" />
+  </Style>
+
+</Styles>

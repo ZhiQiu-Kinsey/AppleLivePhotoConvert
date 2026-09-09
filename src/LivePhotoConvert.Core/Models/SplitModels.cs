@@ -37,6 +37,11 @@ public sealed record SplitOptions
     public SplitTargetFormat TargetFormat { get; init; } = SplitTargetFormat.Android;
 
     /// <summary>
+    /// 拆分成功后如何处理输入目录中的原始动态照片文件
+    /// </summary>
+    public SourceFileAction SourceFileAction { get; init; } = SourceFileAction.Keep;
+
+    /// <summary>
     /// 输出目录已存在同名文件时是否直接覆盖；为 <c>false</c> 时自动追加 _1、_2 后缀
     /// </summary>
     public bool Overwrite { get; init; }
@@ -50,6 +55,11 @@ public sealed record SplitOptions
     /// 并行处理的文件数量
     /// </summary>
     public int Parallelism { get; init; } = MergeOptions.DefaultParallelism;
+
+    /// <summary>
+    /// 显式指定的待拆分候选文件列表（若指定则优先使用，不再自动全量扫描输入目录）
+    /// </summary>
+    public IReadOnlyList<string>? ExplicitCandidateFiles { get; init; }
 }
 
 /// <summary>
@@ -68,6 +78,11 @@ public sealed record SplitReport
     public required int Succeeded { get; init; }
 
     /// <summary>
+    /// 按所选方式成功清理的原始文件数量
+    /// </summary>
+    public int CleanedFileCount { get; init; } = 0;
+
+    /// <summary>
     /// 跳过的数量，通常是不含动态照片标记的普通图片
     /// </summary>
     public required int Skipped { get; init; }
@@ -76,4 +91,14 @@ public sealed record SplitReport
     /// 拆分失败的文件
     /// </summary>
     public required IReadOnlyList<FailureRecord> Failures { get; init; }
+
+    /// <summary>
+    /// 清理失败的原始文件，拆分本身已成功，不受影响
+    /// </summary>
+    public IReadOnlyList<FailureRecord> CleanupFailures { get; init; } = [];
+
+    /// <summary>
+    /// 拆分失败的数量
+    /// </summary>
+    public int Failed => Failures.Count;
 }

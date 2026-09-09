@@ -75,7 +75,7 @@ public static class ToolDownloader
                 // 1. 下载完整压缩包
                 await DownloadFileAsync(source, tempArchiveFile, progress, cancellationToken);
                 // 2. 完整解压主程序及运行库依赖到 targetDir
-                ExtractAllFromArchive(tempArchiveFile, targetDir, finalExePath, tool);
+                await ExtractAllFromArchiveAsync(tempArchiveFile, targetDir, finalExePath, tool, cancellationToken);
                 // 3. 真实启动探测校验，确保可执行文件 100% 满血可用
                 return ToolLocator.IsValidTool(finalExePath) ? finalExePath : throw new InvalidOperationException($"解压后的 {tool.TargetExecutableName} 无法正常启动执行。");
             }
@@ -143,7 +143,7 @@ public static class ToolDownloader
             }
         }
 
-        if (totalRead == 0 || (totalBytes.HasValue && totalBytes.Value > 0 && totalRead < totalBytes.Value))
+        if (totalRead == 0 || (totalBytes is > 0 && totalRead < totalBytes.Value))
         {
             var expectedText = totalBytes.HasValue ? $"{totalBytes.Value} 字节" : "未知大小";
             throw new IOException($"下载数据未完成：实际接收 {totalRead} 字节，预期 {expectedText}，网络连接提前中断或返回空响应。");
@@ -153,7 +153,7 @@ public static class ToolDownloader
     /// <summary>
     /// 从压缩包 (Zip 或 Tar.Gz / Tgz) 中完整解压主程序和所有关联运行库文件
     /// </summary>
-    private static void ExtractAllFromArchive(string archivePath, string targetDirectory, string finalExePath, ToolDownloadInfo tool)
+    private static async Task ExtractAllFromArchiveAsync(string archivePath, string targetDirectory, string finalExePath, ToolDownloadInfo tool, CancellationToken cancellationToken)
     {
         var isGzip = false;
         var is7z = false;
@@ -178,7 +178,8 @@ public static class ToolDownloader
             try
             {
                 var tarExe = ToolLocator.Find("tar.exe") ?? "tar.exe";
-                var result = ProcessRunner.RunAsync(tarExe, ["-xf", archivePath, "-C", tempExtractDir]).GetAwaiter().GetResult();
+                // 透传取消令牌，避免 7z 解压期间取消操作被卡住（原先同步阻塞 .GetAwaiter().GetResult()）
+                var result = await ProcessRunner.RunAsync(tarExe, ["-xf", archivePath, "-C", tempExtractDir], cancellationToken);
                 if (!result.Success)
                 {
                     throw new InvalidOperationException($"解压 .7z 压缩包失败：{result.StandardError}");

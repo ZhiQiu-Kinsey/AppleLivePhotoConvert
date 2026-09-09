@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using System.Collections.Frozen;
 using LivePhotoConvert.Core.Abstractions;
 using LivePhotoConvert.Core.Io;
-using LivePhotoConvert.Core.Matching;
 using LivePhotoConvert.Core.Models;
 
 namespace LivePhotoConvert.Core.Services;
@@ -27,6 +26,27 @@ public sealed class MotionPhotoStripper(IExifTool exifTool, IImageConverter imag
     /// </summary>
     private readonly Lock _outputGate = new();
 
+    private static readonly string[] CompanionVideoExtensions = [".mov", ".MOV", ".mp4", ".MP4"];
+
+    /// <summary>
+    /// 寻找同名伴随短视频（用于苹果实况对或分离实况照片，如 IMG_0001.HEIC 对应 IMG_0001.MOV）
+    /// </summary>
+    public static string? FindCompanionVideo(string imagePath)
+    {
+        var dir = Path.GetDirectoryName(imagePath);
+        if (string.IsNullOrEmpty(dir)) return null;
+        var stem = Path.GetFileNameWithoutExtension(imagePath);
+        foreach (var ext in CompanionVideoExtensions)
+        {
+            var candidate = Path.Combine(dir, stem + ext);
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
     /// <summary>
     /// 扫描输入目录中所有可能需要处理的图片文件列表
     /// </summary>
@@ -38,6 +58,153 @@ public sealed class MotionPhotoStripper(IExifTool exifTool, IImageConverter imag
                     .Where(path => CandidateExtensions.Contains(Path.GetExtension(path)))
                     .Order(StringComparer.OrdinalIgnoreCase)
     ];
+
+    /// <summary>
+    /// 对指定输入路径（单文件或目录）执行免转码只读分析，快速估算可释放空间
+    /// </summary>
+    /// <param name="inputPath">输入文件或目录路径</param>
+    /// <param name="convertToHeic">是否按转码 HEIC（质量 90 估算 45% 体积）预估体积</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>包含各项明细与统计总量的只读分析报告</returns>
+    public async ValueTask<StripAnalysisReport> AnalyzeAsync(
+        string inputPath,
+        bool convertToHeic = true,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(inputPath);
+
+        IReadOnlyList<string> candidates;
+        if (Directory.Exists(inputPath))
+        {
+            candidates = FindCandidates(inputPath);
+        }
+        else if (File.Exists(inputPath))
+        {
+            candidates = [inputPath];
+        }
+        else
+        {
+            throw new DirectoryNotFoundException($"指定的输入路径不存在：{inputPath}");
+        }
+
+        if (candidates.Count == 0)
+        {
+            return new StripAnalysisReport([], 0, 0, 0, 0);
+        }
+
+        var items = new ConcurrentBag<StripAnalysisItem>();
+
+        await Parallel.ForEachAsync(
+            candidates,
+            new ParallelOptions
+            {
+                MaxDegreeOfParallelism = MergeOptions.DefaultParallelism,
+                CancellationToken = cancellationToken
+            },
+            async (filePath, token) =>
+            {
+                var fileInfo = new FileInfo(filePath);
+                var originalBytes = fileInfo.Length;
+                var ext = Path.GetExtension(filePath);
+                var isAlreadyHeic = ext.Equals(".heic", StringComparison.OrdinalIgnoreCase);
+
+                long videoBytes = 0;
+                var hasVideo = false;
+
+                // 1. 优先检查同名伴随短视频（苹果实况对 / 分离实况对）
+                var companionVideo = FindCompanionVideo(filePath);
+                if (companionVideo != null)
+                {
+                    try
+                    {
+                        var compInfo = new FileInfo(companionVideo);
+                        if (compInfo.Exists)
+                        {
+                            videoBytes = compInfo.Length;
+                            originalBytes += videoBytes;
+                            hasVideo = true;
+                        }
+                    }
+                    catch
+                    {
+                        // ignored
+                    }
+                }
+
+                // 2. 若无伴随短视频，再检测是否为安卓单文件内嵌视频（MicroVideo）
+                if (!hasVideo)
+                {
+                    try
+                    {
+                        var videoLength = await exifTool.TryReadMicroVideoOffsetAsync(filePath, token);
+                        if (videoLength is > 0 && videoLength.Value < originalBytes)
+                        {
+                            videoBytes = videoLength.Value;
+                            hasVideo = true;
+                        }
+                    }
+                    catch (Exception) when (!token.IsCancellationRequested)
+                    {
+                        // 只读分析容错：取消异常必须向上传播，其余异常静默跳过
+                    }
+                }
+
+                var cleanImageBytes = originalBytes - videoBytes;
+                var needsHeicConversion = convertToHeic && !isAlreadyHeic;
+
+                // 静态照片转 HEIC 压缩比通常约为原图 45%
+                long estimatedHeicBytes = needsHeicConversion
+                    ? (long)(cleanImageBytes * 0.45)
+                    : cleanImageBytes;
+
+                long estimatedFinalBytes = needsHeicConversion
+                    ? estimatedHeicBytes
+                    : cleanImageBytes;
+
+                items.Add(new StripAnalysisItem(
+                    filePath: filePath,
+                    originalBytes: originalBytes,
+                    videoBytes: videoBytes,
+                    estimatedHeicBytes: estimatedHeicBytes,
+                    hasEmbeddedVideo: hasVideo,
+                    needsHeicConversion: needsHeicConversion,
+                    estimatedFinalBytes: estimatedFinalBytes
+                ));
+            });
+
+        var orderedItems = items.OrderBy(x => x.FilePath, StringComparer.OrdinalIgnoreCase).ToList();
+        var totalOriginal = orderedItems.Sum(x => x.OriginalBytes);
+        var totalVideo = orderedItems.Sum(x => x.VideoBytes);
+        var totalEstimatedHeic = orderedItems.Sum(x => x.EstimatedHeicBytes);
+        var totalEstimatedSaved = orderedItems.Sum(x => x.EstimatedSavedBytes);
+
+        return new StripAnalysisReport(
+            orderedItems,
+            totalOriginal,
+            totalVideo,
+            totalEstimatedHeic,
+            totalEstimatedSaved
+        );
+    }
+
+    /// <summary>
+    /// 对指定输入路径执行免转码只读分析（默认开启 HEIC 预估）
+    /// </summary>
+    public ValueTask<StripAnalysisReport> AnalyzeAsync(
+        string inputPath,
+        CancellationToken cancellationToken = default) =>
+        AnalyzeAsync(inputPath, convertToHeic: true, cancellationToken);
+
+    /// <summary>
+    /// 基于 StripOptions 对输入目录执行免转码只读分析
+    /// </summary>
+    public ValueTask<StripAnalysisReport> AnalyzeAsync(
+        StripOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        return AnalyzeAsync(options.InputDirectory, options.ConvertToHeic, cancellationToken);
+    }
 
     /// <summary>
     /// 执行动态照片的批量并发瘦身流水线
@@ -130,23 +297,49 @@ public sealed class MotionPhotoStripper(IExifTool exifTool, IImageConverter imag
     private async Task<StripOneResult> StripOneAsync(string imagePath, StripOptions options, string tempDirectory, CancellationToken cancellationToken)
     {
         var originalSize = new FileInfo(imagePath).Length;
+        if (originalSize == 0)
+        {
+            throw new InvalidDataException($"输入文件为空 (0 字节)，无法执行空间瘦身：{imagePath}");
+        }
+
         var isInPlace = string.IsNullOrEmpty(options.OutputDirectory);
         var ext = Path.GetExtension(imagePath);
         var isAlreadyHeic = ext.Equals(".heic", StringComparison.OrdinalIgnoreCase);
 
-        // 1. 检测是否为动态照片（含内嵌视频）
-        var videoLength = await exifTool.TryReadMicroVideoOffsetAsync(imagePath, cancellationToken);
-        var hasVideo = videoLength is not null && videoLength.Value > 0;
-
-        if (hasVideo && videoLength!.Value >= originalSize)
+        var companionVideo = FindCompanionVideo(imagePath);
+        long companionVideoBytes = 0;
+        if (companionVideo != null && File.Exists(companionVideo))
         {
-            throw new InvalidDataException($"元数据中的视频长度 {videoLength.Value} 字节不小于文件总长度 {originalSize} 字节，该文件可能已损坏。");
+            try
+            {
+                companionVideoBytes = new FileInfo(companionVideo).Length;
+                originalSize += companionVideoBytes;
+            }
+            catch
+            {
+                // ignored
+            }
+        }
+
+        // 1. 检测是否为动态照片（伴随视频或内嵌视频）
+        long? videoLength = null;
+        if (companionVideoBytes == 0)
+        {
+            videoLength = await exifTool.TryReadMicroVideoOffsetAsync(imagePath, cancellationToken);
+        }
+        var hasEmbeddedVideo = videoLength is not null && videoLength.Value > 0;
+        var hasCompanionVideo = companionVideoBytes > 0;
+        var hasVideo = hasCompanionVideo || hasEmbeddedVideo;
+
+        if (hasEmbeddedVideo && videoLength!.Value >= (originalSize - companionVideoBytes))
+        {
+            throw new InvalidDataException($"元数据中的视频长度 {videoLength.Value} 字节不小于文件总长度 {originalSize - companionVideoBytes} 字节，该文件可能已损坏。");
         }
 
         // 判定是否需要转 HEIC
         var needsConvert = options.ConvertToHeic && !isAlreadyHeic;
 
-        // 如果既没有视频也不需要转 HEIC，则跳过
+        // 如果既没有视频（伴随/内嵌）也不需要转 HEIC，则跳过
         if (!hasVideo && !needsConvert)
         {
             return StripOneResult.Skip;
@@ -161,16 +354,16 @@ public sealed class MotionPhotoStripper(IExifTool exifTool, IImageConverter imag
 
         // 阶段一：剥离视频（提取纯图片部分）
         string cleanImagePath;
-        if (hasVideo)
+        if (hasEmbeddedVideo)
         {
-            var photoLength = originalSize - videoLength!.Value;
+            var photoLength = (originalSize - companionVideoBytes) - videoLength!.Value;
             cleanImagePath = Path.Combine(tempDirectory, $"{tempId}-clean{ext}");
             await BinaryFile.CopySegmentAsync(imagePath, cleanImagePath, 0, photoLength, cancellationToken);
             await exifTool.RemoveMotionPhotoTagsAsync(cleanImagePath, cancellationToken);
         }
         else
         {
-            // 无视频，直接以原文件作为输入
+            // 无内嵌视频（或为伴随视频模式），直接以原文件作为输入
             cleanImagePath = imagePath;
         }
 
@@ -214,7 +407,16 @@ public sealed class MotionPhotoStripper(IExifTool exifTool, IImageConverter imag
                 {
                     // 仅剥离了视频，扩展名不变
                     resultPath = imagePath;
-                    File.Move(finalPath, imagePath, overwrite: true);
+                    if (finalPath != imagePath)
+                    {
+                        File.Move(finalPath, imagePath, overwrite: true);
+                    }
+                }
+
+                // 若存在同名伴随短视频，就地删除释放空间
+                if (hasCompanionVideo && companionVideo != null)
+                {
+                    FileHelper.TryDeleteFile(companionVideo);
                 }
             }
             else
@@ -238,7 +440,7 @@ public sealed class MotionPhotoStripper(IExifTool exifTool, IImageConverter imag
             }
 
             var finalSize = new FileInfo(resultPath).Length;
-            var bytesSaved = isInPlace ? Math.Max(0, originalSize - finalSize) : 0;
+            var bytesSaved = Math.Max(0, originalSize - finalSize);
 
             return new StripOneResult(hasVideo, wasConverted, false, bytesSaved);
         }

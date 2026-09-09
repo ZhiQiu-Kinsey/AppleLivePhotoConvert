@@ -1,25 +1,28 @@
 # LivePhotoConvert (Live & Motion Photo Toolkit)
 
 <p align="center">
-  <img src="../src/LivePhotoConvert.Cli/LivePhotoConvert.ico" width="84" height="84" alt="LivePhotoConvert Logo" />
+  <img src="../src/LivePhotoConvert.Desktop/LivePhotoConvert.ico" width="84" height="84" alt="LivePhotoConvert Logo" />
 </p>
 
 <p align="center">
-  <strong>⚡ High-fidelity bidirectional converter and space optimizer between Apple Live Photos and Android Motion Photos</strong>
+  <strong>⚡ Cross-ecosystem Live Photo workbench: lossless bidirectional conversion between Apple Live Photos and Android Motion Photos, plus batch album space optimization</strong>
 </p>
 
 <p align="center">
   <a href="https://dotnet.microsoft.com/download"><img src="https://img.shields.io/badge/.NET-10.0-512BD4?style=flat-square&logo=dotnet" alt=".NET 10" /></a>
-  <a href="https://learn.microsoft.com/dotnet/csharp/"><img src="https://img.shields.io/badge/C%23-13.0-239120?style=flat-square&logo=csharp" alt="C# 13" /></a>
+  <a href="https://avaloniaui.net/"><img src="https://img.shields.io/badge/Avalonia-12.1-9B4FBA?style=flat-square&logo=avaloniaui&logoColor=white" alt="Avalonia 12" /></a>
   <img src="https://img.shields.io/badge/Platform-Windows%20x64-0078D6?style=flat-square&logo=windows" alt="Platform" />
   <img src="https://img.shields.io/badge/Native%20AOT-Supported-success?style=flat-square" alt="Native AOT" />
-  <a href="https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert/actions/workflows/ci.yml"><img src="https://img.shields.io/badge/Tests-108%20Passed-success?style=flat-square&logo=githubactions&logoColor=white" alt="Tests" /></a>
+  <a href="https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert/actions/workflows/ci.yml"><img src="https://img.shields.io/badge/CI-GitHub%20Actions-2088FF?style=flat-square&logo=githubactions&logoColor=white" alt="CI" /></a>
   <a href="../LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="License" /></a>
 </p>
 
 <p align="center">
   <a href="../README.md"><b>简体中文</b></a> • <a href="README.en.md"><b>English</b></a>
 </p>
+
+> [!IMPORTANT]
+> Since v2.6 the project has been fully transformed from a command-line tool into an **Avalonia desktop application**: the CLI entry point (`LivePhotoConvert.Cli` and the Spectre.Console interactive menu) has been removed, and all capabilities are now provided by the graphical interface, with the underlying engine distilled into the pure managed `LivePhotoConvert.Core` library.
 
 ---
 
@@ -29,188 +32,130 @@
 - [📱 Conversion Scenarios & Compatibility Matrix](#-conversion-scenarios--compatibility-matrix)
 - [📸 Interface Preview](#-interface-preview)
 - [🚀 Quick Start Guide](#-quick-start-guide)
-  - [1. Download](#1-download)
-  - [2. Exporting Live Photos from iPhone](#2-exporting-live-photos-from-iphone)
-  - [3. Run the App](#3-run-the-app)
-- [💻 Command Line Interface (CLI)](#-command-line-interface-cli)
-  - [Common Recipes](#common-recipes)
-  - [Subcommands](#subcommands)
-  - [Full CLI Options Reference](#full-cli-options-reference)
-  - [Exit Codes](#exit-codes)
-- [🔬 Technical Architecture & Reverse Engineering](#-technical-architecture--reverse-engineering)
-  - [1. Android Motion Photo Binary Layout (GCamera XMP)](#1-android-motion-photo-binary-layout-gcamera-xmp)
-  - [2. Xiaomi HyperOS `0x8897` Tag Reverse Engineering](#2-xiaomi-hyperos-0x8897-tag-reverse-engineering)
-  - [3. Apple Live Photo UUID Pairing Mechanism](#3-apple-live-photo-uuid-pairing-mechanism)
-  - [4. Zero-Allocation & Atomic Reliability](#4-zero-allocation--atomic-reliability)
+- [🖥️ Desktop Features in Depth](#️-desktop-features-in-depth)
+- [🔬 Core Technology & Reverse Engineering](#-core-technology--reverse-engineering)
 - [❓ Frequently Asked Questions (FAQ)](#-frequently-asked-questions-faq)
-- [🛠️ Building from Source](#️-building-from-source)
+- [🛠️ Project Architecture & Building from Source](#️-project-architecture--building-from-source)
 - [💖 Acknowledgments & Open Source Libraries](#-acknowledgments--open-source-libraries)
+- [☕ Support the Project](#-support-the-project)
 - [📄 License](#-license)
 
 ---
 
 ## 🔄 Key Features
 
-- 🔄 **Cross-Ecosystem Bidirectional Conversion**:
-  - **Merge (`merge`)**: Stitch iPhone Live Photos (`HEIC/JPG` + `MOV`) into single-file Android Motion Photos (`.jpg`), playable across Xiaomi Gallery, Google Photos, and Windows 11 Photos.
-  - **Restore (`split -f apple`)**: Split Android Motion Photos and inject paired UUIDs for native Live Photo playback on iOS and macOS.
-  - **Unpack (`split -f android`)**: Extract cover images and standalone MP4 micro-videos.
-- 🗜️ **Space Optimization (`strip`)**: Strip embedded micro-videos and optionally re-encode to HEIC, saving 60%~96% disk space while preserving 100% of EXIF metadata and filesystem timestamps.
-- 🎯 **Smart Pairing & Selfie Correction**: Prioritizes ContentIdentifier UUID matching to eliminate filename shift issues; automatically corrects front-camera selfie mirror orientation.
-- ⚡ **Lossless Stream Copy & Fast Startup**: Prioritizes stream copying without re-encoding quality loss; built with .NET 10 Native AOT for instant millisecond cold starts.
-- 📥 **Automated Tool Downloads**: Built-in accelerated mirror downloads automatically fetch and configure ExifTool, FFmpeg, and heif-enc on first run.
-- 🖥️ **Dual Interaction Modes**: Beautiful color terminal wizard with a Windows native folder picker, plus a comprehensive CLI for scripting and batch workflows.
+- 🔄 **Cross-Ecosystem Bidirectional Conversion**
+  - **Merge (Live Photo Convert · Apple → Android)**: Stitch iPhone Live Photos (`HEIC/JPG` + `MOV`) into single-file Android Motion Photos (`.jpg`), with long-press playback supported on Xiaomi HyperOS, Google Photos, and Windows 11 Photos.
+  - **Restore (Live Photo Convert · Android → Apple)**: Split Android Motion Photos and inject paired UUIDs (`ContentIdentifier`) so that importing them into iPhone / Mac Photos restores native Live Photo behavior.
+  - **Unpack (Live Photo Convert · Extract to Files)**: Losslessly extract the static cover and the embedded micro-video from a Motion Photo.
+- 🗜️ **Space Optimization**: Batch-strip embedded videos from Motion Photos and optionally re-encode to high-quality HEIC (default quality 90, visually lossless), freeing 60%~96% of storage while preserving capture timestamps and EXIF metadata 100%.
+- 🎯 **Smart Pairing & Manual Arbitration**: Matches by `ContentIdentifier` UUID first; suspicious pairs whose timestamp delta exceeds the threshold are pushed into a dual-pane arbitration dialog for human confirmation or splitting.
+- 🖼️ **Album-Level Batch Workflow**: Virtualized photo reel (grouped by capture date / month / year), hover live preview, full-screen QuickLook on Space, before/after quality slider comparison.
+- 🛡️ **Multi-Layer Safety**: Disk space pre-check (ENOSPC warning), second-confirmation lock for physical deletion, atomic in-place overwrite backup (`.livephoto_backup`), self-healing temp directory cleanup.
+- ⚡ **Native AOT Performance**: .NET 10 Native AOT single-file publishing with millisecond cold start; the core engine uses zero-allocation streaming (`ArrayPool` + file pre-allocation) and never loads whole files into the managed heap.
+- 🌗 **Light / Dark Theme & Bilingual UI**: Follow the system or switch manually, with a built-in "About" page (version, contributors, license, and referenced projects).
+- 📥 **Fully Managed Dependencies**: ExifTool, FFmpeg, and heif-enc are auto-detected on first run, with one-click download from built-in regional accelerated mirrors.
 
 ---
 
 ## 📱 Conversion Scenarios & Compatibility Matrix
 
-| Mode / Command | Input Files | Output Files | Supported Platforms & Viewers | Typical Use Case |
+| Mode | Input Files | Output Files | Supported Platforms & Viewers | Typical Use Case |
 | :--- | :--- | :--- | :--- | :--- |
-| **Merge (`merge`)** | iPhone export (`HEIC/JPG` + `MOV`) | Single Motion Photo (`MVIMG_*.jpg`) | Xiaomi HyperOS / MIUI Gallery<br>Google Photos<br>Windows 11 Photos<br>Samsung Gallery | Migrating from iPhone to Android, or viewing Live Photos on PC |
-| **Apple Restore (`split -f apple`)** | Android Motion Photo (`.jpg/.heic`) | Apple Live Photo (`.HEIC` + `.MOV`) | iPhone Photos (iOS)<br>Mac Photos (macOS)<br>iCloud Web | Migrating from Android to iPhone, restoring long-press animation |
-| **Android Unpack (`split -f android`)** | Android Motion Photo (`.jpg/.heic`) | Cover Still + Video (`.jpg` + `.mp4`) | Any media player, Premiere, CapCut | Extracting video clips or still covers for editing |
-| **Space Optimizer (`strip`)** | Motion Photos / JPEGs | High-Efficiency HEIC (`.heic`) or clean JPG | Systems with HEIC decoding support | Freeing up 60%~96% disk space while keeping EXIF & timestamps |
+| **Merge** (Apple → Android) | iPhone export (`HEIC/JPG` + `MOV`) | Single Motion Photo (`MVIMG_*.jpg`) | Xiaomi HyperOS / MIUI Gallery<br>Google Photos<br>Windows 11 Photos<br>Samsung Gallery | Switching from iPhone to Android, or viewing Live Photos on PC / Android |
+| **Restore** (Android → Apple) | Android Motion Photo (`.jpg/.heic`) | Apple Live Photo pair (`.HEIC` + `.MOV`) | iPhone Photos (iOS)<br>Mac Photos (macOS)<br>iCloud Web | Switching from Android to iPhone, restoring long-press animation |
+| **Unpack** (Extract to Files) | Android Motion Photo (`.jpg/.heic`) | Still image + video (`.jpg` + `.mp4`) | Any media player, Premiere, CapCut | Extracting the micro-video or the cover for editing |
+| **Space Optimization** | Motion Photos / JPEGs | High-quality HEIC (`.heic`) or plain JPG | Any system or device with HEIC decoding | Freeing 60%~96% storage when phone space runs low |
 
 ---
 
 ## 📸 Interface Preview
 
 <p align="center">
-  <img src="preview.png" alt="Interactive Interface" width="850" />
+  <img src="preview.png" alt="Main Window" width="850" />
 </p>
+
+<details>
+<summary><b>More screenshots</b></summary>
+
+| Feature | Screenshot |
+| :--- | :--- |
+| Live Photo Convert (Light) | ![Convert Light](screenshots/01_convert_light.png) |
+| Live Photo Convert (Dark) | ![Convert Dark](screenshots/02_convert_dark.png) |
+| Space Optimization | ![Strip](screenshots/03_strip.png) |
+| Dependency Engines | ![Engines](screenshots/04_tools.png) |
+| Batch Report | ![Report](screenshots/05_report.png) |
+| Preferences | ![Settings](screenshots/06_settings.png) |
+| About | ![About](screenshots/07_about.png) |
+
+</details>
 
 ---
 
 ## 🚀 Quick Start Guide
 
 ### 1. Download
-Download the latest `LivePhotoConvert-win-x64.zip` portable archive from the [Releases Page](https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert/releases) and extract it anywhere.
 
-### 2. Exporting Live Photos from iPhone
-To merge iPhone Live Photos into Android Motion Photos, export the **unmodified originals**:
-1. Open the **Photos** app on iPhone, select the desired Live Photos;
-2. Tap the **Share** button $\rightarrow$ scroll up and tap **Export Unmodified Originals**;
-3. Save to Files or transfer to PC via USB Cable / AirDrop / iCloud / Assistant tools;
-4. Each Live Photo will export as two matching files (e.g. `IMG_1024.HEIC` + `IMG_1024.MOV`).
+Grab the latest `LivePhotoConvert-win-x64.zip` portable archive from the 👉 [Releases page](https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert/releases), extract it anywhere, and double-click `LivePhotoConvert.exe` (no .NET runtime required — Native AOT single-file publishing).
 
-### 3. Run the App
+### 2. Export Live Photos from iPhone
 
-Double-click `LivePhotoConvert.exe`:
-- **First Launch**: Automatically detects `ExifTool`, `FFmpeg`, and `heif-enc`. If missing, prompts to download and configure them in seconds.
-- **Select Task**:
-  - Press `1` 【Merge Motion Photos】: Pick input & output directories via the native dialog;
-  - Press `2` 【Split Motion Photos】: Choose Android or Apple Live Photo target format;
-  - Press `3` 【Space Optimization】: Strip videos and convert to HEIC;
-  - Press `4` 【Manage External Tools】: Check or update dependency binaries.
+To merge into Android Motion Photos, first export the **unmodified originals**:
 
----
+1. Open the **Photos** app on iPhone and multi-select the Live Photos you want;
+2. Tap the **Share** icon at the bottom-left → swipe up and choose **Export Unmodified Originals**;
+3. Save to **Files**, or transfer to your PC via USB / AirDrop / iCloud;
+4. Each Live Photo exports as two files sharing the same name (e.g. `IMG_1024.HEIC` and `IMG_1024.MOV`).
 
-## 💻 Command Line Interface (CLI)
+### 3. Start Using
 
-Full CLI arguments are supported for automated workflows and batch processing.
-
-### Common Recipes
-
-```bash
-# 1. Basic merge: Combine iPhone photos and videos into Android Motion Photos
-LivePhotoConvert merge -i "D:\Photos\iPhoneExport" -o "D:\Photos\MotionPhotos"
-
-# 2. Merge and move processed original files quietly
-LivePhotoConvert merge -i "D:\Photos\iPhoneExport" -o "D:\Photos\MotionPhotos" -a move -y
-
-# 3. Restore to Apple Live Photos (generates paired MOV and ContentIdentifier UUIDs)
-LivePhotoConvert split -i "D:\Photos\MotionPhotos" -o "D:\Photos\AppleLive" -f apple
-
-# 4. Unpack into standalone cover image and MP4 video
-LivePhotoConvert split -i "D:\Photos\MotionPhotos" -o "D:\Photos\Extracted" -f android
-
-# 5. Space Optimization: Strip embedded video and convert to HEIC in-place (save 60%~96%)
-LivePhotoConvert strip -i "D:\Photos\Camera"
-
-# 6. Space Optimization: Output to a separate folder with custom HEIC quality (75)
-LivePhotoConvert strip -i "D:\Photos\Camera" -o "D:\Photos\Optimized" -q 75
-
-# 7. Strip embedded video only (keep JPEG format, do not convert to HEIC)
-LivePhotoConvert strip -i "D:\Photos\Camera" --no-heic
-
-# 8. Pre-download and setup external dependencies silently
-LivePhotoConvert tools --auto-download
-```
-
-### Subcommands
-
-#### 1. `merge` (Combine into Motion Photos)
-Scans images (`HEIC`, `JPG`, `PNG`, etc.) and videos (`MOV`, `MP4`, etc.), validates pairings, and stitches them into Android Motion Photos.
-```bash
-LivePhotoConvert merge [options]
-```
-
-#### 2. `split` (Unpack / Restore Motion Photos)
-Scans Motion Photos and separates them:
-- `-f android` (default): Outputs `.jpg/.heic` + `.mp4`.
-- `-f apple`: Outputs `.HEIC` + `.MOV` (JPEG cover auto-transcoded to HEIC) and injects identical `ContentIdentifier` UUIDs.
-```bash
-LivePhotoConvert split [options]
-```
-
-#### 3. `strip` (Space Optimizer & HEIC Re-encoding)
-Detects Motion Photos, removes embedded video streams, cleans dynamic tags, and re-encodes images to HEIC via `heif-enc`.
-- When `-o / --output` is omitted, operates in **safe in-place atomic mode**.
-```bash
-LivePhotoConvert strip [options]
-```
-
-#### 4. `tools` (External Tools Manager)
-Inspects and manages `ExifTool`, `FFmpeg`, and `heif-enc` dependencies.
-```bash
-LivePhotoConvert tools [options]
-```
+1. **First run**: Go to the **Dependency Engines** page; the app auto-detects ExifTool / FFmpeg / heif-enc. If anything is missing, tick "silently auto-fetch" to download through mirrors in one click.
+2. **Pick a directory**: On the **Live Photo Convert** page, choose your album directory; the app scans, pairs files, and reports how many are convertible.
+3. **Run the conversion**: Switch the direction (Apple → Android / Android → Apple / Extract to Files), tweak output options in the inspector on the right, and execute.
+4. **Review the report**: After conversion, open the **Batch Report** page for per-item results; export error logs or force-retry individual items.
 
 ---
 
-### Full CLI Options Reference
+## 🖥️ Desktop Features in Depth
 
-| Option | Short | Applicable Command | Default | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `--input <path>` | `-i` | `merge`<br>`split`<br>`strip` | None | Input directory path (opens native folder picker when omitted) |
-| `--output <path>` | `-o` | `merge`<br>`split`<br>`strip` | None | Output directory path (`strip` modifies in-place when omitted) |
-| `--format <format>` | `-f` | `split` | `android` | Split target format: `android` (extract MP4) or `apple` (iOS Live Photo MOV) |
-| `--source-action <mode>` | `-a` / `-s` | `merge` | `keep` | Action for source files on success: `keep`, `move`, `recycle`, `delete` |
-| `--no-heic` | | `strip` | `false` | Skip HEIC conversion and only strip embedded video streams |
-| `--quality <num>` | `-q` | `split`, `strip` | `90` | HEIC compression quality (`1`–`100`, default `90` for near-lossless fidelity) |
-| `--skip-validation` / `--no-verify` | | `merge` | `false` | Skip ContentIdentifier & timestamp validation, match solely by filename |
-| `--parallel <num>` | `-p` | All | CPU Cores | Number of parallel processing workers (defaults to CPU core count) |
-| `--overwrite` | | All | `false` | Overwrite existing files in output directory instead of appending numeric suffixes |
-| `--auto-download` | | All | `false` | Automatically download missing ExifTool, FFmpeg, or heif-enc via mirrors |
-| `--mirror <URL>` | | All | Built-in | Custom GitHub mirror prefix (e.g. `https://ghfast.top/` or `https://ghproxy.net/`) |
-| `--exiftool <path>` | | All | Auto-detect | Explicit path to `exiftool.exe` |
-| `--ffmpeg <path>` | | All | Auto-detect | Explicit path to `ffmpeg.exe` |
-| `--heif-enc <path>` | | All | Auto-detect | Explicit path to `heif-enc.exe` |
-| `--yes` / `--assume-yes` | `-y` | All | `false` | Skip confirmation prompts for automated script execution |
+### Live Photo Convert
 
----
+- Left photo reel: virtualized long list with grouping and collapsing by capture date / month / year, sorting, multi-select, and hover auto-playback.
+- Right inspector: conversion direction, output naming format (original name / date + original name / pure timestamp), source file handling (keep / archive subfolder / recycle bin / permanent delete), HEIC quality, and subdirectory hierarchy preservation.
+- Suspicious pair arbitration: candidate pairs whose capture-time delta exceeds 3 seconds automatically pop up a dual-pane verification dialog for same-frame comparison, then are either whitelisted or split by human decision.
 
-### Exit Codes
+### Space Optimization
 
-| Exit Code | Meaning | Description |
-| :---: | :--- | :--- |
-| **`0`** | Success | All target files were processed successfully |
-| **`1`** | Runtime Failure | An unhandled exception or critical error occurred |
-| **`2`** | Invalid Arguments | Command-line arguments are missing or malformed |
-| **`3`** | User Cancelled | Operation was aborted by user during prompts or dialogs |
-| **`4`** | Partial Failure | Completed execution, but some individual files encountered errors |
+- Three-stage workflow: pending analysis (with estimated space savings) → live progress (throughput / remaining time) → results summary.
+- Before/after "curtain compare" sandbox: drag the divider to pixel-compare the original against the optimized HEIC.
+- Supports a safe export directory as well as in-place overwrite (the latter requires passing an amber high-risk confirmation dialog, with atomic `.livephoto_backup` backup guaranteeing zero corruption on power loss).
+
+### Dependency Engines
+
+- Status cards and re-scan for the three engines: ExifTool / FFmpeg / heif-enc.
+- GitHub regional accelerated mirror selection, connectivity latency test, and automatic download of missing tools.
+
+### Batch Report
+
+- Success / failure / skipped breakdown with one-click error log export.
+- Force-retry individual items or jump back to continue converting.
+
+### Preferences · About
+
+- Theme (light / dark / follow system), language (简体中文 / English), concurrency level.
+- **About** tab: version number, author and contributors, quick links to the GitHub repo / Issues / Releases, the full MIT license text, and a clickable list of referenced open-source projects.
 
 ---
 
-## 🔬 Technical Architecture & Reverse Engineering
+## 🔬 Core Technology & Reverse Engineering
 
-### 1. Android Motion Photo Binary Layout (GCamera XMP)
+### 1. Android Motion Photo Storage Mechanism (GCamera XMP)
 
-Android Motion Photos follow the [Google Motion Photo Specification](https://developer.android.com/media/platform/motion-photo-format?hl=en), concatenating a JPEG cover image with an MP4 video stream directly into one binary file:
-- `GCamera:MicroVideo = 1`: Declares that the file contains an embedded video stream;
-- `GCamera:MicroVideoOffset`: Byte length of the video stream from the end of the file;
-- `GCamera:MicroVideoPresentationTimestampUs`: Presentation timestamp of the representative still frame (in microseconds).
+Android Motion Photos follow the [Google Motion Photo Specification](https://developer.android.com/media/platform/motion-photo-format?hl=en): the cover JPEG and the embedded MP4 video are physically concatenated in one binary (JPEG first, MP4 right after), and markers are injected into the JPEG's XMP metadata region:
+
+- `GCamera:MicroVideo = 1`: declares that the image contains micro-video data;
+- `GCamera:MicroVideoOffset`: byte length of the embedded video from the end of the file;
+- `GCamera:MicroVideoPresentationTimestampUs`: presentation timestamp of the Live Photo cover frame (microseconds).
 
 ```
 ┌──────────────────────────────────────────────┐
@@ -224,103 +169,128 @@ Android Motion Photos follow the [Google Motion Photo Specification](https://dev
 └──────────────────────────────────────────────┘
 ```
 
----
+### 2. Reverse Engineering the Xiaomi HyperOS `0x8897` Private Tag
 
-### 2. Xiaomi HyperOS `0x8897` Tag Reverse Engineering
-
-During development, photos with only Google standard XMP metadata failed to trigger dynamic playback in Xiaomi Gallery (Xiaomi HyperOS / MIUI).
-
-Decompiling the official Xiaomi Gallery APK via `jadx-gui` revealed the underlying check:
+During development we found that Motion Photos carrying only the Google standard XMP tags failed to trigger the long-press playback button in Xiaomi Gallery (HyperOS / MIUI). Decompiling the official Xiaomi Gallery APK with `jadx-gui` located the key check:
 
 <p align="center">
-  <img src="PixPin_2024-12-19_19-35-11.png" alt="Xiaomi Gallery Decompiled Logic" width="750" />
+  <img src="PixPin_2024-12-19_19-35-11.png" alt="Xiaomi Gallery Motion Photo detection logic (decompiled)" width="750" />
 </p>
 
-The decompiled code checks for a specific Exif tag:
-- Decimal constant `34967` $\rightarrow$ Hexadecimal **`0x8897`**;
-- By injecting this tag via ExifTool during merge, Xiaomi Gallery (HyperOS / MIUI) properly recognizes and plays the Motion Photo.
-
----
+The decompiled source shows that Xiaomi Gallery reads not only XMP but also a private Exif tag — the code matches the decimal constant `34967` (i.e. **`0x8897`**). This app injects that private tag through ExifTool, so Xiaomi Gallery (HyperOS / MIUI) can properly recognize and play the Motion Photo.
 
 ### 3. Apple Live Photo UUID Pairing Mechanism
 
-Apple Live Photos consist of a still image and a QuickTime MOV video linked by a globally unique UUID:
-1. **Photo**: Injected as `ContentIdentifier` within MakerNotes or Exif metadata;
-2. **Video**: Injected into the QuickTime MOV metadata track under `com.apple.quicktime.content.identifier`;
-3. The `split -f apple` mode automatically assigns and writes paired UUIDs, ensuring imported files are recognized as native Live Photos on iOS and macOS.
+An Apple Live Photo consists of a still image and a QuickTime MOV video, bound together by a globally unique UUID that the system Photos library strictly validates:
 
----
+1. **Image side**: inject `ContentIdentifier` (uppercase UUID) into MakerNotes or Exif metadata;
+2. **Video side**: write the same UUID into the QuickTime MOV metadata track `com.apple.quicktime.content.identifier`, and sync `creationdate` / `make` / `model` / `software` / `location.ISO6709`;
+3. **Restore (Android → Apple)** mode auto-generates a unique UUID and writes it to both sides, so importing into iPhone / Mac Photos registers them as native Live Photos;
+4. ⚠️ QuickTime time tags (`CreateDate` etc. in mvhd / mdhd) are stored in UTC — always pass `-api QuickTimeUTC=1` when writing, otherwise a timezone offset is introduced.
 
-### 4. Zero-Allocation & Atomic Reliability
+### 4. Extreme Performance & Atomic Safety Design
 
-- **.NET 10 Native AOT**: Zero JIT overhead, instant startup, minimal memory footprint.
-- **Zero-Allocation Sniffing**: Uses UTF-8 byte spans (`"heic"u8`) and bitwise operations to detect magic headers, eliminating GC pauses; leverages `ArrayPool<byte>.Shared` memory rental.
-- **Atomic File Reservation (`UniquePath`)**: Concurrency gates guarantee atomic path creation, eliminating name collisions and race conditions.
-- **Transactional Rollback**: Operations run in isolated temporary directories and atomically replace targets upon verification; incomplete files are wiped upon cancellation.
+- **.NET 10 Native AOT compilation**: no JIT overhead, millisecond cold start, tiny memory footprint.
+- **Zero-allocation format sniffing & memory pooling**: UTF-8 byte slices (`"heic"u8`, `"qt  "u8`) plus bitwise magic-number detection; `ArrayPool<byte>.Shared` rental and file pre-allocation eliminate GC pressure when concatenating large files.
+- **Atomic path reservation (`UniquePath`)**: multi-threaded concurrent writes reserve paths with an atomic rename lock, so no same-name overwrite or file corruption can occur.
+- **Temp directory & failure rollback**: all conversions complete in the system temp directory and are atomically moved after verification; cancelling or erroring mid-way cleans up partial artifacts, and orphaned temp directories self-heal on startup.
 
 ---
 
 ## ❓ Frequently Asked Questions (FAQ)
 
-### Q1: Why won't Xiaomi Motion Photos play when transferred to iPhone?
-> **A**: Android Motion Photos embed MP4 video inside a single JPEG file, which iOS Photos does not support. Use `LivePhotoConvert split -f apple` to convert them into standard Apple Live Photo pairs (`.jpg` + `.mov` with paired UUIDs), then import them via AirDrop, iCloud, or the Photos app.
+### Q1: Why won't Motion Photos exported from Xiaomi Gallery animate on iPhone?
+> **A**: Android Motion Photos embed an MP4 inside a single JPG, a format iOS cannot recognize. Use **Live Photo Convert · Restore (Android → Apple)** to split them into a UUID-paired `.HEIC` + `.MOV`, then import via AirDrop, the Photos app, or iCloud for proper long-press playback.
 
-### Q2: Will converting to HEIC mess up my photo timeline or GPS location?
-> **A**: **Not at all**. `LivePhotoConvert` captures original filesystem timestamps (`CreationTime` / `LastWriteTime`) before processing and restores them to the output files. All EXIF metadata (GPS coordinates, camera model, aperture, shutter) is 100% preserved.
+### Q2: Will converting to HEIC mess up my album timeline or GPS location?
+> **A**: **Not at all**. The tool captures the original file's `CreationTime` and `LastWriteTime` before stripping or transcoding and fully restores them afterwards; all EXIF metadata (GPS, camera gear, aperture, shutter) is preserved, so album ordering and map footprints stay 100% intact.
 
-### Q3: What if external dependency tools fail to download on first run?
-> **A**: Accelerated mirrors are built-in. If your network blocks default mirrors, you can:
-> 1. Supply a custom mirror URL: `LivePhotoConvert tools --mirror https://ghfast.top/`
-> 2. Or place `exiftool.exe`, `ffmpeg.exe`, and `heif-enc.exe` manually in the application directory.
+### Q3: Dependency downloads fail on first run?
+> **A**: Several regional high-speed mirrors are built in. Switch mirror nodes on the **Dependency Engines** page and click "test connectivity"; alternatively, drop `exiftool.exe`, `ffmpeg.exe`, and `heif-enc.exe` manually into the application directory.
 
-### Q4: Will moving or deleting source files accidentally delete my standalone videos?
-> **A**: **Never**. The validation engine strictly checks that files have matching ContentIdentifiers or a timestamp delta ≤3 seconds and video duration ≤30 seconds. Unpaired videos and regular recordings are never touched.
+### Q4: When merging, will choosing to move or clean up source files delete my other long videos?
+> **A**: **Absolutely not**. A strict pairing validator is built in: a file is only cleaned up when it satisfies "matching ContentIdentifier" or "capture-time delta ≤3 seconds and video duration ≤30 seconds" **and** the merge verification succeeded. Unmatched files and regular long videos are never touched.
 
 ---
 
-## 🛠️ Building from Source
+## 🛠️ Project Architecture & Building from Source
 
-### Repository Structure
+### Repository Layout
+
 ```
 AppleLivePhotoConvert/
 ├── src/
-│   ├── LivePhotoConvert.Core/       # Core library: sniffing, binary concatenation, metadata encoding (0 dependencies)
-│   └── LivePhotoConvert.Cli/        # CLI & Interactive Spectre.Console frontend, Windows folder picker
+│   ├── LivePhotoConvert.Core/       # Core engine: format sniffing, binary concatenation, metadata codec, external tool orchestration (pure managed, AOT-ready)
+│   └── LivePhotoConvert.Desktop/    # Avalonia 12 desktop app: MVVM views / view models / services / dialogs
 ├── tests/
-│   └── LivePhotoConvert.Core.Tests/ # Automated unit test suite (108+ tests)
-├── docs/                            # Documentation, reverse engineering screenshots, English README
-└── LivePhotoConvert.slnx            # Modern .NET solution
+│   ├── LivePhotoConvert.Core.Tests/ # xunit.v3 unit test suite
+│   └── LivePhotoConvert.E2E/        # Black-box end-to-end verification suite
+├── docs/                            # Screenshots, architecture docs, and this English README
+├── Directory.Build.props            # Unified version and language configuration
+└── LivePhotoConvert.slnx            # Modern .NET solution file
 ```
 
-### Build & Test Commands
+**Module boundaries**:
 
-Requires [.NET 10.0 SDK](https://dotnet.microsoft.com/download) and C# 13:
+- `LivePhotoConvert.Core`: a UI-free domain engine — media pairing (`MediaPairMatcher`), merge / split / strip services (`Merger` / `Splitter` / `Stripper`), external tool drivers (ExifTool / FFmpeg / heif-enc), streaming binary IO (`BinaryFile` / `UniquePath`), and typed contract models. No third-party dependency other than `Magick.NET-Q8-x64` (image decoding).
+- `LivePhotoConvert.Desktop`: the Avalonia 12.1.2 + CommunityToolkit.Mvvm presentation layer, with enforced compiled bindings (`x:CompileBindings` + explicit `x:DataType`), the System.Text.Json source generator, and Fluent vector icons — fully trimmable for Native AOT.
+
+### Build & Test
+
+Requires the [.NET 10.0 SDK](https://dotnet.microsoft.com/download):
 
 ```bash
-# 1. Restore and compile solution
+# 1. Restore dependencies and build the solution
 dotnet build LivePhotoConvert.slnx
 
-# 2. Run unit tests
+# 2. Run the full test suite
 dotnet test LivePhotoConvert.slnx
 
-# 3. Publish Windows x64 Native AOT portable release package
-dotnet publish src/LivePhotoConvert.Cli/LivePhotoConvert.Cli.csproj /p:PublishProfile=win-x64-aot -o dist/aot
+# 3. Launch the desktop app
+dotnet run --project src/LivePhotoConvert.Desktop/LivePhotoConvert.Desktop.csproj
+
+# 4. Publish a Windows x64 Native AOT single-file portable package
+dotnet publish src/LivePhotoConvert.Desktop/LivePhotoConvert.Desktop.csproj /p:PublishProfile=win-x64-aot -o dist/aot
 ```
 
-> **Note**: The output directory `dist/aot` contains the standalone executable `LivePhotoConvert.exe` and `Magick.Native-Q8-x64.dll`.
+> The published output is a standalone `LivePhotoConvert.exe` plus the `Magick.Native-Q8-x64.dll` native image library; just copy them to any Windows 10/11 x64 machine and run.
 
 ---
 
 ## 💖 Acknowledgments & Open Source Libraries
 
-We would like to express our gratitude to the following open-source projects:
+Sincere thanks to the following excellent open-source tools, frameworks, and standards (the same list is viewable in-app under **Settings → About**, with direct links to each project homepage):
 
-- [ExifTool by Phil Harvey](https://exiftool.org/) - Multimedia metadata engine
-- [FFmpeg](https://ffmpeg.org/) - Multimedia audio/video processing framework
-- [libheif](https://github.com/strukturag/libheif) & [x265](https://www.videolan.org/developers/x265.html) - High-performance HEIF / HEIC codec
-- [Magick.NET / ImageMagick](https://github.com/dlemstra/Magick.NET) - Image processing library
-- [Spectre.Console](https://github.com/spectreconsole/spectre.console) - Terminal UI and CLI parsing framework for .NET
-- [Google Motion Photo Specification](https://developer.android.com/media/platform/motion-photo-format) - Android Motion Photo standard
+**Runtime engines & built-in libraries**
+
+- [ExifTool by Phil Harvey](https://exiftool.org/) - The industry-standard media metadata read/write engine
+- [FFmpeg](https://ffmpeg.org/) - Leading multimedia audio/video processing framework
+- [libheif](https://github.com/strukturag/libheif) & [x265](https://www.videolan.org/developers/x265.html) - High-performance HEIF / HEIC codec (`heif-enc` is built on them)
+- [Magick.NET / ImageMagick](https://github.com/dlemstra/Magick.NET) - Powerful .NET image processing library
+
+**Frameworks & specifications**
+
+- [.NET 10](https://dotnet.microsoft.com/) - Cross-platform runtime and Native AOT toolchain
+- [Avalonia UI](https://avaloniaui.net/) - Cross-platform XAML desktop UI framework
+- [CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet) - MVVM source generators and messaging infrastructure
+- [FluentIcons.Avalonia](https://github.com/davidxuang/FluentIcons) - Fluent Design vector icon library
+- [Google Motion Photo Specification](https://developer.android.com/media/platform/motion-photo-format) - Official Android Motion Photo format spec
+
+---
+
+## ☕ Support the Project
+
+If this project helped you recover cross-ecosystem Live Photo memories or reclaim a meaningful chunk of storage, feel free to buy the author a coffee — every bit of support keeps maintenance going!
+
+<p align="center">
+  <img src="sponsor-qrcode.png" alt="ZhiQiu's Sponsor QR Code" width="300" />
+</p>
+
+<p align="center">
+  <sub>Scan with WeChat to sponsor · "Thanks for the support!"</sub>
+</p>
+
+You can also support the project in other ways: drop a Star ⭐, file an [Issue](https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert/issues), open a [Pull Request](https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert/pulls), or simply recommend the tool to more people.
 
 ---
 

@@ -155,6 +155,21 @@ public static class MediaFileTypes
     }
 
     /// <summary>
+    /// 校验切片是否包含合法的视频容器头部魔数（如 MP4 / MOV 的 ftyp box 标识）
+    /// </summary>
+    /// <param name="header">视频起始处的头部数据切片</param>
+    /// <returns>若符合有效视频容器魔数返回 <c>true</c></returns>
+    public static bool IsValidVideoPayload(ReadOnlySpan<byte> header)
+    {
+        return header.Length switch
+        {
+            >= 12 when IsFtypBrand(header, MovBrands) => true,
+            >= 12 when IsFtypBrand(header, Mp4Brands) || IsFtypBox(header) => true,
+            _ => false
+        };
+    }
+
+    /// <summary>
     /// 判断切片是否符合 ISOBMFF 的 ftyp (File Type Box) 特征（偏移 4..7 为 "ftyp" ASCII 码）
     /// </summary>
     /// <param name="header">文件头部切片</param>

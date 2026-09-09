@@ -1,0 +1,367 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+
+  <!-- Application Title & Navigation -->
+  <sys:String x:Key="AppTitle">LivePhotoConvert</sys:String>
+  <sys:String x:Key="AppSubtitle">Professional Live Photo Studio</sys:String>
+  <sys:String x:Key="NavConvert">Convert</sys:String>
+  <sys:String x:Key="NavStrip">Strip</sys:String>
+  <sys:String x:Key="NavTools">Engines</sys:String>
+  <sys:String x:Key="NavReport">Reports</sys:String>
+  <sys:String x:Key="NavSettings">Preferences</sys:String>
+  <sys:String x:Key="ThemeLight">Light</sys:String>
+  <sys:String x:Key="ThemeDark">Dark</sys:String>
+  <sys:String x:Key="LangZh">中文</sys:String>
+  <sys:String x:Key="LangEn">EN</sys:String>
+
+  <!-- Funnel & Direction -->
+  <sys:String x:Key="ConvertDirectionLabel">Direction:</sys:String>
+  <sys:String x:Key="DirAppleToAndroid">Apple → Android</sys:String>
+  <sys:String x:Key="DirAndroidToApple">Android → Apple</sys:String>
+  <sys:String x:Key="DirExtract">Extract Files</sys:String>
+  <sys:String x:Key="BtnAppleToAndroid">Convert to Android Motion Photos</sys:String>
+  <sys:String x:Key="BtnAndroidToApple">Convert to Apple Live Photos</sys:String>
+  <sys:String x:Key="BtnExtract">Extract Independent Cover &amp; Video</sys:String>
+  <sys:String x:Key="SelectedSummaryFormat">{0} Selected ({1})</sys:String>
+
+  <!-- Toolbar & Gallery -->
+  <sys:String x:Key="ToolbarAlbumTitle">Album Live Roll</sys:String>
+  <sys:String x:Key="ToolbarSelect">Select</sys:String>
+  <sys:String x:Key="ToolbarSelectActive">Done</sys:String>
+  <sys:String x:Key="ToolbarPlayTip">Continuously preview live videos in viewport</sys:String>
+  <sys:String x:Key="ToolbarSort">Sort</sys:String>
+  <sys:String x:Key="SortDateTaken">Date Taken</sys:String>
+  <sys:String x:Key="SortDateCreated">Date Created</sys:String>
+  <sys:String x:Key="SortDateModified">Date Modified</sys:String>
+  <sys:String x:Key="SortName">Name</sys:String>
+  <sys:String x:Key="SortAsc">Ascending</sys:String>
+  <sys:String x:Key="SortDesc">Descending</sys:String>
+  <sys:String x:Key="ToolbarFilter">Filter</sys:String>
+  <sys:String x:Key="FilterAllFormat">All Photos ({0})</sys:String>
+  <sys:String x:Key="FilterSuspiciousFormat">Needs Decision Only ({0})</sys:String>
+  <sys:String x:Key="FilterSelected">Selected Only</sys:String>
+  <sys:String x:Key="FilterBannerPrefix">Current Filter View: </sys:String>
+  <sys:String x:Key="FilterBannerSuffix">· Selections unaffected</sys:String>
+  <sys:String x:Key="FilterClear">Clear Filter</sys:String>
+  <sys:String x:Key="ToolbarView">View</sys:String>
+  <sys:String x:Key="CropNatural">Natural Aspect Ratio</sys:String>
+  <sys:String x:Key="CropSquare">Square (1:1)</sys:String>
+  <sys:String x:Key="ScaleSmall">Compact Grid (Overview)</sys:String>
+  <sys:String x:Key="ScaleMedium">Standard Grid</sys:String>
+  <sys:String x:Key="ScaleLarge">Large Cards (Details)</sys:String>
+  <sys:String x:Key="GroupDate">Group by Date</sys:String>
+  <sys:String x:Key="GroupMonth">Group by Month</sys:String>
+  <sys:String x:Key="GroupYear">Group by Year</sys:String>
+  <sys:String x:Key="GroupNone">Continuous (No Grouping)</sys:String>
+  <sys:String x:Key="ToolbarMore">More</sys:String>
+  <sys:String x:Key="SelectAll">Select All Photos</sys:String>
+  <sys:String x:Key="DeselectAll">Deselect All</sys:String>
+  <sys:String x:Key="ToggleAllCollapse">Toggle All Collapse / Expand</sys:String>
+  <sys:String x:Key="RefreshAlbum">Rescan Album</sys:String>
+  <sys:String x:Key="SelectToday">Select Today</sys:String>
+
+  <!-- Console & Output -->
+  <sys:String x:Key="ConsoleTitle">Conversion Console</sys:String>
+  <sys:String x:Key="ConsoleConfig">Conversion Settings</sys:String>
+  <sys:String x:Key="NamingFormatTitle">Output Naming Format</sys:String>
+  <sys:String x:Key="NamingFormatOriginal">Keep Original Name (MVIMG_{name}.jpg)</sys:String>
+  <sys:String x:Key="NamingFormatDateName">Date + Original Name (Recommended)</sys:String>
+  <sys:String x:Key="NamingFormatClean">Camera Timestamp Only</sys:String>
+  <sys:String x:Key="SourceActionTitle">Post-Conversion Action</sys:String>
+  <sys:String x:Key="SourceActionKeep">Keep Source Files (Safe Recommended)</sys:String>
+  <sys:String x:Key="SourceActionSubfolder">Archive to _original/ Subfolder</sys:String>
+  <sys:String x:Key="SourceActionRecycle">Move to Recycle Bin</sys:String>
+  <sys:String x:Key="SourceActionDelete">Permanently Delete Source Files</sys:String>
+  <sys:String x:Key="DeleteWarningTitle">Physical Deletion Alert</sys:String>
+  <sys:String x:Key="DeleteWarningDesc">Original live photos will be wiped permanently. Type DELETE to unlock.</sys:String>
+  <sys:String x:Key="AutoAppendIndexTitle">Auto-append _1 suffix on collision</sys:String>
+  <sys:String x:Key="AutoAppendIndexDesc">If disabled, existing files with the same name will be overwritten</sys:String>
+  <sys:String x:Key="HeicQualityTitle">Apple Cover HEIC Quality</sys:String>
+  <sys:String x:Key="HeicQualityDesc">Quality factor when transcoding cover JPEG to Apple HEIC.</sys:String>
+  <sys:String x:Key="OutputDirLabel">Output Directory:</sys:String>
+  <sys:String x:Key="ChangeOutputDirBtn">Change</sys:String>
+  <sys:String x:Key="OpenOutputDirTip">Open in File Explorer</sys:String>
+  <sys:String x:Key="KeepSubfoldersLabel">Keep subfolders</sys:String>
+  <sys:String x:Key="KeepSubfoldersTip">Preserve subfolder hierarchy (prevent name collision)</sys:String>
+  <sys:String x:Key="ConvertRunningPrefix">Packaging micro-video and metadata: </sys:String>
+  <sys:String x:Key="CancelTaskBtn">Cancel Task</sys:String>
+
+  <!-- Storage Strip -->
+  <sys:String x:Key="NoAlbumOrPhotoSelected">No album or photo selected</sys:String>
+  <sys:String x:Key="StripBannerTitle">Storage Optimization Studio</sys:String>
+  <sys:String x:Key="StripBannerDesc">Strip redundant micro-videos from live photos while keeping photos intact. Reclaims 70%~90% space.</sys:String>
+  <sys:String x:Key="StripStagePreview">1. Analysis &amp; Comparison</sys:String>
+  <sys:String x:Key="StripStageRunning">2. Stripping in Progress</sys:String>
+  <sys:String x:Key="StripStageCompleted">3. Optimization Results</sys:String>
+  <sys:String x:Key="CurtainCompareTitle">Quality Sandbox (Before / After Overlay)</sys:String>
+  <sys:String x:Key="CurtainCompareDesc">Drag divider to compare pixel details between original and stripped HEIC:</sys:String>
+  <sys:String x:Key="InPlaceStripTitle">In-Place Overwrite (Destructive)</sys:String>
+  <sys:String x:Key="InPlaceStripDesc">Overwrites sources in-place; disable to export safely</sys:String>
+  <sys:String x:Key="SafeExportDirTitle">Safe Export Directory (Keeps video copies):</sys:String>
+  <sys:String x:Key="SpaceEstimateTitle">Estimated Space Savings</sys:String>
+  <sys:String x:Key="OriginalSizeLabel">Original Album Size:</sys:String>
+  <sys:String x:Key="StrippedSizeLabel">Estimated Stripped Size:</sys:String>
+  <sys:String x:Key="SavedSizeLabel">Estimated Saved Space:</sys:String>
+  <sys:String x:Key="StartStripBtn">Start Storage Optimization</sys:String>
+  <sys:String x:Key="StripRunningTitle">Stripping micro-videos and transcoding to HEIC...</sys:String>
+  <sys:String x:Key="PauseBtn">Pause</sys:String>
+  <sys:String x:Key="AbortBtn">Abort Task</sys:String>
+  <sys:String x:Key="CelebrationTitle">Optimization Successfully Complete!</sys:String>
+  <sys:String x:Key="CelebrationDesc">Successfully recovered substantial disk space while preserving full photo quality.</sys:String>
+  <sys:String x:Key="OpenOutputDirBtn">Open Output Folder</sys:String>
+  <sys:String x:Key="ContinueStripBtn">Optimize More Albums</sys:String>
+
+  <!-- Engines -->
+  <sys:String x:Key="ToolsTitle">Core Engine Management</sys:String>
+  <sys:String x:Key="ToolsDesc">Manage conversion tools: ExifTool, FFmpeg, and heif-enc.</sys:String>
+  <sys:String x:Key="RescanToolsBtn">Rescan Engines</sys:String>
+  <sys:String x:Key="MirrorTitle">GitHub Download Mirror</sys:String>
+  <sys:String x:Key="MirrorDesc">Select acceleration proxy or enter custom mirror endpoint</sys:String>
+  <sys:String x:Key="AutoDownloadLabel">Auto-download when missing</sys:String>
+  <sys:String x:Key="TestPingBtn">Test Connectivity</sys:String>
+
+  <!-- Reports -->
+  <sys:String x:Key="ReportTitle">Execution Summary Report</sys:String>
+  <sys:String x:Key="SkippedTitle">Skipped and Pending Details</sys:String>
+  <sys:String x:Key="ExportLogBtn">Export Error Log</sys:String>
+  <sys:String x:Key="ForceRetryBtn">Force Retry Single Item</sys:String>
+
+  <!-- Dialogs -->
+  <sys:String x:Key="DeleteDialogTitle">Alert: Permanent Source Deletion!</sys:String>
+  <sys:String x:Key="DeleteDialogDesc">This action is irreversible! Files will be permanently deleted.</sys:String>
+  <sys:String x:Key="DeleteDialogInputLabel">Type uppercase DELETE to unlock:</sys:String>
+  <sys:String x:Key="DeleteDialogCancel">Cancel, Use Recycle Bin</sys:String>
+  <sys:String x:Key="DeleteDialogConfirm">Confirm Permanent Deletion</sys:String>
+
+  <sys:String x:Key="LowDiskDialogTitle">Low Disk Space Alert (ENOSPC)</sys:String>
+  <sys:String x:Key="LowDiskDialogDesc">Target drive has insufficient space for safe conversion</sys:String>
+  <sys:String x:Key="LowDiskDialogDismiss">Understood</sys:String>
+
+  <sys:String x:Key="BackupDialogTitle">High-Risk Confirmation: In-Place Overwrite</sys:String>
+  <sys:String x:Key="BackupDialogDesc">Enabling this will permanently strip embedded video streams!</sys:String>
+  <sys:String x:Key="BackupDialogCancel">Cancel, Use Safe Export</sys:String>
+  <sys:String x:Key="BackupDialogConfirm">I Understand the Risk, Enable Overwrite</sys:String>
+
+  <sys:String x:Key="ArbitrateDialogTitle">Dual-Frame Verification (Time Gap Exceeded)</sys:String>
+  <sys:String x:Key="ArbitrateDialogDesc">Compare photo and video first frame to verify shutter moment</sys:String>
+  <sys:String x:Key="ArbitrateReject">Not Live Pair (Split Separately)</sys:String>
+  <sys:String x:Key="ArbitrateConfirm">Confirm Live Pair (Add to Whitelist)</sys:String>
+
+  <sys:String x:Key="SettingsPageTitle">Global Preferences</sys:String>
+  <sys:String x:Key="ThemeTitle">Appearance Theme</sys:String>
+  <sys:String x:Key="LangTitle">System Language</sys:String>
+  <sys:String x:Key="ConcurrencyTitle">Concurrent Task Count</sys:String>
+  <sys:String x:Key="SaveSettingsBtn">Save Settings</sys:String>
+
+  <!-- CompactToolbar Keys -->
+  <sys:String x:Key="ToolbarSelectTip">Toggle multi-select mode (preserves checked items)</sys:String>
+  <sys:String x:Key="ToolbarSortTip">Sort by</sys:String>
+  <sys:String x:Key="ToolbarFilterTip">Filter</sys:String>
+  <sys:String x:Key="ToolbarViewTip">View layout and card aspect ratio</sys:String>
+  <sys:String x:Key="ToolbarMoreTip">More options</sys:String>
+  <sys:String x:Key="CropFill">Fill Crop</sys:String>
+  <sys:String x:Key="TimelineGroupByDate">Group by Date Taken</sys:String>
+  <sys:String x:Key="TimelineGroupByNone">Continuous Stream (Ungrouped)</sys:String>
+  <sys:String x:Key="CropNaturalShort">Aspect (Original)</sys:String>
+  <sys:String x:Key="CropFillShort">Square (1:1)</sys:String>
+  <sys:String x:Key="ScaleSmallShort">Small (4 Columns)</sys:String>
+  <sys:String x:Key="ScaleMediumShort">Medium (3 Columns)</sys:String>
+  <sys:String x:Key="ScaleLargeShort">Large (2 Columns)</sys:String>
+  <sys:String x:Key="GroupByDate">By Date</sys:String>
+  <sys:String x:Key="GroupByMonth">By Month</sys:String>
+  <sys:String x:Key="GroupByYear">By Year</sys:String>
+  <sys:String x:Key="GroupByNone">Continuous (No Groups)</sys:String>
+  <sys:String x:Key="SelectAllShort">Select All</sys:String>
+  <sys:String x:Key="DeselectAllShort">Deselect All</sys:String>
+  <sys:String x:Key="ToggleAllCollapseShort">Toggle All Groups</sys:String>
+  <sys:String x:Key="RefreshAlbumShort">Refresh Album</sys:String>
+
+  <!-- ConvertView Keys -->
+  <sys:String x:Key="SelectGroupTip">Select all live photos in this group</sys:String>
+  <sys:String x:Key="ConsoleSubtitle">Ready</sys:String>
+  <sys:String x:Key="DeleteSourceAlertTitle">Delete Source Files Alert</sys:String>
+  <sys:String x:Key="DeleteSourceAlertDesc">Original Live Photos will be permanently deleted; confirmation keyword required.</sys:String>
+
+  <!-- StripView Keys -->
+  <sys:String x:Key="DragLeftCompare">Drag left to inspect stripped HEIC</sys:String>
+  <sys:String x:Key="DragRightCompare">Drag right to inspect original photo</sys:String>
+  <sys:String x:Key="OutputDirModeTitle">Output Directory Mode</sys:String>
+  <sys:String x:Key="BrowseBtn">Browse...</sys:String>
+  <sys:String x:Key="BeforeSizeLabel">Original Total Size</sys:String>
+  <sys:String x:Key="AfterSizeLabel">Optimized Total Size</sys:String>
+  <sys:String x:Key="AfterQualityLabel">Ultra Quality HEIC</sys:String>
+  <sys:String x:Key="NetSavedLabel">Net Space Reclaimed</sys:String>
+
+  <!-- ToolsView Keys -->
+  <sys:String x:Key="ExifToolDesc">Injects XMP Motion Photo tags and QuickTime UTC timezone metadata.</sys:String>
+  <sys:String x:Key="FfmpegDesc">Lossless video stream copy and demuxing.</sys:String>
+  <sys:String x:Key="HeifEncDesc">High-quality HEIC/HEIF image encoder.</sys:String>
+  <sys:String x:Key="CustomPathBtn">Specify Custom Path...</sys:String>
+  <sys:String x:Key="InstallToolBtn">Install Now</sys:String>
+  <sys:String x:Key="InstallingStatus">Downloading...</sys:String>
+  <sys:String x:Key="InstallStartingFormat">Installing {0}, please keep the network connected...</sys:String>
+  <sys:String x:Key="InstallCompletedFormat">{0} installed</sys:String>
+  <sys:String x:Key="InstallFailedFormat">{0} install failed: {1}</sys:String>
+  <sys:String x:Key="InstallCanceled">Installation canceled</sys:String>
+  <sys:String x:Key="ToolPathInvalidFormat">The selected file is not a usable engine executable: {0}</sys:String>
+  <sys:String x:Key="ToolPathAppliedFormat">Executable path for {0} has been set</sys:String>
+  <sys:String x:Key="PickerToolExecutableTitle">Select engine executable</sys:String>
+
+  <!-- CurtainCompare Keys -->
+  <sys:String x:Key="CurtainAfterTitle">Optimized Static HEIC</sys:String>
+  <sys:String x:Key="CurtainAfterBadge">Optimized</sys:String>
+  <sys:String x:Key="CurtainBeforeTitle">Original Motion Photo (with Video)</sys:String>
+  <sys:String x:Key="CurtainBeforeBadge">Original</sys:String>
+
+  <!-- PhotoCard Keys -->
+  <sys:String x:Key="CardHoverPlaying">Live Playback</sys:String>
+  <sys:String x:Key="CardLiveBadge">Live</sys:String>
+  <sys:String x:Key="CardTimeMismatch">Timestamp Mismatch</sys:String>
+  <sys:String x:Key="CardArbitrateBtn">Manual Arbitration</sys:String>
+  <sys:String x:Key="CardToggleSelectTip">Click to select/deselect</sys:String>
+
+  <!-- QuickLook Keys -->
+  <sys:String x:Key="QuickLookLiveBadge">Live Photo</sys:String>
+  <sys:String x:Key="QuickLookPlayingDesc">Playing live video</sys:String>
+  <sys:String x:Key="QuickLookDevice">Device</sys:String>
+  <sys:String x:Key="QuickLookResolution">Resolution</sys:String>
+  <sys:String x:Key="QuickLookPairing">Pairing</sys:String>
+  <sys:String x:Key="QuickLookSize">Size</sys:String>
+  <sys:String x:Key="QuickLookLoopPlay">Loop Live Playback</sys:String>
+  <sys:String x:Key="QuickLookPause">Pause</sys:String>
+  <sys:String x:Key="QuickLookShortcuts">Press Space to play/pause · ← / → to navigate · Esc to close</sys:String>
+  <sys:String x:Key="QuickLookPrevTip">Previous (←)</sys:String>
+  <sys:String x:Key="QuickLookNextTip">Next (→)</sys:String>
+
+  <!-- Dialog Secondary Keys -->
+  <sys:String x:Key="DeleteAffectedPrefix">Affected source files: </sys:String>
+  <sys:String x:Key="DeleteAffectedFormat">Affected source files: {0} pairs ({1})</sys:String>
+  <sys:String x:Key="DeleteIrreversibleDesc">Deleted files cannot be restored from the Windows Recycle Bin.</sys:String>
+  <sys:String x:Key="DeleteInputPlaceholder">Type DELETE</sys:String>
+  <sys:String x:Key="LowDiskRequiredLabel">Estimated space required (1.2x safety margin + 500MB):</sys:String>
+  <sys:String x:Key="LowDiskAvailableLabel">Available free space on target drive:</sys:String>
+  <sys:String x:Key="LowDiskSolutionDesc">Please free up disk space or choose another output drive.</sys:String>
+  <sys:String x:Key="BackupRiskTitle">Operational Impact &amp; Irreversible Risks:</sys:String>
+  <sys:String x:Key="BackupRiskPoint1">1. Motion Photo video streams will be permanently removed, keeping only static covers;</sys:String>
+  <sys:String x:Key="BackupRiskPoint2">2. Safety guarantee: .livephoto_backup will be staged atomically before deletion.</sys:String>
+  <sys:String x:Key="ArbitratePhotoTitle">Static Photo (HEIC)</sys:String>
+  <sys:String x:Key="ArbitratePhotoDesc">High-res static original</sys:String>
+  <sys:String x:Key="ArbitrateVideoTitle">Video First Frame (MOV)</sys:String>
+  <sys:String x:Key="ArbitrateVideoDesc">Live video frame at 0ms</sys:String>
+  <sys:String x:Key="ArbitrateConclusionLabel">Time Offset Conclusion: </sys:String>
+
+  <!-- Settings Dialog Options -->
+  <sys:String x:Key="ThemeLightOption">Light Mode</sys:String>
+  <sys:String x:Key="ThemeDarkOption">Dark Mode</sys:String>
+  <sys:String x:Key="ThemeAutoOption">Follow System</sys:String>
+  <sys:String x:Key="LangZhOption">Simplified Chinese</sys:String>
+  <sys:String x:Key="LangEnOption">English</sys:String>
+
+  <!-- Settings Dialog Redesign -->
+  <sys:String x:Key="CancelBtn">Cancel</sys:String>
+  <sys:String x:Key="SettingsConcurrencyDesc">Number of live photo pairs processed in parallel (1~16). Higher values are faster but consume more memory and disk IO.</sys:String>
+  <sys:String x:Key="SettingsPageDesc">Global preferences such as theme, language and conversion performance. Changes take effect right after saving.</sys:String>
+  <sys:String x:Key="SettingsSavedHint">Saved</sys:String>
+  <sys:String x:Key="SettingsHeicQualityTitle">HEIC Transcode Quality</sys:String>
+  <sys:String x:Key="SettingsHeicQualityDesc">Quality (50~100) when transcoding to HEIC during strip or restore. Higher means better quality and larger size.</sys:String>
+  <sys:String x:Key="NotifyOnCompleteTitle">Completion Notification</sys:String>
+  <sys:String x:Key="NotifyOnCompleteDesc">Play a sound when a batch conversion or strip finishes.</sys:String>
+  <sys:String x:Key="AutoOpenOutputTitle">Open Output Folder After Convert</sys:String>
+  <sys:String x:Key="AutoOpenOutputDesc">Automatically open the output folder in File Explorer when a task completes.</sys:String>
+  <sys:String x:Key="AutoCleanTempTitle">Auto-clean Temporary Files</sys:String>
+  <sys:String x:Key="AutoCleanTempDesc">Clean up temporary files generated during conversion on exit to reclaim disk space.</sys:String>
+
+  <!-- About Page (inside Settings Dialog) -->
+  <sys:String x:Key="SettingsTabTitle">Preferences</sys:String>
+  <sys:String x:Key="AboutTabTitle">About</sys:String>
+  <sys:String x:Key="AboutVersionLabel">Version</sys:String>
+  <sys:String x:Key="AboutAuthorLabel">Author &amp; Maintainer</sys:String>
+  <sys:String x:Key="AboutAuthorHomeBtn">Profile</sys:String>
+  <sys:String x:Key="AboutSponsorTitle">Support the Project</sys:String>
+  <sys:String x:Key="AboutSponsorDesc">If this project helps you, you can scan the code to support its development.</sys:String>
+  <sys:String x:Key="AboutRepoBtn">Repository</sys:String>
+  <sys:String x:Key="AboutIssuesBtn">Report Issue</sys:String>
+  <sys:String x:Key="AboutReleasesBtn">Releases</sys:String>
+  <sys:String x:Key="AboutLicenseTitle">License</sys:String>
+  <sys:String x:Key="AboutLicenseDesc">Released under the MIT License: anyone may freely use, copy, modify, merge, publish, distribute and sell this software, provided the copyright and permission notice are retained. The software is provided "as is", without warranty of any kind.</sys:String>
+  <sys:String x:Key="AboutViewLicenseBtn">View Full License</sys:String>
+  <sys:String x:Key="AboutCopyrightLine">Copyright (c) 2024-2026 Kinsey.Qiu. All rights reserved.</sys:String>
+  <sys:String x:Key="AboutContributorsTitle">Contributors</sys:String>
+  <sys:String x:Key="AboutContributorsHint">Thanks to everyone involved — pull requests are always welcome.</sys:String>
+  <sys:String x:Key="AboutCreditsRuntimeTitle">Runtime Engines &amp; Libraries</sys:String>
+  <sys:String x:Key="AboutCreditsRuntimeDesc">ExifTool and FFmpeg ship as external executables; the Engines page detects them and can download them on first run.</sys:String>
+  <sys:String x:Key="AboutCreditsBuildTitle">Frameworks &amp; Specifications</sys:String>
+  <sys:String x:Key="CreditContributorAuthorDesc">Project author and primary maintainer</sys:String>
+  <sys:String x:Key="CreditExifToolDesc">Industry-standard metadata read/write engine</sys:String>
+  <sys:String x:Key="CreditFfmpegDesc">Lossless video stream copy and demuxing</sys:String>
+  <sys:String x:Key="CreditLibheifDesc">HEIC / HEIF codec (heif-enc is built on it)</sys:String>
+  <sys:String x:Key="CreditMagickDesc">High-performance .NET image decoding and thumbnails</sys:String>
+  <sys:String x:Key="CreditDotNetDesc">Cross-platform runtime and Native AOT toolchain</sys:String>
+  <sys:String x:Key="CreditAvaloniaDesc">Cross-platform XAML desktop UI framework</sys:String>
+  <sys:String x:Key="CreditToolkitDesc">MVVM source generators and messaging infrastructure</sys:String>
+  <sys:String x:Key="CreditFluentIconsDesc">Fluent Design vector icon library</sys:String>
+  <sys:String x:Key="CreditMotionPhotoSpecDesc">Official Android Motion Photo container specification</sys:String>
+
+  <!-- MainWindow Navigation Category -->
+  <sys:String x:Key="NavCategoryBusiness">Modules</sys:String>
+
+  <!-- Dynamic Units & Labels -->
+  <sys:String x:Key="UnitLivePhotos">Live Photos</sys:String>
+  <sys:String x:Key="UnitQuality">Quality</sys:String>
+  <sys:String x:Key="CurrentFileLabel">Current file:</sys:String>
+  <sys:String x:Key="ReleasedLabel">Released:</sys:String>
+  <sys:String x:Key="PingLatencyLabel">Latency:</sys:String>
+  <sys:String x:Key="SelectAlbumFolderBtn">Select Folder</sys:String>
+
+  <!-- ============================================================= -->
+  <!-- Report / Strip Stage Status (ReportView / StripView runtime) -->
+  <!-- ============================================================= -->
+  <sys:String x:Key="ReportModeMerge">Apple Live (HEIC+MOV) ➔ Android Motion Photo</sys:String>
+  <sys:String x:Key="ReportModeApple">Android Live ➔ Apple Live Photo</sys:String>
+  <sys:String x:Key="ReportModeExtract">Motion Disassembly ➔ Extract Files</sys:String>
+  <sys:String x:Key="ReportTaskName">Live Photo Batch Convert</sys:String>
+  <sys:String x:Key="ReportAvgSpeedFormat">{0:F2}s / item</sys:String>
+  <sys:String x:Key="StageStatusReady">Sandbox Compare &amp; Ready</sys:String>
+  <sys:String x:Key="StageStatusRunning">Stripping in progress...</sys:String>
+  <sys:String x:Key="StageStatusDone">Optimization Complete</sys:String>
+  <sys:String x:Key="StageStatusIdle">Idle</sys:String>
+  <sys:String x:Key="ProcessCompletedBadge">Completed</sys:String>
+  <sys:String x:Key="SplitTargetApple">Apple Live Photo</sys:String>
+  <sys:String x:Key="SplitTargetExtract">Cover &amp; Video</sys:String>
+  <sys:String x:Key="MergeSuccessDesc">Successfully merged into a Live Photo</sys:String>
+  <sys:String x:Key="SplitSuccessDescFormat">Successfully split into {0}</sys:String>
+
+  <!-- QuickLook Extended Playback States -->
+  <sys:String x:Key="QuickLookLoading">Loading live...</sys:String>
+  <sys:String x:Key="QuickLookPlaying">Playing live</sys:String>
+  <sys:String x:Key="QuickLookStatic">Static Photo</sys:String>
+  <sys:String x:Key="QuickLookLoop">Loop Playback</sys:String>
+  <sys:String x:Key="QuickLookPaused">Live Paused</sys:String>
+
+  <!-- Report / Curtain / Dialog Supplemental Strings (eliminate hard-coded text in XAML) -->
+  <sys:String x:Key="ReportBackBtn">Back to Convert</sys:String>
+  <sys:String x:Key="ReportEmptyTitle">No batch conversion records yet</sys:String>
+  <sys:String x:Key="ReportEmptyDesc">Import photos in the Convert workspace and start a batch; results will appear here.</sys:String>
+  <sys:String x:Key="ReportGoConvertBtn">Go to Convert Workspace</sys:String>
+  <sys:String x:Key="ReportKpiTotal">Total Processed</sys:String>
+  <sys:String x:Key="ReportKpiTotalSub">Scanned &amp; paired</sys:String>
+  <sys:String x:Key="ReportKpiSuccess">Succeeded</sys:String>
+  <sys:String x:Key="ReportKpiSuccessRate">Success Rate</sys:String>
+  <sys:String x:Key="ReportKpiFailed">Errors / Skipped</sys:String>
+  <sys:String x:Key="ReportKpiFailedSub">Needs attention or retry</sys:String>
+  <sys:String x:Key="ReportKpiDuration">Total Batch Time</sys:String>
+  <sys:String x:Key="ReportDistTitle">Result Distribution</sys:String>
+  <sys:String x:Key="ReportLegendSuccess">Success:</sys:String>
+  <sys:String x:Key="ReportLegendSkipped">Skipped:</sys:String>
+  <sys:String x:Key="ReportLegendFailed">Failed:</sys:String>
+  <sys:String x:Key="ReportDetailAll">All Details</sys:String>
+  <sys:String x:Key="ReportDetailFailedOnly">Errors / Skipped Only</sys:String>
+  <sys:String x:Key="ReportDetailSuccessOnly">Succeeded Only</sys:String>
+  <sys:String x:Key="ReportDetailTitle">Detailed Execution Log</sys:String>
+  <sys:String x:Key="StripPickSample">Pick a Sample Photo</sys:String>
+  <sys:String x:Key="StripRescanTip">Rescan Analysis</sys:String>
+  <sys:String x:Key="CurtainPickSample">Import a Live Photo to Compare</sys:String>
+  <sys:String x:Key="QuickLookCloseTip">Close (Esc)</sys:String>
+
+</ResourceDictionary>

@@ -120,6 +120,7 @@ ipch/
 
 # Visual Studio Trace Files
 *.e2e
+!tests/LivePhotoConvert.E2E/
 
 # TFS 2012 Local Workspace
 $tf/
@@ -228,6 +229,9 @@ _pkginfo.txt
 *.[Cc]ache
 # but keep track of directories ending in .cache
 !?*.[Cc]ache/
+
+# WorkBuddy / CodeBuddy 本地工作区数据（助手记忆、任务记录等，不入库）
+.workbuddy/
 
 # Others
 ClientBin/

@@ -32,6 +32,11 @@ public sealed record MergeOptions
     public bool SkipValidation { get; init; }
 
     /// <summary>
+    /// 人工强制确认配对的白名单对（绕过时差与时长校验并在合成中优先放行）
+    /// </summary>
+    public IReadOnlySet<MediaPair>? ForceAcceptedPairs { get; init; } = null;
+
+    /// <summary>
     /// 并行处理的分组数量
     /// </summary>
     public int Parallelism { get; init; } = DefaultParallelism;

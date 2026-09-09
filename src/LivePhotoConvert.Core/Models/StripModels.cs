@@ -71,3 +71,126 @@ public sealed record StripReport
     /// </summary>
     public required IReadOnlyList<FailureRecord> Failures { get; init; }
 }
+
+/// <summary>
+/// 空间瘦身单个文件的只读分析明细
+/// </summary>
+public sealed record StripAnalysisItem
+{
+    public StripAnalysisItem() { }
+
+    public StripAnalysisItem(
+        string filePath,
+        long originalBytes,
+        long videoBytes,
+        long estimatedHeicBytes,
+        bool hasEmbeddedVideo,
+        bool needsHeicConversion = false,
+        long estimatedFinalBytes = 0)
+    {
+        _filePath = filePath;
+        OriginalBytes = originalBytes;
+        VideoBytes = videoBytes;
+        EstimatedHeicBytes = estimatedHeicBytes;
+        HasEmbeddedVideo = hasEmbeddedVideo;
+        NeedsHeicConversion = needsHeicConversion;
+        EstimatedFinalBytes = estimatedFinalBytes == 0 ? estimatedHeicBytes : estimatedFinalBytes;
+    }
+
+    private readonly string _filePath = string.Empty;
+
+    public string FilePath
+    {
+        get => _filePath;
+        init => _filePath = value;
+    }
+
+    public string SourcePath
+    {
+        get => _filePath;
+        init => _filePath = value;
+    }
+
+    public long OriginalBytes { get; init; }
+    public long VideoBytes { get; init; }
+    public long EstimatedHeicBytes { get; init; }
+    public bool HasEmbeddedVideo { get; init; }
+    public bool NeedsHeicConversion { get; init; }
+    public long EstimatedFinalBytes { get; init; }
+
+    public long? EmbeddedVideoBytes => HasEmbeddedVideo ? VideoBytes : null;
+    public long EstimatedSavedBytes => Math.Max(0, OriginalBytes - EstimatedFinalBytes);
+}
+
+/// <summary>
+/// 空间瘦身只读分析报告汇总
+/// </summary>
+public sealed record StripAnalysisReport
+{
+    public StripAnalysisReport() { }
+
+    public StripAnalysisReport(
+        IReadOnlyList<StripAnalysisItem> items,
+        long totalOriginalBytes,
+        long totalVideoBytes,
+        long totalEstimatedHeicBytes,
+        long totalEstimatedSavedBytes)
+    {
+        Items = items;
+        _totalOriginalBytes = totalOriginalBytes;
+        _totalVideoBytes = totalVideoBytes;
+        _totalEstimatedHeicBytes = totalEstimatedHeicBytes;
+        _totalEstimatedSavedBytes = totalEstimatedSavedBytes;
+    }
+
+    public IReadOnlyList<StripAnalysisItem> Items { get; init; } = [];
+
+    private readonly long _totalOriginalBytes;
+    public long TotalOriginalBytes
+    {
+        get => _totalOriginalBytes;
+        init => _totalOriginalBytes = value;
+    }
+    public long OriginalTotalBytes
+    {
+        get => _totalOriginalBytes;
+        init => _totalOriginalBytes = value;
+    }
+
+    private readonly long _totalVideoBytes;
+    public long TotalVideoBytes
+    {
+        get => _totalVideoBytes;
+        init => _totalVideoBytes = value;
+    }
+    public long VideoTotalBytes
+    {
+        get => _totalVideoBytes;
+        init => _totalVideoBytes = value;
+    }
+
+    private readonly long _totalEstimatedHeicBytes;
+    public long TotalEstimatedHeicBytes
+    {
+        get => _totalEstimatedHeicBytes;
+        init => _totalEstimatedHeicBytes = value;
+    }
+    public long EstimatedHeicTotalBytes
+    {
+        get => _totalEstimatedHeicBytes;
+        init => _totalEstimatedHeicBytes = value;
+    }
+
+    private readonly long _totalEstimatedSavedBytes;
+    public long TotalEstimatedSavedBytes
+    {
+        get => _totalEstimatedSavedBytes;
+        init => _totalEstimatedSavedBytes = value;
+    }
+    public long EstimatedSavedBytes
+    {
+        get => _totalEstimatedSavedBytes;
+        init => _totalEstimatedSavedBytes = value;
+    }
+}
+

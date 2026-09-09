@@ -50,12 +50,17 @@ public sealed class MotionPhotoSplitter(IExifTool exifTool, IVideoConverter? vid
     {
         ArgumentNullException.ThrowIfNull(options);
         Directory.CreateDirectory(options.OutputDirectory);
-        var candidates = FindCandidates(options.InputDirectory);
+        var cleaner = new SourceFileCleaner(options.SourceFileAction, options.InputDirectory, SourceFileCleaner.SplitFolderName);
+        var candidates = options.ExplicitCandidateFiles is { Count: > 0 }
+            ? options.ExplicitCandidateFiles
+            : FindCandidates(options.InputDirectory);
         var failures = new ConcurrentBag<FailureRecord>();
+        var cleanupFailures = new ConcurrentBag<FailureRecord>();
         var total = candidates.Count;
         var completed = 0;
         var succeeded = 0;
         var skipped = 0;
+        var cleanedFiles = 0;
         var tempDirectory = Path.Combine(Path.GetTempPath(), "LivePhotoConvert", $"split-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDirectory);
         try
@@ -70,6 +75,13 @@ public sealed class MotionPhotoSplitter(IExifTool exifTool, IVideoConverter? vid
                         if (await SplitOneAsync(imagePath, options, tempDirectory, token))
                         {
                             Interlocked.Increment(ref succeeded);
+
+                            var cleanup = cleaner.Clean([imagePath]);
+                            Interlocked.Add(ref cleanedFiles, cleanup.CleanedCount);
+                            foreach (var failure in cleanup.Failures)
+                            {
+                                cleanupFailures.Add(failure);
+                            }
                         }
                         else
                         {
@@ -99,8 +111,10 @@ public sealed class MotionPhotoSplitter(IExifTool exifTool, IVideoConverter? vid
         {
             Total = total,
             Succeeded = succeeded,
+            CleanedFileCount = cleanedFiles,
             Skipped = skipped,
-            Failures = [.. failures]
+            Failures = [.. failures],
+            CleanupFailures = [.. cleanupFailures]
         };
     }
 
@@ -122,9 +136,9 @@ public sealed class MotionPhotoSplitter(IExifTool exifTool, IVideoConverter? vid
         }
 
         var totalLength = new FileInfo(imagePath).Length;
-        if (videoLength.Value >= totalLength)
+        if (videoLength.Value <= 0 || videoLength.Value >= totalLength)
         {
-            throw new InvalidDataException($"元数据中的视频长度 {videoLength.Value} 字节不小于文件总长度 {totalLength} 字节，该文件可能已损坏。");
+            throw new InvalidDataException($"元数据中的视频长度 {videoLength.Value} 字节非法（必须大于 0 且小于文件总长度 {totalLength} 字节），该文件可能已损坏。");
         }
 
         var photoLength = totalLength - videoLength.Value;
@@ -132,7 +146,14 @@ public sealed class MotionPhotoSplitter(IExifTool exifTool, IVideoConverter? vid
 
         // 嗅探照片与视频实际的二进制格式（防止扩展名被篡改或封面非 JPEG）
         var photoExt = SniffExtension(imagePath, 0, (int)Math.Min(photoLength, 64), h => MediaFileTypes.DetectPhotoExtension(h, Path.GetExtension(imagePath)));
-        var videoExt = SniffExtension(imagePath, photoLength, (int)Math.Min(videoLength.Value, 64), h => MediaFileTypes.DetectVideoExtension(h));
+        var videoExt = SniffExtension(imagePath, photoLength, (int)Math.Min(videoLength.Value, 64), h =>
+        {
+            if (!MediaFileTypes.IsValidVideoPayload(h))
+            {
+                throw new InvalidDataException($"文件内嵌视频流魔数损坏或不符合有效视频格式：{imagePath}");
+            }
+            return MediaFileTypes.DetectVideoExtension(h);
+        });
 
         if (options.TargetFormat == SplitTargetFormat.Apple)
         {

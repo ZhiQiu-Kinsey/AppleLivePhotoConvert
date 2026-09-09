@@ -46,7 +46,17 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
         var cleanupFailures = new ConcurrentBag<FailureRecord>();
         var skippedItems = new ConcurrentBag<FailureRecord>();
         var validator = options.SkipValidation ? null : new PairValidator(exifTool, pairing.PhotoContentIdentifiers, pairing.VideoContentIdentifiers);
-        var candidates = pairing.Pairs;
+        var candidates = pairing.Pairs.ToList();
+        if (options.ForceAcceptedPairs is { Count: > 0 })
+        {
+            foreach (var forcePair in options.ForceAcceptedPairs)
+            {
+                if (!candidates.Any(c => MediaPairPathEqualityComparer.Instance.Equals(c, forcePair)))
+                {
+                    candidates.Add(forcePair);
+                }
+            }
+        }
         int total;
         var succeeded = 0;
         var cleanedFiles = 0;
@@ -63,6 +73,12 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
                 new ParallelOptions { MaxDegreeOfParallelism = options.Parallelism, CancellationToken = cancellationToken },
                 async (pair, token) =>
                 {
+                    if (IsForceAccepted(pair, options.ForceAcceptedPairs))
+                    {
+                        validations[pair] = PairValidationResult.Accept(["人工确认配对"]);
+                        return;
+                    }
+
                     var result = validator is null
                         ? PairValidationResult.Accept([])
                         : await validator.ValidateAsync(pair, token);
@@ -71,7 +87,7 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
 
             // ── 阶段 2：选择参与合成的分组 ──
             // ContentIdentifier 精确配对的候选是确定的 1:1 配对，直接采用；
-            // 其余同名候选按扩展名优先级排序，每组选第一个校验通过的（同名多格式取画质更好的）。
+            // 其余同名候选按扩展名优先级排序，每组选第一个校验通过的（人工白名单项拥有最高优先级）。
             var chosen = new List<MediaPair>();
             foreach (var pair in candidates.Where(pair => pair.IsContentIdentifierMatched))
             {
@@ -88,7 +104,8 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
             foreach (var group in candidates.Where(pair => !pair.IsContentIdentifierMatched)
                                             .GroupBy(pair => pair.Name, StringComparer.OrdinalIgnoreCase))
             {
-                var selected = group.FirstOrDefault(pair => validations[pair].IsAccepted);
+                var selected = group.FirstOrDefault(pair => IsForceAccepted(pair, options.ForceAcceptedPairs))
+                            ?? group.FirstOrDefault(pair => validations[pair].IsAccepted);
                 if (selected is null)
                 {
                     var reasons = group.SelectMany(p => validations[p].Reasons).Distinct();
@@ -165,6 +182,18 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
     /// <param name="cancellationToken">取消令牌</param>
     private async Task MergeOneAsync(MediaPair pair, string outputBaseName, MergeOptions options, string tempDirectory, CancellationToken cancellationToken)
     {
+        var photoInfo = new FileInfo(pair.PhotoPath);
+        if (!photoInfo.Exists || photoInfo.Length == 0)
+        {
+            throw new InvalidDataException($"源照片文件为空或不存在 (0 字节)：{pair.PhotoPath}");
+        }
+
+        var videoInfo = new FileInfo(pair.VideoPath);
+        if (!videoInfo.Exists || videoInfo.Length == 0)
+        {
+            throw new InvalidDataException($"源视频文件为空或不存在 (0 字节)：{pair.VideoPath}");
+        }
+
         string? temporaryPhoto = null;
         string? temporaryVideo = null;
         string? outputPath = null;
@@ -202,7 +231,7 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
             // 写入元数据后校验输出文件（确保文件完整包含封面与内嵌视频）
             var finalLength = new FileInfo(outputPath).Length;
             var videoLength = totalLength - photoLength;
-            if (finalLength <= videoLength + 1024)
+            if (videoLength <= 0 || finalLength <= videoLength)
             {
                 throw new InvalidDataException($"合成校验失败：输出文件 {finalLength} 字节异常过小，未能完整包含封面与内嵌视频。");
             }
@@ -322,4 +351,31 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
             return DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
         }
     }
+
+    /// <summary>
+    /// 判断指定的媒体对是否在人工强制放行的白名单中（优先 O(1) 集合比对，未命中时忽略路径大小写与斜杠比对）
+    /// </summary>
+    private static bool IsForceAccepted(MediaPair pair, IReadOnlySet<MediaPair>? forceAcceptedPairs)
+    {
+        if (forceAcceptedPairs is null || forceAcceptedPairs.Count == 0)
+        {
+            return false;
+        }
+
+        if (forceAcceptedPairs.Contains(pair))
+        {
+            return true;
+        }
+
+        foreach (var forcePair in forceAcceptedPairs)
+        {
+            if (MediaPairPathEqualityComparer.Instance.Equals(forcePair, pair))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }
+
