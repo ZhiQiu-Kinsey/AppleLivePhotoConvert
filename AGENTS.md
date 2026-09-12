@@ -2,7 +2,7 @@
 
 面向 AI 编码助手（CodeBuddy / Antigravity / Gemini / Claude / Cursor 等）的代码库协作规范。**修改本仓库前务必先通读本文件。**
 
-> 最后更新：v2.6.0（2026-09）—— 项目已由 CLI 工具全面转型为 Avalonia 桌面应用。
+> 最后更新：v3.0.1（2026-09-12）—— CLI 已完全移除，当前产品形态为 Avalonia 桌面应用。
 
 ---
 
@@ -17,6 +17,7 @@
 | **实况互转 · 解包** | 安卓动态照片 → 封面图 + 独立 `.mp4`（无损切片） |
 | **空间瘦身** | 剥离内嵌视频并可选转码 HEIC（默认质量 90），释放 60%~96% 空间 |
 | **依赖引擎** | 检测 / 下载 ExifTool、FFmpeg、heif-enc（内置国内加速镜像） |
+| **批次报告** | 展示批处理成败明细、阶段进度与可导出的错误信息 |
 | **偏好设置 / 关于** | 主题、语言、并发数；版本、贡献者、仓库、MIT 协议与引用开源项目 |
 
 **技术栈（当前真实状态，勿参考历史文档中的过期信息）**
@@ -26,7 +27,7 @@
 - 核心引擎：`LivePhotoConvert.Core`，零 UI 依赖，除 `Magick.NET-Q8-x64` 14.16.0（图像解码/缩略图）外无第三方包
 - 外部工具：ExifTool（元数据/XMP）、FFmpeg（转码/流复制）、heif-enc（HEIC 编码）
 - 测试：xunit.v3（`LivePhotoConvert.Core.Tests` 单元测试 + `LivePhotoConvert.E2E` 黑盒端到端）
-- **已移除**：`LivePhotoConvert.Cli`、Spectre.Console、手写 `CliParser`。不要再引用或恢复这些组件。
+- **已移除**：`LivePhotoConvert.Cli`、Spectre.Console、手写 `CliParser` 及旧命令行入口。不要再引用、恢复或为新功能增加 CLI 分支；可复用能力必须放入 Core，交互入口放入 Desktop。
 
 ---
 
@@ -46,7 +47,7 @@ src/LivePhotoConvert.Desktop/       # Avalonia 12 桌面端
   Controls/                         # CompactToolbar / CurtainCompareControl / PhotoCardControl
   Converters/                       # ByteSizeConverter 等 XAML 值转换器
   Models/                           # DesktopSettings、GalleryItem、AboutCredit、AboutInfo
-  Services/                         # AlbumScanner / ThumbnailReader / SettingsService / LocalizationService 等
+  Services/                         # AlbumScanner / ThumbnailReader / PlaybackHost / SettingsService 等
   ViewModels/                       # Main / Convert / Strip / Tools / Report + Dialogs/
   Views/                            # 对应视图与 Dialogs/
 tests/                              # Core.Tests（单元）与 E2E（黑盒）
@@ -113,7 +114,15 @@ global.json                         # 固定 SDK 10.0.400（避免误用 11 prev
 - 新增按钮/卡片样式统一写入 `Assets/Styles.axaml`（如 `Button.credit-row`），不要在视图里堆内联样式。
 - 复用型列表项模板放 `UserControl.Resources` 的 `DataTemplate`，跨级取命令用 `((vm:XxxViewModel)$parent[ItemsControl].DataContext).Command` 语法。
 
-### 4.5 本地化（三处必须同步，缺一不可）
+### 4.5 响应式相册与预览内存安全
+
+- 「等高自适应」由 `ConvertViewModel` 依据可用视口宽度、原图比例与目标行高动态分行；完整行需铺满，末行保持自然宽度，禁止退化为固定列数或拉伸图片。
+- 卡片尺寸必须使用实际解码宽高与方向信息；窗口、侧栏或分组状态变化后必须触发重排，不得仅保存显示模式而不更新布局。
+- 原始 `Bitmap` 是非托管像素内存，**严禁无界缓存**。当前预算：960px 缩略图最多 24 张；悬浮预览最多 1 组、60 帧、720p；QuickLook 最多 90 帧、1080p；首屏仅预热 1 段视频。调整数值必须补内存压力验证。
+- 缩略图解码或 Skia 像素分配失败必须降级为占位图，不得让异常穿透 UI 线程导致进程退出。
+- 悬浮与 QuickLook 解码保留源时序：FFmpeg 使用 `-fps_mode passthrough`、BMP/BGR24 帧管线和 Lanczos 缩放；不要使用 `-hwaccel auto`，进程参数用 `ProcessStartInfo.ArgumentList` 逐项传入。
+
+### 4.6 本地化（三处必须同步，缺一不可）
 
 新增/修改界面文案时，**必须同时更新三处**：
 
@@ -123,12 +132,12 @@ global.json                         # 固定 SDK 10.0.400（避免误用 11 prev
 
 XAML 里 `&` 需写成 `&amp;`；C# 字典里直接写 `&` 即可。
 
-### 4.6 语言风格
+### 4.7 语言风格
 
 - 主构造函数注入依赖；集合表达式 `[]` / `[..x]`；用 `System.Threading.Lock`；`<Nullable>enable</Nullable>` 零警告。
 - 注释用中文，与 public API 语义保持一致。
 
-### 4.7 退出码（Core 层契约，供外部宿主复用）
+### 4.8 退出码（Core 层契约，供外部宿主复用）
 
 - `0` Success / `1` Failure / `2` InvalidArguments / `3` Canceled / `4` PartialFailure。
 
@@ -156,7 +165,7 @@ dotnet publish src/LivePhotoConvert.Desktop/LivePhotoConvert.Desktop.csproj /p:P
 
 1. 定位 Core（引擎）还是 Desktop（交互）；**Core 不得引入 UI/Console 依赖**。
 2. 遵循 AOT / 零分配 / 原子 / MVVM 规范，保持注释与 public API 语义。
-3. 新增界面文案同步三处本地化资源（见 4.5）。
+3. 新增界面文案同步三处本地化资源（见 4.6）。
 4. Core 改动必须补单元测试；涉及 UI 流程的改动补充/更新 E2E 用例。
 5. `dotnet build` 0 警告 0 报错，`dotnet test` 全绿。
 6. 交付总结：改动内容、设计决策、验证结果。
@@ -173,16 +182,18 @@ GitHub Actions 的 [`release.yml`](.github/workflows/release.yml) 监听 **git t
 2. **升版本号**：同步 `Directory.Build.props` 的 `<Version>`（`<AssemblyVersion>` / `<FileVersion>` 保持一致）；
 3. **打 tag 并推送**：
    ```bash
-   git tag v2.6.0
-   git push origin v2.6.0
+   git tag -a v3.0.1 -m "LivePhotoConvert 3.0.1"
+   git push origin main
+   git push origin v3.0.1
    ```
 
-tag 名与 `<Version>` 保持一致并带 `v` 前缀（如 `v2.6.0`）；Release 标题与 ZIP 名均取自该 tag。「关于」页展示的版本号由 `AssemblyInformationalVersionAttribute` 自动读取，无需手工维护。
+tag 名与 `<Version>` 保持一致并带 `v` 前缀（如 `v3.0.1`）；Release 标题与 ZIP 名均取自该 tag。「关于」页展示的版本号由 `AssemblyInformationalVersionAttribute` 自动读取，无需手工维护。已推送的发布 tag 不得改写；热修复必须递增 patch 版本。
 
 ---
 
 ## 8. 当前已知待办
 
 - Core 与 Desktop 的重复逻辑收敛、接口一致性、边界校验与 AOT 裁剪陷阱自查；
-- 待补充的测试盲区：异常路径、中文/空格/超长路径、并发与取消、EXIF 缺失文件、损坏文件；
-- `docs/README.en.md` 英文文档需随 README 同步更新。
+- 扩充万张级相册的长时间滚动、悬浮播放、QuickLook 切换与窗口缩放内存压力验证；
+- 继续补充异常路径、中文/空格/超长路径、并发与取消、EXIF 缺失文件与损坏文件覆盖；
+- 当前自动发布仅产出 `win-x64` 包，其他平台需在完成真机 UI 与外部工具链验证后再开放发布。
