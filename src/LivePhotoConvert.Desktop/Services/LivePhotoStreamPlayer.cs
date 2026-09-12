@@ -13,7 +13,7 @@ namespace LivePhotoConvert.Desktop.Services;
 /// </summary>
 public sealed class LivePhotoStreamPlayer : IDisposable
 {
-    private const int MaxFrames = 180; // 6 秒 @ 30fps，足够覆盖 Live Photo 且限制非托管内存
+    internal const int MaxFrames = 90;
     private readonly DispatcherTimer _timer;
     private List<Bitmap> _frames = [];
     private readonly List<Bitmap> _pendingDisposals = [];
@@ -168,12 +168,16 @@ public sealed class LivePhotoStreamPlayer : IDisposable
             var psi = new ProcessStartInfo
             {
                 FileName = ffmpegPath,
-                Arguments = $"-loglevel quiet -hwaccel auto -i \"{videoPath}\" -vf \"scale=1080:1080:force_original_aspect_ratio=decrease:flags=lanczos\" -fps_mode passthrough -c:v bmp -pix_fmt bgr24 -f image2pipe -",
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 CreateNoWindow = true
             };
+
+            foreach (string argument in BuildDecodeArguments(videoPath))
+            {
+                psi.ArgumentList.Add(argument);
+            }
 
             process = Process.Start(psi);
             if (process is null) return;
@@ -239,6 +243,20 @@ public sealed class LivePhotoStreamPlayer : IDisposable
             }
         }
     }
+
+    internal static string[] BuildDecodeArguments(string videoPath) =>
+    [
+        "-loglevel", "quiet",
+        "-i", videoPath,
+        "-map", "0:v:0",
+        "-an", "-sn", "-dn",
+        "-vf", "scale=1080:1080:force_original_aspect_ratio=decrease:flags=lanczos",
+        "-fps_mode", "passthrough",
+        "-c:v", "bmp",
+        "-pix_fmt", "bgr24",
+        "-f", "image2pipe",
+        "-"
+    ];
 
     private void OnTimerTick(object? sender, EventArgs e)
     {

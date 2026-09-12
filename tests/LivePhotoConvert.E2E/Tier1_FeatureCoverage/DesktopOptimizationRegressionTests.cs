@@ -162,6 +162,46 @@ public class DesktopOptimizationRegressionTests
         Assert.Null(end);
     }
 
+    [Fact]
+    public void LruThumbnailManager_BitmapAllocationFailure_DoesNotEscapeToUiThread()
+    {
+        var manager = new LruThumbnailManager(
+            new ThumbnailReader(),
+            _ => throw new Exception("Unable to allocate pixels for the bitmap."));
+        var card = new PhotoCardItemViewModel
+        {
+            Key = "allocation-failure",
+            PhotoPath = "allocation-failure.jpg"
+        };
+
+        var exception = Record.Exception(() => manager.RequestThumbnail(card, [1, 2, 3]));
+
+        Assert.Null(exception);
+        Assert.Null(card.Thumbnail);
+        Assert.Null(card.DisplayImage);
+    }
+
+    [Fact]
+    public void DesktopImageCaches_KeepRawBitmapBudgetsBounded()
+    {
+        Assert.InRange(LruThumbnailManager.MaxActiveBitmaps, 1, 24);
+        Assert.InRange(PlaybackHost.MaxFrameCacheSets, 1, 2);
+        Assert.InRange(PlaybackHost.MaxPreviewFrames, 1, 60);
+        Assert.InRange(LivePhotoStreamPlayer.MaxFrames, 1, 90);
+    }
+
+    [Fact]
+    public void QuickLookDecodeArguments_AvoidUnstableAutomaticHardwareAcceleration()
+    {
+        string[] arguments = LivePhotoStreamPlayer.BuildDecodeArguments(@"F:\媒体目录\IMG 5410.MOV");
+
+        Assert.DoesNotContain("-hwaccel", arguments);
+        Assert.Contains("scale=1080:1080:force_original_aspect_ratio=decrease:flags=lanczos", arguments);
+        Assert.Contains("passthrough", arguments);
+        Assert.Contains("bmp", arguments);
+        Assert.Contains("bgr24", arguments);
+    }
+
     private static byte[] CreateBmpPacket(int length, byte payload)
     {
         byte[] bytes = Enumerable.Repeat(payload, length).ToArray();

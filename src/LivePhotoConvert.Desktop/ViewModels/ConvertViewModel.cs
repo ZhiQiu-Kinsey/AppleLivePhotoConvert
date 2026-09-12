@@ -757,7 +757,7 @@ public sealed partial class ConvertViewModel : ViewModelBase
         }
 
         // 首屏极速从磁盘持久化缓存加载（严格在后台 Task.Run 中读取与解码，UI 仅负责接收派发的 Bitmap）
-        int initialFastLimit = Math.Min(cards.Count, 60);
+        int initialFastLimit = Math.Min(cards.Count, 16);
         var fastCards = cards.Take(initialFastLimit).ToList();
         _ = Task.Run(() =>
         {
@@ -973,7 +973,7 @@ public sealed partial class ConvertViewModel : ViewModelBase
 
         // 直接按已生成的行做命中，避免用固定行高估算造成预热错位。
         double cursor = 0;
-        int remainingVideoPreloads = offsetY < 5 ? 2 : 0;
+        int remainingVideoPreloads = offsetY < 5 ? 1 : 0;
         foreach (var item in FlattenedDisplayItems)
         {
             if (item is TimelineHeaderItemViewModel)
@@ -992,7 +992,7 @@ public sealed partial class ConvertViewModel : ViewModelBase
                 {
                     var card = row.Cards[i];
                     PrioritizeThumbnail(card);
-                    // 整个首屏最多预热两段视频，而不是每行两段；滚动期间不启动 FFmpeg。
+                    // 首屏只预热一段视频，与单组帧缓存预算一致；滚动期间不启动 FFmpeg。
                     if (remainingVideoPreloads > 0
                         && card.CachedFrames is null
                         && (!string.IsNullOrWhiteSpace(card.VideoPath) || card.IsMotionPhoto))

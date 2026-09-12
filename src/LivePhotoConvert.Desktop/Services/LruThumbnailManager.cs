@@ -10,17 +10,24 @@ public sealed class LruThumbnailManager
 {
     // 960px 足够覆盖高 DPI 卡片；同步降低活跃张数，把总像素预算维持在可控范围。
     internal const int ThumbnailMaxSize = 960;
-    private const int MaxActiveBitmaps = 48;
+    internal const int MaxActiveBitmaps = 24;
     private readonly LinkedList<PhotoCardItemViewModel> _lruList = new();
     private readonly HashSet<PhotoCardItemViewModel> _activeSet = new();
     private readonly ThumbnailReader _reader;
+    private readonly Func<Stream, Bitmap> _bitmapFactory;
     private readonly Lock _lock = new();
     private readonly List<Bitmap> _pendingDisposals = [];
     private readonly DispatcherTimer _disposeTimer;
 
     public LruThumbnailManager(ThumbnailReader reader)
+        : this(reader, static stream => new Bitmap(stream))
+    {
+    }
+
+    internal LruThumbnailManager(ThumbnailReader reader, Func<Stream, Bitmap> bitmapFactory)
     {
         _reader = reader;
+        _bitmapFactory = bitmapFactory;
         _disposeTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
             Interval = TimeSpan.FromMilliseconds(120)
@@ -41,12 +48,12 @@ public sealed class LruThumbnailManager
                 return;
             }
 
+            ReserveSlotForNewBitmap();
             card.Thumbnail = bitmap;
 
             _lruList.AddLast(card);
             _activeSet.Add(card);
 
-            EvictOldestIfNeeded();
         }
     }
 
@@ -61,13 +68,15 @@ public sealed class LruThumbnailManager
                 return;
             }
 
-            using var ms = new MemoryStream(jpgBytes);
-            card.Thumbnail = new Bitmap(ms);
+            Bitmap? bitmap = TryCreateBitmap(jpgBytes);
+            if (bitmap is null) return;
+
+            ReserveSlotForNewBitmap();
+            card.Thumbnail = bitmap;
 
             _lruList.AddLast(card);
             _activeSet.Add(card);
 
-            EvictOldestIfNeeded();
         }
     }
 
@@ -85,8 +94,11 @@ public sealed class LruThumbnailManager
             var res = _reader.TryGetFromCacheOnly(card.PhotoPath, ThumbnailMaxSize);
             if (res is not null)
             {
-                using var ms = new MemoryStream(res.ImageBytes);
-                card.Thumbnail = new Bitmap(ms);
+                Bitmap? bitmap = TryCreateBitmap(res.ImageBytes);
+                if (bitmap is null) return null;
+
+                ReserveSlotForNewBitmap();
+                card.Thumbnail = bitmap;
                 if (string.IsNullOrEmpty(card.ResolutionText))
                 {
                     card.ResolutionText = $"{res.Width}×{res.Height}";
@@ -95,7 +107,6 @@ public sealed class LruThumbnailManager
                 _lruList.AddLast(card);
                 _activeSet.Add(card);
 
-                EvictOldestIfNeeded();
                 return (res.Width, res.Height);
             }
 
@@ -117,14 +128,29 @@ public sealed class LruThumbnailManager
         }
     }
 
-    private void EvictOldestIfNeeded()
+    private Bitmap? TryCreateBitmap(byte[] imageBytes)
     {
-        while (_lruList.Count > MaxActiveBitmaps)
+        try
+        {
+            using var stream = new MemoryStream(imageBytes, writable: false);
+            return _bitmapFactory(stream);
+        }
+        catch (Exception ex)
+        {
+            // Skia 在缓存损坏或非托管像素预算不足时会抛普通 Exception；
+            // 缩略图失败只能降级为占位图，绝不能终止整个桌面进程。
+            System.Diagnostics.Debug.WriteLine($"Thumbnail bitmap allocation failed: {ex.Message}");
+            return null;
+        }
+    }
+
+    private void ReserveSlotForNewBitmap()
+    {
+        while (_lruList.Count >= MaxActiveBitmaps)
         {
             var oldest = _lruList.First!.Value;
             _lruList.RemoveFirst();
             _activeSet.Remove(oldest);
-            // 释放被剔除卡片的旧位图，释放非托管显存
             DetachAndQueueDispose(oldest);
         }
     }

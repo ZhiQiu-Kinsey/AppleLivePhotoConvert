@@ -12,8 +12,8 @@ namespace LivePhotoConvert.Desktop.Services;
 public sealed class PlaybackHost
 {
     private static readonly TimeSpan HoverDebounce = TimeSpan.FromMilliseconds(80);
-    private const int MaxFrameCacheSets = 8;
-    private const int MaxPreviewFrames = 180;
+    internal const int MaxFrameCacheSets = 1;
+    internal const int MaxPreviewFrames = 60;
 
     public static PlaybackHost Instance { get; } = new();
 
