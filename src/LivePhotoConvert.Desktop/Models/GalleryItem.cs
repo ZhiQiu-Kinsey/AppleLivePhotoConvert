@@ -51,23 +51,15 @@ public sealed partial class TimelineHeaderItemViewModel : ObservableObject, IGal
 }
 
 /// <summary>
-/// 虚拟化相册瀑布流块项（内部包含 2~4 个独立纵向排列的列，彻底消灭行内高矮差异导致的空白留白）
+/// 虚拟化相册等高行项。每一行按原图比例计算宽度，行内卡片共享同一预览高度。
 /// </summary>
 public sealed class PhotoGridRowViewModel : ObservableObject, IGalleryDisplayItem
 {
     public required string Key { get; init; }
     public ObservableCollection<PhotoCardItemViewModel> Cards { get; init; } = [];
 
-    // 该瀑布流块的固定列数（与缩放模式联动）
-    public int Columns { get; set; } = 3;
-
-    public ObservableCollection<PhotoCardItemViewModel> Column0 { get; } = [];
-    public ObservableCollection<PhotoCardItemViewModel> Column1 { get; } = [];
-    public ObservableCollection<PhotoCardItemViewModel> Column2 { get; } = [];
-    public ObservableCollection<PhotoCardItemViewModel> Column3 { get; } = [];
-
-    public bool HasColumn2 => Columns >= 3;
-    public bool HasColumn3 => Columns >= 4;
+    /// <summary>当前行的自适应预览高度，提前计算后保持 ListBox 测量稳定。</summary>
+    public double RowHeight { get; set; } = 220;
 }
 
 /// <summary>
@@ -118,7 +110,17 @@ public sealed partial class PhotoCardItemViewModel : ObservableObject, IGalleryD
     }
     public string PairingStatusText { get; init; } = string.Empty;
 
-    public double AspectRatio { get; init; } = 4.0 / 3.0;
+    /// <summary>原图宽高比。扫描阶段可能未知，缩略图解码后会渐进修正。</summary>
+    [ObservableProperty]
+    private double _aspectRatio = 4.0 / 3.0;
+
+    // 根据卡片宽度和原图比例预留预览高度，缩略图异步到达时不再触发布局跳动。
+    [ObservableProperty]
+    private double _previewHeight = 200;
+
+    /// <summary>等高行布局中卡片的外部宽度（包含卡片边距）。</summary>
+    [ObservableProperty]
+    private double _displayWidth = 260;
 
     [ObservableProperty]
     private bool _isSelected = true;

@@ -1,6 +1,5 @@
 using System.Text.Json;
 using LivePhotoConvert.Desktop.Models;
-
 namespace LivePhotoConvert.Desktop.Services;
 
 /// <summary>

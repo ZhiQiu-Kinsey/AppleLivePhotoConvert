@@ -6,49 +6,27 @@
              x:DataType="models:PhotoCardItemViewModel"
         xmlns:ic="using:FluentIcons.Avalonia">
 
-  <UserControl.Styles>
-    <!-- 卡片根边框：常态描边色，待人工裁决切换警示色 -->
-    <Style Selector="Border.cardRoot">
-      <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
-    </Style>
-    <Style Selector="Border.cardRoot.suspicious">
-      <Setter Property="BorderBrush" Value="{DynamicResource WarningBorderBrush}" />
-    </Style>
-  </UserControl.Styles>
-
-  <Border Classes="cardRoot"
-          Classes.suspicious="{CompiledBinding HasSuspiciousWarning}"
-          Background="{DynamicResource SurfaceBrush}"
-          BorderThickness="1"
+  <Border Background="{DynamicResource SurfaceBrush}"
           CornerRadius="16"
           ClipToBounds="True"
-          Margin="4">
+          Margin="4"
+          BoxShadow="0 2 8 0 #10000000">
 
     <Grid RowDefinitions="Auto,Auto">
-      <!-- 顶部图片与动图渲染视口（自适应原生画幅 vs 方形裁剪） -->
-      <Panel Grid.Row="0" ClipToBounds="True">
+      <!-- 使用行布局预先算出的统一高度，缩略图异步到达时不会改变当前测量 -->
+      <Panel Grid.Row="0" Height="{CompiledBinding PreviewHeight}" ClipToBounds="True">
         <!-- 圆角裁剪容器 -->
         <Border CornerRadius="16,16,0,0" ClipToBounds="True">
           <Panel>
-            <!-- 1. 自然原生画幅模式：高度随原图宽高比自适应撑开，卡片跟随图片原始尺寸，零黑边 -->
+            <!-- 自适应等高模式下容器保持原图比例；方形模式下同一视口负责居中裁切 -->
             <Image Source="{CompiledBinding DisplayImage}"
                    RenderOptions.BitmapInterpolationMode="HighQuality"
-                   IsVisible="{CompiledBinding IsNaturalCrop}"
-                   Stretch="Uniform"
+                   Stretch="UniformToFill"
                    HorizontalAlignment="Stretch"
-                   VerticalAlignment="Top" />
-
-            <!-- 2. 方形 (1:1) 模式：固定 200 高度，居中裁剪填满 -->
-            <Panel Height="200" IsVisible="{CompiledBinding IsSquareCrop}">
-              <Image Source="{CompiledBinding DisplayImage}"
-                     RenderOptions.BitmapInterpolationMode="HighQuality"
-                     Stretch="UniformToFill"
-                     HorizontalAlignment="Center"
-                     VerticalAlignment="Center" />
-            </Panel>
+                   VerticalAlignment="Center" />
 
             <!-- 缩略图未就绪时的占位底色 -->
-            <Border Background="{DynamicResource CanvasBrush}" MinHeight="160"
+            <Border Background="{DynamicResource CanvasBrush}"
                     IsVisible="{CompiledBinding DisplayImage, Converter={x:Static ObjectConverters.IsNull}}">
               <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6" Margin="0,30">
                 <ic:SymbolIcon Symbol="Camera" FontSize="32" Foreground="{DynamicResource TextTertiaryBrush}"/>
@@ -84,30 +62,9 @@
           <TextBlock Text="{CompiledBinding DurationText}" Foreground="{DynamicResource OnAccentBrush}" FontSize="10" FontWeight="SemiBold" />
         </Border>
 
-        <!-- 选择复选框 -->
-        <Button Command="{CompiledBinding ToggleSelectCommand}"
-                Background="Transparent"
-                BorderThickness="0"
-                Padding="0"
-                Width="28" Height="28"
-                HorizontalAlignment="Right" VerticalAlignment="Top" Margin="8"
-                Cursor="Hand"
-                ToolTip.Tip="{DynamicResource CardToggleSelectTip}">
-          <Panel>
-            <Border Width="24" Height="24" CornerRadius="12" Background="{DynamicResource AccentBrush}"
-                    IsVisible="{CompiledBinding IsSelected}">
-              <ic:SymbolIcon Symbol="Checkmark" FontSize="12" Foreground="{DynamicResource OnAccentBrush}"/>
-            </Border>
-            <Border Width="24" Height="24" CornerRadius="12" Background="#66000000"
-                    BorderBrush="{DynamicResource SurfaceBrush}" BorderThickness="1.5"
-                    IsVisible="{CompiledBinding !IsSelected}">
-              <ic:SymbolIcon Symbol="Circle" FontSize="14" Foreground="Transparent"/>
-            </Border>
-          </Panel>
-        </Button>
       </Panel>
 
-      <!-- 信息面板（固定 78 高度，保证所有卡片总高 258px 绝对整齐） -->
+      <!-- 信息面板固定高度，保证同一行的卡片底部对齐 -->
       <Border Grid.Row="1" Height="78" Padding="12,10" Background="{DynamicResource SurfaceBrush}">
         <StackPanel Spacing="6">
           <Grid ColumnDefinitions="*,Auto">
@@ -118,6 +75,7 @@
 
             <Panel Grid.Column="1">
               <Border Background="{DynamicResource SuccessSoftBrush}" BorderBrush="{DynamicResource SuccessBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="6,2"
+                      VerticalAlignment="Top"
                       IsVisible="{CompiledBinding !HasSuspiciousWarning}">
                 <TextBlock Text="{CompiledBinding PairingStatusText}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" />
               </Border>
@@ -125,6 +83,7 @@
               <Button Command="{CompiledBinding RequestArbitrateCommand}"
                       Background="{DynamicResource WarningSoftBrush}" BorderBrush="{DynamicResource WarningBorderBrush}" BorderThickness="1"
                       CornerRadius="6" Padding="6,2"
+                      VerticalAlignment="Top"
                       IsVisible="{CompiledBinding HasSuspiciousWarning}"
                       Cursor="Hand">
                 <TextBlock Text="{DynamicResource CardArbitrateBtn}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource WarningBrush}" />

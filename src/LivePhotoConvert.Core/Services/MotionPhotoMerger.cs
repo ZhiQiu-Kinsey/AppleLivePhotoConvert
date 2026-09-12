@@ -199,6 +199,12 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
         string? outputPath = null;
         try
         {
+            // Apple Live Photo 的封面帧不保证固定在 1.5 秒处；必须在 FFmpeg 丢弃 timed-metadata 轨道前读取真实时间。
+            // 非 Apple 视频或缺失元数据时按小米 SDK 约定写 0，避免伪造一个错误的代表帧时间。
+            var presentationTimestampUs = Path.GetExtension(pair.VideoPath).Equals(".mov", StringComparison.OrdinalIgnoreCase)
+                ? await exifTool.TryReadAppleLivePhotoPresentationTimestampUsAsync(pair.VideoPath, cancellationToken) ?? 0
+                : 0;
+
             // 安卓动态照片格式规范要求封面必须为标准 JPEG，HEIC 与 PNG 都需要先转码
             var photoPath = pair.PhotoPath;
             if (!MediaFileTypes.IsJpeg(photoPath))
@@ -226,7 +232,7 @@ public sealed class MotionPhotoMerger(IExifTool exifTool, IImageConverter imageC
             var (photoLength, totalLength) = await BinaryFile.ConcatAsync(photoPath, videoPath, outputPath, cancellationToken);
 
             // 写入 Google GCamera XMP 动态照片元数据与微视频偏移量
-            await exifTool.WriteMotionPhotoTagsAsync(outputPath, totalLength - photoLength, cancellationToken);
+            await exifTool.WriteMotionPhotoTagsAsync(outputPath, totalLength - photoLength, presentationTimestampUs, cancellationToken);
 
             // 写入元数据后校验输出文件（确保文件完整包含封面与内嵌视频）
             var finalLength = new FileInfo(outputPath).Length;

@@ -42,29 +42,6 @@
           <TextBlock Text="{DynamicResource AppSubtitle}" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" MaxWidth="160" TextTrimming="CharacterEllipsis" />
         </StackPanel>
 
-        <!-- 引擎状态指示器（居中，与左右两侧保持间距防重叠） -->
-        <Border Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center"
-                Margin="10,0,10,0"
-                Background="{DynamicResource HoverBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="12" Padding="10,3">
-          <StackPanel Orientation="Horizontal" Spacing="10">
-            <StackPanel Orientation="Horizontal" Spacing="5">
-              <Border Width="6" Height="6" CornerRadius="3" Background="{DynamicResource SuccessBrush}" VerticalAlignment="Center" IsVisible="{Binding ToolsVm.IsExifToolReady}" />
-              <Border Width="6" Height="6" CornerRadius="3" Background="{DynamicResource DangerBrush}" VerticalAlignment="Center" IsVisible="{Binding !ToolsVm.IsExifToolReady}" />
-              <TextBlock Text="ExifTool" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" Spacing="5">
-              <Border Width="6" Height="6" CornerRadius="3" Background="{DynamicResource SuccessBrush}" VerticalAlignment="Center" IsVisible="{Binding ToolsVm.IsFfmpegReady}" />
-              <Border Width="6" Height="6" CornerRadius="3" Background="{DynamicResource DangerBrush}" VerticalAlignment="Center" IsVisible="{Binding !ToolsVm.IsFfmpegReady}" />
-              <TextBlock Text="FFmpeg" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" Spacing="5">
-              <Border Width="6" Height="6" CornerRadius="3" Background="{DynamicResource SuccessBrush}" VerticalAlignment="Center" IsVisible="{Binding ToolsVm.IsHeifEncReady}" />
-              <Border Width="6" Height="6" CornerRadius="3" Background="{DynamicResource DangerBrush}" VerticalAlignment="Center" IsVisible="{Binding !ToolsVm.IsHeifEncReady}" />
-              <TextBlock Text="heif-enc" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
-            </StackPanel>
-          </StackPanel>
-        </Border>
-
         <!-- 窗口系统控制按钮（贴合最右上角，无内边距，标准 Fluent/Windows 样式） -->
         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="0" VerticalAlignment="Stretch" HorizontalAlignment="Right">
           <Button Classes="caption-btn" Command="{Binding MinimizeWindowCommand}"
@@ -138,14 +115,38 @@
             </Button>
           </StackPanel>
 
-          <!-- 常驻左下角偏好设置入口（主题与语言已在设置页提供，此处保持单一入口） -->
-          <Button Grid.Row="2" Classes="nav-btn" Classes.selected="{Binding IsSettingsTabSelected}"
-                  Command="{Binding SelectTabCommand}" CommandParameter="4">
-            <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
-              <ic:SymbolIcon Symbol="Settings" FontSize="16" Grid.Column="0" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
-              <TextBlock Grid.Column="1" Text="{DynamicResource NavSettings}" FontSize="12" Margin="10,0,0,0" VerticalAlignment="Center" />
-            </Grid>
-          </Button>
+          <!-- 左下角：引擎状态 + 设置入口，状态不再占用标题栏空间。 -->
+          <StackPanel Grid.Row="2" Spacing="6">
+            <Border Background="{DynamicResource HoverBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="10" Padding="9,7">
+              <StackPanel Spacing="5">
+                <TextBlock Text="{DynamicResource ToolsTitle}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <StackPanel Orientation="Horizontal" Spacing="4">
+                    <Border Width="6" Height="6" CornerRadius="3" Background="{DynamicResource SuccessBrush}" VerticalAlignment="Center" IsVisible="{Binding ToolsVm.IsExifToolReady}" />
+                    <Border Width="6" Height="6" CornerRadius="3" Background="{DynamicResource DangerBrush}" VerticalAlignment="Center" IsVisible="{Binding !ToolsVm.IsExifToolReady}" />
+                    <TextBlock Text="ExifTool" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" />
+                  </StackPanel>
+                  <StackPanel Orientation="Horizontal" Spacing="4">
+                    <Border Width="6" Height="6" CornerRadius="3" Background="{DynamicResource SuccessBrush}" VerticalAlignment="Center" IsVisible="{Binding ToolsVm.IsFfmpegReady}" />
+                    <Border Width="6" Height="6" CornerRadius="3" Background="{DynamicResource DangerBrush}" VerticalAlignment="Center" IsVisible="{Binding !ToolsVm.IsFfmpegReady}" />
+                    <TextBlock Text="FFmpeg" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" />
+                  </StackPanel>
+                  <StackPanel Orientation="Horizontal" Spacing="4">
+                    <Border Width="6" Height="6" CornerRadius="3" Background="{DynamicResource SuccessBrush}" VerticalAlignment="Center" IsVisible="{Binding ToolsVm.IsHeifEncReady}" />
+                    <Border Width="6" Height="6" CornerRadius="3" Background="{DynamicResource DangerBrush}" VerticalAlignment="Center" IsVisible="{Binding !ToolsVm.IsHeifEncReady}" />
+                    <TextBlock Text="heif-enc" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" />
+                  </StackPanel>
+                </StackPanel>
+              </StackPanel>
+            </Border>
+            <Button Classes="nav-btn" Classes.selected="{Binding IsSettingsTabSelected}"
+                    Command="{Binding SelectTabCommand}" CommandParameter="4">
+              <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
+                <ic:SymbolIcon Symbol="Settings" FontSize="16" Grid.Column="0" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
+                <TextBlock Grid.Column="1" Text="{DynamicResource NavSettings}" FontSize="12" Margin="10,0,0,0" VerticalAlignment="Center" />
+              </Grid>
+            </Button>
+          </StackPanel>
       
         </Grid>
       </Border>

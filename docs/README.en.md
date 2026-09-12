@@ -151,11 +151,14 @@ To merge into Android Motion Photos, first export the **unmodified originals**:
 
 ### 1. Android Motion Photo Storage Mechanism (GCamera XMP)
 
-Android Motion Photos follow the [Google Motion Photo Specification](https://developer.android.com/media/platform/motion-photo-format?hl=en): the cover JPEG and the embedded MP4 video are physically concatenated in one binary (JPEG first, MP4 right after), and markers are injected into the JPEG's XMP metadata region:
+Android Motion Photos follow the [Google Motion Photo Specification](https://developer.android.com/media/platform/motion-photo-format?hl=en): the cover JPEG and embedded MP4 are physically concatenated into one binary (JPEG first, MP4 immediately after it), while both modern and legacy compatibility fields are written into the JPEG's XMP metadata:
 
-- `GCamera:MicroVideo = 1`: declares that the image contains micro-video data;
-- `GCamera:MicroVideoOffset`: byte length of the embedded video from the end of the file;
-- `GCamera:MicroVideoPresentationTimestampUs`: presentation timestamp of the Live Photo cover frame (microseconds).
+- `GCamera:MotionPhoto = 1` and `GCamera:MotionPhotoVersion = 1`: declare a modern Motion Photo;
+- `GCamera:MotionPhotoPresentationTimestampUs`: the cover frame's real position on the video timeline, in microseconds;
+- `Container:Directory`: describes the trailing MP4 precisely with `Item:Semantic = MotionPhoto` and `Item:Length`;
+- `GCamera:MicroVideo*`: the legacy trio is retained for gallery apps that still consume the old GCamera fields.
+
+In an Apple Live Photo, `com.apple.quicktime.still-image-time` is a timed metadata track. Its `StillImageTime = -1` value is only a cover-frame marker, **not the timestamp itself**. Before FFmpeg remuxing drops that metadata track, this project reads its timing through ExifTool and recovers the real presentation time as `TrackDuration - MediaDuration`. The tested sample resolves to `820 / 600 = 1.366667s`, so the XMP value is `1366667µs` rather than a fixed `1.5s`; the implementation falls back to `0` only when the timed metadata track is absent.
 
 ```
 ┌──────────────────────────────────────────────┐
@@ -171,13 +174,17 @@ Android Motion Photos follow the [Google Motion Photo Specification](https://dev
 
 ### 2. Reverse Engineering the Xiaomi HyperOS `0x8897` Private Tag
 
-During development we found that Motion Photos carrying only the Google standard XMP tags failed to trigger the long-press playback button in Xiaomi Gallery (HyperOS / MIUI). Decompiling the official Xiaomi Gallery APK with `jadx-gui` located the key check:
+During development we found that Motion Photos carrying only the Google standard XMP tags failed to trigger the long-press playback button on some Xiaomi Gallery versions (HyperOS / MIUI). Earlier decompilation of the official Xiaomi Gallery APK with `jadx-gui` located the key check:
 
 <p align="center">
   <img src="PixPin_2024-12-19_19-35-11.png" alt="Xiaomi Gallery Motion Photo detection logic (decompiled)" width="750" />
 </p>
 
-The decompiled source shows that Xiaomi Gallery reads not only XMP but also a private Exif tag — the code matches the decimal constant `34967` (i.e. **`0x8897`**). This app injects that private tag through ExifTool, so Xiaomi Gallery (HyperOS / MIUI) can properly recognize and play the Motion Photo.
+The decompiled source shows that Xiaomi Gallery reads not only XMP but also a private Exif tag — the code matches the decimal constant `34967` (i.e. **`0x8897`**). This app writes it as an ExifIFD BYTE with value `1` through ExifTool to preserve Xiaomi Gallery compatibility.
+
+A second reverse-engineering pass in 2026-09 against Xiaomi Gallery `5.4.2.7-0828-cn` confirmed that the new app is primarily Flutter / Dart AOT. Its native parser accepts both modern `MotionPhoto + Container` XMP and legacy `MicroVideo` XMP; no hard requirement for `0x889e`, `MiCamera:XMPMeta`, or an `MVIMG` filename was found. The **`0x889e` tag in Xiaomi camera originals is private capture-parameter JSON** that can encode timing such as `time - head - offset`, and third-party files should not fabricate it. The new Gallery also contains capability gates such as `motionPhotoThirdParty` and `isPlayableMotionPhoto`, so MediaStore rescanning/cache and device feature flags should also be checked when a structurally valid file has no playback entry.
+
+The actual regression was a fixed `1.5s` cover-frame timestamp that did not match the real location in the Apple MOV timed metadata track. After writing the recovered exact timestamp, the generated file was verified on a Xiaomi device to be recognized and played normally. The practical rule is: **keep `0x8897`, do not add `0x889e`, and write valid modern XMP, the exact video length, and the true cover-frame presentation timestamp.**
 
 ### 3. Apple Live Photo UUID Pairing Mechanism
 

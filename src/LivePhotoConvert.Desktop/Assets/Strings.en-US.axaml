@@ -23,7 +23,7 @@
   <sys:String x:Key="BtnAppleToAndroid">Convert to Android Motion Photos</sys:String>
   <sys:String x:Key="BtnAndroidToApple">Convert to Apple Live Photos</sys:String>
   <sys:String x:Key="BtnExtract">Extract Independent Cover &amp; Video</sys:String>
-  <sys:String x:Key="SelectedSummaryFormat">{0} Selected ({1})</sys:String>
+  <sys:String x:Key="SelectedSummaryFormat">{0} items ({1})</sys:String>
 
   <!-- Toolbar & Gallery -->
   <sys:String x:Key="ToolbarAlbumTitle">Album Live Roll</sys:String>
@@ -45,7 +45,7 @@
   <sys:String x:Key="FilterBannerSuffix">· Selections unaffected</sys:String>
   <sys:String x:Key="FilterClear">Clear Filter</sys:String>
   <sys:String x:Key="ToolbarView">View</sys:String>
-  <sys:String x:Key="CropNatural">Natural Aspect Ratio</sys:String>
+  <sys:String x:Key="CropNatural">Justified rows</sys:String>
   <sys:String x:Key="CropSquare">Square (1:1)</sys:String>
   <sys:String x:Key="ScaleSmall">Compact Grid (Overview)</sys:String>
   <sys:String x:Key="ScaleMedium">Standard Grid</sys:String>
@@ -68,11 +68,18 @@
   <sys:String x:Key="NamingFormatOriginal">Keep Original Name (MVIMG_{name}.jpg)</sys:String>
   <sys:String x:Key="NamingFormatDateName">Date + Original Name (Recommended)</sys:String>
   <sys:String x:Key="NamingFormatClean">Camera Timestamp Only</sys:String>
+  <sys:String x:Key="NamingFormatOriginalShort">Keep original</sys:String>
+  <sys:String x:Key="NamingFormatDateNameShort">Date + name</sys:String>
+  <sys:String x:Key="NamingFormatCleanShort">Timestamp only</sys:String>
   <sys:String x:Key="SourceActionTitle">Post-Conversion Action</sys:String>
   <sys:String x:Key="SourceActionKeep">Keep Source Files (Safe Recommended)</sys:String>
   <sys:String x:Key="SourceActionSubfolder">Archive to _original/ Subfolder</sys:String>
   <sys:String x:Key="SourceActionRecycle">Move to Recycle Bin</sys:String>
   <sys:String x:Key="SourceActionDelete">Permanently Delete Source Files</sys:String>
+  <sys:String x:Key="SourceActionKeepShort">Keep originals</sys:String>
+  <sys:String x:Key="SourceActionSubfolderShort">Move to backup</sys:String>
+  <sys:String x:Key="SourceActionRecycleShort">Move to Recycle Bin</sys:String>
+  <sys:String x:Key="SourceActionDeleteShort">Delete permanently</sys:String>
   <sys:String x:Key="DeleteWarningTitle">Physical Deletion Alert</sys:String>
   <sys:String x:Key="DeleteWarningDesc">Original live photos will be wiped permanently. Type DELETE to unlock.</sys:String>
   <sys:String x:Key="AutoAppendIndexTitle">Auto-append _1 suffix on collision</sys:String>
@@ -115,6 +122,7 @@
   <!-- Engines -->
   <sys:String x:Key="ToolsTitle">Core Engine Management</sys:String>
   <sys:String x:Key="ToolsDesc">Manage conversion tools: ExifTool, FFmpeg, and heif-enc.</sys:String>
+  <sys:String x:Key="ToolNotInstalled">Not installed</sys:String>
   <sys:String x:Key="RescanToolsBtn">Rescan Engines</sys:String>
   <sys:String x:Key="MirrorTitle">GitHub Download Mirror</sys:String>
   <sys:String x:Key="MirrorDesc">Select acceleration proxy or enter custom mirror endpoint</sys:String>

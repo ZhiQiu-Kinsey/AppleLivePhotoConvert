@@ -1,5 +1,4 @@
 using LivePhotoConvert.Core.Abstractions;
-
 namespace LivePhotoConvert.Desktop.Services;
 
 public sealed class DesktopProgressReporter(Action<int, int, string> onReport) : IProgressReporter

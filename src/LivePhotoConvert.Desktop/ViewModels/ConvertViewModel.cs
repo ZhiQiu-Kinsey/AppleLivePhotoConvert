@@ -208,11 +208,12 @@ public sealed partial class ConvertViewModel : ViewModelBase
     public ObservableCollection<TimelineGroup> DisplayGroups { get; } = [];
     public BulkObservableCollection<IGalleryDisplayItem> FlattenedDisplayItems { get; } = [];
 
-    /// <summary>卡片宽度：由父容器可用宽度除以列数计算，供网格单流布局使用。</summary>
+    /// <summary>兼容旧绑定的参考卡片宽度；实际等高行宽度由每张图片的纵横比决定。</summary>
     [ObservableProperty]
     private double _cardWidth = 260;
 
     private double _lastParentWidth = 900;
+    private readonly Avalonia.Threading.DispatcherTimer _layoutRefreshTimer;
 
     /// <summary>依据当前父容器宽度与缩放模式更新卡片宽度。</summary>
     public void UpdateCardWidth(double parentWidth)
@@ -230,6 +231,11 @@ public sealed partial class ConvertViewModel : ViewModelBase
         // 扣除左右内边距与每列之间 16px 间距后均分
         double available = Math.Max(100, _lastParentWidth - 32);
         CardWidth = Math.Max(120, (available - (columns - 1) * 16) / columns);
+
+        if (_groups.Count > 0)
+        {
+            RebuildFlattenedStream();
+        }
     }
 
     public Func<Task<string?>>? RequestSelectFolder { get; set; }
@@ -239,9 +245,18 @@ public sealed partial class ConvertViewModel : ViewModelBase
     {
         _settingsService = settingsService;
         _lruThumbnailManager = new LruThumbnailManager(_thumbnailReader);
+        _layoutRefreshTimer = new Avalonia.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(120)
+        };
+        _layoutRefreshTimer.Tick += (_, _) =>
+        {
+            _layoutRefreshTimer.Stop();
+            if (_groups.Count > 0) RebuildFlattenedStream();
+        };
 
         PlaybackHost.Instance.OnQuickLookTriggered = OpenQuickLook;
-        PlaybackHost.Instance.OnCardFocused = card => _lruThumbnailManager.EnsureThumbnailLoaded(card);
+        PlaybackHost.Instance.OnCardFocused = EnsureThumbnailLoaded;
 
         var s = _settingsService.Current;
         _namingFormat = s.NamingFormat;
@@ -438,6 +453,33 @@ public sealed partial class ConvertViewModel : ViewModelBase
             {
                 card.CropMode = mode;
             }
+        }
+        RebuildFlattenedStream();
+    }
+
+    /// <summary>缩略图提供真实尺寸后批量刷新等高行，避免每张图片触发一次列表重建。</summary>
+    private void ScheduleGalleryRelayout()
+    {
+        if (_groups.Count == 0) return;
+        _layoutRefreshTimer.Stop();
+        _layoutRefreshTimer.Start();
+    }
+
+    private void UpdateCardAspect(PhotoCardItemViewModel card, int width, int height)
+    {
+        if (width <= 0 || height <= 0) return;
+        double ratio = (double)width / height;
+        if (Math.Abs(card.AspectRatio - ratio) < 0.01) return;
+        card.AspectRatio = ratio;
+        ScheduleGalleryRelayout();
+    }
+
+    private void EnsureThumbnailLoaded(PhotoCardItemViewModel card)
+    {
+        var size = _lruThumbnailManager.EnsureThumbnailLoaded(card);
+        if (size.HasValue)
+        {
+            UpdateCardAspect(card, size.Value.Width, size.Value.Height);
         }
     }
 
@@ -674,6 +716,13 @@ public sealed partial class ConvertViewModel : ViewModelBase
         UpdateSelectionSummary();
         UpdateDirectionTexts();
         StartProgressiveThumbnailLoading();
+
+        // 扫描结果可能在视图 Loaded 之后才返回，主动插队首屏卡片，避免必须经过鼠标才出现图片。
+        int initialCount = Math.Min(_allCards.Count, 12);
+        for (int i = 0; i < initialCount; i++)
+        {
+            PrioritizeThumbnail(_allCards[i]);
+        }
     }
 
     /// <summary>
@@ -703,10 +752,8 @@ public sealed partial class ConvertViewModel : ViewModelBase
             _thumbnailWorkSignal?.Dispose();
             _thumbnailWorkSignal = new SemaphoreSlim(0);
 
-            foreach (var card in cards)
-            {
-                _backgroundThumbnailQueue.Enqueue(card);
-            }
+            // 不再把整个相册压入后台队列。只有视口命中或控件真正挂载时才入队，
+            // 避免打开大相册后后台持续解码上千张图片。
         }
 
         // 首屏极速从磁盘持久化缓存加载（严格在后台 Task.Run 中读取与解码，UI 仅负责接收派发的 Bitmap）
@@ -719,7 +766,7 @@ public sealed partial class ConvertViewModel : ViewModelBase
                 if (token.IsCancellationRequested) break;
                 if (card.Thumbnail is not null) continue;
 
-                var fastResult = _thumbnailReader.TryGetFromCacheOnly(card.PhotoPath, 640);
+                var fastResult = _thumbnailReader.TryGetFromCacheOnly(card.PhotoPath, LruThumbnailManager.ThumbnailMaxSize);
                 if (fastResult is not null && !token.IsCancellationRequested)
                 {
                     Bitmap? bmp = null;
@@ -737,20 +784,30 @@ public sealed partial class ConvertViewModel : ViewModelBase
                     {
                         Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                         {
-                            if (token.IsCancellationRequested) return;
+                            if (token.IsCancellationRequested)
+                            {
+                                bmp.Dispose();
+                                return;
+                            }
                             if (string.IsNullOrEmpty(card.ResolutionText))
                             {
                                 card.ResolutionText = $"{fastResult.Width}×{fastResult.Height}";
                             }
+                            UpdateCardAspect(card, fastResult.Width, fastResult.Height);
                             _lruThumbnailManager.SetThumbnail(card, bmp);
                         });
+                    }
+                    else
+                    {
+                        bmp?.Dispose();
                     }
                 }
             }
         }, token);
 
         // 3~4 个并发 Worker 并行解码管道
-        int workerCount = Math.Clamp(Environment.ProcessorCount, 3, 4);
+        // 缩略图解码是 CPU 密集型，限制为两个 worker，给 UI 合成和用户操作留出余量。
+        const int workerCount = 2;
         var signal = _thumbnailWorkSignal;
 
         for (int w = 0; w < workerCount; w++)
@@ -813,7 +870,7 @@ public sealed partial class ConvertViewModel : ViewModelBase
                     {
                         if (card.Thumbnail is null)
                         {
-                            var result = _thumbnailReader.Read(card.PhotoPath, 640);
+                            var result = _thumbnailReader.Read(card.PhotoPath, LruThumbnailManager.ThumbnailMaxSize);
                             if (result is not null && !token.IsCancellationRequested)
                             {
                                 Bitmap? bmp = null;
@@ -831,13 +888,22 @@ public sealed partial class ConvertViewModel : ViewModelBase
                                 {
                                     Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                                     {
-                                        if (token.IsCancellationRequested) return;
+                                        if (token.IsCancellationRequested)
+                                        {
+                                            bmp.Dispose();
+                                            return;
+                                        }
                                         if (string.IsNullOrEmpty(card.ResolutionText))
                                         {
                                             card.ResolutionText = $"{result.Width}×{result.Height}";
                                         }
+                                        UpdateCardAspect(card, result.Width, result.Height);
                                         _lruThumbnailManager.SetThumbnail(card, bmp);
                                     });
+                                }
+                                else
+                                {
+                                    bmp?.Dispose();
                                 }
                             }
                         }
@@ -866,7 +932,7 @@ public sealed partial class ConvertViewModel : ViewModelBase
         if (card.Thumbnail is not null) return;
 
         // 1. 尝试直接从本地磁盘高速缓存载入（0 毫秒级极速命中）
-        _lruThumbnailManager.EnsureThumbnailLoaded(card);
+        EnsureThumbnailLoaded(card);
         if (card.Thumbnail is not null) return;
 
         // 2. 未命中磁盘缓存，压入高优先级队列顶端并唤醒解码 Worker 插队处理
@@ -905,21 +971,39 @@ public sealed partial class ConvertViewModel : ViewModelBase
     {
         if (viewportHeight <= 0) return;
 
-        var allCards = _groups.SelectMany(g => g.AllCards).ToList();
-        if (allCards.Count == 0) return;
-
-        int columns = ScaleMode switch { "Small" => 4, "Large" => 2, _ => 3 };
-        const double rowHeight = 274;
-
-        int startRow = Math.Max(0, (int)(offsetY / rowHeight) - 1);
-        int endRow = (int)((offsetY + viewportHeight) / rowHeight) + 2;
-
-        int startIndex = Math.Max(0, startRow * columns);
-        int endIndex = Math.Min(allCards.Count, endRow * columns);
-
-        for (int i = startIndex; i < endIndex; i++)
+        // 直接按已生成的行做命中，避免用固定行高估算造成预热错位。
+        double cursor = 0;
+        int remainingVideoPreloads = offsetY < 5 ? 2 : 0;
+        foreach (var item in FlattenedDisplayItems)
         {
-            PrioritizeThumbnail(allCards[i]);
+            if (item is TimelineHeaderItemViewModel)
+            {
+                cursor += 44;
+                continue;
+            }
+            if (item is not PhotoGridRowViewModel row) continue;
+
+            double rowHeight = row.RowHeight + 90; // 预览区 + 信息栏 + 行间距
+            bool intersects = cursor + rowHeight >= Math.Max(0, offsetY - 180) &&
+                              cursor <= offsetY + viewportHeight + 180;
+            if (intersects)
+            {
+                for (int i = 0; i < row.Cards.Count; i++)
+                {
+                    var card = row.Cards[i];
+                    PrioritizeThumbnail(card);
+                    // 整个首屏最多预热两段视频，而不是每行两段；滚动期间不启动 FFmpeg。
+                    if (remainingVideoPreloads > 0
+                        && card.CachedFrames is null
+                        && (!string.IsNullOrWhiteSpace(card.VideoPath) || card.IsMotionPhoto))
+                    {
+                        PlaybackHost.Instance.Preload(card);
+                        remainingVideoPreloads--;
+                    }
+                }
+            }
+            cursor += rowHeight + 12;
+            if (cursor > offsetY + viewportHeight + 260) break;
         }
     }
 
@@ -1292,11 +1376,6 @@ public sealed partial class ConvertViewModel : ViewModelBase
     [RelayCommand]
     public void PlayAllVisible()
     {
-        if (!IsSelectionModeActive)
-        {
-            return;
-        }
-
         foreach (var card in _groups.SelectMany(g => g.AllCards).Where(c => c.IsVisible))
         {
             PlaybackHost.Instance.OnPointerEnter(card);
@@ -1460,8 +1539,6 @@ public sealed partial class ConvertViewModel : ViewModelBase
     {
         DisplayGroups.Clear();
 
-        int columns = ScaleMode switch { "Small" => 4, "Large" => 2, _ => 3 };
-
         var newItems = new List<IGalleryDisplayItem>();
 
         foreach (var group in _groups)
@@ -1475,7 +1552,7 @@ public sealed partial class ConvertViewModel : ViewModelBase
 
             if (!group.Header.IsCollapsed)
             {
-                var rows = group.BuildRows(columns, true);
+                var rows = group.BuildRows(ScaleMode, true, _lastParentWidth);
                 foreach (var row in rows)
                 {
                     newItems.Add(row);

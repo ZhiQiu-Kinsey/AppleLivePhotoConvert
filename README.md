@@ -151,11 +151,14 @@
 
 ### 1. 安卓动态照片存储机制 (GCamera XMP)
 
-安卓动态照片遵循 [Google Motion Photo 规范](https://developer.android.com/media/platform/motion-photo-format?hl=zh-cn)，将封面 JPEG 图片与内嵌 MP4 视频直接进行二进制物理拼接（JPEG 在前，MP4 紧随其后），并在 JPEG 的 XMP 元数据区注入标记：
+安卓动态照片遵循 [Google Motion Photo 规范](https://developer.android.com/media/platform/motion-photo-format?hl=zh-cn)，将封面 JPEG 图片与内嵌 MP4 视频直接进行二进制物理拼接（JPEG 在前，MP4 紧随其后），并在 JPEG 的 XMP 元数据区同时写入现代格式与旧版兼容字段：
 
-- `GCamera:MicroVideo = 1`：声明该图片包含微视频数据；
-- `GCamera:MicroVideoOffset`：内嵌视频在整个文件末尾所占的字节长度；
-- `GCamera:MicroVideoPresentationTimestampUs`：实况照片封面帧展示的时间戳（微秒）。
+- `GCamera:MotionPhoto = 1`、`GCamera:MotionPhotoVersion = 1`：声明现代 Motion Photo；
+- `GCamera:MotionPhotoPresentationTimestampUs`：封面帧在视频时间轴上的真实时间戳（微秒）；
+- `Container:Directory`：以 `Item:Semantic = MotionPhoto` 和 `Item:Length` 精确描述文件尾部的 MP4；
+- `GCamera:MicroVideo*`：继续写入旧版三件套，兼容仍使用 legacy GCamera 字段的相册。
+
+Apple Live Photo 的 `com.apple.quicktime.still-image-time` 是定时元数据轨道，其中的 `StillImageTime = -1` 只是封面帧标记，**不是时间戳本身**。本项目会在 FFmpeg 重封装丢弃该元数据轨道之前，通过 ExifTool 读取轨道时间关系，并按 `TrackDuration - MediaDuration` 还原真实封面帧时间。实测样本为 `820 / 600 = 1.366667s`，因此写入 `1366667µs`，不再使用固定 `1.5s`；没有该轨道时才按规范回退为 `0`。
 
 ```
 ┌──────────────────────────────────────────────┐
@@ -171,13 +174,17 @@
 
 ### 2. 小米澎湃 OS `0x8897` 专属标签逆向解构
 
-开发过程中发现：仅写入 Google 标准 XMP 标签的动态照片，在小米手机（澎湃 OS / MIUI 相册）中无法触发动态播放长按按钮。通过 `jadx-gui` 反编译小米相册官方 APK，定位到其关键校验逻辑：
+开发过程中发现：仅写入 Google 标准 XMP 标签的动态照片，在部分小米手机（澎湃 OS / MIUI 相册）中无法触发动态播放长按按钮。早期通过 `jadx-gui` 反编译小米相册官方 APK，定位到其关键校验逻辑：
 
 <p align="center">
   <img src="docs/PixPin_2024-12-19_19-35-11.png" alt="小米相册动态照片识别逻辑反编译源码" width="750" />
 </p>
 
-逆向源码显示：小米相册不仅读取 XMP，还在底层读取 Exif 专属私有标签——代码中匹配十进制常数 `34967`（即 **`0x8897`**）。本程序通过 ExifTool 自动为合成结果注入该专属标签，使小米相册（澎湃 OS / MIUI）能够正常识别并动态播放。
+逆向源码显示：小米相册不仅读取 XMP，还在底层读取 Exif 专属私有标签——代码中匹配十进制常数 `34967`（即 **`0x8897`**）。本程序通过 ExifTool 自动写入值为 `1` 的 ExifIFD BYTE 标签，继续保证小米相册兼容性。
+
+2026-09 对小米相册 `5.4.2.7-0828-cn` 再次反编译复核后确认：新版主体为 Flutter / Dart AOT，原生解析器同时接受现代 `MotionPhoto + Container` 和旧版 `MicroVideo` XMP；未发现必须存在 `0x889e`、`MiCamera:XMPMeta` 或特定 `MVIMG` 文件名的硬编码判断。相机原片中的 **`0x889e` 是小米私有拍摄参数 JSON**，可用于记录 `time - head - offset` 等时间信息，但第三方合成文件不应伪造它。新版还存在 `motionPhotoThirdParty`、`isPlayableMotionPhoto` 等能力开关，因此文件结构正确却不显示入口时，也应检查系统媒体扫描缓存与机型能力开关。
+
+本次故障的实际原因是合成结果把封面帧时间戳固定写成 `1.5s`，与 Apple MOV 元数据轨道中的真实位置不一致；改为写入上面还原出的精确时间戳后，已在小米相册真机端验证可以识别并正常播放。结论是：**保留 `0x8897`，无需新增 `0x889e`，同时必须正确写入现代 XMP、视频长度与真实封面帧时间戳。**
 
 ### 3. Apple Live Photo UUID 双向配对机制
 

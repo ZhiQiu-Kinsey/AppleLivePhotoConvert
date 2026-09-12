@@ -3,21 +3,36 @@ using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using LivePhotoConvert.Core.External;
 using LivePhotoConvert.Desktop.Models;
-
 namespace LivePhotoConvert.Desktop.Services;
 
 /// <summary>
-/// 画廊交互与悬浮预览调度器：悬停 250ms 后按需提取微视频帧并循环播放，
-/// 仅针对当前悬浮的单张卡片，离开即刻停止并恢复静态缩略图。
+/// 画廊交互与悬浮预览调度器。
+/// 首帧到达即开始播放，后续帧在后台持续解码；仅针对当前悬浮的单张卡片。
 /// </summary>
 public sealed class PlaybackHost
 {
+    private static readonly TimeSpan HoverDebounce = TimeSpan.FromMilliseconds(80);
+    private const int MaxFrameCacheSets = 8;
+    private const int MaxPreviewFrames = 180;
+
     public static PlaybackHost Instance { get; } = new();
 
     private readonly DispatcherTimer _cycleTimer;
+    private readonly Lock _frameLock = new();
+    private readonly Lock _preloadLock = new();
+    // 预热会启动 FFmpeg 并生成多张非托管 Bitmap，只允许一个后台预热任务。
+    private readonly SemaphoreSlim _preloadGate = new(1, 1);
+    private readonly HashSet<PhotoCardItemViewModel> _preloading = [];
+    private readonly Dictionary<PhotoCardItemViewModel, CancellationTokenSource> _preloadCts = [];
+    private readonly LinkedList<PhotoCardItemViewModel> _frameCacheLru = [];
+    private readonly List<Bitmap> _pendingFrameDisposals = [];
+    private readonly DispatcherTimer _frameDisposeTimer;
     private CancellationTokenSource? _hoverCts;
     private PhotoCardItemViewModel? _activeCard;
+    private List<Bitmap>? _activeFrames;
+    private bool _decodeCompleted;
     private int _frameIndex;
+    private int _hoverGeneration;
 
     public Action<PhotoCardItemViewModel>? OnQuickLookTriggered { get; set; }
     public Action<PhotoCardItemViewModel>? OnCardFocused { get; set; }
@@ -29,15 +44,23 @@ public sealed class PlaybackHost
             Interval = TimeSpan.FromMilliseconds(33) // ~30 FPS 原生高帧率平滑回放
         };
         _cycleTimer.Tick += OnCycleTick;
+        _frameDisposeTimer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromMilliseconds(120)
+        };
+        _frameDisposeTimer.Tick += (_, _) => FlushFrameDisposals();
     }
 
     /// <summary>
-    /// 鼠标进入卡片：250ms 防抖后按需提取视频帧并循环播放。
+    /// 鼠标进入卡片：短暂防抖后按需提取视频帧，首帧到达即播放。
     /// </summary>
     public void OnPointerEnter(PhotoCardItemViewModel card)
     {
+        CancelPreload(card);
         CancelPending();
         _cycleTimer.Stop();
+
+        var generation = ++_hoverGeneration;
 
         if (_activeCard is not null && _activeCard != card)
         {
@@ -45,12 +68,17 @@ public sealed class PlaybackHost
         }
 
         _activeCard = card;
+        _activeFrames = null;
+        _decodeCompleted = false;
         card.IsHoverPlaying = true;
         OnCardFocused?.Invoke(card);
 
         // 已缓存帧序列：直接启动循环播放
         if (card.CachedFrames is { Count: > 0 })
         {
+            TouchFrameCache(card);
+            _activeFrames = card.CachedFrames;
+            _decodeCompleted = true;
             _frameIndex = 0;
             card.DisplayImage = card.CachedFrames[0];
             _cycleTimer.Start();
@@ -61,13 +89,13 @@ public sealed class PlaybackHost
         if (string.IsNullOrWhiteSpace(card.VideoPath) && !card.IsMotionPhoto)
             return;
 
-        // 250ms 防抖后启动后台帧提取
+        // 短暂防抖后启动后台帧提取。首帧不会等待整个视频解码完成。
         _hoverCts = new CancellationTokenSource();
         var token = _hoverCts.Token;
 
-        Task.Delay(250, token).ContinueWith(task =>
+        Task.Delay(HoverDebounce, token).ContinueWith(task =>
         {
-            _ = ExtractFramesAsync(card, token);
+            _ = ExtractFramesAsync(card, token, generation);
         }, token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
     }
 
@@ -76,6 +104,7 @@ public sealed class PlaybackHost
     /// </summary>
     public void OnPointerLeave(PhotoCardItemViewModel card)
     {
+        ++_hoverGeneration;
         CancelPending();
         _cycleTimer.Stop();
         card.IsHoverPlaying = false;
@@ -84,11 +113,14 @@ public sealed class PlaybackHost
         {
             RestoreStatic(card);
             _activeCard = null;
+            _activeFrames = null;
+            _decodeCompleted = false;
         }
     }
 
     public void StopHoverPlayback()
     {
+        ++_hoverGeneration;
         CancelPending();
         _cycleTimer.Stop();
 
@@ -98,6 +130,9 @@ public sealed class PlaybackHost
             _activeCard.IsHoverPlaying = false;
             _activeCard = null;
         }
+
+        _activeFrames = null;
+        _decodeCompleted = false;
     }
 
     public void TriggerQuickLook(PhotoCardItemViewModel card)
@@ -105,11 +140,78 @@ public sealed class PlaybackHost
         OnQuickLookTriggered?.Invoke(card);
     }
 
+    /// <summary>
+    /// 视口预热：后台提前解码可见短视频，悬浮时直接命中帧缓存。
+    /// 并发限制为两个，避免预热拖慢首屏缩略图加载。
+    /// </summary>
+    public void Preload(PhotoCardItemViewModel card)
+    {
+        if (card.CachedFrames is { Count: > 0 }
+            || (string.IsNullOrWhiteSpace(card.VideoPath) && !card.IsMotionPhoto))
+        {
+            return;
+        }
+
+        lock (_preloadLock)
+        {
+            if (!_preloading.Add(card))
+            {
+                return;
+            }
+
+            var cts = new CancellationTokenSource();
+            _preloadCts[card] = cts;
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _preloadGate.WaitAsync(cts.Token);
+                    try
+                    {
+                        await ExtractFramesAsync(card, cts.Token, 0, preload: true);
+                    }
+                    finally
+                    {
+                        _preloadGate.Release();
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    // 卡片被悬浮时取消预热，交给前台播放任务接管。
+                }
+                finally
+                {
+                    lock (_preloadLock)
+                    {
+                        _preloading.Remove(card);
+                        if (_preloadCts.TryGetValue(card, out var source) && ReferenceEquals(source, cts))
+                        {
+                            _preloadCts.Remove(card);
+                        }
+
+                        cts.Dispose();
+                    }
+                }
+            }, cts.Token);
+        }
+    }
+
     private void CancelPending()
     {
         _hoverCts?.Cancel();
         _hoverCts?.Dispose();
         _hoverCts = null;
+    }
+
+    private void CancelPreload(PhotoCardItemViewModel card)
+    {
+        lock (_preloadLock)
+        {
+            if (_preloadCts.TryGetValue(card, out var cts))
+            {
+                cts.Cancel();
+            }
+        }
     }
 
     private static void RestoreStatic(PhotoCardItemViewModel card)
@@ -120,7 +222,7 @@ public sealed class PlaybackHost
         }
     }
 
-    private async Task ExtractFramesAsync(PhotoCardItemViewModel card, CancellationToken token)
+    private async Task ExtractFramesAsync(PhotoCardItemViewModel card, CancellationToken token, int generation, bool preload = false)
     {
         if (card.IsMotionPhoto && (string.IsNullOrWhiteSpace(card.VideoPath) || !File.Exists(card.VideoPath)))
         {
@@ -138,86 +240,109 @@ public sealed class PlaybackHost
 
         Process? process = null;
         var frames = new List<Bitmap>();
+        var firstFrameShown = false;
         try
         {
             var psi = new ProcessStartInfo
             {
                 FileName = ffmpegPath,
-                Arguments = $"-v error -i \"{card.VideoPath}\" -vf \"scale=480:-2:flags=fast_bilinear\" -c:v mjpeg -q:v 4 -f image2pipe -",
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
+                RedirectStandardError = true,
                 CreateNoWindow = true
             };
+
+            foreach (var argument in BuildDecodeArguments(card.VideoPath))
+            {
+                psi.ArgumentList.Add(argument);
+            }
 
             process = Process.Start(psi);
             if (process is null) return;
 
-            using var stdout = process.StandardOutput.BaseStream;
-            using var ms = new MemoryStream();
-            byte[] buffer = new byte[32768];
-            int bytesRead;
-            byte prev = 0;
-            bool inFrame = false;
+            // 取消悬浮/预热时 FFmpeg 可能报告 Broken pipe；持续排空但不写入应用控制台。
+            _ = process.StandardError.ReadToEndAsync(token);
 
-            while (!token.IsCancellationRequested &&
-                   (bytesRead = await stdout.ReadAsync(buffer, token)) > 0)
+            await using var stdout = process.StandardOutput.BaseStream;
+
+            while (!token.IsCancellationRequested)
             {
-                for (int i = 0; i < bytesRead; i++)
-                {
-                    byte b = buffer[i];
-                    if (!inFrame)
-                    {
-                        if (prev == 0xFF && b == 0xD8)
-                        {
-                            inFrame = true;
-                            ms.WriteByte(0xFF);
-                            ms.WriteByte(0xD8);
-                        }
-                    }
-                    else
-                    {
-                        ms.WriteByte(b);
-                        if (prev == 0xFF && b == 0xD9)
-                        {
-                            byte[] frameData = ms.ToArray();
-                            ms.SetLength(0);
-                            inFrame = false;
+                var bitmap = await BmpPipeFrameReader.ReadNextAsync(stdout, token);
+                if (bitmap is null) break;
 
-                            using var frameMs = new MemoryStream(frameData);
-                            frames.Add(new Bitmap(frameMs));
+                bool reachedFrameLimit;
+                lock (_frameLock)
+                {
+                    frames.Add(bitmap);
+                    reachedFrameLimit = frames.Count >= MaxPreviewFrames;
+                }
+
+                // 首帧到达就提交到 UI，不再等待 FFmpeg 读完整个视频。
+                if (!preload && !firstFrameShown)
+                {
+                    firstFrameShown = true;
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        if (card.IsHoverPlaying && _activeCard == card && _hoverGeneration == generation)
+                        {
+                            _activeFrames = frames;
+                            _frameIndex = 0;
+                            card.DisplayImage = bitmap;
+                            _cycleTimer.Start();
                         }
-                    }
-                    prev = b;
+                    });
+                }
+
+                if (reachedFrameLimit)
+                {
+                    break;
                 }
             }
 
             if (token.IsCancellationRequested)
             {
-                foreach (var f in frames) f.Dispose();
+                await DisposeFramesAsync(frames);
                 return;
             }
 
             if (frames.Count > 0)
             {
-                card.CachedFrames = frames;
+                var retained = false;
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
-                    if (card.IsHoverPlaying && _activeCard == card)
+                    if (preload)
                     {
-                        _frameIndex = 0;
-                        card.DisplayImage = frames[0];
+                        if (card.CachedFrames is null)
+                        {
+                            card.CachedFrames = frames;
+                            RegisterFrameCache(card);
+                            retained = true;
+                        }
+                    }
+                    else if (card.IsHoverPlaying && _activeCard == card && _hoverGeneration == generation)
+                    {
+                        _activeFrames = frames;
+                        _decodeCompleted = true;
+                        card.CachedFrames = frames;
+                        RegisterFrameCache(card);
+                        retained = true;
                         _cycleTimer.Start();
                     }
                 });
+
+                if (!retained)
+                {
+                    await DisposeFramesAsync(frames);
+                }
             }
         }
         catch (OperationCanceledException)
         {
-            foreach (var f in frames) f.Dispose();
+            await DisposeFramesAsync(frames);
         }
         catch
         {
-            foreach (var f in frames) f.Dispose();
+            await DisposeFramesAsync(frames);
         }
         finally
         {
@@ -236,16 +361,130 @@ public sealed class PlaybackHost
         }
     }
 
+    /// <summary>
+    /// 生成悬浮预览的 FFmpeg 参数。必须保留源帧时间模式，避免 MOV 的名义帧率
+    /// （例如 150/1）让 image2pipe 自动补帧并造成数倍慢动作。
+    /// </summary>
+    internal static string[] BuildDecodeArguments(string videoPath) =>
+    [
+        "-loglevel", "quiet",
+        "-i", videoPath,
+        "-map", "0:v:0",
+        "-an", "-sn", "-dn",
+        "-vf", "scale=720:-2:flags=lanczos",
+        "-fps_mode", "passthrough",
+        "-c:v", "bmp",
+        "-pix_fmt", "bgr24",
+        "-f", "image2pipe",
+        "-"
+    ];
+
+    private async Task DisposeFramesAsync(List<Bitmap> frames)
+    {
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            lock (_frameLock)
+            {
+                _pendingFrameDisposals.AddRange(frames);
+                frames.Clear();
+                _frameDisposeTimer.Stop();
+                _frameDisposeTimer.Start();
+            }
+        });
+    }
+
+    private void FlushFrameDisposals()
+    {
+        List<Bitmap> pending;
+        lock (_frameLock)
+        {
+            _frameDisposeTimer.Stop();
+            pending = [.. _pendingFrameDisposals];
+            _pendingFrameDisposals.Clear();
+        }
+
+        foreach (var frame in pending)
+        {
+            frame.Dispose();
+        }
+    }
+
+    private void TouchFrameCache(PhotoCardItemViewModel card)
+    {
+        lock (_preloadLock)
+        {
+            _frameCacheLru.Remove(card);
+            _frameCacheLru.AddLast(card);
+        }
+    }
+
+    private void RegisterFrameCache(PhotoCardItemViewModel card)
+    {
+        List<Bitmap>? evictedFrames = null;
+        lock (_preloadLock)
+        {
+            _frameCacheLru.Remove(card);
+            _frameCacheLru.AddLast(card);
+
+            while (_frameCacheLru.Count > MaxFrameCacheSets)
+            {
+                var node = _frameCacheLru.First!;
+                if (ReferenceEquals(node.Value, _activeCard))
+                {
+                    _frameCacheLru.RemoveFirst();
+                    _frameCacheLru.AddLast(node.Value);
+                    continue;
+                }
+
+                _frameCacheLru.RemoveFirst();
+                evictedFrames = node.Value.CachedFrames;
+                node.Value.CachedFrames = null;
+                break;
+            }
+        }
+
+        if (evictedFrames is not null)
+        {
+            _ = DisposeFramesAsync(evictedFrames);
+        }
+    }
+
     private void OnCycleTick(object? sender, EventArgs e)
     {
         var card = _activeCard;
-        if (card?.CachedFrames is not { Count: > 0 } || !card.IsHoverPlaying)
+        if (card is null || !card.IsHoverPlaying)
         {
             _cycleTimer.Stop();
             return;
         }
 
-        _frameIndex = (_frameIndex + 1) % card.CachedFrames.Count;
-        card.DisplayImage = card.CachedFrames[_frameIndex];
+        Bitmap? targetFrame;
+        lock (_frameLock)
+        {
+            var frames = _activeFrames;
+            if (frames is not { Count: > 0 })
+            {
+                _cycleTimer.Stop();
+                return;
+            }
+
+            // 解码尚未完成时，先停在最后一帧，避免在已到达的帧之间反复跳回。
+            if (_frameIndex + 1 < frames.Count)
+            {
+                _frameIndex++;
+            }
+            else if (_decodeCompleted)
+            {
+                _frameIndex = 0;
+            }
+            else
+            {
+                return;
+            }
+
+            targetFrame = frames[_frameIndex];
+        }
+
+        card.DisplayImage = targetFrame;
     }
 }

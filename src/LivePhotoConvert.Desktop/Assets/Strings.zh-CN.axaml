@@ -23,7 +23,7 @@
   <sys:String x:Key="BtnAppleToAndroid">开始转换为安卓动态照片</sys:String>
   <sys:String x:Key="BtnAndroidToApple">开始转换为苹果实况照片</sys:String>
   <sys:String x:Key="BtnExtract">开始提取独立封面与视频</sys:String>
-  <sys:String x:Key="SelectedSummaryFormat">已选 {0} 项 ({1})</sys:String>
+  <sys:String x:Key="SelectedSummaryFormat">共 {0} 项 ({1})</sys:String>
 
   <!-- 工具栏与相册卡片 -->
   <sys:String x:Key="ToolbarAlbumTitle">相册实况胶卷</sys:String>
@@ -45,7 +45,7 @@
   <sys:String x:Key="FilterBannerSuffix">· 已勾选项目不受影响</sys:String>
   <sys:String x:Key="FilterClear">清除筛选</sys:String>
   <sys:String x:Key="ToolbarView">视图</sys:String>
-  <sys:String x:Key="CropNatural">自适应原生画幅</sys:String>
+  <sys:String x:Key="CropNatural">等高自适应</sys:String>
   <sys:String x:Key="CropSquare">方形 (1:1)</sys:String>
   <sys:String x:Key="ScaleSmall">紧凑小网格 (多图一览)</sys:String>
   <sys:String x:Key="ScaleMedium">标准网格</sys:String>
@@ -68,11 +68,18 @@
   <sys:String x:Key="NamingFormatOriginal">保持原文件名 (MVIMG_{原名}.jpg)</sys:String>
   <sys:String x:Key="NamingFormatDateName">拍摄日期 + 原始照片名 (推荐: MVIMG_日期_原名.jpg)</sys:String>
   <sys:String x:Key="NamingFormatClean">纯相机时间戳 (MVIMG_年月日_时分秒.jpg)</sys:String>
+  <sys:String x:Key="NamingFormatOriginalShort">保留原名</sys:String>
+  <sys:String x:Key="NamingFormatDateNameShort">日期 + 原名</sys:String>
+  <sys:String x:Key="NamingFormatCleanShort">纯时间戳</sys:String>
   <sys:String x:Key="SourceActionTitle">转换成功后源文件处理</sys:String>
   <sys:String x:Key="SourceActionKeep">保留原始文件 (安全推荐 · 绝不破坏原片)</sys:String>
   <sys:String x:Key="SourceActionSubfolder">归档到原目录 _original/ 备份文件夹</sys:String>
   <sys:String x:Key="SourceActionRecycle">移入系统回收站 (可随时撤回)</sys:String>
   <sys:String x:Key="SourceActionDelete">永久物理删除源文件 (不可找回，谨慎操作)</sys:String>
+  <sys:String x:Key="SourceActionKeepShort">保留原片</sys:String>
+  <sys:String x:Key="SourceActionSubfolderShort">移入备份文件夹</sys:String>
+  <sys:String x:Key="SourceActionRecycleShort">移入回收站</sys:String>
+  <sys:String x:Key="SourceActionDeleteShort">永久删除</sys:String>
   <sys:String x:Key="DeleteWarningTitle">物理删除原片警报</sys:String>
   <sys:String x:Key="DeleteWarningDesc">原 iPhone 实况照片将被永久彻底清除，点击转换时需输入确认词解锁。</sys:String>
   <sys:String x:Key="AutoAppendIndexTitle">遇同名文件自动追加 _1 序号</sys:String>
@@ -115,6 +122,7 @@
   <!-- 依赖引擎 -->
   <sys:String x:Key="ToolsTitle">核心依赖引擎管理</sys:String>
   <sys:String x:Key="ToolsDesc">检测并管理实况互转引擎：ExifTool、FFmpeg 与 heif-enc。</sys:String>
+  <sys:String x:Key="ToolNotInstalled">未安装</sys:String>
   <sys:String x:Key="RescanToolsBtn">重新扫描检测引擎</sys:String>
   <sys:String x:Key="MirrorTitle">GitHub 国内下载加速镜像</sys:String>
   <sys:String x:Key="MirrorDesc">从常用预设节点挑选，或手动输入您的私有加速代理</sys:String>

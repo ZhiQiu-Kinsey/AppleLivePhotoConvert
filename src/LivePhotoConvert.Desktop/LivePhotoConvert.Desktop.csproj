@@ -3,6 +3,8 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>LivePhotoConvert</AssemblyName>
+    <RootNamespace>LivePhotoConvert.Desktop</RootNamespace>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
     <ApplicationManifest>app.manifest</ApplicationManifest>
@@ -25,6 +27,10 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="FluentIcons.Avalonia" Version="2.1.339.1" />
     <PackageReference Include="FluentIcons.Avalonia.Fluent" Version="2.1.339.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="LivePhotoConvert.E2E" />
   </ItemGroup>
 
   <ItemGroup>

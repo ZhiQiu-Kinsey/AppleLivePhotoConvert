@@ -1,6 +1,5 @@
 using LivePhotoConvert.Core.Io;
 using LivePhotoConvert.Desktop.Models;
-
 namespace LivePhotoConvert.Desktop.Services;
 
 /// <summary>

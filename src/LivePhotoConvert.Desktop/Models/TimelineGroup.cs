@@ -3,74 +3,113 @@ using System.Collections.ObjectModel;
 namespace LivePhotoConvert.Desktop.Models;
 
 /// <summary>
-/// 时间线分组数据结构，支持动态生成多列瀑布流块及折叠/展开
+/// 时间线分组数据结构，负责生成稳定测量尺寸的自适应等高图片行。
 /// </summary>
 public sealed class TimelineGroup
 {
     public required TimelineHeaderItemViewModel Header { get; init; }
     public List<PhotoCardItemViewModel> AllCards { get; init; } = [];
 
-    public List<PhotoGridRowViewModel> BuildRows(int columnCount, bool filterVisibleOnly)
+    public List<PhotoGridRowViewModel> BuildRows(string scaleMode, bool filterVisibleOnly, double parentWidth = 900)
     {
-        List<PhotoGridRowViewModel> blocks = [];
+        List<PhotoGridRowViewModel> rows = [];
         var candidateCards = filterVisibleOnly
             ? AllCards.Where(c => c.IsVisible).ToList()
             : AllCards;
 
-        if (candidateCards.Count == 0) return blocks;
+        if (candidateCards.Count == 0) return rows;
 
-        int cols = Math.Clamp(columnCount, 2, 4);
-        // 每个瀑布流块包含适量的卡片，既实现多列纵向无缝咬合，又保留 ListBox 虚拟化性能
-        int chunkSize = Math.Max(cols * 6, 18);
-
-        int blockIdx = 0;
-        for (int i = 0; i < candidateCards.Count; i += chunkSize)
+        const double rowGap = 8;
+        const double cardMargin = 8;
+        double available = Math.Max(260, parentWidth - 24);
+        double targetHeight = scaleMode switch
         {
-            var chunk = candidateCards.Skip(i).Take(chunkSize).ToList();
-            PhotoGridRowViewModel block = new()
+            "Small" => 180,
+            "Large" => 320,
+            _ => 250
+        };
+
+        for (int offset = 0, rowIndex = 0; offset < candidateCards.Count; rowIndex++)
+        {
+            int count = FindBestRowLength(candidateCards, offset, available, targetHeight, rowGap, cardMargin);
+            bool isCompleteRow = offset + count < candidateCards.Count;
+            double rowHeight = CalculateRowHeight(
+                candidateCards, offset, count, available, targetHeight, rowGap, cardMargin, isCompleteRow);
+            var rowCards = candidateCards.GetRange(offset, count);
+            foreach (var card in rowCards)
             {
-                Key = $"{Header.Key}_masonry_{blockIdx++}",
-                Cards = new ObservableCollection<PhotoCardItemViewModel>(chunk),
-                Columns = cols
-            };
-
-            // 维护每列当前的预估高度，使用贪心算法将每张卡片放入当前累计高度最小的列
-            double[] colHeights = new double[cols];
-            var colLists = new[] { block.Column0, block.Column1, block.Column2, block.Column3 };
-
-            foreach (var card in chunk)
-            {
-                // 找出当前高度最小的列
-                int minCol = 0;
-                double minH = colHeights[0];
-                for (int c = 1; c < cols; c++)
-                {
-                    if (colHeights[c] < minH)
-                    {
-                        minH = colHeights[c];
-                        minCol = c;
-                    }
-                }
-
-                colLists[minCol].Add(card);
-
-                // 依据卡片画幅模式与长宽比预估卡片高度
-                double cardH = 260.0;
-                if (card.IsSquareCrop)
-                {
-                    cardH = 278.0;
-                }
-                else if (card.AspectRatio > 0)
-                {
-                    // 估算高度 = 宽度 / AspectRatio + 78px 信息栏
-                    cardH = Math.Clamp((260.0 / card.AspectRatio) + 78.0, 160.0, 480.0);
-                }
-                colHeights[minCol] += cardH + 16.0;
+                card.PreviewHeight = rowHeight;
+                card.DisplayWidth = rowHeight * SafeAspect(card) + cardMargin;
             }
 
-            blocks.Add(block);
+            rows.Add(new PhotoGridRowViewModel
+            {
+                Key = $"{Header.Key}_row_{rowIndex}",
+                Cards = new ObservableCollection<PhotoCardItemViewModel>(rowCards),
+                RowHeight = rowHeight
+            });
+            offset += count;
         }
 
-        return blocks;
+        return rows;
     }
+
+    /// <summary>
+    /// 选择使实际行高最接近目标行高的断点。允许多放一张后整体略微缩小，
+    /// 避免窄视口中的单张竖图被横向拉伸成整行。
+    /// </summary>
+    private static int FindBestRowLength(IReadOnlyList<PhotoCardItemViewModel> cards, int offset,
+        double available, double targetHeight, double rowGap, double cardMargin)
+    {
+        int remaining = cards.Count - offset;
+        int bestCount = 1;
+        double ratioSum = 0;
+        double bestDistance = double.MaxValue;
+
+        for (int count = 1; count <= remaining; count++)
+        {
+            ratioSum += SafeAspect(cards[offset + count - 1]);
+            double contentWidth = AvailableImageWidth(available, count, rowGap, cardMargin);
+            double candidateHeight = contentWidth / ratioSum;
+            double distance = Math.Abs(Math.Log(candidateHeight / targetHeight));
+
+            if (distance < bestDistance)
+            {
+                bestDistance = distance;
+                bestCount = count;
+            }
+
+            // 行高已经低于目标且误差开始增大；继续加入只会让图片更矮。
+            if (candidateHeight <= targetHeight && count > bestCount)
+            {
+                break;
+            }
+        }
+
+        return bestCount;
+    }
+
+    private static double CalculateRowHeight(IReadOnlyList<PhotoCardItemViewModel> cards, int offset, int count,
+        double available, double targetHeight, double rowGap, double cardMargin, bool isCompleteRow)
+    {
+        double ratioSum = 0;
+        for (int i = 0; i < count; i++)
+        {
+            ratioSum += SafeAspect(cards[offset + i]);
+        }
+
+        double justifiedHeight = AvailableImageWidth(available, count, rowGap, cardMargin) / Math.Max(0.1, ratioSum);
+
+        // 完整行通过统一调整行高铺满宽度，卡片始终保持原图比例；末行不为填满而放大。
+        return isCompleteRow ? justifiedHeight : Math.Min(targetHeight, justifiedHeight);
+    }
+
+    private static double AvailableImageWidth(double available, int count, double rowGap, double cardMargin) =>
+        Math.Max(1, available - rowGap * (count - 1) - cardMargin * count);
+
+    private static double SafeAspect(PhotoCardItemViewModel card) =>
+        card.IsSquareCrop ? 1 :
+        (double.IsFinite(card.AspectRatio) && card.AspectRatio > 0.1
+            ? Math.Clamp(card.AspectRatio, 0.35, 4.0)
+            : 4.0 / 3.0);
 }

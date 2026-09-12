@@ -1,7 +1,8 @@
 using System.Collections.Concurrent;
+using System.Globalization;
 using LivePhotoConvert.Core.Matching;
+using LivePhotoConvert.Desktop.Converters;
 using LivePhotoConvert.Desktop.Models;
-
 namespace LivePhotoConvert.Desktop.Services;
 
 /// <summary>
@@ -337,6 +338,6 @@ public sealed class AlbumScanner
     }
 
     private static string FormatBytes(long bytes) =>
-        Converters.ByteSizeConverter.Instance.Convert(bytes, typeof(string), null, System.Globalization.CultureInfo.InvariantCulture) as string
+        ByteSizeConverter.Instance.Convert(bytes, typeof(string), null, CultureInfo.InvariantCulture) as string
         ?? $"{bytes} B";
 }

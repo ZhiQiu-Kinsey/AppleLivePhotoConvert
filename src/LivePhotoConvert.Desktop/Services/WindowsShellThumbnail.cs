@@ -1,6 +1,5 @@
 using System.Runtime.InteropServices;
 using ImageMagick;
-
 namespace LivePhotoConvert.Desktop.Services;
 
 public static class WindowsShellThumbnail

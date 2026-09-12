@@ -63,8 +63,8 @@ public static class ProcessRunner
         var stdoutTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
         var stderrTask = process.StandardError.ReadToEndAsync(cancellationToken);
 
-        string stdout = string.Empty;
-        string stderr = string.Empty;
+        string stdout;
+        string stderr;
         try
         {
             await process.WaitForExitAsync(cancellationToken);

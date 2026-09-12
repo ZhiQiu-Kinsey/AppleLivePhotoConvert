@@ -115,8 +115,7 @@
                  ItemsSource="{Binding FlattenedDisplayItems}"
                  Background="Transparent"
                  BorderThickness="0"
-                 Padding="0"
-                 SelectionMode="Single">
+                 Padding="0">
           <ListBox.Styles>
             <Style Selector="ListBoxItem">
               <Setter Property="Padding" Value="0" />
@@ -157,80 +156,26 @@
                       <TextBlock Text="{Binding PhotoCount}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
                       <TextBlock Text="{DynamicResource UnitLivePhotos}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
                     </StackPanel>
-                    <Border Width="1" Height="10" Background="{DynamicResource LineStrongBrush}" VerticalAlignment="Center" />
-                    <Button Classes="nav-btn" Command="{Binding SelectGroupCommand}" Padding="4,2">
-                      <TextBlock Text="{DynamicResource SelectToday}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" />
-                    </Button>
                   </StackPanel>
                 </Grid>
               </Border>
             </DataTemplate>
 
-            <!-- 2. 多列瀑布流项：各列纵向紧密咬合，彻底消灭同排高矮差异导致的空白留白 -->
+            <!-- 2. 等高自适应行：按原图比例分配宽度，行高在目标值附近调整并预先测量 -->
             <DataTemplate DataType="models:PhotoGridRowViewModel">
-              <StackPanel Orientation="Horizontal" Spacing="16">
-                <!-- 列 1 -->
-                <ItemsControl ItemsSource="{Binding Column0}"
-                              Width="{Binding $parent[UserControl].((vm:ConvertViewModel)DataContext).CardWidth}">
-                  <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                      <StackPanel Orientation="Vertical" Spacing="16" />
-                    </ItemsPanelTemplate>
-                  </ItemsControl.ItemsPanel>
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="models:PhotoCardItemViewModel">
-                      <controls:PhotoCardControl IsVisible="{Binding IsVisible}" />
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
-
-                <!-- 列 2 -->
-                <ItemsControl ItemsSource="{Binding Column1}"
-                              Width="{Binding $parent[UserControl].((vm:ConvertViewModel)DataContext).CardWidth}">
-                  <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                      <StackPanel Orientation="Vertical" Spacing="16" />
-                    </ItemsPanelTemplate>
-                  </ItemsControl.ItemsPanel>
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="models:PhotoCardItemViewModel">
-                      <controls:PhotoCardControl IsVisible="{Binding IsVisible}" />
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
-
-                <!-- 列 3 (3~4 列模式有效) -->
-                <ItemsControl ItemsSource="{Binding Column2}"
-                              IsVisible="{Binding HasColumn2}"
-                              Width="{Binding $parent[UserControl].((vm:ConvertViewModel)DataContext).CardWidth}">
-                  <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                      <StackPanel Orientation="Vertical" Spacing="16" />
-                    </ItemsPanelTemplate>
-                  </ItemsControl.ItemsPanel>
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="models:PhotoCardItemViewModel">
-                      <controls:PhotoCardControl IsVisible="{Binding IsVisible}" />
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
-
-                <!-- 列 4 (4 列小网格模式有效) -->
-                <ItemsControl ItemsSource="{Binding Column3}"
-                              IsVisible="{Binding HasColumn3}"
-                              Width="{Binding $parent[UserControl].((vm:ConvertViewModel)DataContext).CardWidth}">
-                  <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                      <StackPanel Orientation="Vertical" Spacing="16" />
-                    </ItemsPanelTemplate>
-                  </ItemsControl.ItemsPanel>
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="models:PhotoCardItemViewModel">
-                      <controls:PhotoCardControl IsVisible="{Binding IsVisible}" />
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
-              </StackPanel>
+              <ItemsControl ItemsSource="{Binding Cards}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal" Spacing="8" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="models:PhotoCardItemViewModel">
+                    <controls:PhotoCardControl Width="{CompiledBinding DisplayWidth}"
+                                               IsVisible="{CompiledBinding IsVisible}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
             </DataTemplate>
           </ListBox.DataTemplates>
         </ListBox>
@@ -357,10 +302,10 @@
             <!-- Layout panel -->
             <StackPanel Spacing="6">
               <TextBlock Text="{DynamicResource NamingFormatTitle}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
-              <ComboBox SelectedIndex="{Binding NamingFormat, Mode=TwoWay}" HorizontalAlignment="Stretch">
-                <ComboBoxItem Content="{DynamicResource NamingFormatOriginal}" />
-                <ComboBoxItem Content="{DynamicResource NamingFormatDateName}" />
-                <ComboBoxItem Content="{DynamicResource NamingFormatClean}" />
+              <ComboBox Classes="engine-select" SelectedIndex="{Binding NamingFormat, Mode=TwoWay}" HorizontalAlignment="Stretch">
+                <ComboBoxItem Content="{DynamicResource NamingFormatOriginalShort}" />
+                <ComboBoxItem Content="{DynamicResource NamingFormatDateNameShort}" />
+                <ComboBoxItem Content="{DynamicResource NamingFormatCleanShort}" />
               </ComboBox>
               <Border Background="{DynamicResource CanvasBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="8" Padding="8">
                 <TextBlock Text="{Binding LiveFilenameDemo}" FontSize="11" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource AccentBrush}" />
@@ -370,11 +315,11 @@
             <!-- Source action: keep, move, recycle, or delete originals -->
             <StackPanel Spacing="6">
               <TextBlock Text="{DynamicResource SourceActionTitle}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
-              <ComboBox SelectedIndex="{Binding SourceAction, Mode=TwoWay}" HorizontalAlignment="Stretch">
-                <ComboBoxItem Content="{DynamicResource SourceActionKeep}" />
-                <ComboBoxItem Content="{DynamicResource SourceActionSubfolder}" />
-                <ComboBoxItem Content="{DynamicResource SourceActionRecycle}" />
-                <ComboBoxItem Content="{DynamicResource SourceActionDelete}" Foreground="{DynamicResource DangerBrush}" />
+              <ComboBox Classes="engine-select" SelectedIndex="{Binding SourceAction, Mode=TwoWay}" HorizontalAlignment="Stretch">
+                <ComboBoxItem Content="{DynamicResource SourceActionKeepShort}" />
+                <ComboBoxItem Content="{DynamicResource SourceActionSubfolderShort}" />
+                <ComboBoxItem Content="{DynamicResource SourceActionRecycleShort}" />
+                <ComboBoxItem Content="{DynamicResource SourceActionDeleteShort}" Foreground="{DynamicResource DangerBrush}" />
               </ComboBox>
 
               <!-- 危险操作警示 -->

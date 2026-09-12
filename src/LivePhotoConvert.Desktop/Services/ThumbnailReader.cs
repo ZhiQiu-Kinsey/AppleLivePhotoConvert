@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using ImageMagick;
-
 namespace LivePhotoConvert.Desktop.Services;
 
 /// <summary>

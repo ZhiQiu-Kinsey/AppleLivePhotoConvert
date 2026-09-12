@@ -1,4 +1,5 @@
 using LivePhotoConvert.Core.Abstractions;
+using LivePhotoConvert.Core.External;
 using LivePhotoConvert.Core.Matching;
 using LivePhotoConvert.Core.Models;
 using LivePhotoConvert.Core.Services;
@@ -351,6 +352,48 @@ public class MotionPhotoMergerTests
         Assert.Empty(report.SkippedItems);
     }
 
+    [Fact]
+    public async Task MergeAsync_WithAppleStillImageTime_ShouldWriteExactPresentationTimestamp()
+    {
+        using var tempDir = new TempDirectory();
+        var photoPath = tempDir.CreateFile("IMG_0001.jpg", new byte[2048]);
+        var movPath = tempDir.CreateFile("IMG_0001.mov", new byte[5000]);
+        var outputDir = tempDir.Combine("output");
+        var pairing = MediaPairMatcher.Match([photoPath, movPath]);
+        var fakeExif = new FakeExifTool { ApplePresentationTimestampUs = 1_366_667 };
+        var merger = new MotionPhotoMerger(fakeExif, new FakeImageConverter(), new FakeVideoConverter());
+
+        var report = await merger.MergeAsync(
+            pairing,
+            new MergeOptions
+            {
+                InputDirectory = tempDir.Root,
+                OutputDirectory = outputDir,
+                SourceFileAction = SourceFileAction.Keep,
+                SkipValidation = true
+            },
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, report.Succeeded);
+        Assert.Equal(1_366_667, fakeExif.WrittenPresentationTimestampUs);
+    }
+
+    [Fact]
+    public void ParseAppleStillImageTime_ShouldSubtractMetadataSampleDuration()
+    {
+        const string output = """
+                              [Track1]        TrackDuration                   : 2.91
+                              [Track5]        TrackDuration                   : 1.36833333333333
+                              [Track1]        MediaDuration                   : 2.91166666666667
+                              [Track5]        MediaDuration                   : 0.00166666666666667
+                              [Track5]        StillImageTime                  : -1
+                              """;
+
+        var timestampUs = ExifTool.TryParseAppleLivePhotoPresentationTimestampUs(output);
+
+        Assert.Equal(1_366_667, timestampUs);
+    }
+
     /// <summary>
     /// 用于测试的图片转换器桩
     /// </summary>
@@ -397,9 +440,20 @@ public class MotionPhotoMergerTests
 
         public bool CopyAllTagsCalled { get; private set; }
         public bool CopyCoverTagsCalled { get; private set; }
+        public long? ApplePresentationTimestampUs { get; init; }
+        public long? WrittenPresentationTimestampUs { get; private set; }
 
         public Task WriteMotionPhotoTagsAsync(string imagePath, long videoOffset, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
+
+        public Task WriteMotionPhotoTagsAsync(string imagePath, long videoOffset, long presentationTimestampUs, CancellationToken cancellationToken = default)
+        {
+            WrittenPresentationTimestampUs = presentationTimestampUs;
+            return Task.CompletedTask;
+        }
+
+        public Task<long?> TryReadAppleLivePhotoPresentationTimestampUsAsync(string videoPath, CancellationToken cancellationToken = default) =>
+            Task.FromResult(ApplePresentationTimestampUs);
 
         public Task RemoveMotionPhotoTagsAsync(string imagePath, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;

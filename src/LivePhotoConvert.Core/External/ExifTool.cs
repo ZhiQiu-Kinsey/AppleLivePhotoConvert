@@ -51,13 +51,21 @@ public sealed class ExifTool : IExifTool
     }
 
     /// <inheritdoc />
-    public async Task WriteMotionPhotoTagsAsync(string imagePath, long videoOffset, CancellationToken cancellationToken = default)
+    public Task WriteMotionPhotoTagsAsync(string imagePath, long videoOffset, CancellationToken cancellationToken = default) =>
+        WriteMotionPhotoTagsAsync(imagePath, videoOffset, presentationTimestampUs: 0, cancellationToken);
+
+    /// <inheritdoc />
+    public async Task WriteMotionPhotoTagsAsync(
+        string imagePath,
+        long videoOffset,
+        long presentationTimestampUs,
+        CancellationToken cancellationToken = default)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(videoOffset);
+        ArgumentOutOfRangeException.ThrowIfNegative(presentationTimestampUs);
 
         var offset = videoOffset.ToString(CultureInfo.InvariantCulture);
-        // 固定 1.5 秒（1,500,000 微秒）作为代表帧时间戳
-        const string timestampUs = "1500000";
+        var timestampUs = presentationTimestampUs.ToString(CultureInfo.InvariantCulture);
 
         var tempXmpPath = Path.Combine(Path.GetTempPath(), "LivePhotoConvert", $"xmp_{Guid.NewGuid():N}.xml");
         var xmpContent = $"""
@@ -120,6 +128,127 @@ public sealed class ExifTool : IExifTool
         {
             FileHelper.TryDeleteFile(tempXmpPath);
         }
+    }
+
+    /// <inheritdoc />
+    public async Task<long?> TryReadAppleLivePhotoPresentationTimestampUsAsync(
+        string videoPath,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Apple 把 StillImageTime=-1 写在单样本 timed-metadata 轨道中；该轨道经过 edit list 后，
+            // TrackDuration 等于封面帧时间 + 单样本 MediaDuration，因此两者相减可得到真实展示时间。
+            List<string> arguments =
+            [
+                "-ee",
+                "-a",
+                "-G1",
+                "-s",
+                "-n",
+                "-TrackDuration#",
+                "-MediaDuration#",
+                "-StillImageTime",
+                videoPath
+            ];
+
+            var response = await _session.ExecuteAsync(arguments, cancellationToken);
+            var timestampUs = TryParseAppleLivePhotoPresentationTimestampUs(response.StandardOutput);
+            if (timestampUs.HasValue)
+            {
+                return timestampUs;
+            }
+
+            ThrowIfFailed(response, "读取 Apple Live Photo 封面帧时间");
+            return null;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            // 非 Apple 视频或元数据损坏时交由调用方使用未知时间戳回退值，不阻断正常合成。
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// 从 ExifTool 的分组文本中解析包含 StillImageTime 的轨道时序
+    /// </summary>
+    /// <param name="output">ExifTool 的 -G1 -s -n 输出</param>
+    /// <returns>封面帧时间戳（微秒）；输出不完整时返回 <c>null</c></returns>
+    internal static long? TryParseAppleLivePhotoPresentationTimestampUs(ReadOnlySpan<char> output)
+    {
+        var tracks = new Dictionary<string, AppleTrackTiming>(StringComparer.Ordinal);
+        foreach (var rawLine in output.EnumerateLines())
+        {
+            var line = rawLine.Trim();
+            if (line.Length < 4 || line[0] != '[')
+            {
+                continue;
+            }
+
+            var groupEnd = line.IndexOf(']');
+            var separator = line.IndexOf(':');
+            if (groupEnd <= 1 || separator <= groupEnd)
+            {
+                continue;
+            }
+
+            var group = line[1..groupEnd].ToString();
+            var tag = line[(groupEnd + 1)..separator].Trim();
+            var value = line[(separator + 1)..].Trim();
+            tracks.TryGetValue(group, out var timing);
+
+            if (tag.Equals("TrackDuration", StringComparison.Ordinal))
+            {
+                if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var trackDuration))
+                {
+                    timing.TrackDurationSeconds = trackDuration;
+                }
+            }
+            else if (tag.Equals("MediaDuration", StringComparison.Ordinal))
+            {
+                if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var mediaDuration))
+                {
+                    timing.MediaDurationSeconds = mediaDuration;
+                }
+            }
+            else if (tag.Equals("StillImageTime", StringComparison.Ordinal))
+            {
+                timing.HasStillImageTime = true;
+            }
+
+            tracks[group] = timing;
+        }
+
+        foreach (var timing in tracks.Values)
+        {
+            if (!timing.HasStillImageTime ||
+                !timing.TrackDurationSeconds.HasValue ||
+                !timing.MediaDurationSeconds.HasValue)
+            {
+                continue;
+            }
+
+            var seconds = timing.TrackDurationSeconds.Value - timing.MediaDurationSeconds.Value;
+            if (!double.IsFinite(seconds) || seconds < 0 || seconds > long.MaxValue / 1_000_000d)
+            {
+                continue;
+            }
+
+            return checked((long)Math.Round(seconds * 1_000_000d, MidpointRounding.AwayFromZero));
+        }
+
+        return null;
+    }
+
+    private struct AppleTrackTiming
+    {
+        public double? TrackDurationSeconds;
+        public double? MediaDurationSeconds;
+        public bool HasStillImageTime;
     }
 
     /// <inheritdoc />

@@ -15,9 +15,6 @@
         <TextBlock Text="{DynamicResource ToolbarAlbumTitle}" FontWeight="Bold" FontSize="13" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimaryBrush}" />
         <Border Width="1" Height="12" Background="{DynamicResource LineStrongBrush}" VerticalAlignment="Center" />
         <TextBlock Text="{Binding SelectedSummaryText}" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
-        <Border Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBorderBrush}" BorderThickness="1" CornerRadius="10" Padding="8,2" VerticalAlignment="Center">
-          <TextBlock Text="{Binding SelectedBadgeText}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentTextBrush}" />
-        </Border>
       </StackPanel>
 
       <!-- 右侧精简工具栏 -->
@@ -34,18 +31,7 @@
           </StackPanel>
         </Button>
 
-        <!-- 1. [Select] Toggle multi-select mode (text switches to "完成选择"/"Done" when active, per PRD 3.2) -->
-        <Button Classes="toolbar-btn"
-                Command="{Binding ToggleSelectionModeCommand}"
-                ToolTip.Tip="{DynamicResource ToolbarSelectTip}">
-          <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-            <ic:SymbolIcon Symbol="CheckboxChecked" FontSize="14" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
-            <TextBlock Text="{Binding SelectionModeButtonText}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"
-                       IsVisible="{Binding #RootBar.Bounds.Width, Converter={x:Static conv:MinWidthToBoolConverter.Instance}, ConverterParameter=430}" />
-          </StackPanel>
-        </Button>
-
-        <!-- 2. [Play] Sequentially preview visible live photos in viewport -->
+        <!-- 1. [Play] Sequentially preview visible live photos in viewport -->
         <Button Classes="toolbar-btn"
                 Width="32" Height="32" Padding="0"
                 Command="{Binding PlayAllVisibleCommand}"

@@ -1,6 +1,6 @@
 using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using LivePhotoConvert.Desktop.Models;
-
 namespace LivePhotoConvert.Desktop.Services;
 
 /// <summary>
@@ -8,15 +8,24 @@ namespace LivePhotoConvert.Desktop.Services;
 /// </summary>
 public sealed class LruThumbnailManager
 {
-    private const int MaxActiveBitmaps = 280;
+    // 960px 足够覆盖高 DPI 卡片；同步降低活跃张数，把总像素预算维持在可控范围。
+    internal const int ThumbnailMaxSize = 960;
+    private const int MaxActiveBitmaps = 48;
     private readonly LinkedList<PhotoCardItemViewModel> _lruList = new();
     private readonly HashSet<PhotoCardItemViewModel> _activeSet = new();
     private readonly ThumbnailReader _reader;
     private readonly Lock _lock = new();
+    private readonly List<Bitmap> _pendingDisposals = [];
+    private readonly DispatcherTimer _disposeTimer;
 
     public LruThumbnailManager(ThumbnailReader reader)
     {
         _reader = reader;
+        _disposeTimer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromMilliseconds(120)
+        };
+        _disposeTimer.Tick += (_, _) => FlushPendingDisposals();
     }
 
     public void SetThumbnail(PhotoCardItemViewModel card, Bitmap bitmap)
@@ -62,7 +71,7 @@ public sealed class LruThumbnailManager
         }
     }
 
-    public void EnsureThumbnailLoaded(PhotoCardItemViewModel card)
+    public (int Width, int Height)? EnsureThumbnailLoaded(PhotoCardItemViewModel card)
     {
         lock (_lock)
         {
@@ -70,10 +79,10 @@ public sealed class LruThumbnailManager
             {
                 _lruList.Remove(card);
                 _lruList.AddLast(card);
-                return;
+                return null;
             }
 
-            var res = _reader.TryGetFromCacheOnly(card.PhotoPath, 640);
+            var res = _reader.TryGetFromCacheOnly(card.PhotoPath, ThumbnailMaxSize);
             if (res is not null)
             {
                 using var ms = new MemoryStream(res.ImageBytes);
@@ -87,7 +96,10 @@ public sealed class LruThumbnailManager
                 _activeSet.Add(card);
 
                 EvictOldestIfNeeded();
+                return (res.Width, res.Height);
             }
+
+            return null;
         }
     }
 
@@ -98,9 +110,7 @@ public sealed class LruThumbnailManager
             foreach (var card in _activeSet)
             {
                 // 释放旧位图的非托管显存，避免大相册重扫时成批泄漏
-                var old = card.Thumbnail;
-                card.Thumbnail = null;
-                old?.Dispose();
+                DetachAndQueueDispose(card);
             }
             _lruList.Clear();
             _activeSet.Clear();
@@ -115,9 +125,42 @@ public sealed class LruThumbnailManager
             _lruList.RemoveFirst();
             _activeSet.Remove(oldest);
             // 释放被剔除卡片的旧位图，释放非托管显存
-            var old = oldest.Thumbnail;
-            oldest.Thumbnail = null;
-            old?.Dispose();
+            DetachAndQueueDispose(oldest);
+        }
+    }
+
+    /// <summary>
+    /// 先从 ViewModel 解除所有图片引用，再延迟到当前布局/渲染帧完成后释放底层位图。
+    /// Avalonia 的虚拟化容器可能在同一帧内继续 Measure 已移出视口的 Image。
+    /// </summary>
+    private void DetachAndQueueDispose(PhotoCardItemViewModel card)
+    {
+        var old = card.Thumbnail;
+        if (old is null) return;
+
+        if (ReferenceEquals(card.DisplayImage, old))
+        {
+            card.DisplayImage = null;
+        }
+        card.Thumbnail = null;
+        _pendingDisposals.Add(old);
+        _disposeTimer.Stop();
+        _disposeTimer.Start();
+    }
+
+    private void FlushPendingDisposals()
+    {
+        List<Bitmap> pending;
+        lock (_lock)
+        {
+            _disposeTimer.Stop();
+            pending = [.. _pendingDisposals];
+            _pendingDisposals.Clear();
+        }
+
+        foreach (var bitmap in pending)
+        {
+            bitmap.Dispose();
         }
     }
 }

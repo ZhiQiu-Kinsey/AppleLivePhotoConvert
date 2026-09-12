@@ -5,13 +5,13 @@
 
   <Application.Styles>
     <FluentTheme />
-    <StyleInclude Source="avares://LivePhotoConvert.Desktop/Assets/Styles.axaml" />
+    <StyleInclude Source="avares://LivePhotoConvert/Assets/Styles.axaml" />
   </Application.Styles>
 
   <Application.Resources>
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
-        <ResourceInclude Source="avares://LivePhotoConvert.Desktop/Assets/Strings.zh-CN.axaml" />
+        <ResourceInclude Source="avares://LivePhotoConvert/Assets/Strings.zh-CN.axaml" />
       </ResourceDictionary.MergedDictionaries>
     </ResourceDictionary>
   </Application.Resources>

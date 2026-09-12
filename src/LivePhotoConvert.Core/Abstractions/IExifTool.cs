@@ -30,6 +30,25 @@ public interface IExifTool : IAsyncDisposable
     Task WriteMotionPhotoTagsAsync(string imagePath, long videoOffset, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// 写入动态照片标记，并指定封面图片在视频中对应帧的真实时间戳
+    /// </summary>
+    /// <param name="imagePath">图片路径</param>
+    /// <param name="videoOffset">视频数据的字节长度，即从文件末尾回溯的偏移量</param>
+    /// <param name="presentationTimestampUs">封面图片对应视频帧的时间戳（微秒）；无法确定时传 0</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    Task WriteMotionPhotoTagsAsync(string imagePath, long videoOffset, long presentationTimestampUs, CancellationToken cancellationToken = default) =>
+        WriteMotionPhotoTagsAsync(imagePath, videoOffset, cancellationToken);
+
+    /// <summary>
+    /// 从 Apple Live Photo 视频的 StillImageTime 定时元数据轨道读取封面帧时间戳
+    /// </summary>
+    /// <param name="videoPath">Apple Live Photo 的 MOV 视频路径</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>封面帧时间戳（微秒）；不存在或无法解析时返回 <c>null</c></returns>
+    Task<long?> TryReadAppleLivePhotoPresentationTimestampUsAsync(string videoPath, CancellationToken cancellationToken = default) =>
+        Task.FromResult<long?>(null);
+
+    /// <summary>
     /// 清除动态照片标记，用于拆分后还原成普通图片
     /// </summary>
     /// <param name="imagePath">图片路径</param>

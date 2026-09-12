@@ -1,4 +1,5 @@
 using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LivePhotoConvert.Desktop.Models;
@@ -8,7 +9,12 @@ namespace LivePhotoConvert.Desktop.ViewModels.Dialogs;
 
 public sealed partial class QuickLookDialogViewModel : ViewModelBase
 {
+    private const int QuickLookPhotoMaxSize = 1600;
     private readonly LivePhotoStreamPlayer _streamPlayer = new();
+    private readonly ThumbnailReader _thumbnailReader = new();
+    private Bitmap? _ownedPhotoPreview;
+    private int _previewGeneration;
+    private bool _hasPresentedVideoFrame;
 
     [ObservableProperty]
     private PhotoCardItemViewModel _card;
@@ -44,11 +50,15 @@ public sealed partial class QuickLookDialogViewModel : ViewModelBase
     public void SetCard(PhotoCardItemViewModel card, string indexText = "")
     {
         _streamPlayer.Stop();
+        int generation = ++_previewGeneration;
+        ReleaseOwnedPhotoPreview();
+        _hasPresentedVideoFrame = false;
 
         Card = card;
         NavigationIndexText = indexText;
 
         CurrentDisplayImage = card.DisplayImage ?? card.Thumbnail;
+        LoadHighResolutionPhotoPreview(card, generation);
 
         if (card.IsMotionPhoto && (string.IsNullOrWhiteSpace(card.VideoPath) || !File.Exists(card.VideoPath)))
         {
@@ -62,13 +72,14 @@ public sealed partial class QuickLookDialogViewModel : ViewModelBase
                 var extracted = await MotionPhotoVideoCache.EnsureVideoExtractedAsync(card);
                 if (!string.IsNullOrEmpty(extracted) && Card == card)
                 {
-                    await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                    await Dispatcher.UIThread.InvokeAsync(() =>
                     {
                         if (Card == card)
                         {
                             PlaybackStatusText = "实况播放中";
                             _streamPlayer.Play(extracted, frame =>
                             {
+                                _hasPresentedVideoFrame = true;
                                 CurrentDisplayImage = frame;
                             });
                         }
@@ -90,6 +101,7 @@ public sealed partial class QuickLookDialogViewModel : ViewModelBase
 
             _streamPlayer.Play(videoPath!, frame =>
             {
+                _hasPresentedVideoFrame = true;
                 CurrentDisplayImage = frame;
             });
         }
@@ -133,7 +145,59 @@ public sealed partial class QuickLookDialogViewModel : ViewModelBase
 
     public void Cleanup()
     {
+        ++_previewGeneration;
         _streamPlayer.Stop();
         _streamPlayer.Dispose();
+        ReleaseOwnedPhotoPreview();
+    }
+
+    private void LoadHighResolutionPhotoPreview(PhotoCardItemViewModel card, int generation)
+    {
+        _ = Task.Run(() =>
+        {
+            var result = _thumbnailReader.Read(card.PhotoPath, QuickLookPhotoMaxSize);
+            if (result is null || generation != _previewGeneration) return;
+
+            Bitmap? preview = null;
+            try
+            {
+                using var stream = new MemoryStream(result.ImageBytes);
+                preview = new Bitmap(stream);
+            }
+            catch
+            {
+                preview?.Dispose();
+                return;
+            }
+
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (generation != _previewGeneration || Card != card)
+                {
+                    preview.Dispose();
+                    return;
+                }
+
+                _ownedPhotoPreview = preview;
+                if (!_hasPresentedVideoFrame)
+                {
+                    CurrentDisplayImage = preview;
+                }
+            });
+        });
+    }
+
+    private void ReleaseOwnedPhotoPreview()
+    {
+        var oldPreview = _ownedPhotoPreview;
+        _ownedPhotoPreview = null;
+        if (oldPreview is null) return;
+
+        if (ReferenceEquals(CurrentDisplayImage, oldPreview))
+        {
+            CurrentDisplayImage = null;
+        }
+
+        DispatcherTimer.RunOnce(oldPreview.Dispose, TimeSpan.FromMilliseconds(160), DispatcherPriority.Background);
     }
 }

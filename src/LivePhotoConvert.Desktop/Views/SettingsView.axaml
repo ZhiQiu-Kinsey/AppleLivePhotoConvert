@@ -72,14 +72,15 @@
 
       <!-- ===== 偏好设置：按外观、性能与行为归组 ===== -->
       <Grid IsVisible="{CompiledBinding IsSettingsSelected}" ColumnDefinitions="*,*" RowDefinitions="Auto,Auto"
-            ColumnSpacing="16" RowSpacing="16">
-        <Border Grid.Row="0" Grid.Column="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
-                CornerRadius="16" Padding="18" BoxShadow="0 2 8 0 #0D000000">
-          <StackPanel Spacing="16">
+            ColumnSpacing="14" RowSpacing="14">
+        <Border Grid.Row="0" Grid.Column="0" Classes="settings-card">
+          <StackPanel Spacing="14">
             <Grid ColumnDefinitions="Auto,*">
-              <ic:SymbolIcon Symbol="WeatherSunny" FontSize="16" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
-              <TextBlock Grid.Column="1" Text="{DynamicResource ThemeTitle}" FontWeight="Bold" FontSize="13" Margin="9,0,0,0"
-                         Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+              <Border Classes="settings-icon-badge"><ic:SymbolIcon Symbol="WeatherSunny" FontSize="16" Foreground="{DynamicResource AccentBrush}" /></Border>
+              <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                <TextBlock Text="{DynamicResource ThemeTitle}" Classes="settings-card-title" />
+                <TextBlock Text="{DynamicResource SettingsPageDesc}" Classes="settings-card-caption" />
+              </StackPanel>
             </Grid>
             <Border Classes="segmented-group" HorizontalAlignment="Left">
               <StackPanel Orientation="Horizontal">
@@ -96,9 +97,8 @@
             </Border>
             <Border Height="1" Background="{DynamicResource LineBrush}" />
             <Grid ColumnDefinitions="Auto,*">
-              <ic:SymbolIcon Symbol="Globe" FontSize="16" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
-              <TextBlock Grid.Column="1" Text="{DynamicResource LangTitle}" FontWeight="Bold" FontSize="13" Margin="9,0,0,0"
-                         Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+              <Border Classes="settings-icon-badge"><ic:SymbolIcon Symbol="Globe" FontSize="16" Foreground="{DynamicResource AccentBrush}" /></Border>
+              <TextBlock Grid.Column="1" Text="{DynamicResource LangTitle}" Classes="settings-card-title" Margin="10,0,0,0" />
             </Grid>
             <Border Classes="segmented-group" HorizontalAlignment="Left">
               <StackPanel Orientation="Horizontal">
@@ -113,22 +113,19 @@
           </StackPanel>
         </Border>
 
-        <Border Grid.Row="0" Grid.Column="1" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
-                CornerRadius="16" Padding="18" BoxShadow="0 2 8 0 #0D000000">
+        <Border Grid.Row="0" Grid.Column="1" Classes="settings-card">
           <StackPanel Spacing="14">
             <Grid ColumnDefinitions="Auto,*,Auto">
-              <ic:SymbolIcon Symbol="Timer" FontSize="16" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
-              <TextBlock Grid.Column="1" Text="{DynamicResource ConcurrencyTitle}" FontWeight="Bold" FontSize="13" Margin="9,0,0,0"
-                         Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+              <Border Classes="settings-icon-badge"><ic:SymbolIcon Symbol="Timer" FontSize="16" Foreground="{DynamicResource AccentBrush}" /></Border>
+              <TextBlock Grid.Column="1" Text="{DynamicResource ConcurrencyTitle}" Classes="settings-card-title" Margin="10,0,0,0" />
               <NumericUpDown Grid.Column="2" Value="{CompiledBinding Concurrency, Mode=TwoWay}" Minimum="1" Maximum="16" Increment="1"
                              Width="112" Height="34" Padding="8,0" TextAlignment="Center" />
             </Grid>
             <TextBlock Text="{DynamicResource SettingsConcurrencyDesc}" FontSize="10" TextWrapping="Wrap" Foreground="{DynamicResource TextMutedBrush}" />
             <Border Height="1" Background="{DynamicResource LineBrush}" />
             <Grid ColumnDefinitions="Auto,*,Auto">
-              <ic:SymbolIcon Symbol="Color" FontSize="16" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
-              <TextBlock Grid.Column="1" Text="{DynamicResource SettingsHeicQualityTitle}" FontWeight="Bold" FontSize="13" Margin="9,0,0,0"
-                         Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+              <Border Classes="settings-icon-badge"><ic:SymbolIcon Symbol="Color" FontSize="16" Foreground="{DynamicResource AccentBrush}" /></Border>
+              <TextBlock Grid.Column="1" Text="{DynamicResource SettingsHeicQualityTitle}" Classes="settings-card-title" Margin="10,0,0,0" />
               <TextBlock Grid.Column="2" Text="{CompiledBinding HeicQuality, StringFormat='{}{0}%'}" FontSize="12" FontWeight="Bold"
                          FontFamily="Consolas" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
             </Grid>
@@ -137,11 +134,10 @@
           </StackPanel>
         </Border>
 
-        <Border Grid.Row="1" Grid.ColumnSpan="2" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
-                CornerRadius="16" Padding="18" BoxShadow="0 2 8 0 #0D000000">
+        <Border Grid.Row="1" Grid.ColumnSpan="2" Classes="settings-card">
           <StackPanel Spacing="14">
             <Grid ColumnDefinitions="Auto,*,Auto">
-              <ic:SymbolIcon Symbol="Alert" FontSize="16" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
+              <Border Classes="settings-icon-badge"><ic:SymbolIcon Symbol="Alert" FontSize="16" Foreground="{DynamicResource AccentBrush}" /></Border>
               <StackPanel Grid.Column="1" Margin="9,0,0,0">
                 <TextBlock Text="{DynamicResource NotifyOnCompleteTitle}" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}" />
                 <TextBlock Text="{DynamicResource NotifyOnCompleteDesc}" FontSize="10" TextWrapping="Wrap" Foreground="{DynamicResource TextMutedBrush}" />
@@ -150,7 +146,7 @@
             </Grid>
             <Border Height="1" Background="{DynamicResource LineBrush}" />
             <Grid ColumnDefinitions="Auto,*,Auto">
-              <ic:SymbolIcon Symbol="FolderOpen" FontSize="16" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
+              <Border Classes="settings-icon-badge"><ic:SymbolIcon Symbol="FolderOpen" FontSize="16" Foreground="{DynamicResource AccentBrush}" /></Border>
               <StackPanel Grid.Column="1" Margin="9,0,0,0">
                 <TextBlock Text="{DynamicResource AutoOpenOutputTitle}" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}" />
                 <TextBlock Text="{DynamicResource AutoOpenOutputDesc}" FontSize="10" TextWrapping="Wrap" Foreground="{DynamicResource TextMutedBrush}" />
@@ -159,7 +155,7 @@
             </Grid>
             <Border Height="1" Background="{DynamicResource LineBrush}" />
             <Grid ColumnDefinitions="Auto,*,Auto">
-              <ic:SymbolIcon Symbol="Broom" FontSize="16" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
+              <Border Classes="settings-icon-badge"><ic:SymbolIcon Symbol="Broom" FontSize="16" Foreground="{DynamicResource AccentBrush}" /></Border>
               <StackPanel Grid.Column="1" Margin="9,0,0,0">
                 <TextBlock Text="{DynamicResource AutoCleanTempTitle}" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}" />
                 <TextBlock Text="{DynamicResource AutoCleanTempDesc}" FontSize="10" TextWrapping="Wrap" Foreground="{DynamicResource TextMutedBrush}" />
@@ -174,7 +170,8 @@
       <StackPanel IsVisible="{CompiledBinding IsAboutSelected}" Spacing="14" Margin="0,8,0,0">
 
         <!-- 项目标识 -->
-        <StackPanel Spacing="8" HorizontalAlignment="Center">
+        <Border Classes="about-hero">
+          <StackPanel Spacing="8" HorizontalAlignment="Center">
           <Border Width="54" Height="54" CornerRadius="16" Background="{DynamicResource AccentSoftBrush}"
                   BorderBrush="{DynamicResource AccentBorderBrush}" BorderThickness="1">
             <ic:SymbolIcon Symbol="Camera" FontSize="26" Foreground="{DynamicResource AccentBrush}"
@@ -198,10 +195,11 @@
                          Foreground="{DynamicResource SuccessBrush}" />
             </Border>
           </StackPanel>
-        </StackPanel>
+          </StackPanel>
+        </Border>
 
         <!-- 作者 -->
-        <Border Background="{DynamicResource HoverBrush}" CornerRadius="12" Padding="12,10" MaxWidth="1000" HorizontalAlignment="Stretch">
+        <Border Classes="settings-card" Padding="12,10" MaxWidth="1000" HorizontalAlignment="Stretch">
           <Grid ColumnDefinitions="Auto,*,Auto">
             <ic:SymbolIcon Grid.Column="0" Symbol="Person" FontSize="16" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
             <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
@@ -248,7 +246,7 @@
         <!-- 开源协议 -->
         <StackPanel Spacing="6">
           <TextBlock Text="{DynamicResource AboutLicenseTitle}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
-          <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="12" Padding="12" MaxWidth="1000" HorizontalAlignment="Stretch">
+          <Border Classes="settings-card" Padding="12" MaxWidth="1000" HorizontalAlignment="Stretch">
             <StackPanel Spacing="6">
               <Grid ColumnDefinitions="*,Auto">
                 <TextBlock Grid.Column="0" Text="{CompiledBinding LicenseName}" FontSize="12" FontWeight="Bold"
@@ -269,7 +267,7 @@
         <!-- 贡献者 -->
         <StackPanel Spacing="6">
           <TextBlock Text="{DynamicResource AboutContributorsTitle}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
-          <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="12" Padding="6" MaxWidth="1000" HorizontalAlignment="Stretch">
+          <Border Classes="settings-card" Padding="6" MaxWidth="1000" HorizontalAlignment="Stretch">
             <ItemsControl ItemsSource="{CompiledBinding Contributors}" ItemTemplate="{StaticResource AboutCreditRowTemplate}" />
           </Border>
           <TextBlock Text="{DynamicResource AboutContributorsHint}" FontSize="10" TextWrapping="Wrap"
@@ -281,7 +279,7 @@
           <TextBlock Text="{DynamicResource AboutCreditsRuntimeTitle}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
           <TextBlock Text="{DynamicResource AboutCreditsRuntimeDesc}" FontSize="10" TextWrapping="Wrap"
                      Foreground="{DynamicResource TextMutedBrush}" />
-          <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="12" Padding="6" MaxWidth="1000" HorizontalAlignment="Stretch">
+          <Border Classes="settings-card" Padding="6" MaxWidth="1000" HorizontalAlignment="Stretch">
             <ItemsControl ItemsSource="{CompiledBinding RuntimeCredits}" ItemTemplate="{StaticResource AboutCreditRowTemplate}" />
           </Border>
         </StackPanel>
@@ -289,7 +287,7 @@
         <!-- 引用的开源项目：构建框架 -->
         <StackPanel Spacing="6">
           <TextBlock Text="{DynamicResource AboutCreditsBuildTitle}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
-          <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="12" Padding="6" MaxWidth="1000" HorizontalAlignment="Stretch">
+          <Border Classes="settings-card" Padding="6" MaxWidth="1000" HorizontalAlignment="Stretch">
             <ItemsControl ItemsSource="{CompiledBinding BuildCredits}" ItemTemplate="{StaticResource AboutCreditRowTemplate}" />
           </Border>
         </StackPanel>
@@ -316,7 +314,7 @@
           </Button>
         </Grid>
         <Border Background="White" CornerRadius="10" Padding="8" HorizontalAlignment="Center">
-          <Image Source="avares://LivePhotoConvert.Desktop/Assets/sponsor-qrcode.png" Width="340" Height="340" Stretch="Uniform" />
+          <Image Source="avares://LivePhotoConvert/Assets/sponsor-qrcode.png" Width="340" Height="340" Stretch="Uniform" />
         </Border>
       </StackPanel>
     </Border>
