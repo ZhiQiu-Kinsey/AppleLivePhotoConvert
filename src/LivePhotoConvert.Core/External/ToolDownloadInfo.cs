@@ -52,7 +52,16 @@ public sealed record ToolDownloadInfo(string ToolName, string TargetExecutableNa
         {
             if (source.IsGitHubRelease)
             {
-                var acceleratedUrl = normalizedPrefix + source.Url;
+                var rawUrl = source.Url;
+                var ghIndex = rawUrl.IndexOf("https://github.com/", StringComparison.OrdinalIgnoreCase);
+                if (ghIndex >= 0)
+                {
+                    rawUrl = rawUrl[ghIndex..];
+                }
+
+                var acceleratedUrl = normalizedPrefix.Equals("https://github.com/", StringComparison.OrdinalIgnoreCase)
+                    ? rawUrl
+                    : normalizedPrefix + rawUrl;
                 list.Add(new ToolDownloadSource($"自定义加速镜像 ({source.Name})", acceleratedUrl));
             }
         }
@@ -76,8 +85,8 @@ public static class ExternalToolMetadata
         Sources:
         [
             new ToolDownloadSource("阿里云国内高速镜像 (npmmirror)", "https://registry.npmmirror.com/exiftool-vendored.exe/-/exiftool-vendored.exe-13.59.2.tgz"),
-            new ToolDownloadSource("国内 GitHub 加速镜像 (gh-proxy.com)", "https://gh-proxy.com/https://github.com/exiftool/exiftool/archive/refs/tags/13.59.zip", IsGitHubRelease: true),
-            new ToolDownloadSource("GitHub 官方源", "https://github.com/exiftool/exiftool/archive/refs/tags/13.59.zip", IsGitHubRelease: true)
+            new ToolDownloadSource("SourceForge 官方源 (64位 Windows)", "https://sourceforge.net/projects/exiftool/files/exiftool-13.59_64.zip/download"),
+            new ToolDownloadSource("SourceForge 备用源 (32位 Windows)", "https://sourceforge.net/projects/exiftool/files/exiftool-13.59_32.zip/download")
         ],
         ZipEntryFilter: entry =>
         {

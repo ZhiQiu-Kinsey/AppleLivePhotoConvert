@@ -58,6 +58,26 @@ public class ToolDownloaderTests
     }
 
     /// <summary>
+    /// 测试当源 URL 已包含其他 GitHub 代理前缀时，自定义镜像前缀会剥离原有代理，杜绝双重代理
+    /// </summary>
+    [Fact]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Minor Code Smell", "S1075:URIs should not be hardcoded", Justification = "测试用固定 URL 前缀")]
+    public void GetEffectiveSources_With_Custom_Mirror_Should_Not_Produce_Double_Proxy()
+    {
+        var customMirror = "https://ghfast.top/";
+        var sources = ExternalToolMetadata.HeifEnc.GetEffectiveSources(customMirror);
+
+        foreach (var source in sources.Where(s => s.Name.StartsWith("自定义加速镜像")))
+        {
+            // 确保加速 URL 格式为 https://ghfast.top/https://github.com/...，绝不含嵌套代理
+            Assert.StartsWith("https://ghfast.top/https://github.com/", source.Url, StringComparison.Ordinal);
+            Assert.DoesNotContain("gh-proxy.com", source.Url, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("ghproxy.net", source.Url, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("gh.ddlc.top", source.Url, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    /// <summary>
     /// 测试不提供自定义镜像时，默认返回预置的源列表
     /// </summary>
     [Fact]
@@ -114,6 +134,33 @@ public class ToolDownloaderTests
             Assert.False(string.IsNullOrWhiteSpace(source.Name));
             Assert.True(Uri.TryCreate(source.Url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps,
                 $"源 [{source.Name}] 的 URL 不是合法的 HTTPS 链接: {source.Url}");
+        }
+    }
+
+    /// <summary>
+    /// 测试 ToolLocator.Find 默认可以自动检索程序目录下的 tools/ 子目录
+    /// </summary>
+    [Fact]
+    public void ToolLocator_Find_Should_Discover_Executable_In_Tools_Subdirectory()
+    {
+        var toolsDir = Path.Combine(AppContext.BaseDirectory, "tools");
+        Directory.CreateDirectory(toolsDir);
+        var dummyName = $"dummy_tool_{Guid.NewGuid():N}.exe";
+        var dummyPath = Path.Combine(toolsDir, dummyName);
+        File.WriteAllText(dummyPath, "test");
+        try
+        {
+            var found = ToolLocator.Find(dummyName);
+            Assert.NotNull(found);
+            Assert.True(File.Exists(found));
+            Assert.Equal(Path.GetFullPath(dummyPath), found);
+        }
+        finally
+        {
+            if (File.Exists(dummyPath))
+            {
+                File.Delete(dummyPath);
+            }
         }
     }
 }

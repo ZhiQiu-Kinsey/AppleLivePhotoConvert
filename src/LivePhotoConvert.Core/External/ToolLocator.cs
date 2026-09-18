@@ -29,6 +29,7 @@ public static class ToolLocator
         foreach (var dir in baseDirs)
         {
             candidates.Add(Path.Combine(dir, fileName));
+            candidates.Add(Path.Combine(dir, "tools", fileName));
             candidates.AddRange(subDirectories.Select(sub => Path.Combine(dir, sub, fileName)));
         }
 
@@ -72,7 +73,7 @@ public static class ToolLocator
 
             if (proc.Start())
             {
-                if (proc.WaitForExit(2000))
+                if (proc.WaitForExit(6000))
                 {
                     return proc.ExitCode == 0;
                 }

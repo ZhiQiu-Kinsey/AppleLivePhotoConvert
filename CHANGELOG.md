@@ -2,6 +2,14 @@
 
 本项目的版本历史与变更说明。所有新增、修复与改进均遵循 [README](README.md) 中的术语与约定。
 
+## [3.0.2] - 2026-09-18
+
+### 🩹 依赖自动发现与下载链路修复
+- 修复外部依赖下载至应用 `tools/` 目录后，业务转换与悬浮播放模块因未读取设置路径且 `ToolLocator` 未扫描 `tools/` 子目录导致依然提示“依赖缺失”的问题；
+- 在 `ToolLocator.Find` 默认候选路径中自动纳入 `tools/` 子目录，并在 `ConvertViewModel`、`StripViewModel` 与 `PlaybackHost` 中全链路打通设置中的自定义引擎路径；
+- 将 `ToolLocator.IsValidTool` 启动探测超时从 2s 放宽至 6s，避免 Windows Defender 实时查杀或 ExifTool Perl 环境首次自解压冷启动超时被误判为未安装；
+- 优化 GitHub 加速镜像 URL 拼接逻辑，剥离源已有代理前缀彻底杜绝双重代理，并将 ExifTool 备选源修正为 SourceForge 官方 Windows 二进制包。
+
 ---
 
 ## [3.0.1] - 2026-09-12

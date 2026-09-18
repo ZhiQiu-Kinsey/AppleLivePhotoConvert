@@ -1109,9 +1109,14 @@ public sealed partial class ConvertViewModel : ViewModelBase
                     });
                 });
 
-                var exifToolPath = ToolLocator.Find(ExifTool.ExecutableName);
-                var ffmpegPath = ToolLocator.Find(FfmpegVideoConverter.ExecutableName);
-                var heifEncPath = ToolLocator.Find(HeifEncImageConverter.ExecutableName);
+                var savedSettings = _settingsService.Current;
+                var explicitExif = string.IsNullOrWhiteSpace(savedSettings.ExifToolPath) ? null : savedSettings.ExifToolPath;
+                var explicitFfmpeg = string.IsNullOrWhiteSpace(savedSettings.FfmpegPath) ? null : savedSettings.FfmpegPath;
+                var explicitHeif = string.IsNullOrWhiteSpace(savedSettings.HeifEncPath) ? null : savedSettings.HeifEncPath;
+
+                var exifToolPath = ToolLocator.Find(ExifTool.ExecutableName, explicitExif);
+                var ffmpegPath = ToolLocator.Find(FfmpegVideoConverter.ExecutableName, explicitFfmpeg);
+                var heifEncPath = ToolLocator.Find(HeifEncImageConverter.ExecutableName, explicitHeif);
 
                 var exifTool = ExifTool.Create(exifToolPath);
                 var videoConverter = ffmpegPath is not null ? FfmpegVideoConverter.Create(ffmpegPath) : null;

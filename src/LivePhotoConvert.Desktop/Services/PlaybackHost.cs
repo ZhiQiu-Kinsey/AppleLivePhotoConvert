@@ -37,6 +37,9 @@ public sealed class PlaybackHost
     public Action<PhotoCardItemViewModel>? OnQuickLookTriggered { get; set; }
     public Action<PhotoCardItemViewModel>? OnCardFocused { get; set; }
 
+    /// <summary>由宿主注入的自定义 FFmpeg 可执行文件路径解析委托。</summary>
+    public Func<string?>? CustomFfmpegPathProvider { get; set; }
+
     private PlaybackHost()
     {
         _cycleTimer = new DispatcherTimer(DispatcherPriority.Render)
@@ -234,7 +237,7 @@ public sealed class PlaybackHost
         if (string.IsNullOrWhiteSpace(card.VideoPath) || !File.Exists(card.VideoPath))
             return;
 
-        string? ffmpegPath = ToolLocator.Find(FfmpegVideoConverter.ExecutableName);
+        string? ffmpegPath = ToolLocator.Find(FfmpegVideoConverter.ExecutableName, CustomFfmpegPathProvider?.Invoke());
         if (string.IsNullOrEmpty(ffmpegPath) || !File.Exists(ffmpegPath))
             return;
 

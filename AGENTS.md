@@ -2,7 +2,7 @@
 
 面向 AI 编码助手（CodeBuddy / Antigravity / Gemini / Claude / Cursor 等）的代码库协作规范。**修改本仓库前务必先通读本文件。**
 
-> 最后更新：v3.0.1（2026-09-12）—— CLI 已完全移除，当前产品形态为 Avalonia 桌面应用。
+> 最后更新：v3.0.2（2026-09-18）—— CLI 已完全移除，当前产品形态为 Avalonia 桌面应用。
 
 ---
 

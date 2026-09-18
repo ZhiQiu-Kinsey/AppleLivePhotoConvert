@@ -416,7 +416,9 @@ public sealed partial class StripViewModel : ViewModelBase
     {
         try
         {
-            var exifToolPath = Core.External.ToolLocator.Find(Core.External.ExifTool.ExecutableName);
+            var savedSettings = _settingsService.Current;
+            var explicitExif = string.IsNullOrWhiteSpace(savedSettings.ExifToolPath) ? null : savedSettings.ExifToolPath;
+            var exifToolPath = Core.External.ToolLocator.Find(Core.External.ExifTool.ExecutableName, explicitExif);
             var exifTool = Core.External.ExifTool.Create(exifToolPath);
             var stripper = new LivePhotoConvert.Core.Services.MotionPhotoStripper(exifTool, Core.External.MagickImageConverter.Instance);
 
@@ -507,8 +509,12 @@ public sealed partial class StripViewModel : ViewModelBase
                     _pauseGate.Wait(token);
                 });
 
-                var exifToolPath = Core.External.ToolLocator.Find(Core.External.ExifTool.ExecutableName);
-                var heifEncPath = Core.External.ToolLocator.Find(Core.External.HeifEncImageConverter.ExecutableName);
+                var savedSettings = _settingsService.Current;
+                var explicitExif = string.IsNullOrWhiteSpace(savedSettings.ExifToolPath) ? null : savedSettings.ExifToolPath;
+                var explicitHeif = string.IsNullOrWhiteSpace(savedSettings.HeifEncPath) ? null : savedSettings.HeifEncPath;
+
+                var exifToolPath = Core.External.ToolLocator.Find(Core.External.ExifTool.ExecutableName, explicitExif);
+                var heifEncPath = Core.External.ToolLocator.Find(Core.External.HeifEncImageConverter.ExecutableName, explicitHeif);
 
                 var exifTool = Core.External.ExifTool.Create(exifToolPath);
                 var imageConverter = heifEncPath is not null

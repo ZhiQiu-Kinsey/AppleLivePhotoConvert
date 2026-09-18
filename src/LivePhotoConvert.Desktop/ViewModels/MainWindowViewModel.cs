@@ -69,6 +69,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
         ToolsVm = new ToolsViewModel(_settingsService);
 
+        PlaybackHost.Instance.CustomFfmpegPathProvider = () => _settingsService.Current.FfmpegPath;
+
         ReportVm = new ReportViewModel
         {
             OnSwitchToConvertTab = () => SelectedTabIndex = 0
