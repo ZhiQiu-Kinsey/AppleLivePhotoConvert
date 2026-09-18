@@ -8,6 +8,8 @@ namespace LivePhotoConvert.Desktop.Views;
 public partial class ConvertView : UserControl
 {
     private double _lastMeasuredWidth;
+    private ScrollViewer? _galleryScrollViewer;
+    private double _savedScrollOffsetY;
 
     public ConvertView()
     {
@@ -20,13 +22,42 @@ public partial class ConvertView : UserControl
             {
                 _lastMeasuredWidth = listBox.Bounds.Width;
                 vm.UpdateCardWidth(_lastMeasuredWidth);
+
+                vm.OnBeforeStreamRebuild = () =>
+                {
+                    if (_galleryScrollViewer is not null)
+                    {
+                        _savedScrollOffsetY = _galleryScrollViewer.Offset.Y;
+                    }
+                };
+
+                vm.OnAfterStreamRebuild = () =>
+                {
+                    if (_galleryScrollViewer is not null && _savedScrollOffsetY > 0)
+                    {
+                        double targetY = _savedScrollOffsetY;
+                        Dispatcher.UIThread.Post(() =>
+                        {
+                            if (_galleryScrollViewer is not null)
+                            {
+                                double maxY = Math.Max(0, _galleryScrollViewer.Extent.Height - _galleryScrollViewer.Viewport.Height);
+                                _galleryScrollViewer.Offset = new Avalonia.Vector(_galleryScrollViewer.Offset.X, Math.Min(targetY, maxY));
+                            }
+                        }, DispatcherPriority.Render);
+                    }
+                };
+
                 listBox.AddHandler(ScrollViewer.ScrollChangedEvent, (_, args) =>
                 {
                     if (DataContext is not ConvertViewModel currentVm)
                     {
                         return;
                     }
-                    var scroll = args.Source as ScrollViewer;
+                    if (_galleryScrollViewer is null && args.Source is ScrollViewer sv)
+                    {
+                        _galleryScrollViewer = sv;
+                    }
+                    var scroll = args.Source as ScrollViewer ?? _galleryScrollViewer;
                     if (scroll is null) return;
                     currentVm.OnViewportScrolled(scroll.Offset.Y, scroll.Viewport.Height);
                 }, RoutingStrategies.Bubble);
@@ -42,7 +73,7 @@ public partial class ConvertView : UserControl
                 listBox.PropertyChanged += (_, e) =>
                 {
                     if (e.Property.Name == "Bounds" && DataContext is ConvertViewModel vm2 &&
-                        Math.Abs(listBox.Bounds.Width - _lastMeasuredWidth) > 1)
+                        Math.Abs(listBox.Bounds.Width - _lastMeasuredWidth) > 2)
                     {
                         _lastMeasuredWidth = listBox.Bounds.Width;
                         vm2.UpdateCardWidth(listBox.Bounds.Width);

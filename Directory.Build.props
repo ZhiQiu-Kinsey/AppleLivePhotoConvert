@@ -9,9 +9,9 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <Authors>Kinsey.Qiu</Authors>
-    <Version>3.0.2</Version>
-    <AssemblyVersion>3.0.2.0</AssemblyVersion>
-    <FileVersion>3.0.2.0</FileVersion>
+    <Version>3.0.3</Version>
+    <AssemblyVersion>3.0.3.0</AssemblyVersion>
+    <FileVersion>3.0.3.0</FileVersion>
     <PackageProjectUrl>https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert</PackageProjectUrl>
     <RepositoryUrl>https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert</RepositoryUrl>
   </PropertyGroup>

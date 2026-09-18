@@ -214,12 +214,21 @@ public sealed partial class ConvertViewModel : ViewModelBase
 
     private double _lastParentWidth = 900;
     private readonly Avalonia.Threading.DispatcherTimer _layoutRefreshTimer;
+    private readonly Avalonia.Threading.DispatcherTimer _scrollIdleTimer;
+    private bool _isUserScrolling;
+    private bool _hasPendingRelayout;
+
+    public bool IsUserScrolling => _isUserScrolling;
+
+    public Action? OnBeforeStreamRebuild { get; set; }
+    public Action? OnAfterStreamRebuild { get; set; }
 
     /// <summary>依据当前父容器宽度与缩放模式更新卡片宽度。</summary>
     public void UpdateCardWidth(double parentWidth)
     {
         if (parentWidth > 50)
         {
+            if (Math.Abs(_lastParentWidth - parentWidth) < 2) return;
             _lastParentWidth = parentWidth;
         }
 
@@ -253,6 +262,24 @@ public sealed partial class ConvertViewModel : ViewModelBase
         {
             _layoutRefreshTimer.Stop();
             if (_groups.Count > 0) RebuildFlattenedStream();
+        };
+
+        _scrollIdleTimer = new Avalonia.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(250)
+        };
+        _scrollIdleTimer.Tick += (_, _) =>
+        {
+            _scrollIdleTimer.Stop();
+            _isUserScrolling = false;
+            if (_hasPendingRelayout)
+            {
+                _hasPendingRelayout = false;
+                if (_groups.Count > 0)
+                {
+                    RebuildFlattenedStream();
+                }
+            }
         };
 
         PlaybackHost.Instance.OnQuickLookTriggered = OpenQuickLook;
@@ -461,6 +488,14 @@ public sealed partial class ConvertViewModel : ViewModelBase
     private void ScheduleGalleryRelayout()
     {
         if (_groups.Count == 0) return;
+
+        // 用户正在滚动或拖动滑块时，绝不在此期间重建列表，仅标记挂起待静止后处理
+        if (_isUserScrolling)
+        {
+            _hasPendingRelayout = true;
+            return;
+        }
+
         _layoutRefreshTimer.Stop();
         _layoutRefreshTimer.Start();
     }
@@ -471,6 +506,11 @@ public sealed partial class ConvertViewModel : ViewModelBase
         double ratio = (double)width / height;
         if (Math.Abs(card.AspectRatio - ratio) < 0.01) return;
         card.AspectRatio = ratio;
+        // 如果卡片已有测量行高，立即原地更新显示宽度，UI 绑定直接平滑生效
+        if (card.PreviewHeight > 0)
+        {
+            card.DisplayWidth = card.PreviewHeight * ratio + 8;
+        }
         ScheduleGalleryRelayout();
     }
 
@@ -970,6 +1010,10 @@ public sealed partial class ConvertViewModel : ViewModelBase
     public void OnViewportScrolled(double offsetY, double viewportHeight)
     {
         if (viewportHeight <= 0) return;
+
+        _isUserScrolling = true;
+        _scrollIdleTimer.Stop();
+        _scrollIdleTimer.Start();
 
         // 直接按已生成的行做命中，避免用固定行高估算造成预热错位。
         double cursor = 0;
@@ -1542,6 +1586,8 @@ public sealed partial class ConvertViewModel : ViewModelBase
 
     public void RebuildFlattenedStream()
     {
+        OnBeforeStreamRebuild?.Invoke();
+
         DisplayGroups.Clear();
 
         var newItems = new List<IGalleryDisplayItem>();
@@ -1566,6 +1612,8 @@ public sealed partial class ConvertViewModel : ViewModelBase
         }
 
         FlattenedDisplayItems.Reset(newItems);
+
+        OnAfterStreamRebuild?.Invoke();
     }
 
     private void OpenArbitrationDialog(PhotoCardItemViewModel card)

@@ -90,6 +90,8 @@ public sealed class AlbumScanner
                         string dirName = Path.GetFileName(Path.GetDirectoryName(file) ?? string.Empty);
                         string locSummary = string.IsNullOrWhiteSpace(dirName) ? loc.GetString("LocalAlbumFallback") : dirName;
 
+                        var (aspectRatio, resolutionText) = SniffPhotoDimensions(file);
+
                         var card = new PhotoCardItemViewModel
                         {
                             Key = file,
@@ -104,11 +106,11 @@ public sealed class AlbumScanner
                             FormattedTime = dt.ToString("HH:mm:ss", culture),
                             LocationSummary = locSummary,
                             DeviceInfo = "Motion Photo",
-                            ResolutionText = string.Empty,
+                            ResolutionText = resolutionText,
                             DurationText = loc.GetString("CardDurationLive"),
                             PhotoSizeText = FormatBytes(pBytes),
                             VideoSizeText = FormatBytes(vBytes),
-                            AspectRatio = 4.0 / 3.0,
+                            AspectRatio = aspectRatio,
                             PairingStatusText = loc.GetString("PairStatusLocked"),
                             HasSuspiciousWarning = false,
                             WarningReason = string.Empty,
@@ -161,6 +163,8 @@ public sealed class AlbumScanner
                         }
                     }
 
+                    var (aspectRatio, resolutionText) = SniffPhotoDimensions(pair.PhotoPath);
+
                     PhotoCardItemViewModel card = new()
                     {
                         Key = pair.PhotoPath,
@@ -173,11 +177,11 @@ public sealed class AlbumScanner
                         FormattedTime = dt.ToString("HH:mm:ss", culture),
                         LocationSummary = locSummary,
                         DeviceInfo = ext,
-                        ResolutionText = string.Empty,
+                        ResolutionText = resolutionText,
                         DurationText = loc.GetString("CardDurationLive"),
                         PhotoSizeText = FormatBytes(pBytes),
                         VideoSizeText = FormatBytes(vBytes),
-                        AspectRatio = 4.0 / 3.0,
+                        AspectRatio = aspectRatio,
                         PairingStatusText = isSuspicious ? loc.GetString("PairStatusPending") : loc.GetString("PairStatusLocked"),
                         HasSuspiciousWarning = isSuspicious,
                         WarningReason = warningReason,
@@ -209,6 +213,8 @@ public sealed class AlbumScanner
                     string locSummary = string.IsNullOrWhiteSpace(dirName) ? loc.GetString("LocalAlbumFallback") : dirName;
                     string ext = photoInfo.Extension.TrimStart('.').ToUpperInvariant();
 
+                    var (aspectRatio, resolutionText) = SniffPhotoDimensions(pair.PhotoPath);
+
                     PhotoCardItemViewModel card = new()
                     {
                         Key = pair.PhotoPath,
@@ -221,11 +227,11 @@ public sealed class AlbumScanner
                         FormattedTime = dt.ToString("HH:mm:ss", culture),
                         LocationSummary = locSummary,
                         DeviceInfo = ext,
-                        ResolutionText = string.Empty,
+                        ResolutionText = resolutionText,
                         DurationText = loc.GetString("CardDurationLive"),
                         PhotoSizeText = FormatBytes(pBytes),
                         VideoSizeText = FormatBytes(vBytes),
-                        AspectRatio = 4.0 / 3.0,
+                        AspectRatio = aspectRatio,
                         PairingStatusText = loc.GetString("PairStatusLocked"),
                         HasSuspiciousWarning = false,
                         WarningReason = string.Empty,
@@ -263,6 +269,8 @@ public sealed class AlbumScanner
                         string dirName = Path.GetFileName(Path.GetDirectoryName(file) ?? string.Empty);
                         string locSummary = string.IsNullOrWhiteSpace(dirName) ? loc.GetString("LocalAlbumFallback") : dirName;
 
+                        var (aspectRatio, resolutionText) = SniffPhotoDimensions(file);
+
                         var card = new PhotoCardItemViewModel
                         {
                             Key = file,
@@ -277,11 +285,11 @@ public sealed class AlbumScanner
                             FormattedTime = dt.ToString("HH:mm:ss", culture),
                             LocationSummary = locSummary,
                             DeviceInfo = "Motion Photo",
-                            ResolutionText = string.Empty,
+                            ResolutionText = resolutionText,
                             DurationText = loc.GetString("CardDurationLive"),
                             PhotoSizeText = FormatBytes(pBytes),
                             VideoSizeText = FormatBytes(vBytes),
-                            AspectRatio = 4.0 / 3.0,
+                            AspectRatio = aspectRatio,
                             PairingStatusText = loc.GetString("PairStatusLocked"),
                             HasSuspiciousWarning = false,
                             WarningReason = string.Empty,
@@ -335,6 +343,15 @@ public sealed class AlbumScanner
                 FilteredCount: filtered,
                 TotalBytes: totalBytes);
         }, cancellationToken);
+    }
+
+    private static (double AspectRatio, string ResolutionText) SniffPhotoDimensions(string photoPath)
+    {
+        if (FastImageHeaderReader.TryReadDimensions(photoPath, out var dims) && dims.Width > 0 && dims.Height > 0)
+        {
+            return (dims.AspectRatio, $"{dims.Width}×{dims.Height}");
+        }
+        return (4.0 / 3.0, string.Empty);
     }
 
     private static string FormatBytes(long bytes) =>

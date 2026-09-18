@@ -115,7 +115,13 @@
                  ItemsSource="{Binding FlattenedDisplayItems}"
                  Background="Transparent"
                  BorderThickness="0"
-                 Padding="0">
+                 Padding="0"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+          <ListBox.ItemsPanel>
+            <ItemsPanelTemplate>
+              <VirtualizingStackPanel />
+            </ItemsPanelTemplate>
+          </ListBox.ItemsPanel>
           <ListBox.Styles>
             <Style Selector="ListBoxItem">
               <Setter Property="Padding" Value="0" />
