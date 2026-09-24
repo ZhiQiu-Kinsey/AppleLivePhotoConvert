@@ -1,5 +1,6 @@
 using LivePhotoConvert.Core.Metadata;
 using LivePhotoConvert.Core.Pairing;
+using LivePhotoConvert.Core.Pipeline;
 
 namespace LivePhotoConvert.Core.Tests.Pairing;
 
@@ -59,4 +60,51 @@ public class PairValidatorTests
         Assert.True(result.IsAccepted);
         Assert.NotEmpty(result.Reasons);
     }
+
+    [Fact]
+    public void Causes_CarryReasonCodesAndArguments()
+    {
+        Assert.Equal(
+            [new OutcomeCause(OutcomeReason.PairContentIdentifierMatched, "A")],
+            PairValidator.Validate(Photo("A"), Video("a")).Causes);
+        Assert.Equal(
+            [new OutcomeCause(OutcomeReason.PairContentIdentifierMismatch, "A", "B")],
+            PairValidator.Validate(Photo("A"), Video("B")).Causes);
+        Assert.Equal([(OutcomeCause)OutcomeReason.PairContentIdentifierPhotoOnly], PairValidator.Validate(Photo("A"), Video()).Causes);
+        Assert.Equal([(OutcomeCause)OutcomeReason.PairContentIdentifierVideoOnly], PairValidator.Validate(Photo(), Video("A")).Causes);
+        Assert.Equal(
+            [new OutcomeCause(OutcomeReason.PairCaptureTimeTooFar, 120d, 3d)],
+            PairValidator.Validate(Photo(time: "2024:05:01 14:03:03"), Video(time: "2024:05:01 14:05:03")).Causes);
+        Assert.Equal([(OutcomeCause)OutcomeReason.PairCaptureTimePhotoOnly], PairValidator.Validate(Photo(time: "2024:05:01 14:03:03"), Video()).Causes);
+        Assert.Equal([(OutcomeCause)OutcomeReason.PairCaptureTimeVideoOnly], PairValidator.Validate(Photo(), Video(time: "2024:05:01 14:03:03")).Causes);
+        Assert.Equal(
+            [new OutcomeCause(OutcomeReason.PairCaptureTimeClose, 2d), new OutcomeCause(OutcomeReason.PairVideoTooLong, 45d, 30d)],
+            PairValidator.Validate(Photo(time: "2024:05:01 14:03:03"), Video(time: "2024:05:01 14:03:05", seconds: 45)).Causes);
+        Assert.Equal(
+            [new OutcomeCause(OutcomeReason.PairCaptureTimeClose, 2d), new OutcomeCause(OutcomeReason.PairDurationWithinLimit, 2.8d)],
+            PairValidator.Validate(Photo(time: "2024:05:01 14:03:03"), Video(time: "2024:05:01 14:03:05", seconds: 2.8)).Causes);
+        Assert.Equal([(OutcomeCause)OutcomeReason.PairNameOnly], PairValidator.Validate(Photo(), Video()).Causes);
+    }
+
+    [Fact]
+    public void Reasons_KeepDiagnosticTextAlongsideCauses()
+    {
+        var accepted = PairValidator.Validate(Photo(time: "2024:05:01 14:03:03"), Video(time: "2024:05:01 14:03:05", seconds: 2.8));
+        Assert.True(accepted.IsAccepted);
+        Assert.Equal(["拍摄时间差 2.0 秒", "视频时长 2.8 秒"], accepted.Reasons);
+        Assert.Equal("拍摄时间差 2.0 秒；视频时长 2.8 秒", accepted.Summary);
+
+        var rejected = PairValidator.Validate(Photo(time: "2024:05:01 14:03:03"), Video(time: "2024:05:01 14:05:03"));
+        Assert.False(rejected.IsAccepted);
+        Assert.Equal(["拍摄时间差 120 秒，超过 3 秒阈值"], rejected.Reasons);
+
+        Assert.Equal(["ContentIdentifier 不匹配：照片=A，视频=B"], PairValidator.Validate(Photo("A"), Video("B")).Reasons);
+        Assert.Equal(["缺少可校验的元数据，按文件名匹配"], PairValidator.Validate(Photo(), Video()).Reasons);
+        Assert.Equal(["人工确认配对"], PairValidationResult.Accept(OutcomeReason.PairManuallyConfirmed).Reasons);
+        Assert.Empty(PairValidationResult.Accept().Reasons);
+    }
+
+    [Fact]
+    public void Results_CompareByValue() =>
+        Assert.Equal(PairValidator.Validate(Photo("A"), Video("B")), PairValidator.Validate(Photo("A"), Video("B")));
 }

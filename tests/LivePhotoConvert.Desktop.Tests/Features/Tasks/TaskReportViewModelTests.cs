@@ -14,10 +14,10 @@ public class TaskReportViewModelTests
     private static readonly BatchReport MixedReport = new(
     [
         ItemOutcome.Succeeded("/in/ok1.jpg", "/out/ok1.jpg"),
-        ItemOutcome.Skipped("/in/skip.jpg", "不是动态照片"),
-        ItemOutcome.Failed("/in/bad1.jpg", "写入失败"),
-        ItemOutcome.Failed("/in/bad2.jpg", "读取失败"),
-        ItemOutcome.Succeeded("/in/ok2.jpg", "/out/ok2.jpg") with { CleanupError = "无法移入回收站" }
+        ItemOutcome.Skipped("/in/skip.jpg", OutcomeReason.NotMotionPhoto),
+        ItemOutcome.Failed("/in/bad1.jpg", OutcomeReason.Unexpected, "写入失败"),
+        ItemOutcome.Failed("/in/bad2.jpg", new OutcomeCause(OutcomeReason.ToolMissing, "ffmpeg"), "未找到 ffmpeg"),
+        ItemOutcome.Succeeded("/in/ok2.jpg", "/out/ok2.jpg") with { CleanupError = "ok2.jpg: Access denied" }
     ], TimeSpan.FromSeconds(10), Canceled: false);
 
     private static ConversionJob SplitJob() => Jobs.Files(
@@ -37,10 +37,9 @@ public class TaskReportViewModelTests
         Assert.Equal(1, report.SkippedCount);
         Assert.Equal(1, report.CleanupCount);
         Assert.Equal(3, report.ProblemCount);
-        Assert.Equal(4, report.AttentionCount);
         Assert.True(report.IsCompletedWithProblems);
         Assert.Equal("40.0%", report.SuccessPercentText);
-        Assert.Equal(fixture.Host.Localizer.Format("ReportSummaryFormat", 2, 3), report.SummaryText);
+        Assert.Equal(fixture.Host.Localizer.Format("ReportSummaryFormat", 2, 3, 1), report.SummaryText);
 
         // 失败项在前，清理失败紧跟对应的成功项
         Assert.Equal(
@@ -77,9 +76,23 @@ public class TaskReportViewModelTests
         Assert.Equal("/out/ok1.jpg", ok.LocatePath);
 
         var bad = report.Items.First(i => i.IsFailed);
-        Assert.Equal("写入失败", bad.Detail);
+        Assert.Equal(localizer["OutcomeReasonUnexpected"], bad.Detail);
+        Assert.Equal("写入失败", bad.TechnicalDetail);
+        Assert.True(bad.HasTechnicalDetail);
         Assert.Equal("/in/bad1.jpg", bad.LocatePath);
-        Assert.Equal(localizer["ReportStatusCleanup"], report.Items.Single(i => i.Status == TaskItemStatus.Cleanup).StatusText);
+
+        var missingTool = report.Items.Single(i => i.SourcePath == "/in/bad2.jpg");
+        Assert.Equal(localizer.Format("ToolMissingFormat", "ffmpeg"), missingTool.Detail);
+        Assert.Equal("未找到 ffmpeg", missingTool.TechnicalDetail);
+
+        Assert.Equal(localizer["OutcomeReasonNotMotionPhoto"], report.Items.Single(i => i.Status == TaskItemStatus.Skipped).Detail);
+
+        var cleanup = report.Items.Single(i => i.Status == TaskItemStatus.Cleanup);
+        Assert.Equal(localizer["ReportStatusCleanup"], cleanup.StatusText);
+        Assert.Equal(localizer["ReportCleanupFailedDesc"], cleanup.Detail);
+        Assert.Equal("ok2.jpg: Access denied", cleanup.TechnicalDetail);
+        Assert.False(ok.HasTechnicalDetail);
+        Assert.False(ok.HasExtras);
     }
 
     [Fact]
@@ -135,8 +148,8 @@ public class TaskReportViewModelTests
         var forcedBad = new MediaPair("/in/c.jpg", "/in/c.mov");
         var runner = ScriptedRunner.Returning(Jobs.Report(
             ItemOutcome.Succeeded(good.PhotoPath, "/out/MVIMG_a.jpg"),
-            ItemOutcome.Failed(bad.PhotoPath, "x"),
-            ItemOutcome.Failed(forcedBad.PhotoPath, "y")));
+            ItemOutcome.Failed(bad.PhotoPath, OutcomeReason.Unexpected, "x"),
+            ItemOutcome.Failed(forcedBad.PhotoPath, OutcomeReason.Unexpected, "y")));
         using var fixture = new TaskCenterFixture(runner);
         var job = new ConversionJob(
             ConversionAction.ToAndroid,
@@ -215,7 +228,7 @@ public class TaskReportViewModelTests
         var report = new BatchReport(
         [
             ItemOutcome.Succeeded("/in/a,b.jpg", "/out/a,b.jpg"),
-            ItemOutcome.Failed("/in/=cmd.jpg", "说 \"不\"")
+            ItemOutcome.Failed("/in/=cmd.jpg", OutcomeReason.Unexpected, "说 \"不\"")
         ], TimeSpan.FromSeconds(2), Canceled: false);
         using var fixture = new TaskCenterFixture(ScriptedRunner.Returning(report));
         var vm = await fixture.Center.RunAsync(Jobs.Files(ConversionAction.Extract, "/out", "/in/a,b.jpg", "/in/=cmd.jpg")).Within();
@@ -230,7 +243,7 @@ public class TaskReportViewModelTests
         var localizer = fixture.Host.Localizer;
         Assert.Equal(CsvWriter.FormatRow([
             localizer["ReportCsvStatus"], localizer["ReportCsvFileName"], localizer["ReportCsvSourceFormat"], localizer["ReportCsvTargetFormat"],
-            localizer["ReportCsvDetail"], localizer["ReportCsvSourcePath"], localizer["ReportCsvOutputPath"]]), lines[0]);
+            localizer["ReportCsvDetail"], localizer["ReportCsvTechnicalDetail"], localizer["ReportCsvSourcePath"], localizer["ReportCsvOutputPath"]]), lines[0]);
         Assert.Equal(3, lines.Length);
         Assert.StartsWith($"{localizer["ReportStatusFailed"]},'=cmd.jpg,JPG,", lines[1]);
         Assert.Contains("\"说 \"\"不\"\"\"", lines[1]);
@@ -267,6 +280,121 @@ public class TaskReportViewModelTests
         Assert.Equal(fixture.Host.Localizer["ExportCsvFailedTitle"], alert.Title);
         alert.ConfirmCommand.Execute(null);
         await export.Within();
+    }
+
+    [Fact]
+    public async Task Metrics_ProblemsAreFailedPlusCleanupAndSkippedIsSeparate()
+    {
+        using var fixture = new TaskCenterFixture(ScriptedRunner.Returning(MixedReport));
+        var localizer = fixture.Host.Localizer;
+        var report = await fixture.Center.RunAsync(SplitJob()).Within();
+
+        // 指标卡、摘要行与图例使用同一组数：异常 = 失败 + 清理失败，跳过单列
+        Assert.Equal(report.FailedCount + report.CleanupCount, report.ProblemCount);
+        Assert.Equal(localizer.Format("ReportSummaryFormat", report.SuccessCount, report.ProblemCount, report.SkippedCount), report.SummaryText);
+        Assert.Equal(localizer.Format("ReportKpiProblemsSubFormat", 2, 1), report.ProblemSubText);
+        Assert.Equal("5", report.TotalText);
+        Assert.Equal(5, report.PlannedCount);
+        Assert.Equal(localizer["ReportKpiTotalSub"], report.TotalSubText);
+
+        // "异常与跳过"筛选恰好包含异常项与跳过项
+        report.SetFilterCommand.Execute(TaskReportViewModel.FilterProblems);
+        Assert.Equal(report.ProblemCount + report.SkippedCount, report.FilteredItems.Count);
+    }
+
+    [Fact]
+    public async Task CanceledReport_ShowsProcessedAgainstPlannedTotal()
+    {
+        var runner = new ScriptedRunner((_, progress, _) =>
+        {
+            progress!.Report(new BatchProgress(2, 50, "a.jpg"));
+            return Task.FromResult(new BatchReport(
+                [ItemOutcome.Succeeded("/in/a.jpg", "/out/a.jpg"), ItemOutcome.Skipped("/in/b.jpg", OutcomeReason.NotMotionPhoto)],
+                TimeSpan.FromSeconds(1),
+                Canceled: true));
+        });
+        using var fixture = new TaskCenterFixture(runner);
+        var files = Enumerable.Range(0, 50).Select(i => $"/in/{i}.jpg").ToArray();
+
+        var report = await fixture.Center.RunAsync(Jobs.Files(ConversionAction.Extract, "/out", files)).Within();
+
+        Assert.True(report.WasCanceled);
+        Assert.Equal(2, report.TotalCount);
+        Assert.Equal(50, report.PlannedCount);
+        Assert.Equal("2 / 50", report.TotalText);
+        Assert.Equal(fixture.Host.Localizer["ReportKpiTotalCanceledSub"], report.TotalSubText);
+    }
+
+    [Fact]
+    public async Task CanceledBeforeAnyProgress_UsesJobSizeAsPlannedTotal()
+    {
+        var runner = ScriptedRunner.Returning(new BatchReport([], TimeSpan.Zero, Canceled: true));
+        using var fixture = new TaskCenterFixture(runner);
+
+        var report = await fixture.Center.RunAsync(Jobs.Files(ConversionAction.Extract, "/out", "/in/a.jpg", "/in/b.jpg", "/in/c.jpg")).Within();
+
+        Assert.Equal("0 / 3", report.TotalText);
+    }
+
+    [Fact]
+    public async Task Notes_AreShownAsLocalizedTagsWithDetails()
+    {
+        var outcome = ItemOutcome.Succeeded("/in/a.heic", "/out/MVIMG_a.jpg") with
+        {
+            Notes = [new OutcomeNote(OutcomeNoteKind.UltraHdrWritten), new OutcomeNote(OutcomeNoteKind.HdrConversionFailed, "gain map decode failed")]
+        };
+        using var fixture = new TaskCenterFixture(ScriptedRunner.Returning(Jobs.Report(outcome)));
+        var localizer = fixture.Host.Localizer;
+
+        var report = await fixture.Center.RunAsync(Jobs.Files(ConversionAction.Extract, "/out", "/in/a.heic")).Within();
+
+        var item = Assert.Single(report.Items);
+        Assert.True(item.HasTags);
+        Assert.Equal(
+            [
+                new TaskReportTag(localizer["OutcomeNoteUltraHdrWritten"], null, true),
+                new TaskReportTag(localizer["OutcomeNoteHdrConversionFailed"], "gain map decode failed", false)
+            ],
+            item.Tags);
+        Assert.Contains("gain map decode failed", item.TechnicalDetail);
+        Assert.True(item.HasExtras);
+    }
+
+    [Fact]
+    public async Task MultipleCauses_AreJoinedOnSeparateLines()
+    {
+        var outcome = ItemOutcome.Skipped(
+            "/in/a.jpg",
+            new OutcomeCause(OutcomeReason.PairCaptureTimeClose, 1d),
+            new OutcomeCause(OutcomeReason.PairVideoTooLong, 45d, 30d));
+        using var fixture = new TaskCenterFixture(ScriptedRunner.Returning(Jobs.Report(outcome)));
+        var localizer = fixture.Host.Localizer;
+
+        var report = await fixture.Center.RunAsync(Jobs.Files(ConversionAction.Extract, "/out", "/in/a.jpg")).Within();
+
+        Assert.Equal(
+            localizer.Format("OutcomeReasonPairTimeCloseFormat", 1d) + Environment.NewLine + localizer.Format("OutcomeReasonPairVideoTooLongFormat", 45d, 30d),
+            Assert.Single(report.Items).Detail);
+    }
+
+    [Fact]
+    public async Task FatalFailure_KeepsExceptionMessageAsTechnicalDetailOnlyWhenItAddsInformation()
+    {
+        var runner = new ScriptedRunner((_, _, _) => Task.FromException<BatchReport>(new OutcomeException(OutcomeReason.VerificationFailed, "layout mismatch")));
+        using var fixture = new TaskCenterFixture(runner);
+
+        var report = await fixture.Center.RunAsync(Jobs.Files(ConversionAction.Extract, "/out", "/in/a.jpg")).Within();
+
+        Assert.Equal(fixture.Host.Localizer["OutcomeReasonVerificationFailed"], report.ErrorMessage);
+        var item = Assert.Single(report.Items);
+        Assert.Equal(report.ErrorMessage, item.Detail);
+        Assert.Equal("layout mismatch", item.TechnicalDetail);
+
+        // 未归类的异常直接显示原文，展开区不再重复
+        using var generic = new TaskCenterFixture(new ScriptedRunner((_, _, _) => Task.FromException<BatchReport>(new IOException("disk full"))));
+        var genericReport = await generic.Center.RunAsync(Jobs.Files(ConversionAction.Extract, "/out", "/in/a.jpg")).Within();
+        Assert.Equal("disk full", genericReport.ErrorMessage);
+        Assert.Null(Assert.Single(genericReport.Items).TechnicalDetail);
     }
 
     private static async Task WaitForAsync(Func<bool> condition)

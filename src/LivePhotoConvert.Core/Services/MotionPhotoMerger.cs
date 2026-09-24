@@ -108,7 +108,7 @@ public sealed class MotionPhotoMerger(
         var skipped = new List<ItemOutcome>();
 
         PairValidationResult Validate(MediaPair pair) =>
-            forced.Contains(pair) ? PairValidationResult.Accept(["人工确认配对"])
+            forced.Contains(pair) ? PairValidationResult.Accept(OutcomeReason.PairManuallyConfirmed)
             : skipValidation ? PairValidationResult.Accept()
             : PairValidator.Validate(tags[pair.PhotoPath], tags[pair.VideoPath]);
 
@@ -121,7 +121,7 @@ public sealed class MotionPhotoMerger(
             }
             else
             {
-                skipped.Add(ItemOutcome.Skipped(pair.PhotoPath, result.Summary));
+                skipped.Add(ItemOutcome.Skipped(pair.PhotoPath, result.Causes));
             }
         }
 
@@ -131,7 +131,7 @@ public sealed class MotionPhotoMerger(
             var selected = results.FirstOrDefault(x => forced.Contains(x.Pair)).Pair ?? results.FirstOrDefault(x => x.Result.IsAccepted).Pair;
             if (selected is null)
             {
-                skipped.Add(ItemOutcome.Skipped(group.First().PhotoPath, string.Join("；", results.SelectMany(x => x.Result.Reasons).Distinct())));
+                skipped.Add(ItemOutcome.Skipped(group.First().PhotoPath, [.. results.SelectMany(x => x.Result.Causes).Distinct()]));
             }
             else
             {
@@ -152,8 +152,11 @@ public sealed class MotionPhotoMerger(
         TempWorkspace workspace,
         CancellationToken cancellationToken)
     {
-        EnsureNotEmpty(pair.PhotoPath, "照片");
-        EnsureNotEmpty(pair.VideoPath, "视频");
+        if ((MissingOrEmpty(pair.PhotoPath) ?? MissingOrEmpty(pair.VideoPath)) is { } missing)
+        {
+            return ItemOutcome.Failed(pair.PhotoPath, new OutcomeCause(OutcomeReason.SourceMissingOrEmpty, Path.GetFileName(missing)));
+        }
+
         var videoTags = tags[pair.VideoPath];
         var notes = new List<OutcomeNote>();
 
@@ -220,14 +223,14 @@ public sealed class MotionPhotoMerger(
             var (photoLength, _) = await BinaryFile.ConcatAsync(finalCover, video, staging, cancellationToken);
             if (MotionPhotoLayout.Locate(staging) is not { } located || located.ImageEnd != photoLength || located.Offset != photoLength || located.Length != videoLength)
             {
-                throw new InvalidDataException("合成结果校验失败：无法在输出文件中按声明的位置定位到内嵌视频。");
+                throw new OutcomeException(OutcomeReason.VerificationFailed, "合成结果校验失败：无法在输出文件中按声明的位置定位到内嵌视频。");
             }
 
             if (finalCover == ultraHdrCover)
             {
                 if (UltraHdrJpegWriter.Inspect(staging) is not { IsPrimaryLengthConsistent: true } layout || layout.ImageEnd != photoLength || !MotionPhotoLayout.Inspect(staging).HasGainMap)
                 {
-                    throw new InvalidDataException("合成结果校验失败：增益图位置与声明不一致。");
+                    throw new OutcomeException(OutcomeReason.VerificationFailed, "合成结果校验失败：增益图位置与声明不一致。");
                 }
 
                 notes.Add(new OutcomeNote(OutcomeNoteKind.UltraHdrWritten));
@@ -387,12 +390,9 @@ public sealed class MotionPhotoMerger(
         return (timestamp.CreationTimeUtc < timestamp.LastWriteTimeUtc ? timestamp.CreationTimeUtc : timestamp.LastWriteTimeUtc).ToLocalTime();
     }
 
-    private static void EnsureNotEmpty(string path, string kind)
+    private static string? MissingOrEmpty(string path)
     {
         var info = new FileInfo(path);
-        if (!info.Exists || info.Length == 0)
-        {
-            throw new InvalidDataException($"{kind}文件不存在或为空：{Path.GetFileName(path)}");
-        }
+        return info.Exists && info.Length > 0 ? null : path;
     }
 }

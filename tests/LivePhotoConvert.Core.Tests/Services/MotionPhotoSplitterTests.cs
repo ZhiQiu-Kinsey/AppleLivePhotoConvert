@@ -1,3 +1,5 @@
+using LivePhotoConvert.Core.External;
+using LivePhotoConvert.Core.Abstractions;
 using LivePhotoConvert.Core.Media;
 using LivePhotoConvert.Core.Metadata;
 using LivePhotoConvert.Core.Pipeline;
@@ -83,7 +85,9 @@ public class MotionPhotoSplitterTests
 
         var report = await SplitAsync(temp, [plain], action: SourceFileAction.Delete);
 
-        Assert.Equal(OutcomeKind.Skipped, Assert.Single(report.Items).Kind);
+        var item = Assert.Single(report.Items);
+        Assert.Equal(OutcomeKind.Skipped, item.Kind);
+        Assert.Equal([(OutcomeCause)OutcomeReason.NotMotionPhoto], item.Causes);
         Assert.True(File.Exists(plain));
     }
 
@@ -96,7 +100,9 @@ public class MotionPhotoSplitterTests
 
         var report = await SplitAsync(temp, [source], action: SourceFileAction.Delete);
 
-        Assert.Equal(OutcomeKind.Skipped, Assert.Single(report.Items).Kind);
+        var item = Assert.Single(report.Items);
+        Assert.Equal(OutcomeKind.Skipped, item.Kind);
+        Assert.Equal(OutcomeReason.NotMotionPhoto, item.Reason);
         Assert.True(File.Exists(source));
     }
 
@@ -123,7 +129,10 @@ public class MotionPhotoSplitterTests
 
         var report = await SplitAsync(temp, [source], action: SourceFileAction.Delete);
 
-        Assert.Equal(OutcomeKind.Failed, Assert.Single(report.Items).Kind);
+        var item = Assert.Single(report.Items);
+        Assert.Equal(OutcomeKind.Failed, item.Kind);
+        Assert.Equal(OutcomeReason.Unexpected, item.Reason);
+        Assert.Contains("模拟 ExifTool 写入失败", item.Detail);
         Assert.True(File.Exists(source));
         Assert.Empty(temp.FileNames("out"));
     }
@@ -203,5 +212,34 @@ public class MotionPhotoSplitterTests
         var report = await SplitAsync(temp, [source]);
 
         Assert.All(Assert.Single(report.Items).Outputs, output => Assert.Equal(old, File.GetLastWriteTimeUtc(output)));
+    }
+
+    [Fact]
+    public async Task RestoreApple_VideoRemuxFails_ReportsVideoConversionFailed()
+    {
+        using var temp = new TempDirectory();
+        var source = temp.CreateFile("MVIMG_0001.jpg", SyntheticMedia.MotionPhoto());
+        _videos.Failure = new VideoConversionException(VideoConversionError.EncodeFailed, "换容器失败");
+
+        var report = await SplitAsync(temp, [source], SplitTarget.Apple, SourceFileAction.Delete);
+
+        var item = Assert.Single(report.Items);
+        Assert.Equal([(OutcomeCause)OutcomeReason.VideoConversionFailed], item.Causes);
+        Assert.Equal("换容器失败", item.Detail);
+        Assert.True(File.Exists(source));
+    }
+
+    [Fact]
+    public async Task RestoreApple_WithoutVideoConverter_ThrowsToolNotFound()
+    {
+        using var temp = new TempDirectory();
+        var source = temp.CreateFile("MVIMG_0001.jpg", SyntheticMedia.MotionPhoto());
+        var splitter = new MotionPhotoSplitter(_metadata, _images, videoConverter: null);
+
+        var error = await Assert.ThrowsAsync<ToolNotFoundException>(() => splitter.SplitAsync(
+            new SplitRequest { Files = [source], Output = new OutputOptions(temp.Combine("out")), Target = SplitTarget.Apple },
+            cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Equal(FfmpegVideoConverter.ExecutableName, error.ToolName);
     }
 }

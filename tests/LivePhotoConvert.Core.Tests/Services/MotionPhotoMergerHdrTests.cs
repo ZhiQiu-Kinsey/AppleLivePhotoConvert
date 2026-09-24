@@ -41,7 +41,7 @@ public class MotionPhotoMergerHdrTests
             },
             cancellationToken: Token);
         var outcome = Assert.Single(report.Items);
-        Assert.True(outcome.Kind == OutcomeKind.Succeeded, outcome.Message);
+        Assert.True(outcome.Kind == OutcomeKind.Succeeded, outcome.Detail);
         return (outcome, photo);
     }
 

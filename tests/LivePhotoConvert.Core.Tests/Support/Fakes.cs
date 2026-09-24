@@ -132,14 +132,27 @@ internal sealed class FakeVideoConverter : IVideoConverter
 
     public ConcurrentBag<string> MovRemuxes { get; } = [];
 
+    /// <summary>不为 <c>null</c> 时每次转换都抛出该异常。</summary>
+    public Exception? Failure { get; set; }
+
     public Task ConvertToMp4Async(string sourcePath, string destinationPath, VideoConversionOptions? options = null, CancellationToken cancellationToken = default)
     {
+        if (Failure is not null)
+        {
+            return Task.FromException(Failure);
+        }
+
         Mp4Conversions.Add((sourcePath, options ?? VideoConversionOptions.Default));
         return File.WriteAllBytesAsync(destinationPath, SyntheticMedia.Mp4((int)new FileInfo(sourcePath).Length), cancellationToken);
     }
 
     public Task RemuxToMovAsync(string sourcePath, string destinationPath, VideoConversionOptions? options = null, CancellationToken cancellationToken = default)
     {
+        if (Failure is not null)
+        {
+            return Task.FromException(Failure);
+        }
+
         MovRemuxes.Add(sourcePath);
         return File.WriteAllBytesAsync(destinationPath, SyntheticMedia.Mov((int)new FileInfo(sourcePath).Length), cancellationToken);
     }

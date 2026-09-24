@@ -170,6 +170,7 @@ global.json                         # 固定 SDK 10.0.400（避免误用 11 prev
 - 格式串以 `Format` 结尾，中英两版占位符编号必须一致；日期格式也放进资源（如 `GroupTitleMonthFormat`）。
 - XAML 里 `&`、`<`、`>` 需转义；带前导/尾随空格的值加 `xml:space="preserve"`。
 - 缺失键在 Debug 下会触发 `Debug.Fail`（测试进程会直接终止），发布版返回键名。
+- **Core 只返回原因码与参数，界面文案由 Desktop 本地化**：跳过/失败原因用 `OutcomeReason` + 参数（`OutcomeCause`），附注用 `OutcomeNoteKind`，异常原文只放 `ItemOutcome.Detail` 供日志与详情展开；`Features/Tasks/OutcomeTexts` 把每个枚举值映射到一个字符串键，新增枚举值须同步两份 Strings（测试遍历枚举校验）。
 
 ### 4.7 语言风格
 

@@ -254,15 +254,15 @@
   <sys:String x:Key="ReportKpiTotalSub">Scanned &amp; paired</sys:String>
   <sys:String x:Key="ReportKpiSuccess">Succeeded</sys:String>
   <sys:String x:Key="ReportKpiSuccessRate">Success Rate</sys:String>
-  <sys:String x:Key="ReportKpiFailed">Errors / Skipped</sys:String>
-  <sys:String x:Key="ReportKpiFailedSub">Needs attention or retry</sys:String>
+  <sys:String x:Key="ReportKpiProblems">Issues</sys:String>
+  <sys:String x:Key="ReportKpiProblemsSubFormat">Failed {0} · Cleanup {1}</sys:String>
   <sys:String x:Key="ReportKpiDuration">Total Batch Time</sys:String>
   <sys:String x:Key="ReportDistTitle">Result Distribution</sys:String>
   <sys:String x:Key="ReportLegendSuccess">Success:</sys:String>
   <sys:String x:Key="ReportLegendSkipped">Skipped:</sys:String>
-  <sys:String x:Key="ReportLegendFailed">Failed:</sys:String>
+  <sys:String x:Key="ReportLegendProblems">Issues:</sys:String>
   <sys:String x:Key="ReportDetailAll">All Details</sys:String>
-  <sys:String x:Key="ReportDetailFailedOnly">Errors / Skipped Only</sys:String>
+  <sys:String x:Key="ReportDetailProblems">Issues &amp; Skipped</sys:String>
   <sys:String x:Key="ReportDetailSuccessOnly">Succeeded Only</sys:String>
   <sys:String x:Key="ReportDetailTitle">Detailed Execution Log</sys:String>
   <sys:String x:Key="ReportCsvStatus">Status</sys:String>
@@ -310,7 +310,7 @@
   <sys:String x:Key="ToolMissingFormat">{0} was not found. Download it or set its path on the Engines page.</sys:String>
   <sys:String x:Key="ToolReady">Ready</sys:String>
   <sys:String x:Key="ReportTimestampFormat">Batch completed: {0:yyyy-MM-dd HH:mm:ss}</sys:String>
-  <sys:String x:Key="ReportSummaryFormat">Succeeded {0} · Issues {1}</sys:String>
+  <sys:String x:Key="ReportSummaryFormat">Succeeded {0} · Issues {1} · Skipped {2}</sys:String>
   <sys:String x:Key="ReportStatusSuccess">Success</sys:String>
   <sys:String x:Key="ReportStatusFailed">Failed</sys:String>
   <sys:String x:Key="ReportStatusSkipped">Skipped</sys:String>
@@ -406,5 +406,37 @@
   <sys:String x:Key="SettingsAppearanceTitle">Appearance &amp; language</sys:String>
   <sys:String x:Key="SettingsBehaviorTitle">Tasks &amp; performance</sys:String>
   <sys:String x:Key="ReportGoLibraryBtn">Go to Library</sys:String>
+
+  <!-- Task report: outcome reasons and notes (Core reason codes) -->
+  <sys:String x:Key="ReportKpiTotalCanceledSub">Processed / planned</sys:String>
+  <sys:String x:Key="ReportDetailToggle">Details</sys:String>
+  <sys:String x:Key="ReportCsvTechnicalDetail">Technical details</sys:String>
+  <sys:String x:Key="ReportCleanupFailedDesc">Output saved, but the source file could not be handled as selected</sys:String>
+  <sys:String x:Key="OutcomeReasonNotMotionPhoto">Not a motion photo (no embedded video found)</sys:String>
+  <sys:String x:Key="OutcomeReasonNothingToStrip">No embedded video and no format conversion needed</sys:String>
+  <sys:String x:Key="OutcomeReasonGainMapPreserved">Has an HDR gain map and no embedded video; kept as is to preserve HDR</sys:String>
+  <sys:String x:Key="OutcomeReasonPairIdMatchedFormat">ContentIdentifier matches: {0}</sys:String>
+  <sys:String x:Key="OutcomeReasonPairIdMismatchFormat">ContentIdentifier mismatch: photo {0}, video {1}</sys:String>
+  <sys:String x:Key="OutcomeReasonPairIdPhotoOnly">Only the photo has a ContentIdentifier; unlikely to be the same Live Photo</sys:String>
+  <sys:String x:Key="OutcomeReasonPairIdVideoOnly">Only the video has a ContentIdentifier; unlikely to be the same Live Photo</sys:String>
+  <sys:String x:Key="OutcomeReasonPairTimeCloseFormat">Capture times differ by {0:F1} s</sys:String>
+  <sys:String x:Key="OutcomeReasonPairTimeTooFarFormat">Capture times differ by {0:F0} s, over the {1:F0} s limit</sys:String>
+  <sys:String x:Key="OutcomeReasonPairTimePhotoOnly">Only the photo has a capture time; unlikely to be the same Live Photo</sys:String>
+  <sys:String x:Key="OutcomeReasonPairTimeVideoOnly">Only the video has a capture time; unlikely to be the same Live Photo</sys:String>
+  <sys:String x:Key="OutcomeReasonPairDurationFormat">Video length {0:F1} s</sys:String>
+  <sys:String x:Key="OutcomeReasonPairVideoTooLongFormat">Video is {0:F1} s long, over {1:F0} s; not a Live Photo video</sys:String>
+  <sys:String x:Key="OutcomeReasonPairNameOnly">No metadata to verify; matched by file name</sys:String>
+  <sys:String x:Key="OutcomeReasonPairManual">Pair confirmed manually</sys:String>
+  <sys:String x:Key="OutcomeReasonSourceMissingFormat">Source file is missing or empty: {0}</sys:String>
+  <sys:String x:Key="OutcomeReasonVideoConversionFailed">Video conversion failed</sys:String>
+  <sys:String x:Key="OutcomeReasonHdrEncoderUnavailable">The source video is HDR, but FFmpeg lacks the 10-bit HEVC encoder (libx265); not converted to avoid quality loss</sys:String>
+  <sys:String x:Key="OutcomeReasonVerificationFailed">Output verification failed; nothing was written</sys:String>
+  <sys:String x:Key="OutcomeReasonUnexpected">Processing failed; expand details for the cause</sys:String>
+  <sys:String x:Key="OutcomeNoteUltraHdrWritten">Ultra HDR</sys:String>
+  <sys:String x:Key="OutcomeNoteHdrGainMapMissing">No HDR gain map</sys:String>
+  <sys:String x:Key="OutcomeNoteHdrToneMapNotSupported">HDR format not supported yet · SDR</sys:String>
+  <sys:String x:Key="OutcomeNoteHdrDecoderUnavailable">heif-dec missing · SDR</sys:String>
+  <sys:String x:Key="OutcomeNoteHdrMetadataMissing">HDR metadata insufficient · SDR</sys:String>
+  <sys:String x:Key="OutcomeNoteHdrConversionFailed">HDR conversion failed · SDR</sys:String>
 
 </ResourceDictionary>

@@ -254,15 +254,15 @@
   <sys:String x:Key="ReportKpiTotalSub">已完成扫描配对</sys:String>
   <sys:String x:Key="ReportKpiSuccess">转换成功</sys:String>
   <sys:String x:Key="ReportKpiSuccessRate">成功率</sys:String>
-  <sys:String x:Key="ReportKpiFailed">异常/跳过</sys:String>
-  <sys:String x:Key="ReportKpiFailedSub">需关注或重试项</sys:String>
+  <sys:String x:Key="ReportKpiProblems">异常</sys:String>
+  <sys:String x:Key="ReportKpiProblemsSubFormat">失败 {0} · 清理失败 {1}</sys:String>
   <sys:String x:Key="ReportKpiDuration">批次总耗时</sys:String>
   <sys:String x:Key="ReportDistTitle">处理结果分布指标</sys:String>
   <sys:String x:Key="ReportLegendSuccess">成功:</sys:String>
   <sys:String x:Key="ReportLegendSkipped">跳过:</sys:String>
-  <sys:String x:Key="ReportLegendFailed">失败:</sys:String>
+  <sys:String x:Key="ReportLegendProblems">异常:</sys:String>
   <sys:String x:Key="ReportDetailAll">全部明细</sys:String>
-  <sys:String x:Key="ReportDetailFailedOnly">仅异常/失败</sys:String>
+  <sys:String x:Key="ReportDetailProblems">仅异常与跳过</sys:String>
   <sys:String x:Key="ReportDetailSuccessOnly">仅成功</sys:String>
   <sys:String x:Key="ReportDetailTitle">详细执行记录清单</sys:String>
   <sys:String x:Key="ReportCsvStatus">状态</sys:String>
@@ -310,7 +310,7 @@
   <sys:String x:Key="ToolMissingFormat">未找到 {0}，请在「依赖引擎」页面下载或指定路径。</sys:String>
   <sys:String x:Key="ToolReady">已就绪</sys:String>
   <sys:String x:Key="ReportTimestampFormat">批次完成时间：{0:yyyy-MM-dd HH:mm:ss}</sys:String>
-  <sys:String x:Key="ReportSummaryFormat">成功 {0} 项 · 异常 {1} 项</sys:String>
+  <sys:String x:Key="ReportSummaryFormat">成功 {0} 项 · 异常 {1} 项 · 跳过 {2} 项</sys:String>
   <sys:String x:Key="ReportStatusSuccess">成功</sys:String>
   <sys:String x:Key="ReportStatusFailed">失败</sys:String>
   <sys:String x:Key="ReportStatusSkipped">跳过</sys:String>
@@ -406,5 +406,37 @@
   <sys:String x:Key="SettingsAppearanceTitle">外观与语言</sys:String>
   <sys:String x:Key="SettingsBehaviorTitle">任务与性能</sys:String>
   <sys:String x:Key="ReportGoLibraryBtn">前往图库</sys:String>
+
+  <!-- 任务报告：结果原因与附注（对应 Core 原因码） -->
+  <sys:String x:Key="ReportKpiTotalCanceledSub">已处理 / 计划</sys:String>
+  <sys:String x:Key="ReportDetailToggle">详情</sys:String>
+  <sys:String x:Key="ReportCsvTechnicalDetail">技术细节</sys:String>
+  <sys:String x:Key="ReportCleanupFailedDesc">输出已保存，但按所选方式处理源文件时出错</sys:String>
+  <sys:String x:Key="OutcomeReasonNotMotionPhoto">不是动态照片（未找到内嵌视频）</sys:String>
+  <sys:String x:Key="OutcomeReasonNothingToStrip">无内嵌视频，且无需转换格式</sys:String>
+  <sys:String x:Key="OutcomeReasonGainMapPreserved">带 HDR 增益图且无内嵌视频，为保留 HDR 不转码</sys:String>
+  <sys:String x:Key="OutcomeReasonPairIdMatchedFormat">ContentIdentifier 一致：{0}</sys:String>
+  <sys:String x:Key="OutcomeReasonPairIdMismatchFormat">ContentIdentifier 不匹配：照片 {0}，视频 {1}</sys:String>
+  <sys:String x:Key="OutcomeReasonPairIdPhotoOnly">仅照片含 ContentIdentifier，不像是同一张实况照片</sys:String>
+  <sys:String x:Key="OutcomeReasonPairIdVideoOnly">仅视频含 ContentIdentifier，不像是同一张实况照片</sys:String>
+  <sys:String x:Key="OutcomeReasonPairTimeCloseFormat">拍摄时间差 {0:F1} 秒</sys:String>
+  <sys:String x:Key="OutcomeReasonPairTimeTooFarFormat">拍摄时间差 {0:F0} 秒，超过 {1:F0} 秒阈值</sys:String>
+  <sys:String x:Key="OutcomeReasonPairTimePhotoOnly">仅照片含拍摄时间，不像是同一张实况照片</sys:String>
+  <sys:String x:Key="OutcomeReasonPairTimeVideoOnly">仅视频含拍摄时间，不像是同一张实况照片</sys:String>
+  <sys:String x:Key="OutcomeReasonPairDurationFormat">视频时长 {0:F1} 秒</sys:String>
+  <sys:String x:Key="OutcomeReasonPairVideoTooLongFormat">视频时长 {0:F1} 秒，超过 {1:F0} 秒，不像实况视频</sys:String>
+  <sys:String x:Key="OutcomeReasonPairNameOnly">缺少可校验的元数据，按文件名匹配</sys:String>
+  <sys:String x:Key="OutcomeReasonPairManual">人工确认配对</sys:String>
+  <sys:String x:Key="OutcomeReasonSourceMissingFormat">源文件不存在或为空：{0}</sys:String>
+  <sys:String x:Key="OutcomeReasonVideoConversionFailed">视频转换失败</sys:String>
+  <sys:String x:Key="OutcomeReasonHdrEncoderUnavailable">源视频为 HDR，但 FFmpeg 缺少 10-bit HEVC 编码器（libx265），为避免画质下降未转换</sys:String>
+  <sys:String x:Key="OutcomeReasonVerificationFailed">输出校验未通过，已放弃写出</sys:String>
+  <sys:String x:Key="OutcomeReasonUnexpected">处理出错，展开详情查看原因</sys:String>
+  <sys:String x:Key="OutcomeNoteUltraHdrWritten">Ultra HDR</sys:String>
+  <sys:String x:Key="OutcomeNoteHdrGainMapMissing">无 HDR 增益图</sys:String>
+  <sys:String x:Key="OutcomeNoteHdrToneMapNotSupported">HDR 格式暂不支持，已输出 SDR</sys:String>
+  <sys:String x:Key="OutcomeNoteHdrDecoderUnavailable">缺少 heif-dec，已输出 SDR</sys:String>
+  <sys:String x:Key="OutcomeNoteHdrMetadataMissing">HDR 元数据不足，已输出 SDR</sys:String>
+  <sys:String x:Key="OutcomeNoteHdrConversionFailed">HDR 转换失败，已输出 SDR</sys:String>
 
 </ResourceDictionary>

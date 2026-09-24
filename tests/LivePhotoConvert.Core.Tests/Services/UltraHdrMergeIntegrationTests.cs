@@ -128,7 +128,7 @@ public class UltraHdrMergeIntegrationTests
             cancellationToken: Token);
 
         var outcome = Assert.Single(report.Items);
-        Assert.True(outcome.Kind == OutcomeKind.Succeeded, outcome.Message);
+        Assert.True(outcome.Kind == OutcomeKind.Succeeded, outcome.Detail);
         var slim = Assert.Single(outcome.Outputs);
         Assert.Equal(".jpg", Path.GetExtension(slim));
         var layout = MotionPhotoLayout.Inspect(slim);
@@ -197,7 +197,7 @@ public class UltraHdrMergeIntegrationTests
             },
             cancellationToken: Token);
         var outcome = Assert.Single(report.Items);
-        Assert.True(outcome.Kind == OutcomeKind.Succeeded, outcome.Message);
+        Assert.True(outcome.Kind == OutcomeKind.Succeeded, outcome.Detail);
         return outcome;
     }
 

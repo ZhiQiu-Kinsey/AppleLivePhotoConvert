@@ -178,7 +178,7 @@ public class ConversionRunnerTests : IDisposable
             Token);
 
         var outcome = Assert.Single(report.Items);
-        Assert.True(outcome.Kind == OutcomeKind.Succeeded, outcome.Message);
+        Assert.True(outcome.Kind == OutcomeKind.Succeeded, outcome.Detail);
         Assert.Equal(2, outcome.Outputs.Count);
         Assert.All(outcome.Outputs, o => Assert.True(File.Exists(o)));
     }
