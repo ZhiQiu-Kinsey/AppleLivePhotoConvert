@@ -37,7 +37,7 @@ public sealed class ThumbnailDiskCache
         _time = timeProvider ?? TimeProvider.System;
     }
 
-    /// <summary>默认缓存目录（本机应用数据）。与旧版平铺的 cache/thumbs 分开，互不干扰。</summary>
+    /// <summary>默认缓存目录（本机应用数据），与启动时整体删除的遗留目录 cache/thumbs 分开。</summary>
     public static string DefaultRoot { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.DoNotVerify),
         "LivePhotoConvert", "cache", "thumbnails");

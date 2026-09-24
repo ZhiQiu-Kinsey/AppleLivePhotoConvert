@@ -314,7 +314,7 @@ public class LibraryScannerTests
         var expected = PairValidator.Validate(ExpectedPhotoMetadata(photo, @case), ExpectedVideoMetadata(video, @case));
         Assert.Equal(@case.Accepted, expected.IsAccepted);
         Assert.Equal(expected.IsAccepted, item.PairValidation?.IsAccepted);
-        Assert.Equal(expected.Reasons, item.PairValidation?.Reasons);
+        Assert.Equal(expected.Causes, item.PairValidation?.Causes);
         Assert.Equal(!expected.IsAccepted, item.RequiresPairReview);
     }
 

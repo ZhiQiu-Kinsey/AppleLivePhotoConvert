@@ -12,7 +12,10 @@ public sealed record MediaPair(string PhotoPath, string VideoPath, bool IsConten
     public string Name => Path.GetFileNameWithoutExtension(PhotoPath);
 
     /// <summary>同名候选的分组键：同一目录下的同一文件名主干。</summary>
-    public string GroupKey => Path.Combine(Path.GetDirectoryName(Path.GetFullPath(PhotoPath)) ?? string.Empty, Name);
+    public string GroupKey => GroupKeyOf(PhotoPath);
+
+    internal static string GroupKeyOf(string path) =>
+        Path.Combine(Path.GetDirectoryName(Path.GetFullPath(path)) ?? string.Empty, Path.GetFileNameWithoutExtension(path));
 }
 
 /// <summary>

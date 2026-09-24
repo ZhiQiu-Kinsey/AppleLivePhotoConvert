@@ -38,10 +38,10 @@ public static class MediaPairMatcher
         }
 
         var videosByKey = videos.Where(video => !used.Contains(video))
-                                .GroupBy(GroupKey, KeyComparer)
+                                .GroupBy(MediaPair.GroupKeyOf, KeyComparer)
                                 .ToDictionary(group => group.Key, group => ByVideoRank(group).ToList(), KeyComparer);
 
-        foreach (var photoGroup in photos.Where(photo => !used.Contains(photo)).GroupBy(GroupKey, KeyComparer))
+        foreach (var photoGroup in photos.Where(photo => !used.Contains(photo)).GroupBy(MediaPair.GroupKeyOf, KeyComparer))
         {
             if (videosByKey.TryGetValue(photoGroup.Key, out var sameNameVideos))
             {
@@ -92,9 +92,6 @@ public static class MediaPairMatcher
 
     private static IOrderedEnumerable<string> ByVideoRank(IEnumerable<string> paths) =>
         paths.OrderBy(MediaFileTypes.VideoRank).ThenBy(path => path, StringComparer.OrdinalIgnoreCase);
-
-    private static string GroupKey(string path) =>
-        Path.Combine(Path.GetDirectoryName(Path.GetFullPath(path)) ?? string.Empty, Path.GetFileNameWithoutExtension(path));
 
     private static readonly StringComparer KeyComparer = StringComparer.OrdinalIgnoreCase;
 }
