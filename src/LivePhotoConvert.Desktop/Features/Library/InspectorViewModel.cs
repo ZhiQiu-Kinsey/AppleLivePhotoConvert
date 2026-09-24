@@ -591,7 +591,7 @@ public sealed partial class InspectorViewModel : ViewModelBase
         {
             ErrorLogger.Log(ex, "空间瘦身预估");
             _estimate = null;
-            _estimateError = ex.Message;
+            _estimateError = ErrorMessages.Describe(_localizer, ex);
         }
 
         IsEstimating = false;

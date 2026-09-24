@@ -25,13 +25,13 @@ public class ToolsViewModelTests
         {
             Assert.True(vm.IsFfmpegReady);
             Assert.Equal(expectedFfmpegPath, vm.FfmpegPath);
-            Assert.NotEqual("未安装", vm.FfmpegVersion);
+            Assert.NotEqual(host.Localizer["ToolNotInstalled"], vm.FfmpegVersion);
         }
         else
         {
             Assert.False(vm.IsFfmpegReady);
-            Assert.Equal("未检测到 ffmpeg.exe", vm.FfmpegPath);
-            Assert.Equal("未安装", vm.FfmpegVersion);
+            Assert.Equal(host.Localizer.Format("ToolNotDetectedFormat", FfmpegVideoConverter.ExecutableName), vm.FfmpegPath);
+            Assert.Equal(host.Localizer["ToolNotInstalled"], vm.FfmpegVersion);
         }
 
         // 验证 ExifTool
@@ -43,8 +43,8 @@ public class ToolsViewModelTests
         else
         {
             Assert.False(vm.IsExifToolReady);
-            Assert.Equal("未检测到 exiftool.exe", vm.ExifToolPath);
-            Assert.Equal("未安装", vm.ExifToolVersion);
+            Assert.Equal(host.Localizer.Format("ToolNotDetectedFormat", ExifToolMetadataService.ExecutableName), vm.ExifToolPath);
+            Assert.Equal(host.Localizer["ToolNotInstalled"], vm.ExifToolVersion);
         }
 
         // 验证 heif-enc
@@ -56,8 +56,8 @@ public class ToolsViewModelTests
         else
         {
             Assert.False(vm.IsHeifEncReady);
-            Assert.Equal("未检测到 heif-enc.exe", vm.HeifEncPath);
-            Assert.Equal("未安装", vm.HeifEncVersion);
+            Assert.Equal(host.Localizer.Format("ToolNotDetectedFormat", HeifEncImageConverter.ExecutableName), vm.HeifEncPath);
+            Assert.Equal(host.Localizer["ToolNotInstalled"], vm.HeifEncVersion);
         }
     }
 
