@@ -179,10 +179,19 @@ internal static class ExifToolJson
         return preferredGroups.IsEmpty ? tags.FirstOrDefault(tag => tag.Name == name).Value : null;
     }
 
+    /// <summary>
+    /// QuickTime 时间为 0 表示未知；ExifTool 在 -n 下把它输出为按本机时区换算的 1904 纪元，不能当成真实拍摄时间。
+    /// 1904 年各地多用地方平时，输出的偏移会截掉秒数，因此按 1 分钟容差判断。
+    /// </summary>
+    private static readonly DateTimeOffset QuickTimeEpoch = new(1904, 1, 1, 0, 0, 0, TimeSpan.Zero);
+
     private static bool TryParse(string? text, out CaptureTime value)
     {
         value = default;
-        return text is not null && CaptureTime.TryParse(text, out value);
+        return text is not null && CaptureTime.TryParse(text, out value)
+               && (value.Offset is { } offset
+                   ? (new DateTimeOffset(value.LocalTime, offset) - QuickTimeEpoch).Duration() >= TimeSpan.FromMinutes(1)
+                   : value.LocalTime != QuickTimeEpoch.DateTime);
     }
 
     private static double? ReadDouble(string? text) =>
