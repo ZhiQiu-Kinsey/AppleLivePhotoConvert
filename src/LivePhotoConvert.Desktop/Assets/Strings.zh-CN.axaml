@@ -8,6 +8,9 @@
   <sys:String x:Key="AppSubtitle">桌面端专业实况照片工坊</sys:String>
   <sys:String x:Key="NavTools">依赖引擎</sys:String>
   <sys:String x:Key="NavSettings">偏好设置</sys:String>
+  <sys:String x:Key="ShellToolReady">已就绪</sys:String>
+  <sys:String x:Key="ShellToolAttention">可用，但需要注意，详见依赖引擎页</sys:String>
+  <sys:String x:Key="ShellToolMissing">未找到，相关功能不可用</sys:String>
 
   <!-- 漏斗与方向 -->
   <sys:String x:Key="SelectedSummaryFormat">{0} 组实况照片 · {1}</sys:String>
@@ -251,7 +254,7 @@
   <sys:String x:Key="ReportEmptyTitle">暂无任务报告</sys:String>
   <sys:String x:Key="ReportEmptyDesc">在图库中启动任务后，报告会保存在这里，直到程序退出。</sys:String>
   <sys:String x:Key="ReportKpiTotal">处理总量</sys:String>
-  <sys:String x:Key="ReportKpiTotalSub">已完成扫描配对</sys:String>
+  <sys:String x:Key="ReportKpiTotalSub">本次任务的项目数</sys:String>
   <sys:String x:Key="ReportKpiSuccess">转换成功</sys:String>
   <sys:String x:Key="ReportKpiSuccessRate">成功率</sys:String>
   <sys:String x:Key="ReportKpiProblems">异常</sys:String>

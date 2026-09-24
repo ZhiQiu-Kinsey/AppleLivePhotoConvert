@@ -17,12 +17,12 @@
           <StackPanel Grid.Column="0" Spacing="1" VerticalAlignment="Center">
             <TextBlock Text="{CompiledBinding Name}" FontSize="11.5" FontWeight="SemiBold"
                        Foreground="{DynamicResource TextPrimaryBrush}" />
-            <TextBlock Text="{CompiledBinding Description}" FontSize="10" TextWrapping="Wrap"
+            <TextBlock Text="{CompiledBinding Description}" FontSize="11" TextWrapping="Wrap"
                        Foreground="{DynamicResource TextMutedBrush}" />
           </StackPanel>
           <Border Grid.Column="1" Background="{DynamicResource HoverBrush}" CornerRadius="5" Padding="6,2"
                   VerticalAlignment="Center" Margin="8,0,0,0">
-            <TextBlock Text="{CompiledBinding Badge}" FontSize="9" Foreground="{DynamicResource TextTertiaryBrush}" />
+            <TextBlock Text="{CompiledBinding Badge}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" />
           </Border>
         </Grid>
       </Button>
@@ -46,7 +46,7 @@
           <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
             <ic:SymbolIcon Symbol="Checkmark" FontSize="11" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
             <TextBlock Text="{DynamicResource SettingsSavedHint}" FontSize="11" FontWeight="SemiBold"
-                       Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" />
+                       Foreground="{DynamicResource SuccessTextBrush}" VerticalAlignment="Center" />
           </StackPanel>
         </Border>
       </Grid>
@@ -169,11 +169,11 @@
           </Border>
           <TextBlock Text="LivePhotoConvert" FontSize="17" FontWeight="Bold"
                      Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center" />
-          <TextBlock Text="{DynamicResource AppSubtitle}" FontSize="11"
-                     Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" />
+          <TextBlock Text="{DynamicResource AppSubtitle}" FontSize="12"
+                     Foreground="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Center" />
           <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
             <Border Background="{DynamicResource HoverBrush}" CornerRadius="6" Padding="8,3">
-              <TextBlock FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}">
+              <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}">
                 <Run Text="{DynamicResource AboutVersionLabel}" />
                 <Run Text=" " />
                 <Run Text="{CompiledBinding AppVersion}" />
@@ -181,8 +181,8 @@
             </Border>
             <Border Background="{DynamicResource SuccessSoftBrush}" BorderBrush="{DynamicResource SuccessBorderBrush}"
                     BorderThickness="1" CornerRadius="6" Padding="8,3">
-              <TextBlock Text="{CompiledBinding LicenseName}" FontSize="10" FontWeight="SemiBold"
-                         Foreground="{DynamicResource SuccessBrush}" />
+              <TextBlock Text="{CompiledBinding LicenseName}" FontSize="11" FontWeight="SemiBold"
+                         Foreground="{DynamicResource SuccessTextBrush}" />
             </Border>
           </StackPanel>
           </StackPanel>
@@ -193,7 +193,7 @@
           <Grid ColumnDefinitions="Auto,*,Auto">
             <ic:SymbolIcon Grid.Column="0" Symbol="Person" FontSize="16" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
             <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
-              <TextBlock Text="{DynamicResource AboutAuthorLabel}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" />
+              <TextBlock Text="{DynamicResource AboutAuthorLabel}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" />
               <TextBlock Text="{CompiledBinding AuthorName}" FontSize="12" FontWeight="SemiBold"
                          Foreground="{DynamicResource TextPrimaryBrush}" />
             </StackPanel>
@@ -201,7 +201,7 @@
               <Button Classes="sponsor-btn" Command="{CompiledBinding OpenSponsorDialogCommand}">
                 <StackPanel Orientation="Horizontal" Spacing="5" HorizontalAlignment="Center" VerticalAlignment="Center">
                   <ic:SymbolIcon Symbol="Heart" FontSize="12" VerticalAlignment="Center" />
-                  <TextBlock Text="{DynamicResource AboutSponsorTitle}" FontSize="10.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                  <TextBlock Text="{DynamicResource AboutSponsorTitle}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
                 </StackPanel>
               </Button>
               <Button Classes="toolbar-btn" Height="28" Padding="10,0"
@@ -212,21 +212,21 @@
                       Command="{CompiledBinding OpenUrlCommand}" CommandParameter="{x:Static models:AboutInfo.RepositoryUrl}">
                 <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
                   <ic:SymbolIcon Symbol="BranchFork" FontSize="11" VerticalAlignment="Center" />
-                  <TextBlock Text="{DynamicResource AboutRepoBtn}" FontSize="10.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                  <TextBlock Text="{DynamicResource AboutRepoBtn}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
                 </StackPanel>
               </Button>
               <Button Classes="toolbar-btn" Height="28" Padding="9,0"
                       Command="{CompiledBinding OpenUrlCommand}" CommandParameter="{x:Static models:AboutInfo.IssuesUrl}">
                 <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
                   <ic:SymbolIcon Symbol="Info" FontSize="11" VerticalAlignment="Center" />
-                  <TextBlock Text="{DynamicResource AboutIssuesBtn}" FontSize="10.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                  <TextBlock Text="{DynamicResource AboutIssuesBtn}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
                 </StackPanel>
               </Button>
               <Button Classes="toolbar-btn" Height="28" Padding="9,0"
                       Command="{CompiledBinding OpenUrlCommand}" CommandParameter="{x:Static models:AboutInfo.ReleasesUrl}">
                 <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
                   <ic:SymbolIcon Symbol="Open" FontSize="11" VerticalAlignment="Center" />
-                  <TextBlock Text="{DynamicResource AboutReleasesBtn}" FontSize="10.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                  <TextBlock Text="{DynamicResource AboutReleasesBtn}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
                 </StackPanel>
               </Button>
             </StackPanel>
@@ -243,12 +243,12 @@
                            Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
                 <Button Grid.Column="1" Classes="toolbar-btn" Height="26" Padding="10,0"
                         Command="{CompiledBinding OpenUrlCommand}" CommandParameter="{x:Static models:AboutInfo.LicenseUrl}">
-                  <TextBlock Text="{DynamicResource AboutViewLicenseBtn}" FontSize="10.5" FontWeight="SemiBold" />
+                  <TextBlock Text="{DynamicResource AboutViewLicenseBtn}" FontSize="11" FontWeight="SemiBold" />
                 </Button>
               </Grid>
-              <TextBlock Text="{DynamicResource AboutLicenseDesc}" FontSize="10.5" LineHeight="16" TextWrapping="Wrap"
+              <TextBlock Text="{DynamicResource AboutLicenseDesc}" FontSize="11" LineHeight="16" TextWrapping="Wrap"
                          Foreground="{DynamicResource TextTertiaryBrush}" />
-              <TextBlock Text="{DynamicResource AboutCopyrightLine}" FontSize="10"
+              <TextBlock Text="{DynamicResource AboutCopyrightLine}" FontSize="11"
                          Foreground="{DynamicResource TextMutedBrush}" />
             </StackPanel>
           </Border>
@@ -260,14 +260,14 @@
           <Border Classes="settings-card" Padding="6" MaxWidth="1000" HorizontalAlignment="Stretch">
             <ItemsControl ItemsSource="{CompiledBinding Contributors}" ItemTemplate="{StaticResource AboutCreditRowTemplate}" />
           </Border>
-          <TextBlock Text="{DynamicResource AboutContributorsHint}" FontSize="10" TextWrapping="Wrap"
+          <TextBlock Text="{DynamicResource AboutContributorsHint}" FontSize="11" TextWrapping="Wrap"
                      Foreground="{DynamicResource TextMutedBrush}" />
         </StackPanel>
 
         <!-- 引用的开源项目：运行时引擎 -->
         <StackPanel Spacing="6">
           <TextBlock Text="{DynamicResource AboutCreditsRuntimeTitle}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
-          <TextBlock Text="{DynamicResource AboutCreditsRuntimeDesc}" FontSize="10" TextWrapping="Wrap"
+          <TextBlock Text="{DynamicResource AboutCreditsRuntimeDesc}" FontSize="11" TextWrapping="Wrap"
                      Foreground="{DynamicResource TextMutedBrush}" />
           <Border Classes="settings-card" Padding="6" MaxWidth="1000" HorizontalAlignment="Stretch">
             <ItemsControl ItemsSource="{CompiledBinding RuntimeCredits}" ItemTemplate="{StaticResource AboutCreditRowTemplate}" />

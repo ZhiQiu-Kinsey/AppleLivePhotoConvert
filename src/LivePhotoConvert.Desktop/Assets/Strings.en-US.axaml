@@ -8,6 +8,9 @@
   <sys:String x:Key="AppSubtitle">Professional Live Photo Studio</sys:String>
   <sys:String x:Key="NavTools">Engines</sys:String>
   <sys:String x:Key="NavSettings">Preferences</sys:String>
+  <sys:String x:Key="ShellToolReady">Ready</sys:String>
+  <sys:String x:Key="ShellToolAttention">Available, but needs attention. See Engines.</sys:String>
+  <sys:String x:Key="ShellToolMissing">Not found; related features are unavailable</sys:String>
 
   <!-- Funnel & Direction -->
   <sys:String x:Key="SelectedSummaryFormat">{0} Live Photos · {1}</sys:String>
@@ -251,7 +254,7 @@
   <sys:String x:Key="ReportEmptyTitle">No task reports yet</sys:String>
   <sys:String x:Key="ReportEmptyDesc">Reports of tasks started from the Library stay here until the app exits.</sys:String>
   <sys:String x:Key="ReportKpiTotal">Total Processed</sys:String>
-  <sys:String x:Key="ReportKpiTotalSub">Scanned &amp; paired</sys:String>
+  <sys:String x:Key="ReportKpiTotalSub">Items in this task</sys:String>
   <sys:String x:Key="ReportKpiSuccess">Succeeded</sys:String>
   <sys:String x:Key="ReportKpiSuccessRate">Success Rate</sys:String>
   <sys:String x:Key="ReportKpiProblems">Issues</sys:String>

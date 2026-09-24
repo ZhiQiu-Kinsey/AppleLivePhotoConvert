@@ -32,8 +32,16 @@ public sealed partial class ShellViewModel : ViewModelBase
         Tools = tools;
         Settings = settings;
 
+        ToolStatuses = [new("ExifTool"), new("FFmpeg"), new("heif-enc")];
+        foreach (var status in ToolStatuses)
+        {
+            status.PropertyChanged += OnToolStatusChanged;
+        }
+        SyncToolStatuses();
+
         _navigator.PropertyChanged += OnNavigatorChanged;
         _dialogs.PropertyChanged += OnDialogsChanged;
+        Tools.PropertyChanged += (_, _) => SyncToolStatuses();
     }
 
     public LibraryViewModel Library { get; }
@@ -43,6 +51,18 @@ public sealed partial class ShellViewModel : ViewModelBase
     public SettingsViewModel Settings { get; }
 
     public AppPage CurrentPage => _navigator.Current;
+
+    /// <summary>侧栏依赖状态，顺序为 ExifTool、FFmpeg、heif-enc。</summary>
+    public IReadOnlyList<ToolStatusItem> ToolStatuses { get; }
+
+    /// <summary>导航"依赖引擎"上的状态点，取各依赖中最差的一项。</summary>
+    public ToolHealth ToolsHealth => ToolStatusItem.Worst(ToolStatuses);
+
+    public bool AreToolsReady => ToolsHealth == ToolHealth.Ready;
+
+    public bool DoToolsNeedAttention => ToolsHealth == ToolHealth.Attention;
+
+    public bool AreToolsMissing => ToolsHealth == ToolHealth.Missing;
 
     public bool IsLibrarySelected => _navigator.Current == AppPage.Library;
     public bool IsTasksSelected => _navigator.Current == AppPage.Tasks;
@@ -86,6 +106,25 @@ public sealed partial class ShellViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsTasksSelected));
         OnPropertyChanged(nameof(IsToolsSelected));
         OnPropertyChanged(nameof(IsSettingsSelected));
+    }
+
+    // 依赖页目前只报告就绪与否；它能给出升级建议或能力缺失时，把判定接到 needsAttention 上
+    private void SyncToolStatuses()
+    {
+        ToolStatuses[0].Health = ToolStatusItem.Evaluate(Tools.IsExifToolReady, needsAttention: false);
+        ToolStatuses[1].Health = ToolStatusItem.Evaluate(Tools.IsFfmpegReady, needsAttention: false);
+        ToolStatuses[2].Health = ToolStatusItem.Evaluate(Tools.IsHeifEncReady, needsAttention: false);
+    }
+
+    private void OnToolStatusChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ToolStatusItem.Health))
+        {
+            OnPropertyChanged(nameof(ToolsHealth));
+            OnPropertyChanged(nameof(AreToolsReady));
+            OnPropertyChanged(nameof(DoToolsNeedAttention));
+            OnPropertyChanged(nameof(AreToolsMissing));
+        }
     }
 
     private void OnDialogsChanged(object? sender, PropertyChangedEventArgs e)
