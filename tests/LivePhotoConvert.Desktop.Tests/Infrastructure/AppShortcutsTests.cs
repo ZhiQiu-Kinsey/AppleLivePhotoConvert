@@ -5,7 +5,7 @@ using LivePhotoConvert.Desktop.Tests.Harness;
 
 namespace LivePhotoConvert.Desktop.Tests.Infrastructure;
 
-/// <summary>快捷键定义：匹配规则、显示文本，以及文案中不再各自手写按键。</summary>
+/// <summary>快捷键定义：匹配规则、显示文本，以及文案中不手写按键。</summary>
 public class AppShortcutsTests
 {
     [Theory]

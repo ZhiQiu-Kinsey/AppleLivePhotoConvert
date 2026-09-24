@@ -410,7 +410,7 @@
   <sys:String x:Key="ExportCsvFilterName">CSV 文件</sys:String>
   <sys:String x:Key="ExportCsvDoneFormat">已导出到 {0}</sys:String>
   <sys:String x:Key="ExportCsvFailedTitle">导出失败</sys:String>
-  <sys:String x:Key="ExportCsvFailedFormat">无法写入 "{0}"：{1}</sys:String>
+  <sys:String x:Key="ExportCsvFailedFormat">无法写入“{0}”：{1}</sys:String>
   <sys:String x:Key="RevealItemTip">打开所在位置</sys:String>
   <sys:String x:Key="ReportCsvSourcePath">源文件</sys:String>
   <sys:String x:Key="ReportCsvOutputPath">输出文件</sys:String>

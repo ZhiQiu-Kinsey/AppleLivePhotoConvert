@@ -276,7 +276,7 @@ public class TaskCenterTests
         Assert.Equal(2, report.FailedCount);
         Assert.Equal("未找到 exiftool", Assert.Single(report.Items).Detail);
         Assert.Same(job, report.RetryJob);
-        // 与原行为一致：失败也属于"任务结束"，照常执行完成效果
+        // 失败也属于任务结束，照常执行完成效果
         Assert.Equal(["/out"], fixture.Host.Shell.Requests);
     }
 
