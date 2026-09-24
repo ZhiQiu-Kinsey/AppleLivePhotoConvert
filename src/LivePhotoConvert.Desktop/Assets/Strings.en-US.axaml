@@ -66,13 +66,13 @@
   <!-- Storage Strip -->
   <sys:String x:Key="NoAlbumOrPhotoSelected">No album or photo selected</sys:String>
   <sys:String x:Key="CurtainCompareTitle">Slim-down quality comparison</sys:String>
-  <sys:String x:Key="CurtainCompareDesc">Drag the divider to compare the original with a re-encode at the current HEIC quality.</sys:String>
+  <sys:String x:Key="CurtainCompareDesc">The sample was actually processed with the current slim-down settings. Drag the divider to compare; scroll to zoom, drag to pan, and hold the right button or turn on the magnifier for 1:1 pixels.</sys:String>
   <sys:String x:Key="InPlaceStripTitle">In-Place Overwrite (Destructive)</sys:String>
   <sys:String x:Key="InPlaceStripDesc">Overwrites sources in-place; disable to export safely</sys:String>
   <sys:String x:Key="SpaceEstimateTitle">Estimated Space Savings</sys:String>
   <sys:String x:Key="OriginalSizeLabel">Original Album Size:</sys:String>
-  <sys:String x:Key="StrippedSizeLabel">Estimated Stripped Size:</sys:String>
-  <sys:String x:Key="SavedSizeLabel">Estimated Saved Space:</sys:String>
+  <sys:String x:Key="StrippedSizeLabel">Size after slimming (estimated):</sys:String>
+  <sys:String x:Key="SavedSizeLabel">Space freed (estimated):</sys:String>
   <sys:String x:Key="PauseBtn">Pause</sys:String>
   <sys:String x:Key="OpenOutputDirBtn">Open Output Folder</sys:String>
 
@@ -173,7 +173,6 @@
   <sys:String x:Key="PingTimedOut">timed out</sys:String>
 
   <!-- CurtainCompare Keys -->
-  <sys:String x:Key="CurtainAfterTitle">Optimized Static HEIC</sys:String>
   <sys:String x:Key="CurtainAfterBadge">Optimized</sys:String>
   <sys:String x:Key="CurtainBeforeBadge">Original</sys:String>
 
@@ -433,10 +432,21 @@
   <sys:String x:Key="ToolNameHeicEncoder">HEIC encoder (heif-enc)</sys:String>
   <sys:String x:Key="LibraryScanning">Scanning…</sys:String>
   <sys:String x:Key="DialogCloseTip">Close (Esc)</sys:String>
-  <sys:String x:Key="CompareLoading">Rendering the comparison…</sys:String>
-  <sys:String x:Key="CompareUnavailable">Cannot render a comparison for this photo.</sys:String>
+  <sys:String x:Key="CompareLoading">Decoding the comparison…</sys:String>
   <sys:String x:Key="CompareBeforeSizeLabel">Original (with paired video)</sys:String>
-  <sys:String x:Key="CompareAfterSizeLabel">Slimmed (at current quality)</sys:String>
+  <sys:String x:Key="CompareAfterSizeLabel">Slimmed (actual output)</sys:String>
+  <sys:String x:Key="CompareProcessing">Processing the sample with the slim-down settings: stripping the video and encoding…</sys:String>
+  <sys:String x:Key="CompareFailedFormat">Cannot create the comparison: {0}</sys:String>
+  <sys:String x:Key="CompareCancelHint">Close this dialog to cancel; temporary files are removed.</sys:String>
+  <sys:String x:Key="CompareParamsHeicFormat">Convert to HEIC · quality {0}</sys:String>
+  <sys:String x:Key="CompareParamsKeep">Strip video only, keep format</sys:String>
+  <sys:String x:Key="CompareEncoderFormat">Encoder {0}</sys:String>
+  <sys:String x:Key="CompareNotConverted">Not re-encoded: already HEIC or has an HDR gain map</sys:String>
+  <sys:String x:Key="CompareZoomInTip">Zoom in</sys:String>
+  <sys:String x:Key="CompareZoomOutTip">Zoom out</sys:String>
+  <sys:String x:Key="CompareZoomResetTip">Fit to window</sys:String>
+  <sys:String x:Key="CompareMagnifierBtn">Magnifier</sys:String>
+  <sys:String x:Key="CompareMagnifierTip">Show both sides at 1:1 pixels next to the pointer (or hold the right button)</sys:String>
   <sys:String x:Key="SettingsAppearanceTitle">Appearance &amp; language</sys:String>
   <sys:String x:Key="SettingsBehaviorTitle">Tasks &amp; performance</sys:String>
   <sys:String x:Key="ReportGoLibraryBtn">Go to Library</sys:String>

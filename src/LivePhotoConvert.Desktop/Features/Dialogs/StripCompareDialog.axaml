@@ -7,9 +7,10 @@
              x:CompileBindings="True"
              x:DataType="dialogs:StripCompareDialogViewModel">
 
+  <!-- 对比区占据剩余高度：窗口较矮时随之缩小，页脚始终可见 -->
   <Border Classes="dialog-card" Width="880" MaxWidth="1100" Margin="32">
-    <StackPanel Spacing="12">
-      <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="12">
+      <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto">
         <Border Grid.Column="0" Classes="dialog-icon-badge info">
           <ic:SymbolIcon Symbol="ArrowBidirectionalLeftRight" FontSize="20" Foreground="{DynamicResource AccentBrush}" />
         </Border>
@@ -27,11 +28,71 @@
         </Button>
       </Grid>
 
-      <TextBlock Text="{DynamicResource CurtainCompareDesc}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextTertiaryBrush}" />
+      <TextBlock Grid.Row="1" Text="{DynamicResource CurtainCompareDesc}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextTertiaryBrush}" />
 
-      <controls:CurtainCompareControl />
+      <!-- 任务参数、编码器与视图工具 -->
+      <Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,*,Auto">
+        <Border Grid.Column="0" Classes="task-chip accent" Margin="0,0,8,0">
+          <TextBlock Text="{CompiledBinding ParametersText}" />
+        </Border>
+        <Border Grid.Column="1" Classes="task-chip"
+                IsVisible="{CompiledBinding EncoderText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+          <TextBlock Text="{CompiledBinding EncoderText}" />
+        </Border>
+        <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6">
+          <Button Classes="toolbar-btn" Command="{CompiledBinding ZoomOutCommand}" ToolTip.Tip="{DynamicResource CompareZoomOutTip}">
+            <ic:SymbolIcon Symbol="ZoomOut" FontSize="14" />
+          </Button>
+          <Border Classes="compare-zoom-readout">
+            <TextBlock Text="{CompiledBinding ZoomText}" />
+          </Border>
+          <Button Classes="toolbar-btn" Command="{CompiledBinding ZoomInCommand}" ToolTip.Tip="{DynamicResource CompareZoomInTip}">
+            <ic:SymbolIcon Symbol="ZoomIn" FontSize="14" />
+          </Button>
+          <Button Classes="toolbar-btn" Command="{CompiledBinding ResetZoomCommand}" ToolTip.Tip="{DynamicResource CompareZoomResetTip}">
+            <ic:SymbolIcon Symbol="ZoomFit" FontSize="14" />
+          </Button>
+          <Button Classes="toolbar-btn" Classes.active="{CompiledBinding IsMagnifierEnabled}"
+                  Command="{CompiledBinding ToggleMagnifierCommand}" ToolTip.Tip="{DynamicResource CompareMagnifierTip}">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <ic:SymbolIcon Symbol="SearchSquare" FontSize="14" VerticalAlignment="Center" />
+              <TextBlock Text="{DynamicResource CompareMagnifierBtn}" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
+      </Grid>
 
-      <Grid ColumnDefinitions="*,Auto,*">
+      <Border Grid.Row="3" Classes="compare-frame">
+        <Panel>
+          <controls:CurtainCompareControl
+                                          MinHeight="240" MaxHeight="520"
+                                          Before="{CompiledBinding OriginalCompareBitmap}"
+                                          After="{CompiledBinding StrippedCompareBitmap}"
+                                          SourcePixelSize="{CompiledBinding SourcePixelSize}"
+                                          DetailSource="{CompiledBinding DetailSource}"
+                                          CurtainPosition="{CompiledBinding CurtainPosition}"
+                                          Zoom="{CompiledBinding Zoom}"
+                                          IsMagnifierEnabled="{CompiledBinding IsMagnifierEnabled}"
+                                          RequestedPixelSize="{CompiledBinding DisplayPixelSize, Mode=OneWayToSource}"
+                                          BeforeLabel="{DynamicResource CurtainBeforeBadge}"
+                                          AfterLabel="{DynamicResource CurtainAfterBadge}" />
+
+          <!-- 处理样张、解码或失败时的说明；关闭弹窗即取消 -->
+          <Border Classes="compare-status" IsVisible="{CompiledBinding OriginalCompareBitmap, Converter={x:Static ObjectConverters.IsNull}}">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" MaxWidth="460">
+              <Border Width="56" Height="56" CornerRadius="28" Background="{DynamicResource AccentSoftBrush}" HorizontalAlignment="Center">
+                <ic:SymbolIcon Symbol="ArrowBidirectionalLeftRight" FontSize="26" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+              </Border>
+              <TextBlock Text="{CompiledBinding StatusText}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" />
+              <ProgressBar IsIndeterminate="True" Width="220" IsVisible="{CompiledBinding IsBusy}" />
+              <TextBlock Text="{DynamicResource CompareCancelHint}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"
+                         IsVisible="{CompiledBinding IsBusy}" />
+            </StackPanel>
+          </Border>
+        </Panel>
+      </Border>
+
+      <Grid Grid.Row="4" ColumnDefinitions="*,Auto,*">
         <StackPanel Grid.Column="0" Spacing="2">
           <TextBlock Text="{DynamicResource CompareBeforeSizeLabel}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" />
           <TextBlock Text="{CompiledBinding BeforeSizeText}" FontSize="13" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource TextSecondaryBrush}" />
@@ -42,6 +103,6 @@
           <TextBlock Text="{CompiledBinding AfterSizeText}" FontSize="13" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Right" />
         </StackPanel>
       </Grid>
-    </StackPanel>
+    </Grid>
   </Border>
 </UserControl>

@@ -1,6 +1,7 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:ic="using:FluentIcons.Avalonia">
+        xmlns:ic="using:FluentIcons.Avalonia"
+        xmlns:controls="using:LivePhotoConvert.Desktop.Controls">
 
   <!--
     语义化主题调色板（R1 主题根治）。
@@ -1043,6 +1044,46 @@
     <Setter Property="Height" Value="1" />
     <Setter Property="Background" Value="{DynamicResource LineBrush}" />
     <Setter Property="Margin" Value="0,12" />
+  </Style>
+
+  <!-- 瘦身对比：卷帘对比控件的配色全部取主题语义画刷；媒体画布在两种主题下都保持深色以衬托照片 -->
+  <Style Selector="controls|CurtainCompareControl">
+    <Setter Property="Background" Value="{DynamicResource MediaCanvasBrush}" />
+    <Setter Property="DividerBrush" Value="{DynamicResource OnMediaBrush}" />
+    <Setter Property="HandleForeground" Value="{DynamicResource MediaCanvasBrush}" />
+    <Setter Property="BadgeBackground" Value="{DynamicResource MediaBadgeBrush}" />
+    <Setter Property="AfterBadgeBackground" Value="{DynamicResource SuccessBrush}" />
+    <Setter Property="BadgeForeground" Value="{DynamicResource OnMediaBrush}" />
+    <Setter Property="MagnifierBorderBrush" Value="{DynamicResource MediaAccentBrush}" />
+  </Style>
+
+  <Style Selector="Border.compare-frame">
+    <Setter Property="CornerRadius" Value="16" />
+    <Setter Property="ClipToBounds" Value="True" />
+    <Setter Property="Background" Value="{DynamicResource MediaCanvasBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+
+  <Style Selector="Border.compare-status">
+    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+  </Style>
+
+  <Style Selector="Border.compare-zoom-readout">
+    <Setter Property="MinWidth" Value="52" />
+    <Setter Property="Height" Value="32" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Padding" Value="8,0" />
+    <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+  </Style>
+
+  <Style Selector="Border.compare-zoom-readout > TextBlock">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="FontFamily" Value="Consolas" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
 
 </Styles>

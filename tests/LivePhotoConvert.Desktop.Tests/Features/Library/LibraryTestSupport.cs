@@ -58,7 +58,10 @@ internal sealed class FakeStripEstimator : IStripEstimator
 
     public StripEstimate Result { get; set; } = new(2, 10_000_000, 1_000_000);
 
-    public Task<StripEstimate> EstimateAsync(IReadOnlyList<string> files, ToolPaths tools, bool convertToHeic, CancellationToken cancellationToken)
+    /// <summary>对比弹窗的样张处理：默认一直等到取消，不接触外部工具。</summary>
+    public IStripSampler Sampler { get; set; } = new PendingStripSampler();
+
+    public Task<StripEstimate> EstimateAsync(IReadOnlyList<string> files, ToolPaths tools, bool convertToHeic, int heicQuality, CancellationToken cancellationToken)
     {
         Interlocked.Increment(ref _calls);
         lock (Requests)
@@ -67,6 +70,23 @@ internal sealed class FakeStripEstimator : IStripEstimator
         }
 
         return Gate is { } gate ? gate.Task.WaitAsync(cancellationToken) : Task.FromResult(Result);
+    }
+}
+
+/// <summary>一直处理到被取消的样张处理器；记录收到的参数。</summary>
+internal sealed class PendingStripSampler : IStripSampler
+{
+    public List<(string Photo, StripSampleOptions Options)> Requests { get; } = [];
+
+    public async Task<StripSample> SampleAsync(string photoPath, StripSampleOptions options, CancellationToken cancellationToken)
+    {
+        lock (Requests)
+        {
+            Requests.Add((photoPath, options));
+        }
+
+        await Task.Delay(Timeout.Infinite, cancellationToken);
+        throw new InvalidOperationException("不会到达");
     }
 }
 

@@ -480,6 +480,9 @@ public class InspectorViewModelTests
         var dialog = Assert.IsType<StripCompareDialogViewModel>(fixture.Dialogs.Current);
         Assert.Equal(focused.PhotoPath, dialog.PhotoPath);
         Assert.Equal(66, dialog.HeicQuality);
+        var request = Assert.Single(((PendingStripSampler)fixture.Estimator.Sampler).Requests);
+        Assert.Equal(focused.PhotoPath, request.Photo);
+        Assert.Equal(new StripSampleOptions(ToolPaths.From(fixture.Host.Settings.Current), inspector.StripConvertToHeic, 66), request.Options);
         dialog.CancelCommand.Execute(null);
         await open.Within();
         Assert.Null(dialog.OriginalCompareBitmap);

@@ -36,6 +36,25 @@ public class MotionPhotoStripperTests
     }
 
     [Fact]
+    public async Task EstimateFinalBytes_UsesPhotoBytesAndGivenHeicRatio()
+    {
+        using var temp = new TempDirectory();
+        var motion = temp.CreateFile("MVIMG.jpg", SyntheticMedia.MotionPhoto(SyntheticMedia.Jpeg(10_000), SyntheticMedia.Mp4(50_000)));
+        var heic = temp.CreateFile("IMG.heic", SyntheticMedia.Heic(4_000));
+
+        var candidates = await CreateStripper().AnalyzeAsync([motion, heic], Token);
+        var candidate = candidates[0];
+
+        Assert.Equal(candidate.ImageBytes - candidate.VideoBytes, candidate.PhotoBytes);
+        Assert.Equal(candidate.PhotoBytes, candidate.EstimateFinalBytes(convertToHeic: false, heicSizeRatio: 0.3));
+        Assert.Equal((long)(candidate.PhotoBytes * 0.3), candidate.EstimateFinalBytes(convertToHeic: true, heicSizeRatio: 0.3));
+        Assert.Equal(candidate.EstimateFinalBytes(true, StripCandidate.DefaultHeicSizeRatio), candidate.EstimateFinalBytes(convertToHeic: true));
+        // 已是 HEIC 的照片不转码，比例不起作用
+        Assert.Equal(candidates[1].PhotoBytes, candidates[1].EstimateFinalBytes(convertToHeic: true, heicSizeRatio: 0.3));
+        Assert.Throws<ArgumentOutOfRangeException>(() => candidate.EstimateFinalBytes(true, 0));
+    }
+
+    [Fact]
     public async Task InPlace_StripsVideoAndConvertsToHeic_DeletingOnlyTheOriginal()
     {
         using var temp = new TempDirectory();

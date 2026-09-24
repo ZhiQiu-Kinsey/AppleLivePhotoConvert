@@ -33,8 +33,8 @@ public sealed record StripRequest
 /// <param name="HasGainMap">带 Ultra HDR 增益图时不转码 HEIC，以免丢失 HDR</param>
 public sealed record StripCandidate(string ImagePath, long ImageBytes, EmbeddedVideo? EmbeddedVideo, string? CompanionVideo, long CompanionBytes, bool HasGainMap)
 {
-    /// <summary>HEIC 质量 90 时相对 JPEG 的典型体积比例，用于预估。</summary>
-    private const double HeicSizeRatio = 0.45;
+    /// <summary>HEIC 质量 90 时相对 JPEG 的典型体积比例；没有实测压缩比时用于预估。</summary>
+    public const double DefaultHeicSizeRatio = 0.45;
 
     /// <summary>分析失败的原因（文件消失、无法读取等）；不为 <c>null</c> 时该文件不做任何处理。</summary>
     public string? AnalysisError { get; init; }
@@ -48,10 +48,17 @@ public sealed record StripCandidate(string ImagePath, long ImageBytes, EmbeddedV
 
     public bool WillConvert(bool convertToHeic) => AnalysisError is null && convertToHeic && !HasGainMap && !MediaFileTypes.IsHeic(ImagePath);
 
-    public long EstimateFinalBytes(bool convertToHeic)
+    /// <summary>剥离视频后的照片字节数（转码前）。</summary>
+    public long PhotoBytes => EmbeddedVideo?.ImageEnd ?? ImageBytes;
+
+    public long EstimateFinalBytes(bool convertToHeic) => EstimateFinalBytes(convertToHeic, DefaultHeicSizeRatio);
+
+    /// <param name="convertToHeic">是否转码 HEIC</param>
+    /// <param name="heicSizeRatio">HEIC 相对转码前照片的体积比例（例如抽样实测值）</param>
+    public long EstimateFinalBytes(bool convertToHeic, double heicSizeRatio)
     {
-        var photoBytes = EmbeddedVideo?.ImageEnd ?? ImageBytes;
-        return WillConvert(convertToHeic) ? (long)(photoBytes * HeicSizeRatio) : photoBytes;
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(heicSizeRatio);
+        return WillConvert(convertToHeic) ? (long)(PhotoBytes * heicSizeRatio) : PhotoBytes;
     }
 
     internal static StripCandidate Unavailable(string imagePath, string error) =>

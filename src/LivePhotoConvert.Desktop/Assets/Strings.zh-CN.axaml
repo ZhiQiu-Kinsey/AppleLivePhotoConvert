@@ -66,13 +66,13 @@
   <!-- 空间瘦身 -->
   <sys:String x:Key="NoAlbumOrPhotoSelected">尚未选择相册或照片</sys:String>
   <sys:String x:Key="CurtainCompareTitle">瘦身画质对比</sys:String>
-  <sys:String x:Key="CurtainCompareDesc">左右拖动分割线，比较原片与按当前 HEIC 画质重新编码后的细节。</sys:String>
+  <sys:String x:Key="CurtainCompareDesc">样张已按当前瘦身参数真实处理。拖动分割线对比原片与产物；滚轮缩放、拖动平移，按住右键或开启放大镜查看 1:1 像素。</sys:String>
   <sys:String x:Key="InPlaceStripTitle">就地覆盖原照片 (破坏性替换)</sys:String>
   <sys:String x:Key="InPlaceStripDesc">开启后直接覆盖原片，关闭则安全导出至独立目录</sys:String>
   <sys:String x:Key="SpaceEstimateTitle">空间释放预估</sys:String>
   <sys:String x:Key="OriginalSizeLabel">原相册总体积:</sys:String>
-  <sys:String x:Key="StrippedSizeLabel">瘦身后预计体积:</sys:String>
-  <sys:String x:Key="SavedSizeLabel">预计释放磁盘空间:</sys:String>
+  <sys:String x:Key="StrippedSizeLabel">瘦身后体积（估算）:</sys:String>
+  <sys:String x:Key="SavedSizeLabel">可释放空间（估算）:</sys:String>
   <sys:String x:Key="PauseBtn">暂停</sys:String>
   <sys:String x:Key="OpenOutputDirBtn">打开输出文件夹查看</sys:String>
 
@@ -173,7 +173,6 @@
   <sys:String x:Key="PingTimedOut">超时</sys:String>
 
   <!-- CurtainCompare Keys -->
-  <sys:String x:Key="CurtainAfterTitle">瘦身后静态 HEIC</sys:String>
   <sys:String x:Key="CurtainAfterBadge">瘦身后</sys:String>
   <sys:String x:Key="CurtainBeforeBadge">原片</sys:String>
 
@@ -433,10 +432,21 @@
   <sys:String x:Key="ToolNameHeicEncoder">HEIC 编码器（heif-enc）</sys:String>
   <sys:String x:Key="LibraryScanning">扫描中…</sys:String>
   <sys:String x:Key="DialogCloseTip">关闭 (Esc)</sys:String>
-  <sys:String x:Key="CompareLoading">正在生成对比图…</sys:String>
-  <sys:String x:Key="CompareUnavailable">无法为这张照片生成对比图。</sys:String>
+  <sys:String x:Key="CompareLoading">正在解码对比图…</sys:String>
   <sys:String x:Key="CompareBeforeSizeLabel">原片（含配对视频）</sys:String>
-  <sys:String x:Key="CompareAfterSizeLabel">瘦身后（按当前画质编码）</sys:String>
+  <sys:String x:Key="CompareAfterSizeLabel">瘦身后（实际产物）</sys:String>
+  <sys:String x:Key="CompareProcessing">正在按瘦身参数处理样张：剥离视频并编码…</sys:String>
+  <sys:String x:Key="CompareFailedFormat">无法生成对比：{0}</sys:String>
+  <sys:String x:Key="CompareCancelHint">关闭弹窗即可取消，临时文件会一并清理。</sys:String>
+  <sys:String x:Key="CompareParamsHeicFormat">转为 HEIC · 质量 {0}</sys:String>
+  <sys:String x:Key="CompareParamsKeep">仅剥离视频，保留原格式</sys:String>
+  <sys:String x:Key="CompareEncoderFormat">编码器 {0}</sys:String>
+  <sys:String x:Key="CompareNotConverted">未转码：已是 HEIC 或含 HDR 增益图</sys:String>
+  <sys:String x:Key="CompareZoomInTip">放大</sys:String>
+  <sys:String x:Key="CompareZoomOutTip">缩小</sys:String>
+  <sys:String x:Key="CompareZoomResetTip">适配窗口</sys:String>
+  <sys:String x:Key="CompareMagnifierBtn">放大镜</sys:String>
+  <sys:String x:Key="CompareMagnifierTip">在指针处并排显示两侧 1:1 像素（也可按住右键）</sys:String>
   <sys:String x:Key="SettingsAppearanceTitle">外观与语言</sys:String>
   <sys:String x:Key="SettingsBehaviorTitle">任务与性能</sys:String>
   <sys:String x:Key="ReportGoLibraryBtn">前往图库</sys:String>

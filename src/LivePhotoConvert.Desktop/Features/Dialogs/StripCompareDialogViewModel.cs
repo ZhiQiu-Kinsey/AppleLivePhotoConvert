@@ -1,85 +1,81 @@
+using System.Globalization;
 using Avalonia;
 using Avalonia.Media.Imaging;
-using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
-using ImageMagick;
+using CommunityToolkit.Mvvm.Input;
 using LivePhotoConvert.Core.Services;
+using LivePhotoConvert.Desktop.Controls;
+using LivePhotoConvert.Desktop.Converters;
+using LivePhotoConvert.Desktop.Features.Library;
 using LivePhotoConvert.Desktop.Infrastructure;
 
 namespace LivePhotoConvert.Desktop.Features.Dialogs;
 
 /// <summary>
-/// 瘦身前后的卷帘对比：原片与按当前 HEIC 质量重新编码后的画面。关闭时释放两张位图。
+/// 瘦身前后的卷帘对比：样张按瘦身任务的参数真实处理一遍，对比原片与真实产物的画面和体积。
+/// 关闭即取消处理，并释放位图、原图块缓存与临时目录。
 /// </summary>
 public sealed partial class StripCompareDialogViewModel : DialogViewModel<bool>
 {
-    private const int PreviewMaxSize = 1600;
+    /// <summary>按钮缩放一档的倍数：1×、2×、4×、8×。</summary>
+    public const double ZoomStep = 2;
 
     private readonly ILocalizer _localizer;
+    private readonly IStripSampler _sampler;
+    private readonly StripSampleOptions _options;
+    private readonly CancellationTokenSource _cts = new();
+    private CancellationTokenSource? _displayCts;
+    private PixelSize _decodedTarget;
+    private StripSample? _sample;
+    private CompareImageSource? _images;
 
-    public StripCompareDialogViewModel(ILocalizer localizer, string photoPath, int heicQuality)
+    public StripCompareDialogViewModel(ILocalizer localizer, IStripSampler sampler, string photoPath, StripSampleOptions options)
     {
         _localizer = localizer;
+        _sampler = sampler;
+        _options = options with { HeicQuality = options.HeicQuality > 0 ? options.HeicQuality : ConversionDefaults.HeicQuality };
         PhotoPath = photoPath;
         FileName = Path.GetFileName(photoPath);
-        HeicQuality = heicQuality > 0 ? heicQuality : ConversionDefaults.HeicQuality;
-        LoadTask = LoadComparisonAsync();
+        ParametersText = _options.ConvertToHeic
+            ? localizer.Format("CompareParamsHeicFormat", HeicQuality)
+            : localizer["CompareParamsKeep"];
+        _statusText = localizer["CompareProcessing"];
+        LoadTask = LoadAsync(_cts.Token);
     }
 
     public string PhotoPath { get; }
 
     public string FileName { get; }
 
-    public int HeicQuality { get; }
+    public int HeicQuality => _options.HeicQuality;
 
-    /// <summary>对比图生成任务；测试据此等待。</summary>
+    public bool ConvertToHeic => _options.ConvertToHeic;
+
+    /// <summary>任务参数摘要：是否转 HEIC 与质量。</summary>
+    public string ParametersText { get; }
+
+    /// <summary>样张处理与首次解码；测试据此等待。</summary>
     internal Task LoadTask { get; }
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CurtainPixelWidth))]
-    [NotifyPropertyChangedFor(nameof(DividerMargin))]
-    [NotifyPropertyChangedFor(nameof(DividerHeight))]
-    [NotifyPropertyChangedFor(nameof(ThumbMargin))]
-    [NotifyPropertyChangedFor(nameof(CurtainPercentageText))]
-    [NotifyPropertyChangedFor(nameof(OverlayClipGeometry))]
-    private double _curtainPosition = 50.0;
+    /// <summary>最近一次显示位图解码；测试据此等待。</summary>
+    internal Task DisplayTask { get; private set; } = Task.CompletedTask;
 
+    internal StripSample? Sample => Volatile.Read(ref _sample);
+
+    internal CompareImageSource? Images => _images;
+
+    /// <summary>处理样张或解码对比图期间为真。</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CurtainPixelWidth))]
-    [NotifyPropertyChangedFor(nameof(DividerMargin))]
-    [NotifyPropertyChangedFor(nameof(DividerHeight))]
-    [NotifyPropertyChangedFor(nameof(ThumbMargin))]
-    [NotifyPropertyChangedFor(nameof(OverlayClipGeometry))]
-    private Rect _imageRenderRect = new(0, 0, 700, 400);
+    private bool _isBusy = true;
 
     [ObservableProperty]
-    private double _parentTotalWidth = 700.0;
+    private bool _hasFailed;
 
     [ObservableProperty]
-    private double _parentTotalHeight = 400.0;
+    private string _statusText;
 
-    public double DividerX => ImageRenderRect.Left + (ImageRenderRect.Width * CurtainPosition / 100.0);
-    public double CurtainPixelWidth => Math.Max(0, DividerX - ImageRenderRect.Left);
-    public Thickness DividerMargin => new(DividerX, ImageRenderRect.Top, 0, 0);
-    public double DividerHeight => Math.Max(1, ImageRenderRect.Height);
-    public Thickness ThumbMargin => new(Math.Max(0, DividerX - 17), ImageRenderRect.Top + Math.Max(0, (ImageRenderRect.Height - 34) / 2.0), 0, 0);
-    public string CurtainPercentageText => _localizer.Format("CurtainPositionFormat", CurtainPosition, 100 - CurtainPosition);
-
-    public Avalonia.Media.RectangleGeometry OverlayClipGeometry =>
-        new(new Rect(ImageRenderRect.Left, ImageRenderRect.Top, Math.Max(0, DividerX - ImageRenderRect.Left), Math.Max(1, ImageRenderRect.Height)));
-
-    public void UpdateImageGeometry(Rect rect, double width, double height)
-    {
-        ParentTotalWidth = width;
-        ParentTotalHeight = height;
-        ImageRenderRect = rect;
-        OnPropertyChanged(nameof(DividerX));
-        OnPropertyChanged(nameof(CurtainPixelWidth));
-        OnPropertyChanged(nameof(DividerMargin));
-        OnPropertyChanged(nameof(DividerHeight));
-        OnPropertyChanged(nameof(ThumbMargin));
-        OnPropertyChanged(nameof(OverlayClipGeometry));
-    }
+    [ObservableProperty]
+    private string _encoderText = string.Empty;
 
     [ObservableProperty]
     private string _beforeSizeText = "—";
@@ -96,122 +92,186 @@ public sealed partial class StripCompareDialogViewModel : DialogViewModel<bool>
     [ObservableProperty]
     private Bitmap? _strippedCompareBitmap;
 
+    /// <summary>原片摆正后的像素尺寸，对比控件据此计算 1:1 与适配尺寸。</summary>
     [ObservableProperty]
-    private string _statusText = string.Empty;
+    private PixelSize _sourcePixelSize;
+
+    [ObservableProperty]
+    private ICompareDetailSource? _detailSource;
+
+    /// <summary>对比控件报告的显示所需像素尺寸（图片区域 × 屏幕缩放）。</summary>
+    [ObservableProperty]
+    private PixelSize _displayPixelSize;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CurtainPercentageText))]
+    private double _curtainPosition = 0.5;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ZoomText))]
+    [NotifyCanExecuteChangedFor(nameof(ZoomInCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ZoomOutCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ResetZoomCommand))]
+    private double _zoom = CompareViewport.MinZoom;
+
+    [ObservableProperty]
+    private bool _isMagnifierEnabled;
+
+    public string CurtainPercentageText => _localizer.Format("CurtainPositionFormat", CurtainPosition * 100, 100 - CurtainPosition * 100);
+
+    public string ZoomText => (Zoom * 100).ToString("F0", CultureInfo.InvariantCulture) + "%";
+
+    private bool CanZoomIn() => Zoom < CompareViewport.MaxZoom;
+
+    private bool CanZoomOut() => Zoom > CompareViewport.MinZoom;
+
+    [RelayCommand(CanExecute = nameof(CanZoomIn))]
+    private void ZoomIn() => Zoom = CompareViewport.ClampZoom(Zoom * ZoomStep);
+
+    [RelayCommand(CanExecute = nameof(CanZoomOut))]
+    private void ZoomOut() => Zoom = CompareViewport.ClampZoom(Zoom / ZoomStep);
+
+    [RelayCommand(CanExecute = nameof(CanZoomOut))]
+    private void ResetZoom() => Zoom = CompareViewport.MinZoom;
+
+    [RelayCommand]
+    private void ToggleMagnifier() => IsMagnifierEnabled = !IsMagnifierEnabled;
+
+    partial void OnDisplayPixelSizeChanged(PixelSize value) => RequestDisplayDecode();
+
+    /// <summary>尺寸只在明显变大（显示会变糊）或明显变小（浪费内存）时重新解码。</summary>
+    internal static bool NeedsRedecode(PixelSize decoded, PixelSize target) =>
+        target.Width > decoded.Width * 1.1 || target.Height > decoded.Height * 1.1
+        || target.Width < decoded.Width * 0.6 && target.Height < decoded.Height * 0.6;
 
     protected internal override void OnClosed()
     {
+        _cts.Cancel();
+        _displayCts?.Cancel();
+        DetailSource = null;
+        _images?.Dispose();
+        _images = null;
+
         var original = OriginalCompareBitmap;
         var stripped = StrippedCompareBitmap;
         OriginalCompareBitmap = null;
         StrippedCompareBitmap = null;
         original?.Dispose();
         stripped?.Dispose();
+
+        // 正在处理时由处理流程在取消后自行清理；已完成的产物在这里删除
+        Interlocked.Exchange(ref _sample, null)?.Dispose();
     }
 
-    private async Task LoadComparisonAsync()
+    private async Task LoadAsync(CancellationToken cancellationToken)
     {
-        StatusText = _localizer["CompareLoading"];
-        if (string.IsNullOrWhiteSpace(PhotoPath) || !File.Exists(PhotoPath))
-        {
-            StatusText = _localizer["CompareUnavailable"];
-            return;
-        }
-
         try
         {
-            var result = await Task.Run(() => Render(PhotoPath, HeicQuality));
-            Dispatcher.UIThread.Post(() => Apply(result));
+            var sample = await _sampler.SampleAsync(PhotoPath, _options, cancellationToken);
+            Volatile.Write(ref _sample, sample);
+            if (IsClosed)
+            {
+                Interlocked.Exchange(ref _sample, null)?.Dispose();
+                return;
+            }
+
+            ApplySizes(sample);
+            StatusText = _localizer["CompareLoading"];
+            var images = await CompareImageSource.OpenAsync(sample.SourcePath, sample.ProductPath, cancellationToken);
+            if (IsClosed)
+            {
+                images.Dispose();
+                return;
+            }
+
+            _images = images;
+            SourcePixelSize = images.SourceSize;
+            DetailSource = images;
+            RequestDisplayDecode();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
         }
         catch (Exception ex)
         {
-            ErrorLogger.Log(ex, "生成瘦身对比");
-            Dispatcher.UIThread.Post(() => StatusText = _localizer["CompareUnavailable"]);
+            Fail(ex);
         }
     }
 
-    private void Apply(RenderResult result)
+    private void ApplySizes(StripSample sample)
     {
-        // 生成期间弹窗已关闭：位图无人持有，立即释放
-        if (IsClosed)
+        BeforeSizeText = FormatBytes(sample.OriginalBytes);
+        AfterSizeText = FormatBytes(sample.ProductBytes);
+        var saved = sample.OriginalBytes > 0 ? Math.Max(0, sample.OriginalBytes - sample.ProductBytes) * 100.0 / sample.OriginalBytes : 0;
+        SavedPercentResult = _localizer.Format("StripSavedPctFormat", saved);
+        EncoderText = sample.Converted
+            ? _localizer.Format("CompareEncoderFormat", sample.EncoderName)
+            : _options.ConvertToHeic ? _localizer["CompareNotConverted"] : string.Empty;
+    }
+
+    private void RequestDisplayDecode()
+    {
+        var target = DisplayPixelSize;
+        if (_images is not { } images || IsClosed || target.Width <= 0 || target.Height <= 0)
         {
-            result.Original.Dispose();
-            result.Stripped.Dispose();
             return;
         }
 
-        OriginalCompareBitmap = result.Original;
-        StrippedCompareBitmap = result.Stripped;
-        double origMb = result.OriginalBytes / (1024.0 * 1024);
-        double strippedMb = result.StrippedBytes / (1024.0 * 1024);
-        double savedPct = result.OriginalBytes > 0 ? (1.0 - (double)result.StrippedBytes / result.OriginalBytes) * 100.0 : 0;
-        BeforeSizeText = $"{origMb:F2} MB";
-        AfterSizeText = $"{strippedMb:F2} MB";
-        SavedPercentResult = _localizer.Format("StripSavedPctFormat", Math.Max(0, savedPct));
-        StatusText = string.Empty;
-    }
-
-    private sealed record RenderResult(Bitmap Original, Bitmap Stripped, long OriginalBytes, long StrippedBytes);
-
-    /// <summary>原片连同同名配对视频计入原始体积；瘦身后体积为按质量编码 HEIC 的实际大小。</summary>
-    private static RenderResult Render(string photoPath, int quality)
-    {
-        long originalBytes = new FileInfo(photoPath).Length;
-        var dir = Path.GetDirectoryName(photoPath) ?? string.Empty;
-        var stem = Path.GetFileNameWithoutExtension(photoPath);
-        foreach (var ext in new[] { ".mov", ".MOV", ".mp4", ".MP4" })
+        if (_decodedTarget.Width > 0 && !NeedsRedecode(_decodedTarget, target))
         {
-            var videoPath = Path.Combine(dir, stem + ext);
-            if (File.Exists(videoPath))
-            {
-                originalBytes += new FileInfo(videoPath).Length;
-                break;
-            }
+            return;
         }
 
-        using var image = new MagickImage(photoPath);
-        image.AutoOrient();
-        // 限制预览尺寸，避免大图占用过多非托管内存
-        image.Resize(new MagickGeometry(PreviewMaxSize, PreviewMaxSize) { IgnoreAspectRatio = false, Greater = true });
+        _displayCts?.Cancel();
+        _displayCts?.Dispose();
+        _displayCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token);
+        _decodedTarget = target;
+        DisplayTask = DecodeDisplayAsync(images, target, _displayCts.Token);
+    }
 
-        using var origMem = new MemoryStream();
-        image.Write(origMem, MagickFormat.Png);
-        origMem.Position = 0;
-        var origBmp = new Bitmap(origMem);
-
-        Bitmap strippedBmp;
-        long strippedBytes;
+    private async Task DecodeDisplayAsync(CompareImageSource images, PixelSize target, CancellationToken cancellationToken)
+    {
         try
         {
-            image.Format = MagickFormat.Heic;
-            image.Quality = (uint)quality;
-            using var heicMem = new MemoryStream();
-            image.Write(heicMem);
-            strippedBytes = heicMem.Length;
-            heicMem.Position = 0;
-            strippedBmp = DecodeToBitmap(heicMem);
+            var (before, after) = await images.DecodeDisplayAsync(target, cancellationToken);
+            if (cancellationToken.IsCancellationRequested || IsClosed)
+            {
+                before.Dispose();
+                after.Dispose();
+                return;
+            }
+
+            var oldBefore = OriginalCompareBitmap;
+            var oldAfter = StrippedCompareBitmap;
+            OriginalCompareBitmap = before;
+            StrippedCompareBitmap = after;
+            oldBefore?.Dispose();
+            oldAfter?.Dispose();
+            IsBusy = false;
+            StatusText = string.Empty;
         }
-        catch (MagickException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            // 没有 HEIC 编码器时用同质量 JPEG 近似画质，体积按经验比例估算
-            image.Format = MagickFormat.Jpeg;
-            image.Quality = (uint)quality;
-            using var jpegMem = new MemoryStream();
-            image.Write(jpegMem);
-            strippedBytes = (long)(jpegMem.Length * 0.65);
-            jpegMem.Position = 0;
-            strippedBmp = DecodeToBitmap(jpegMem);
+        }
+        catch (Exception ex)
+        {
+            Fail(ex);
+        }
+    }
+
+    private void Fail(Exception ex)
+    {
+        ErrorLogger.Log(ex, "生成瘦身对比");
+        if (IsClosed)
+        {
+            return;
         }
 
-        return new RenderResult(origBmp, strippedBmp, originalBytes, strippedBytes);
+        IsBusy = false;
+        HasFailed = true;
+        StatusText = _localizer.Format("CompareFailedFormat", ErrorMessages.Describe(_localizer, ex));
     }
 
-    private static Bitmap DecodeToBitmap(Stream encoded)
-    {
-        using var decoded = new MagickImage(encoded);
-        using var png = new MemoryStream();
-        decoded.Write(png, MagickFormat.Png);
-        png.Position = 0;
-        return new Bitmap(png);
-    }
+    private static string FormatBytes(long bytes) =>
+        ByteSizeConverter.Instance.Convert(bytes, typeof(string), null, CultureInfo.InvariantCulture) as string ?? $"{bytes} B";
 }
