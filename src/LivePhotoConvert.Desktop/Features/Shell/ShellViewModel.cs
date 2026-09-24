@@ -7,6 +7,7 @@ using LivePhotoConvert.Desktop.Features.Library;
 using LivePhotoConvert.Desktop.Features.Settings;
 using LivePhotoConvert.Desktop.Features.Tasks;
 using LivePhotoConvert.Desktop.Features.Tools;
+using LivePhotoConvert.Desktop.Features.Updates;
 using LivePhotoConvert.Desktop.Infrastructure;
 
 namespace LivePhotoConvert.Desktop.Features.Shell;
@@ -27,7 +28,8 @@ public sealed partial class ShellViewModel : ViewModelBase
         InspectorViewModel inspector,
         TasksViewModel tasks,
         ToolsViewModel tools,
-        SettingsViewModel settings)
+        SettingsViewModel settings,
+        UpdateCenter updates)
     {
         _navigator = navigator;
         _dialogs = dialogs;
@@ -36,6 +38,7 @@ public sealed partial class ShellViewModel : ViewModelBase
         Tasks = tasks;
         Tools = tools;
         Settings = settings;
+        Updates = updates;
 
         _toolCards = [Tools.ExifTool, Tools.Ffmpeg, Tools.HeifEnc];
         ToolStatuses = [.. _toolCards.Select(card => new ToolStatusItem(card.DisplayName))];
@@ -60,6 +63,9 @@ public sealed partial class ShellViewModel : ViewModelBase
     public TasksViewModel Tasks { get; }
     public ToolsViewModel Tools { get; }
     public SettingsViewModel Settings { get; }
+
+    /// <summary>侧栏"设置"上的新版本提示。</summary>
+    public UpdateCenter Updates { get; }
 
     public AppPage CurrentPage => _navigator.Current;
 

@@ -2,9 +2,19 @@ using Avalonia.Controls;
 using LivePhotoConvert.Core.Services;
 using LivePhotoConvert.Desktop.Features.Dialogs;
 using LivePhotoConvert.Desktop.Features.Playback;
+using LivePhotoConvert.Desktop.Features.Updates;
 using LivePhotoConvert.Desktop.Services;
 
 namespace LivePhotoConvert.Desktop.Infrastructure;
+
+/// <summary>为安装更新而退出程序。</summary>
+public interface IAppShutdown
+{
+    /// <summary>
+    /// 走完正常的退出收尾后启动更新程序并关闭主窗口；用户在确认弹窗中选择不退出、或更新程序无法启动时返回 false，程序继续运行。
+    /// </summary>
+    Task<bool> ShutdownForUpdateAsync();
+}
 
 /// <summary>
 /// 主窗口关闭流程：先确认并取消运行中的任务，再停止播放、保存设置、清理临时目录，最后才真正关闭。
@@ -15,7 +25,8 @@ public sealed class AppLifetime(
     ILocalizer localizer,
     IPlaybackControl playback,
     IReadOnlyList<IBackgroundWork> backgroundWork,
-    Action? flushPendingEdits = null)
+    IUpdateService updates,
+    Action? flushPendingEdits = null) : IAppShutdown
 {
     public static readonly TimeSpan CancelTimeout = TimeSpan.FromSeconds(10);
 
@@ -24,13 +35,53 @@ public sealed class AppLifetime(
 
     private bool _shutdownPrepared;
     private bool _closing;
+    private Window? _window;
 
-    public void Attach(Window window) => window.Closing += (_, e) => OnClosing(window, e);
+    public void Attach(Window window)
+    {
+        _window = window;
+        window.Closing += (_, e) => OnClosing(window, e);
+    }
+
+    public async Task<bool> ShutdownForUpdateAsync()
+    {
+        // 与关窗收尾互斥：两者同时进行会重复取消任务、重复弹出确认
+        if (_closing || _shutdownPrepared)
+        {
+            return false;
+        }
+
+        _closing = true;
+        try
+        {
+            if (!await PrepareShutdownAsync(launchPendingUpdate: false))
+            {
+                return false;
+            }
+
+            updates.ApplyAndRestart();
+        }
+        catch (Exception ex)
+        {
+            // 收尾已完成但程序继续运行：允许之后再次正常退出
+            ErrorLogger.Log(ex, "启动更新程序");
+            _shutdownPrepared = false;
+            return false;
+        }
+        finally
+        {
+            _closing = false;
+        }
+
+        _window?.Close();
+        return true;
+    }
 
     /// <summary>
     /// 执行退出前的全部收尾；用户在确认弹窗中选择不退出时返回 false。
     /// </summary>
-    public async Task<bool> PrepareShutdownAsync()
+    /// <param name="launchPendingUpdate">是否启动"退出时安装"的更新；为更新而退出时由调用方自行启动带重启的更新程序</param>
+    public async Task<bool> PrepareShutdownAsync(bool launchPendingUpdate = true)
     {
         var busy = backgroundWork.Where(w => w.IsBusy).ToList();
         if (busy.Count > 0)
@@ -68,6 +119,11 @@ public sealed class AppLifetime(
         if (settings.Current.AutoCleanTemp)
         {
             SafetyGuard.CleanOwnTempDirectories();
+        }
+
+        if (launchPendingUpdate)
+        {
+            updates.OnExiting();
         }
 
         _shutdownPrepared = true;

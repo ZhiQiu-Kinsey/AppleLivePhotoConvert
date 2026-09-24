@@ -70,9 +70,82 @@ jobs:
     permissions:
       contents: read
 
-  publish:
-    name: 打包并创建 GitHub Release
+  # 安装版与更新包在 Windows 上打包：vpk 生成增量包依赖它自带的 Windows 版 zstd，且与 CI 中验证安装与升级的环境一致
+  package:
+    name: 打包安装版与更新包（Velopack）
     needs: [ prepare, ci ]
+    runs-on: windows-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      TAG: ${{ needs.prepare.outputs.tag }}
+      VERSION: ${{ needs.prepare.outputs.version }}
+
+    steps:
+      - name: 检出打包脚本、更新日志与图标
+        uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ needs.prepare.outputs.tag }}
+          persist-credentials: false
+          sparse-checkout: |
+            .github/scripts
+            CHANGELOG.md
+            global.json
+            src/LivePhotoConvert.Desktop/LivePhotoConvert.Desktop.csproj
+            src/LivePhotoConvert.Desktop/LivePhotoConvert.ico
+          sparse-checkout-cone-mode: false
+
+      # vpk 是 .NET 工具，版本与工程中的 Velopack 包一致（由打包脚本读取）
+      - name: 配置 .NET（版本取自 global.json）
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: 下载 Native AOT 发布目录
+        uses: actions/download-artifact@v8
+        with:
+          name: aot-win-x64
+          path: dist/aot
+
+      - name: 提取更新说明
+        shell: pwsh
+        run: ./.github/scripts/get-changelog-section.ps1 -Version $env:VERSION -OutFile release-notes.md
+
+      # 先下载上一个正式版的完整包作为增量基准；上一版没有 Velopack 资产（首次发布）时只生成完整包
+      - name: 打包安装版、便携版与更新包
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: >-
+          ./.github/scripts/velopack-pack.ps1 -PublishDir dist/aot -Version $env:VERSION -OutputDir velopack
+          -ReleaseNotes release-notes.md
+          -PreviousReleasesFrom "$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY" -Token $env:GITHUB_TOKEN
+
+      # 安装版与便携版按 tag 命名；更新包与 releases.win.json 保持 vpk 的名字（更新清单按文件名引用）。
+      # 上一版的完整包只作增量基准，属于上一个发布，不重复上传。
+      - name: 整理发布文件
+        shell: pwsh
+        run: |
+          $pack = 'LivePhotoConvert.App'
+          New-Item -ItemType Directory -Force -Path velopack-release | Out-Null
+          Copy-Item -LiteralPath "velopack/$pack-win-Setup.exe" -Destination "velopack-release/LivePhotoConvert-$env:TAG-win-x64-Setup.exe"
+          Copy-Item -LiteralPath "velopack/$pack-win-Portable.zip" -Destination "velopack-release/LivePhotoConvert-$env:TAG-win-x64-Portable.zip"
+          Copy-Item -LiteralPath "velopack/releases.win.json" -Destination velopack-release/
+          Get-ChildItem -LiteralPath velopack -Filter "$pack-$env:VERSION-*.nupkg" | Copy-Item -Destination velopack-release/
+          Get-ChildItem -LiteralPath velopack-release | ForEach-Object { Write-Host ("{0,12:N0}  {1}" -f $_.Length, $_.Name) }
+
+      - name: 上传安装版与更新包
+        uses: actions/upload-artifact@v7
+        with:
+          name: velopack-win-x64
+          path: velopack-release/
+          if-no-files-found: error
+          retention-days: 3
+
+  publish:
+    name: 创建 GitHub Release
+    needs: [ prepare, package ]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -101,18 +174,25 @@ jobs:
           name: aot-win-x64
           path: dist/aot
 
+      # 安装版、便携版、完整 / 增量更新包与更新清单
+      - name: 下载安装版与更新包
+        uses: actions/download-artifact@v8
+        with:
+          name: velopack-win-x64
+          path: release
+
+      # 纯解压版保留给不想安装的用户；它不含 Velopack 的更新程序，应用内显示"不支持自动更新"并提供下载页
       - name: 打包 ZIP 并生成 SHA256SUMS.txt
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path release | Out-Null
           $zip = "release/LivePhotoConvert-$env:TAG-win-x64.zip"
           Compress-Archive -Path dist/aot/* -DestinationPath $zip -CompressionLevel Optimal
-          ./.github/scripts/write-sha256sums.ps1 -Directory release -Filter '*.zip' -OutFile release/SHA256SUMS.txt
+          ./.github/scripts/write-sha256sums.ps1 -Directory release -OutFile release/SHA256SUMS.txt
 
       - name: 生成构建来源证明
         uses: actions/attest@v4
         with:
-          subject-path: release/LivePhotoConvert-${{ env.TAG }}-win-x64.zip
+          subject-path: release/*
 
       - name: 提取更新说明
         shell: pwsh
@@ -127,6 +207,4 @@ jobs:
           draft: false
           prerelease: ${{ contains(env.VERSION, '-') }}
           fail_on_unmatched_files: true
-          files: |
-            release/LivePhotoConvert-${{ env.TAG }}-win-x64.zip
-            release/SHA256SUMS.txt
+          files: release/*

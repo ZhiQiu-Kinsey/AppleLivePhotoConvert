@@ -145,9 +145,11 @@
             </Border>
             <Button Classes="nav-btn" Classes.selected="{Binding IsSettingsSelected}" Command="{Binding NavigateCommand}" CommandParameter="Settings"
                     controls:ShortcutTip.Label="{DynamicResource NavSettings}" controls:ShortcutTip.Shortcut="{x:Static infra:AppShortcuts.NavigateSettings}">
-              <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
+              <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
                 <ic:SymbolIcon Grid.Column="0" Symbol="Settings" FontSize="16" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
                 <TextBlock Grid.Column="1" Text="{DynamicResource NavSettings}" FontSize="12" Margin="10,0,0,0" VerticalAlignment="Center" />
+                <Border Grid.Column="2" x:Name="UpdateAvailableDot" Classes="status-dot update" IsVisible="{Binding Updates.HasUpdate}"
+                        ToolTip.Tip="{Binding Updates.AvailableUpdateTip}" />
               </Grid>
             </Button>
           </StackPanel>
@@ -196,6 +198,9 @@
             </DataTemplate>
             <DataTemplate DataType="dialogs:StripCompareDialogViewModel">
               <dialogs:StripCompareDialog />
+            </DataTemplate>
+            <DataTemplate DataType="dialogs:UpdateDialogViewModel">
+              <dialogs:UpdateDialog />
             </DataTemplate>
             <DataTemplate DataType="dialogs:DonateDialogViewModel">
               <dialogs:DonateDialog />

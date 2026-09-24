@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using LivePhotoConvert.Core.Pipeline;
 using LivePhotoConvert.Core.Services;
 using LivePhotoConvert.Desktop.Features.Library;
+using LivePhotoConvert.Desktop.Features.Updates;
 
 namespace LivePhotoConvert.Desktop.Infrastructure;
 
@@ -58,6 +59,40 @@ public sealed class DesktopSettings
 
     /// <summary>主窗口最近一次的常规（非最大化）位置与大小；从未记录时为 null。</summary>
     public WindowPlacement? Window { get; set; }
+
+    /// <summary>自动更新；文件中写成 null 时同样回退默认值，调用方不必判空。</summary>
+    public UpdatePreferences Updates { get; set => field = value ?? new(); } = new();
+}
+
+/// <summary>自动更新偏好与最近一次检查的结果；缺少字段时取默认值（自动检查开启、从未检查），无需迁移。</summary>
+public sealed class UpdatePreferences
+{
+    /// <summary>启动后在后台自动检查（每天最多一次）。</summary>
+    public bool AutoCheck { get; set; } = true;
+
+    /// <summary>最近一次完成（成功或失败）的检查时间。</summary>
+    public DateTimeOffset? LastCheckTime { get; set; }
+
+    [JsonConverter(typeof(JsonStringEnumConverter<UpdateCheckStatus>))]
+    public UpdateCheckStatus LastCheckStatus { get; set; }
+
+    /// <summary>最近一次检查发现的新版本；没有时为空。</summary>
+    public string LastAvailableVersion { get; set; } = string.Empty;
+
+    /// <summary>最近一次检查失败的原因；仅 <see cref="LastCheckStatus"/> 为 Failed 时有意义。</summary>
+    [JsonConverter(typeof(JsonStringEnumConverter<UpdateFailureKind>))]
+    public UpdateFailureKind LastFailure { get; set; }
+
+    /// <summary>用户选择跳过的版本：不再自动弹出，手动检查仍会显示。</summary>
+    public string SkippedVersion { get; set; } = string.Empty;
+}
+
+public enum UpdateCheckStatus
+{
+    Never,
+    UpToDate,
+    UpdateAvailable,
+    Failed
 }
 
 /// <summary>图库视图偏好；取值与工具栏命令参数一致，无法识别的值在读取时回退默认。</summary>

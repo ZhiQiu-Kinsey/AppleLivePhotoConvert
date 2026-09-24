@@ -1,3 +1,5 @@
+using System.Reflection;
+
 namespace LivePhotoConvert.Desktop.Models;
 
 /// <summary>
@@ -31,6 +33,9 @@ public static class AboutInfo
     /// <summary>作者主页。</summary>
     public const string AuthorUrl = "https://github.com/ZhiQiu-Kinsey";
 
+    /// <summary>程序版本号（取自 <see cref="AssemblyInformationalVersionAttribute"/>，去掉 "+提交" 构建元数据）。</summary>
+    public static string AppVersion { get; } = ResolveAppVersion();
+
     /// <summary>运行时调用外部可执行文件（ExifTool / FFmpeg / heif-enc）之外的内置依赖。</summary>
     public static readonly CreditEntry[] RuntimeCredits =
     [
@@ -46,6 +51,7 @@ public static class AboutInfo
         new(".NET 10", "CreditDotNetDesc", "https://dotnet.microsoft.com/", "MIT"),
         new("Avalonia UI", "CreditAvaloniaDesc", "https://avaloniaui.net/", "MIT"),
         new("CommunityToolkit.Mvvm", "CreditToolkitDesc", "https://github.com/CommunityToolkit/dotnet", "MIT"),
+        new("Velopack", "CreditVelopackDesc", "https://velopack.io/", "MIT"),
         new("FluentIcons.Avalonia", "CreditFluentIconsDesc", "https://github.com/davidxuang/FluentIcons", "MIT"),
         new("Google Motion Photo", "CreditMotionPhotoSpecDesc",
             "https://developer.android.com/media/platform/motion-photo-format", "Spec")
@@ -56,6 +62,20 @@ public static class AboutInfo
     [
         new(AuthorName, "CreditContributorAuthorDesc", AuthorUrl, "Author")
     ];
+
+    private static string ResolveAppVersion()
+    {
+        var assembly = typeof(AboutInfo).Assembly;
+        var informational = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+        if (!string.IsNullOrEmpty(informational))
+        {
+            var plus = informational.IndexOf('+', StringComparison.Ordinal);
+            return plus > 0 ? informational[..plus] : informational;
+        }
+
+        var version = assembly.GetName().Version;
+        return version is null ? "0.0.0" : $"{version.Major}.{version.Minor}.{version.Build}";
+    }
 
     /// <summary>
     /// 一条未本地化的鸣谢原始条目，由视图模型解析为 <see cref="AboutCredit"/>。

@@ -205,6 +205,55 @@
             </StackPanel>
           </Border>
         </StackPanel>
+
+        <!-- 更新：当前版本、手动检查与自动检查；不支持自动更新的运行方式给出下载页 -->
+        <StackPanel Spacing="6">
+          <TextBlock Text="{DynamicResource SettingsUpdatesTitle}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+          <Border Classes="settings-card" x:Name="UpdateSettingsCard">
+            <StackPanel>
+              <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto">
+                <Border Classes="settings-icon-badge"><ic:SymbolIcon Symbol="ArrowSync" FontSize="16" Foreground="{DynamicResource AccentBrush}" /></Border>
+                <StackPanel Grid.Column="1">
+                  <TextBlock Classes="settings-card-title"><Run Text="{DynamicResource UpdateCurrentVersionLabel}" /><Run Text=" " /><Run Text="{CompiledBinding Updates.CurrentVersion}" /></TextBlock>
+                  <TextBlock x:Name="UpdateStatusText" Text="{CompiledBinding Updates.StatusText}" Classes="settings-card-caption" />
+                </StackPanel>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                  <Button x:Name="CancelPendingRestartButton" Classes="engine-secondary-btn"
+                          IsVisible="{CompiledBinding Updates.IsWaitingForTasks}" Command="{CompiledBinding Updates.CancelPendingRestartCommand}">
+                    <TextBlock Text="{DynamicResource UpdateCancelPendingRestartBtn}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                  </Button>
+                  <Button x:Name="ShowUpdateButton" Classes="primary-btn" Height="36" Padding="12,0"
+                          IsVisible="{CompiledBinding Updates.HasUpdate}" Command="{CompiledBinding Updates.ShowUpdateCommand}">
+                    <TextBlock Text="{DynamicResource UpdateShowBtn}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center" />
+                  </Button>
+                  <Button x:Name="CheckUpdateButton" Classes="engine-secondary-btn"
+                          IsVisible="{CompiledBinding Updates.IsSupported}" Command="{CompiledBinding Updates.CheckNowCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <ic:SymbolIcon Symbol="ArrowClockwise" FontSize="13" Foreground="{DynamicResource AccentTextBrush}" VerticalAlignment="Center" />
+                      <TextBlock Text="{DynamicResource UpdateCheckBtn}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
+                  </Button>
+                  <Button x:Name="OpenDownloadPageButton" Classes="engine-secondary-btn"
+                          IsVisible="{CompiledBinding Updates.IsUnsupported}" Command="{CompiledBinding Updates.OpenDownloadPageCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <ic:SymbolIcon Symbol="Open" FontSize="13" Foreground="{DynamicResource AccentTextBrush}" VerticalAlignment="Center" />
+                      <TextBlock Text="{DynamicResource UpdateOpenDownloadPageBtn}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
+                  </Button>
+                </StackPanel>
+              </Grid>
+              <Border Classes="settings-divider" IsVisible="{CompiledBinding Updates.IsSupported}" />
+              <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto" IsVisible="{CompiledBinding Updates.IsSupported}">
+                <Border Classes="settings-icon-badge"><ic:SymbolIcon Symbol="CalendarClock" FontSize="16" Foreground="{DynamicResource AccentBrush}" /></Border>
+                <StackPanel Grid.Column="1">
+                  <TextBlock Text="{DynamicResource UpdateAutoCheckTitle}" Classes="settings-card-title" />
+                  <TextBlock Text="{DynamicResource UpdateAutoCheckDesc}" Classes="settings-card-caption" />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="2" x:Name="AutoCheckUpdateSwitch" Classes="row-switch" IsChecked="{CompiledBinding Updates.AutoCheck, Mode=TwoWay}" />
+              </Grid>
+            </StackPanel>
+          </Border>
+        </StackPanel>
       </StackPanel>
 
       <!-- ===== 关于 ===== -->
@@ -235,6 +284,13 @@
               <TextBlock Text="{CompiledBinding LicenseName}" FontSize="11" FontWeight="SemiBold"
                          Foreground="{DynamicResource SuccessTextBrush}" />
             </Border>
+            <Button x:Name="AboutUpdateBadge" Classes="update-badge" IsVisible="{CompiledBinding Updates.HasUpdate}"
+                    Command="{CompiledBinding Updates.ShowUpdateCommand}" ToolTip.Tip="{CompiledBinding Updates.AvailableUpdateTip}">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <ic:SymbolIcon Symbol="ArrowCircleUp" FontSize="12" VerticalAlignment="Center" />
+                <TextBlock Text="{DynamicResource AboutUpdateAvailableBadge}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
           </StackPanel>
           </StackPanel>
         </Border>

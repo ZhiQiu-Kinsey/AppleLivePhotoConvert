@@ -11,6 +11,7 @@ using LivePhotoConvert.Desktop.Features.Settings;
 using LivePhotoConvert.Desktop.Features.Shell;
 using LivePhotoConvert.Desktop.Features.Tasks;
 using LivePhotoConvert.Desktop.Features.Tools;
+using LivePhotoConvert.Desktop.Features.Updates;
 using LivePhotoConvert.Desktop.Services;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -50,9 +51,11 @@ public static class AppServices
             paths.InvalidateOnChange(registry);
             return registry;
         });
+        // 程序目录由更新器管理时（安装版、可更新的便携版），每次更新都会整体替换，工具必须装在程序目录之外
+        services.AddSingleton<IUpdateService>(sp => new VelopackUpdateService(() => sp.GetRequiredService<SettingsStore>().Current.CustomMirrorUrl));
         services.AddSingleton<IToolInstaller>(sp => new ToolInstaller(
             sp.GetRequiredService<ToolManifest>(),
-            ToolDirectories.GetWritableToolDirectory()));
+            ToolDirectories.GetWritableToolDirectory(programDirectoryIsReplaced: sp.GetRequiredService<IUpdateService>().IsSupported)));
 
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IConversionEngines>(_ => ExternalToolEngines.Instance);
@@ -124,6 +127,15 @@ public static class AppServices
             sp.GetRequiredService<IToolInstaller>(),
             sp.GetRequiredService<IToolUsage>(),
             sp.GetRequiredService<TimeProvider>()));
+        services.AddSingleton(sp => new UpdateCenter(
+            sp.GetRequiredService<IUpdateService>(),
+            sp.GetRequiredService<SettingsStore>(),
+            sp.GetRequiredService<IDialogService>(),
+            sp.GetRequiredService<ILocalizer>(),
+            sp.GetRequiredService<IShellLauncher>(),
+            [sp.GetRequiredService<TaskCenter>()],
+            sp.GetRequiredService<IAppShutdown>(),
+            sp.GetRequiredService<TimeProvider>()));
         services.AddSingleton(sp => new SettingsViewModel(
             sp.GetRequiredService<SettingsStore>(),
             sp.GetRequiredService<ILocalizer>(),
@@ -132,7 +144,8 @@ public static class AppServices
             sp.GetRequiredService<IDialogService>(),
             sp.GetRequiredService<IThumbnailPipeline>(),
             sp.GetRequiredService<ThumbnailDiskCache>(),
-            sp.GetRequiredService<INavigator>()));
+            sp.GetRequiredService<INavigator>(),
+            sp.GetRequiredService<UpdateCenter>()));
         services.AddSingleton(sp => new ShellViewModel(
             sp.GetRequiredService<INavigator>(),
             sp.GetRequiredService<IDialogService>(),
@@ -140,7 +153,8 @@ public static class AppServices
             sp.GetRequiredService<InspectorViewModel>(),
             sp.GetRequiredService<TasksViewModel>(),
             sp.GetRequiredService<ToolsViewModel>(),
-            sp.GetRequiredService<SettingsViewModel>()));
+            sp.GetRequiredService<SettingsViewModel>(),
+            sp.GetRequiredService<UpdateCenter>()));
 
         services.AddSingleton(sp => new AppLifetime(
             sp.GetRequiredService<SettingsStore>(),
@@ -148,7 +162,9 @@ public static class AppServices
             sp.GetRequiredService<ILocalizer>(),
             sp.GetRequiredService<IPlaybackControl>(),
             [sp.GetRequiredService<TaskCenter>()],
+            sp.GetRequiredService<IUpdateService>(),
             () => sp.GetRequiredService<ToolsViewModel>().FlushMirror()));
+        services.AddSingleton<IAppShutdown>(sp => sp.GetRequiredService<AppLifetime>());
 
         configure?.Invoke(services);
         return services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = false, ValidateScopes = false });

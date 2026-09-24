@@ -5,6 +5,7 @@ using LivePhotoConvert.Desktop.Features.Settings;
 using LivePhotoConvert.Desktop.Features.Shell;
 using LivePhotoConvert.Desktop.Features.Tasks;
 using LivePhotoConvert.Desktop.Features.Tools;
+using LivePhotoConvert.Desktop.Features.Updates;
 using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Features.Playback;
 using LivePhotoConvert.Desktop.Tests.Harness;
@@ -17,6 +18,12 @@ public class AppServicesTests
     private sealed class FakeWork : IBackgroundWork
     {
         public bool IsBusy { get; set; }
+
+        public event EventHandler? BusyChanged
+        {
+            add { }
+            remove { }
+        }
 
         public TimeSpan? CanceledWith { get; private set; }
 
@@ -141,7 +148,7 @@ public class AppServicesTests
         host.Settings.Update(s => s.AutoCleanTemp = false);
         var dialogs = host.Get<IDialogService>();
         var work = new FakeWork { IsBusy = true };
-        var lifetime = new AppLifetime(host.Settings, dialogs, host.Localizer, host.Get<IPlaybackControl>(), [work]);
+        var lifetime = new AppLifetime(host.Settings, dialogs, host.Localizer, host.Get<IPlaybackControl>(), [work], host.Get<IUpdateService>());
 
         var declined = lifetime.PrepareShutdownAsync();
         var question = Assert.IsType<ConfirmDialogViewModel>(dialogs.Current);
@@ -163,7 +170,7 @@ public class AppServicesTests
     {
         using var host = new DesktopTestHost();
         host.Settings.Update(s => s.AutoCleanTemp = false);
-        var lifetime = new AppLifetime(host.Settings, host.Get<IDialogService>(), host.Localizer, host.Get<IPlaybackControl>(), [new FakeWork()]);
+        var lifetime = new AppLifetime(host.Settings, host.Get<IDialogService>(), host.Localizer, host.Get<IPlaybackControl>(), [new FakeWork()], host.Get<IUpdateService>());
 
         Assert.True(await lifetime.PrepareShutdownAsync().WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
         Assert.Null(host.Get<IDialogService>().Current);

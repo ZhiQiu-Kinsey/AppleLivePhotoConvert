@@ -245,9 +245,9 @@ jobs:
           if-no-files-found: warn
 
   aot:
-    name: Windows · Native AOT 发布
+    name: Windows · Native AOT 发布与安装包验证
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
 
     steps:
       - name: 检出代码
@@ -277,6 +277,40 @@ jobs:
       - name: 移除调试符号
         shell: pwsh
         run: Remove-Item -Path dist/aot/*.pdb -Force -ErrorAction SilentlyContinue
+
+      # 用同一份 AOT 产物打两个测试版本（旧 → 新），第二次打包生成增量包；vpk 版本取自工程中的 Velopack 包
+      - name: 打包测试安装包（Velopack）
+        shell: pwsh
+        run: |
+          $out = Join-Path $env:RUNNER_TEMP 'velopack'
+          ./.github/scripts/velopack-pack.ps1 -PublishDir dist/aot -Version 0.0.1-ci -OutputDir $out
+          Copy-Item -LiteralPath (Join-Path $out 'LivePhotoConvert.App-win-Setup.exe') -Destination (Join-Path $env:RUNNER_TEMP 'setup-0.0.1-ci.exe')
+          ./.github/scripts/velopack-pack.ps1 -PublishDir dist/aot -Version 0.0.2-ci -OutputDir $out
+          if (-not (Test-Path -LiteralPath (Join-Path $out 'LivePhotoConvert.App-0.0.2-ci-delta.nupkg'))) {
+            Write-Host '::error::第二个版本没有生成增量包。'
+            exit 1
+          }
+
+      # 静默安装旧版 → 检查目录、快捷方式与卸载注册 → 启动 → 增量重建并升级到新版 → 启动 → 静默卸载，
+      # 确认程序目录被移除而 %LocalAppData%\LivePhotoConvert 下的用户数据保留。全程不联网。
+      - name: 安装、启动、升级与卸载
+        shell: pwsh
+        run: >-
+          ./.github/scripts/installer-smoke.ps1
+          -OldSetup (Join-Path $env:RUNNER_TEMP 'setup-0.0.1-ci.exe') -OldVersion 0.0.1-ci
+          -NewPackage (Join-Path $env:RUNNER_TEMP 'velopack/LivePhotoConvert.App-0.0.2-ci-full.nupkg')
+          -NewDelta (Join-Path $env:RUNNER_TEMP 'velopack/LivePhotoConvert.App-0.0.2-ci-delta.nupkg')
+          -NewVersion 0.0.2-ci
+
+      - name: 上传安装与更新日志
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: installer-logs
+          path: |
+            ~/AppData/Local/velopack/*.log
+            ~/AppData/Local/LivePhotoConvert/logs/*.log
+          if-no-files-found: ignore
 
       - name: 上传 AOT 发布目录（仅发布流程）
         if: ${{ inputs.upload-aot }}

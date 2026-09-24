@@ -8,6 +8,7 @@ using LivePhotoConvert.Desktop.Features.Dialogs;
 using LivePhotoConvert.Desktop.Features.Library.Thumbnails;
 using LivePhotoConvert.Desktop.Features.Playback;
 using LivePhotoConvert.Desktop.Features.Shell;
+using LivePhotoConvert.Desktop.Features.Updates;
 using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -45,7 +46,14 @@ public class App : Application
             desktop.Exit += (_, _) => services.Dispose();
 
             _ = Task.Run(SafetyGuard.CleanOrphanTempDirectories);
-            _ = Task.Run(() => RecoverToolInstalls(services.GetRequiredService<IToolInstaller>()));
+            var installer = services.GetRequiredService<IToolInstaller>();
+            _ = Task.Run(() => RecoverToolInstalls(installer));
+            if (services.GetRequiredService<IUpdateService>().IsSupported)
+            {
+                _ = Task.Run(() => MigrateLegacyTools(installer.InstallRoot));
+            }
+
+            _ = services.GetRequiredService<UpdateCenter>().StartAutoCheck();
             _ = Task.Run(LegacyThumbnailCache.TryDelete);
             _ = Task.Run(LegacyMotionCache.TryDelete);
         }
@@ -63,6 +71,22 @@ public class App : Application
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             ErrorLogger.Log(ex, "恢复中断的工具安装");
+        }
+    }
+
+    /// <summary>
+    /// 旧版装在程序目录下的工具复制到新的安装位置；源保留，程序目录下的副本随下次更新一起被替换。
+    /// </summary>
+    private static void MigrateLegacyTools(string installRoot)
+    {
+        try
+        {
+            ToolDirectories.MigrateLegacyTools(ToolDirectories.LegacyToolRoots(), installRoot,
+                (path, ex) => ErrorLogger.Log(ex, $"迁移旧版工具目录 {path}"));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            ErrorLogger.Log(ex, "迁移旧版工具目录");
         }
     }
 
