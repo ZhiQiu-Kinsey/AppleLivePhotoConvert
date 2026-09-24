@@ -78,14 +78,14 @@ public class LocalizerTests
         var localizer = new Localizer();
 
         localizer.SetLanguage("zh-CN");
-        Assert.Equal("12,345 项已扫描", localizer.Format("FunnelTotalFormat", 12345));
+        Assert.Equal("已扫描 12,345 个文件", localizer.Format("FunnelTotalFormat", 12345));
 
         localizer.SetLanguage("en-US");
-        Assert.Equal("Scanned: 12,345", localizer.Format("FunnelTotalFormat", 12345));
+        Assert.Equal("12,345 files scanned", localizer.Format("FunnelTotalFormat", 12345));
         Assert.Equal("May 2025", new DateTime(2025, 5, 10).ToString(localizer["GroupTitleMonthFormat"], localizer.Culture));
 
         localizer.SetLanguage("zh-CN");
-        Assert.Equal("12,345 项已扫描", localizer.Format("FunnelTotalFormat", 12345));
+        Assert.Equal("已扫描 12,345 个文件", localizer.Format("FunnelTotalFormat", 12345));
         Assert.Equal("2025年5月", new DateTime(2025, 5, 10).ToString(localizer["GroupTitleMonthFormat"], localizer.Culture));
         Assert.Equal("2025年", new DateTime(2025, 5, 10).ToString(localizer["GroupTitleYearFormat"], localizer.Culture));
     }

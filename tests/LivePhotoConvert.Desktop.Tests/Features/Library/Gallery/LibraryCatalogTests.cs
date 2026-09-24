@@ -17,6 +17,7 @@ public class LibraryCatalogTests
         album.CreateInputFile("IMG_0001.mp4", new byte[900]);
         album.CreateInputFile("MVIMG_0002.jpg", SyntheticMedia.MotionPhoto());
         album.CreateInputFile("IMG_0003.jpg", SyntheticMedia.Jpeg());
+        album.CreateInputFile("notes.txt", new byte[10]);
         var catalog = new LibraryCatalog(Cards.Localizer, NoEnrichment.Instance);
         var replaced = 0;
         catalog.CardsReplaced += (_, _) => replaced++;
@@ -28,7 +29,9 @@ public class LibraryCatalogTests
         // 按照片路径排序
         Assert.Equal([LibraryItemKind.ApplePair, LibraryItemKind.Still, LibraryItemKind.MotionPhoto], catalog.Cards.Select(c => c.Kind));
         Assert.Equal(2, catalog.Cards[0].Item.PairCandidates.Count);
-        Assert.Equal(5, catalog.TotalFiles);
+        // 实况对的视频与同主干的备选视频属于条目，不算忽略；只有非媒体文件被忽略
+        Assert.Equal(6, catalog.TotalFiles);
+        Assert.Equal(1, catalog.IgnoredFiles);
         Assert.False(catalog.IsScanning);
         Assert.Equal(LibraryScanError.None, catalog.Error);
         Assert.False(catalog.HasStatus);

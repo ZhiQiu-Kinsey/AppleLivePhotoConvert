@@ -88,9 +88,16 @@ public sealed record LibraryItem(LibraryItemKind Kind, LibraryFile Photo)
 /// 扫描结果。
 /// </summary>
 /// <param name="Items">条目，按照片路径排序</param>
-/// <param name="TotalFiles">枚举到的文件总数（不含本程序的暂存与备份文件）</param>
+/// <param name="TotalFiles">遇到的文件总数，含被忽略的文件；隐藏或系统目录不进入，其中的文件不计</param>
 /// <param name="InaccessibleEntries">因权限等原因无法读取而跳过的目录数</param>
-public sealed record LibraryScanResult(IReadOnlyList<LibraryItem> Items, int TotalFiles, int InaccessibleEntries);
+public sealed record LibraryScanResult(IReadOnlyList<LibraryItem> Items, int TotalFiles, int InaccessibleEntries)
+{
+    /// <summary>
+    /// 不参与图库的文件数：非媒体、隐藏或系统文件、本程序的暂存与备份。
+    /// 实况对中的视频、未配对的视频与同主干的备选文件属于媒体，不计入。
+    /// </summary>
+    public int IgnoredFiles { get; init; }
+}
 
 /// <summary>
 /// 扫描进度：先枚举文件，再逐条分析。

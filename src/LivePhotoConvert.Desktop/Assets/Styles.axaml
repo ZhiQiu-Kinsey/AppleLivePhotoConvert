@@ -1,5 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="using:LivePhotoConvert.Desktop.Controls"
         xmlns:ic="using:FluentIcons.Avalonia">
 
   <!--
@@ -50,6 +51,10 @@
           <!-- 白字填充按钮的底色：比同名图标色更深，保证按钮小字对比度 -->
           <SolidColorBrush x:Key="SuccessFillBrush" Color="#04855F" />
           <SolidColorBrush x:Key="WarningFillBrush" Color="#BB5908" />
+
+          <!-- 画廊选中：描边与画布、卡片底色对比度 ≥4.9:1，角标内勾号 5.2:1 -->
+          <SolidColorBrush x:Key="SelectionBrush" Color="#2563EB" />
+          <SolidColorBrush x:Key="OnSelectionBrush" Color="#FFFFFF" />
 
           <SolidColorBrush x:Key="SuccessTextBrush" Color="#065F46" />
           <SolidColorBrush x:Key="WarningTextBrush" Color="#92400E" />
@@ -110,6 +115,10 @@
           <SolidColorBrush x:Key="OnAccentBrush" Color="#FFFFFF" />
           <SolidColorBrush x:Key="SuccessFillBrush" Color="#04855F" />
           <SolidColorBrush x:Key="WarningFillBrush" Color="#BB5908" />
+
+          <!-- 深色下用更亮的蓝：与卡片底色 5.8:1、画布 7.0:1；勾号改深色（7.0:1），白色只有 2.5:1 -->
+          <SolidColorBrush x:Key="SelectionBrush" Color="#60A5FA" />
+          <SolidColorBrush x:Key="OnSelectionBrush" Color="#0F172A" />
 
           <SolidColorBrush x:Key="SuccessTextBrush" Color="#6EE7B7" />
           <SolidColorBrush x:Key="WarningTextBrush" Color="#FCD34D" />
@@ -1020,6 +1029,38 @@
 
   <Style Selector="Border.card-media-badge.warning">
     <Setter Property="Background" Value="{DynamicResource WarningBrush}" />
+  </Style>
+
+  <!-- 画廊卡片选中态：叠加描边与右上角勾选角标，均不参与布局 -->
+  <Style Selector="Border.card-selection-ring">
+    <Setter Property="BorderBrush" Value="{DynamicResource SelectionBrush}" />
+    <Setter Property="BorderThickness" Value="3" />
+    <Setter Property="CornerRadius" Value="16" />
+    <Setter Property="IsHitTestVisible" Value="False" />
+  </Style>
+
+  <Style Selector="Border.card-check">
+    <Setter Property="Width" Value="24" />
+    <Setter Property="Height" Value="24" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Margin" Value="8" />
+    <Setter Property="HorizontalAlignment" Value="Right" />
+    <Setter Property="VerticalAlignment" Value="Top" />
+    <Setter Property="Background" Value="{DynamicResource MediaBadgeBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource OnMediaBrush}" />
+    <Setter Property="BorderThickness" Value="1.5" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Opacity" Value="0" />
+  </Style>
+
+  <Style Selector="controls|PhotoCardControl:pointerover Border.card-check">
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+
+  <Style Selector="Border.card-check.selected">
+    <Setter Property="Opacity" Value="1" />
+    <Setter Property="Background" Value="{DynamicResource SelectionBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource OnSelectionBrush}" />
   </Style>
 
   <!-- 画廊卡片信息栏右上角的配对状态：宽卡片显示文字，窄卡片只显示图标 -->

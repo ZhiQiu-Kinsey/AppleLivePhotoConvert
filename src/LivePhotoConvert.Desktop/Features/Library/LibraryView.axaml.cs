@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -24,10 +25,15 @@ public partial class LibraryView : UserControl
     private TopLevel? _topLevel;
     private (string Key, double Delta)? _anchor;
     private List<Visual> _visibilityChain = [];
+    private bool _refocusAfterDialog;
 
     public LibraryView()
     {
         InitializeComponent();
+        // 画廊自身接收焦点，Ctrl+A / Esc / 空格才能在点击卡片后生效
+        Focusable = true;
+        AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
+        GalleryListBox.AddHandler(PointerPressedEvent, (_, _) => Focus(NavigationMethod.Pointer), RoutingStrategies.Bubble, handledEventsToo: true);
         Loaded += (_, _) => Attach();
         Unloaded += (_, _) => Detach();
     }
@@ -54,6 +60,7 @@ public partial class LibraryView : UserControl
         GalleryListBox.PointerExited += OnGalleryPointerExited;
         vm.Layout.LayoutChanging += OnLayoutChanging;
         vm.Layout.LayoutChanged += OnLayoutChanged;
+        vm.PropertyChanged += OnViewModelPropertyChanged;
         _topLevel = TopLevel.GetTopLevel(this);
         if (_topLevel is not null)
         {
@@ -93,6 +100,7 @@ public partial class LibraryView : UserControl
         {
             _vm.Layout.LayoutChanging -= OnLayoutChanging;
             _vm.Layout.LayoutChanged -= OnLayoutChanged;
+            _vm.PropertyChanged -= OnViewModelPropertyChanged;
             _vm = null;
         }
 
@@ -262,6 +270,63 @@ public partial class LibraryView : UserControl
     }
 
     private void OnGalleryPointerExited(object? sender, PointerEventArgs e) => _hover?.Leave();
+
+    /// <summary>弹窗（如空格打开的预览）关闭后焦点回到画廊，Esc、空格可以继续使用。</summary>
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(LibraryViewModel.HasActiveDialog) || _vm is null)
+        {
+            return;
+        }
+
+        if (_vm.HasActiveDialog)
+        {
+            _refocusAfterDialog = IsKeyboardFocusWithin;
+        }
+        else if (_refocusAfterDialog)
+        {
+            _refocusAfterDialog = false;
+            if (IsShown)
+            {
+                Focus();
+            }
+        }
+    }
+
+    /// <summary>
+    /// 隧道阶段处理，列表不会先把空格、Ctrl+A 当作行选择。主窗口的隧道处理先于这里，弹窗打开时 Esc 已被它消费。
+    /// </summary>
+    private void OnPreviewKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (_vm is not { HasActiveDialog: false } vm || !IsShown)
+        {
+            return;
+        }
+
+        var command = e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta);
+        switch (e.Key)
+        {
+            // 焦点在工具栏或卡片内的按钮上时，空格与 Ctrl+A 留给该控件
+            case Key.A or Key.Space when !IsGalleryKeyTarget(e.Source):
+                break;
+            case Key.A when command:
+                vm.SelectAllVisible(true);
+                e.Handled = true;
+                break;
+            case Key.Escape when vm.Selection.SelectedCount > 0:
+                vm.ClearSelection();
+                e.Handled = true;
+                break;
+            case Key.Space when e.KeyModifiers == KeyModifiers.None && vm.PreviewTarget is { } card:
+                vm.OpenQuickLookCommand.Execute(card);
+                e.Handled = true;
+                break;
+        }
+    }
+
+    private bool IsGalleryKeyTarget(object? source) =>
+        ReferenceEquals(source, this) || ReferenceEquals(source, GalleryListBox) ||
+        source is Visual visual && visual is not (Button or TextBox) && GalleryListBox.IsVisualAncestorOf(visual);
 
     private static string? KeyOf(object item) => item switch
     {

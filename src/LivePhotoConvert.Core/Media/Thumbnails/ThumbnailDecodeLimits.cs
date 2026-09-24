@@ -6,7 +6,7 @@ internal enum ThumbnailDecodeKind
     /// <summary>可用 DCT 缩放解码，峰值与输出尺寸相关。</summary>
     Jpeg,
 
-    /// <summary>HEIC / AVIF：libheif 只能整图解码，峰值约每像素 15 字节（1200 万像素约 180MB）。</summary>
+    /// <summary>HEIC / AVIF：libheif 只能整图解码，1200 万像素一次生成的峰值增量实测约 60MB，JPEG 经 DCT 缩放约 10MB。</summary>
     Heif,
 
     Other,
