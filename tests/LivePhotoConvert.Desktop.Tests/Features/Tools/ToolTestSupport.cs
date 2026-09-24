@@ -94,10 +94,13 @@ public sealed class FakeToolUsage : IToolUsage
 
     public event EventHandler? BusyChanged;
 
+    /// <summary>释放完成的时机；默认立即完成。</summary>
+    public Func<ToolId, Task> ReleaseCompletion { get; set; } = _ => Task.CompletedTask;
+
     public Task ReleaseIdleProcessesAsync(ToolId tool)
     {
         Released.Add(tool);
-        return Task.CompletedTask;
+        return ReleaseCompletion(tool);
     }
 }
 

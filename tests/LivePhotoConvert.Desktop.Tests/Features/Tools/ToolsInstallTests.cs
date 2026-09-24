@@ -252,6 +252,26 @@ public class ToolsInstallTests
     }
 
     [Fact]
+    public async Task Install_WaitsForReleasedProcessesToExitFirst()
+    {
+        using var f = new ToolsFixture();
+        var exited = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        f.Usage.ReleaseCompletion = _ => exited.Task;
+        f.Installer.Script = (tool, _, _, _) => Task.FromResult(FakeToolInstaller.Result(tool, f.Installer.ExecutablePath(tool)));
+
+        var install = f.ViewModel.InstallAsync(ToolId.Ffmpeg);
+
+        // 预览进程还没退出：安装器尚未开始，但界面已进入安装状态，不能再次点击
+        Assert.Empty(f.Installer.Calls);
+        Assert.True(f.ViewModel.IsInstallingAny);
+        Assert.True(f.ViewModel.Ffmpeg.IsInstalling);
+
+        exited.SetResult();
+        await install.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        Assert.Single(f.Installer.Calls);
+    }
+
+    [Fact]
     public async Task UnsupportedPlatform_DisablesInstallAndExplains()
     {
         using var f = new ToolsFixture(platformSupported: false, arrange: r =>
