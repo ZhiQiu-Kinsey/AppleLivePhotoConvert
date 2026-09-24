@@ -108,7 +108,7 @@ public class App : Application
             await _services.GetRequiredService<IDialogService>().ShowAsync(new ConfirmDialogViewModel
             {
                 Title = localizer["UnexpectedErrorTitle"],
-                Message = localizer.Format("UnexpectedErrorFormat", e.Exception.Message, logPath),
+                Message = localizer.Format("UnexpectedErrorFormat", ErrorMessages.Describe(localizer, e.Exception), logPath),
                 ConfirmText = localizer["ConfirmDialogOk"],
                 IsSingleButton = true
             });

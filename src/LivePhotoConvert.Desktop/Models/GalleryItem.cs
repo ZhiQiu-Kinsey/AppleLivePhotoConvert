@@ -132,12 +132,12 @@ public sealed partial class PhotoCardItemViewModel : ObservableObject, IGalleryD
 
     public string ResolutionText => Item.Header is { Width: > 0, Height: > 0 } header ? $"{header.Width}×{header.Height}" : string.Empty;
 
-    public string PhotoSizeText => FormatBytes(Item.Embedded is { } embedded ? embedded.ImageEnd : Item.Photo.Length);
+    public string PhotoSizeText => ByteSizeConverter.Format(Item.Embedded is { } embedded ? embedded.ImageEnd : Item.Photo.Length);
 
     public string VideoSizeText => Item switch
     {
-        { Embedded: { } embedded, Kind: LibraryItemKind.MotionPhoto } => FormatBytes(embedded.Length),
-        { Video: { } video, Kind: LibraryItemKind.ApplePair } => FormatBytes(video.Length),
+        { Embedded: { } embedded, Kind: LibraryItemKind.MotionPhoto } => ByteSizeConverter.Format(embedded.Length),
+        { Video: { } video, Kind: LibraryItemKind.ApplePair } => ByteSizeConverter.Format(video.Length),
         _ => string.Empty
     };
 
@@ -199,7 +199,4 @@ public sealed partial class PhotoCardItemViewModel : ObservableObject, IGalleryD
     }
 
     private static string Extension(string path) => Path.GetExtension(path).TrimStart('.').ToUpperInvariant();
-
-    private static string FormatBytes(long bytes) =>
-        ByteSizeConverter.Instance.Convert(bytes, typeof(string), null, CultureInfo.InvariantCulture) as string ?? $"{bytes} B";
 }

@@ -157,7 +157,13 @@
           </Grid>
         </Border>
 
+        <!-- 明细可达数千项：虚拟化面板按外层滚动视口只实例化可见的行 -->
         <ItemsControl ItemsSource="{Binding FilteredItems}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <VirtualizingStackPanel />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="tasks:TaskReportItem">
               <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1" Padding="14,10">
@@ -213,7 +219,7 @@
                           </DataTemplate>
                         </ItemsControl.ItemTemplate>
                       </ItemsControl>
-                      <ToggleButton x:Name="DetailToggle" Classes="detail-toggle" Margin="-4,2,0,0" IsVisible="{Binding HasTechnicalDetail}">
+                      <ToggleButton Classes="detail-toggle" Margin="-4,2,0,0" IsVisible="{Binding HasTechnicalDetail}" IsChecked="{Binding IsDetailExpanded, Mode=TwoWay}">
                         <StackPanel Orientation="Horizontal" Spacing="3">
                           <TextBlock Text="{DynamicResource ReportDetailToggle}" />
                           <ic:SymbolIcon Symbol="ChevronDown" FontSize="10" VerticalAlignment="Center" />
@@ -221,7 +227,7 @@
                       </ToggleButton>
                     </WrapPanel>
                     <SelectableTextBlock Text="{Binding TechnicalDetail}" FontSize="11" FontFamily="Consolas" TextWrapping="Wrap"
-                                         Foreground="{DynamicResource TextTertiaryBrush}" IsVisible="{Binding #DetailToggle.IsChecked}" />
+                                         Foreground="{DynamicResource TextTertiaryBrush}" IsVisible="{Binding IsDetailExpanded}" />
                   </StackPanel>
 
                   <Button Grid.Column="2" Classes="toolbar-btn" Width="32" Padding="0" VerticalAlignment="Center"

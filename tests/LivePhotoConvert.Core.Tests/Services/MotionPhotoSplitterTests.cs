@@ -15,14 +15,15 @@ public class MotionPhotoSplitterTests
     private readonly FakeImageConverter _images = new();
     private readonly FakeVideoConverter _videos = new();
 
-    private Task<BatchReport> SplitAsync(TempDirectory temp, IReadOnlyList<string> files, SplitTarget target = SplitTarget.Extract, SourceFileAction action = SourceFileAction.Keep, string? output = null, ConflictPolicy conflict = ConflictPolicy.AppendIndex) =>
+    private Task<BatchReport> SplitAsync(TempDirectory temp, IReadOnlyList<string> files, SplitTarget target = SplitTarget.Extract, SourceFileAction action = SourceFileAction.Keep, string? output = null, ConflictPolicy conflict = ConflictPolicy.AppendIndex, string? archiveFolderName = null) =>
         new MotionPhotoSplitter(_metadata, _images, _videos).SplitAsync(
             new SplitRequest
             {
                 Files = files,
                 Output = new OutputOptions(output ?? temp.Combine("out")) { Conflict = conflict },
                 Target = target,
-                SourceAction = action
+                SourceAction = action,
+                ArchiveFolderName = archiveFolderName
             },
             cancellationToken: Token);
 
@@ -159,11 +160,11 @@ public class MotionPhotoSplitterTests
     {
         using var temp = new TempDirectory();
         var source = temp.CreateFile("MVIMG_0001.jpg", SyntheticMedia.MotionPhoto());
-        temp.CreateFile(Path.Combine(SourceDisposition.SplitFolderName, "MVIMG_0001.jpg"), [1]);
+        temp.CreateFile(Path.Combine("Split", "MVIMG_0001.jpg"), [1]);
 
-        await SplitAsync(temp, [source], action: SourceFileAction.Move);
+        await SplitAsync(temp, [source], action: SourceFileAction.Move, archiveFolderName: "Split");
 
-        Assert.Equal(["MVIMG_0001.jpg", "MVIMG_0001_1.jpg"], temp.FileNames(SourceDisposition.SplitFolderName));
+        Assert.Equal(["MVIMG_0001.jpg", "MVIMG_0001_1.jpg"], temp.FileNames("Split"));
     }
 
     [Fact]

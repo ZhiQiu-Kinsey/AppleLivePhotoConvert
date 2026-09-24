@@ -204,8 +204,8 @@ public sealed partial class StripCompareDialogViewModel : DialogViewModel<bool>
 
     private void ApplySizes(StripSample sample)
     {
-        BeforeSizeText = FormatBytes(sample.OriginalBytes);
-        AfterSizeText = FormatBytes(sample.ProductBytes);
+        BeforeSizeText = ByteSizeConverter.Format(sample.OriginalBytes);
+        AfterSizeText = ByteSizeConverter.Format(sample.ProductBytes);
         var saved = sample.OriginalBytes > 0 ? Math.Max(0, sample.OriginalBytes - sample.ProductBytes) * 100.0 / sample.OriginalBytes : 0;
         SavedPercentResult = _localizer.Format("StripSavedPctFormat", saved);
         EncoderText = sample.Converted || sample.KeptOriginalFormat
@@ -276,7 +276,4 @@ public sealed partial class StripCompareDialogViewModel : DialogViewModel<bool>
         HasFailed = true;
         StatusText = _localizer.Format("CompareFailedFormat", ErrorMessages.Describe(_localizer, ex));
     }
-
-    private static string FormatBytes(long bytes) =>
-        ByteSizeConverter.Instance.Convert(bytes, typeof(string), null, CultureInfo.InvariantCulture) as string ?? $"{bytes} B";
 }

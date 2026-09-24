@@ -177,7 +177,7 @@ public sealed class MotionPhotoStripper(IMetadataService metadata, IImageConvert
         var candidates = await AnalyzeAsync(request.Files, cancellationToken);
         var protectedPaths = candidates.SelectMany(candidate => candidate.CompanionVideo is null ? [candidate.ImagePath] : (string[])[candidate.ImagePath, candidate.CompanionVideo]);
         var committer = new OutputCommitter(request.Output?.Conflict ?? ConflictPolicy.AppendIndex, protectedPaths);
-        var companionDisposition = new SourceDisposition(SourceFileAction.Recycle, string.Empty);
+        var companionDisposition = new SourceDisposition(SourceFileAction.Recycle);
         if (request.Output is not null)
         {
             OutputCommitter.DeleteStaleStagingFiles(request.Output.Directory, ConversionDefaults.StaleStagingAge);

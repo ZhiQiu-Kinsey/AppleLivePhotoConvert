@@ -66,6 +66,19 @@ public class ConversionRunnerTests : IDisposable
     }
 
     [Fact]
+    public async Task MoveSourceAction_ArchivesIntoRequestedFolder()
+    {
+        var source = _context.CreateInputFile("MVIMG_3.jpg", SyntheticMedia.MotionPhoto(SyntheticMedia.Jpeg(4000), SyntheticMedia.Mp4(6000)));
+        var job = Jobs.Files(ConversionAction.Extract, _context.OutputDirectory, source);
+
+        var report = await RunAsync(job with { Options = job.Options with { SourceAction = SourceFileAction.Move, ArchiveFolderName = "Split" } });
+
+        Assert.Equal(OutcomeKind.Succeeded, Assert.Single(report.Items).Kind);
+        Assert.False(File.Exists(source));
+        Assert.True(File.Exists(Path.Combine(_context.InputDirectory, "Split", "MVIMG_3.jpg")));
+    }
+
+    [Fact]
     public async Task Extract_SlicesLosslesslyWithoutCreatingVideoConverter()
     {
         var source = _context.CreateInputFile("MVIMG_2.jpg", SyntheticMedia.MotionPhoto(SyntheticMedia.Jpeg(4000), SyntheticMedia.Mp4(6000)));

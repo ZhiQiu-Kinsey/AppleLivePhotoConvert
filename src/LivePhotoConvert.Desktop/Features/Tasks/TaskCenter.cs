@@ -91,6 +91,11 @@ public sealed partial class TaskCenter : ObservableObject, IBackgroundWork
             throw new InvalidOperationException("已有任务在运行。");
         }
 
+        if (job.Options is { SourceAction: SourceFileAction.Move, ArchiveFolderName: null })
+        {
+            job = job with { Options = job.Options with { ArchiveFolderName = TaskTexts.ArchiveFolderName(_localizer, job.Action) } };
+        }
+
         var cts = new CancellationTokenSource();
         var gate = new ManualResetEventSlim(initialState: true);
         var running = new RunningTaskViewModel(job, _localizer, _time);

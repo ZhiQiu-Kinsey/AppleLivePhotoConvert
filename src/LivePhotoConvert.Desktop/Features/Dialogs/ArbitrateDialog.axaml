@@ -2,6 +2,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:dialogs="using:LivePhotoConvert.Desktop.Features.Dialogs"
              xmlns:ic="using:FluentIcons.Avalonia"
+             xmlns:controls="using:LivePhotoConvert.Desktop.Controls"
+             xmlns:infra="using:LivePhotoConvert.Desktop.Infrastructure"
              x:Class="LivePhotoConvert.Desktop.Features.Dialogs.ArbitrateDialog"
              x:CompileBindings="True"
              x:DataType="dialogs:ArbitrateDialogViewModel">
@@ -17,8 +19,9 @@
           <TextBlock Text="{DynamicResource ArbitrateDialogTitle}" FontWeight="Black" FontSize="14" Foreground="{DynamicResource TextPrimaryBrush}" />
           <TextBlock Text="{DynamicResource ArbitrateDialogDesc}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextTertiaryBrush}" />
         </StackPanel>
-        <Button Grid.Column="2" Classes="nav-btn" Command="{CompiledBinding CancelCommand}" Width="28" Height="28" Padding="0">
-          <ic:SymbolIcon Symbol="Dismiss" FontSize="12" Foreground="{DynamicResource TextMutedBrush}" />
+        <Button Grid.Column="2" Classes="dialog-close-btn" Command="{CompiledBinding CancelCommand}" VerticalAlignment="Top"
+                controls:ShortcutTip.Label="{DynamicResource DialogCloseTip}" controls:ShortcutTip.Shortcut="{x:Static infra:AppShortcuts.CloseDialog}">
+          <ic:SymbolIcon Symbol="Dismiss" FontSize="14" />
         </Button>
       </Grid>
 

@@ -1,10 +1,10 @@
-using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LivePhotoConvert.Core.Pipeline;
 using LivePhotoConvert.Core.Services;
+using LivePhotoConvert.Desktop.Collections;
 using LivePhotoConvert.Desktop.Converters;
 using LivePhotoConvert.Desktop.Features.Library;
 using LivePhotoConvert.Desktop.Infrastructure;
@@ -28,18 +28,36 @@ public enum TaskItemStatus
 public sealed record TaskReportTag(string Text, string? Detail, bool IsPositive);
 
 /// <summary>报告明细中的一行。</summary>
-/// <param name="Detail">本地化的结果说明</param>
-/// <param name="TechnicalDetail">异常原文等技术细节，展开后显示</param>
-public sealed record TaskReportItem(
-    TaskItemStatus Status,
-    string StatusText,
-    string SourcePath,
-    string? OutputPath,
-    string Detail,
-    string TargetFormat,
-    string? TechnicalDetail = null)
+/// <param name="detail">本地化的结果说明</param>
+/// <param name="technicalDetail">异常原文等技术细节，展开后显示</param>
+public sealed partial class TaskReportItem(
+    TaskItemStatus status,
+    string statusText,
+    string sourcePath,
+    string? outputPath,
+    string detail,
+    string targetFormat,
+    string? technicalDetail = null) : ObservableObject
 {
+    public TaskItemStatus Status { get; } = status;
+
+    public string StatusText { get; } = statusText;
+
+    public string SourcePath { get; } = sourcePath;
+
+    public string? OutputPath { get; } = outputPath;
+
+    public string Detail { get; } = detail;
+
+    public string TargetFormat { get; } = targetFormat;
+
+    public string? TechnicalDetail { get; } = technicalDetail;
+
     public IReadOnlyList<TaskReportTag> Tags { get; init; } = [];
+
+    /// <summary>技术细节是否展开。放在条目上而不是控件上：明细列表虚拟化后行控件会复用给其它条目。</summary>
+    [ObservableProperty]
+    private bool _isDetailExpanded;
 
     public bool HasTags => Tags.Count > 0;
 
@@ -204,7 +222,7 @@ public sealed partial class TaskReportViewModel : ViewModelBase
 
     public IReadOnlyList<TaskReportItem> Items => _items;
 
-    public ObservableCollection<TaskReportItem> FilteredItems { get; } = [];
+    public BulkObservableCollection<TaskReportItem> FilteredItems { get; } = [];
 
     public bool HasItems => _items.Count > 0;
 
@@ -275,12 +293,12 @@ public sealed partial class TaskReportViewModel : ViewModelBase
             : _localizer["ReportKpiTotalSub"];
         ProblemSubText = _localizer.Format("ReportKpiProblemsSubFormat", FailedCount, CleanupCount);
         DurationText = Elapsed.TotalSeconds >= 1
-            ? string.Create(culture, $"{Elapsed.TotalSeconds:F1}s")
-            : "< 1s";
+            ? _localizer.Format("ReportDurationSecondsFormat", Elapsed.TotalSeconds)
+            : _localizer["ReportDurationUnderOneSecond"];
         AverageText = TotalCount > 0 && Elapsed.TotalSeconds >= 1
             ? _localizer.Format("ReportAvgSpeedFormat", Elapsed.TotalSeconds / TotalCount)
             : "—";
-        SavedText = _localizer.Format("ReportSavedFormat", FormatBytes(SavedBytes));
+        SavedText = _localizer.Format("ReportSavedFormat", ByteSizeConverter.Format(SavedBytes));
         RetryText = _localizer.Format("RetryFailedFormat", RetryCount);
 
         _items = BuildItems();
@@ -383,6 +401,7 @@ public sealed partial class TaskReportViewModel : ViewModelBase
         var successText = _localizer["ReportStatusSuccess"];
         var skippedText = _localizer["ReportStatusSkipped"];
         var cleanupText = _localizer["ReportStatusCleanup"];
+        var mergeTarget = _localizer["MergeTargetMotionPhoto"];
         var splitTarget = Action switch
         {
             ConversionAction.ToApple => _localizer["SplitTargetApple"],
@@ -397,7 +416,7 @@ public sealed partial class TaskReportViewModel : ViewModelBase
             var output = outcome.Outputs.Count > 0 ? outcome.Outputs[0] : null;
             var target = Action switch
             {
-                ConversionAction.ToAndroid => "Motion Photo",
+                ConversionAction.ToAndroid => mergeTarget,
                 ConversionAction.Strip => Path.GetExtension(output ?? string.Empty).TrimStart('.').ToUpperInvariant(),
                 _ => splitTarget
             };
@@ -447,23 +466,17 @@ public sealed partial class TaskReportViewModel : ViewModelBase
     private string SuccessDetail(ItemOutcome outcome, string splitTarget) => Action switch
     {
         ConversionAction.ToAndroid => _localizer["MergeSuccessDesc"],
-        ConversionAction.Strip => _localizer.Format("StripItemSavedFormat", FormatBytes(outcome.BytesSaved)),
+        ConversionAction.Strip => _localizer.Format("StripItemSavedFormat", ByteSizeConverter.Format(outcome.BytesSaved)),
         _ => _localizer.Format("SplitSuccessDescFormat", splitTarget)
     };
 
-    private void ApplyFilter()
+    /// <summary>整体替换并只发一次重置通知：明细可达数千项，逐项增删会让列表逐项重排。</summary>
+    private void ApplyFilter() => FilteredItems.Reset(_items.Where(i => SelectedFilterIndex switch
     {
-        FilteredItems.Clear();
-        foreach (var item in _items.Where(i => SelectedFilterIndex switch
-                 {
-                     FilterProblems => !i.IsSuccess,
-                     FilterSuccess => i.IsSuccess,
-                     _ => true
-                 }))
-        {
-            FilteredItems.Add(item);
-        }
-    }
+        FilterProblems => !i.IsSuccess,
+        FilterSuccess => i.IsSuccess,
+        _ => true
+    }));
 
     private Task AlertShellFailureAsync(string target) =>
         _dialogs.AlertAsync(_localizer["ShellOpenFailedTitle"], _localizer.Format("ShellOpenFailedFormat", target), _localizer["ConfirmDialogOk"]);
@@ -476,6 +489,4 @@ public sealed partial class TaskReportViewModel : ViewModelBase
         }
     }
 
-    private static string FormatBytes(long bytes) =>
-        ByteSizeConverter.Instance.Convert(bytes, typeof(string), null, CultureInfo.InvariantCulture) as string ?? $"{bytes} B";
 }

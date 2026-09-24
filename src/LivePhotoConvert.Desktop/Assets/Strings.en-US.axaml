@@ -53,6 +53,8 @@
   <sys:String x:Key="SourceActionSubfolderShort">Move to backup</sys:String>
   <sys:String x:Key="SourceActionRecycleShort">Move to Recycle Bin</sys:String>
   <sys:String x:Key="SourceActionDeleteShort">Delete permanently</sys:String>
+  <sys:String x:Key="ArchiveFolderMerged">Merged</sys:String>
+  <sys:String x:Key="ArchiveFolderSplit">Split</sys:String>
   <sys:String x:Key="DeleteWarningTitle">Physical Deletion Alert</sys:String>
   <sys:String x:Key="DeleteWarningDesc">Source files are permanently deleted after conversion; you must type a confirmation word to start.</sys:String>
   <sys:String x:Key="AutoAppendIndexTitle">Append a number on name clashes</sys:String>
@@ -94,29 +96,29 @@
   <sys:String x:Key="TestPingBtn">Test Connectivity</sys:String>
 
   <!-- Dialogs -->
-  <sys:String x:Key="DeleteDialogTitle">Alert: Permanent Source Deletion!</sys:String>
-  <sys:String x:Key="DeleteDialogDesc">This action is irreversible! Files will be permanently deleted.</sys:String>
+  <sys:String x:Key="DeleteDialogTitle">Originals Will Be Permanently Deleted</sys:String>
+  <sys:String x:Key="DeleteDialogDesc">This cannot be undone. The original photos will be permanently deleted from disk.</sys:String>
   <sys:String x:Key="DeleteDialogInputLabel">Type uppercase DELETE to unlock:</sys:String>
   <sys:String x:Key="DeleteDialogCancel">Cancel and keep originals</sys:String>
   <sys:String x:Key="DeleteDialogConfirm">Confirm Permanent Deletion</sys:String>
 
-  <sys:String x:Key="LowDiskDialogTitle">Low Disk Space Alert (ENOSPC)</sys:String>
+  <sys:String x:Key="LowDiskDialogTitle">Low Disk Space</sys:String>
   <sys:String x:Key="LowDiskDialogDesc">Target drive has insufficient space for safe conversion</sys:String>
   <sys:String x:Key="LowDiskDialogDismiss">Go Back</sys:String>
 
-  <sys:String x:Key="BackupDialogTitle">High-Risk Confirmation: In-Place Overwrite</sys:String>
-  <sys:String x:Key="BackupDialogDesc">Enabling this will permanently strip embedded video streams!</sys:String>
+  <sys:String x:Key="BackupDialogTitle">Confirm In-Place Overwrite</sys:String>
+  <sys:String x:Key="BackupDialogDesc">When enabled, slimming replaces the original photos in the album.</sys:String>
   <sys:String x:Key="BackupDialogCancel">Cancel, Use Safe Export</sys:String>
   <sys:String x:Key="BackupDialogConfirm">I Understand the Risk, Enable Overwrite</sys:String>
 
-  <sys:String x:Key="ArbitrateDialogTitle">Dual-Frame Verification (Time Gap Exceeded)</sys:String>
-  <sys:String x:Key="ArbitrateDialogDesc">Compare photo and video first frame to verify shutter moment</sys:String>
-  <sys:String x:Key="ArbitrateReject">Not Live Pair (Split Separately)</sys:String>
-  <sys:String x:Key="ArbitrateConfirm">Confirm Live Pair (Add to Whitelist)</sys:String>
+  <sys:String x:Key="ArbitrateDialogTitle">Confirm Live Photo Pair (Time Gap Exceeded)</sys:String>
+  <sys:String x:Key="ArbitrateDialogDesc">The photo and video were captured far apart. Confirm whether they belong to the same Live Photo.</sys:String>
+  <sys:String x:Key="ArbitrateReject">Not the Same Live Photo</sys:String>
+  <sys:String x:Key="ArbitrateConfirm">Confirm Same Live Photo</sys:String>
 
   <sys:String x:Key="SettingsPageTitle">Global Preferences</sys:String>
   <sys:String x:Key="ThemeTitle">Appearance Theme</sys:String>
-  <sys:String x:Key="LangTitle">System Language</sys:String>
+  <sys:String x:Key="LangTitle">Interface Language</sys:String>
   <sys:String x:Key="ConcurrencyTitle">Concurrent Task Count</sys:String>
 
   <!-- CompactToolbar Keys -->
@@ -180,13 +182,13 @@
   <sys:String x:Key="PingTimedOut">timed out</sys:String>
 
   <!-- CurtainCompare Keys -->
-  <sys:String x:Key="CurtainAfterBadge">Optimized</sys:String>
+  <sys:String x:Key="CurtainAfterBadge">Slimmed</sys:String>
   <sys:String x:Key="CurtainBeforeBadge">Original</sys:String>
 
   <!-- PhotoCard Keys -->
   <sys:String x:Key="CardLiveBadge">Live</sys:String>
   <sys:String x:Key="CardTimeMismatch">Timestamp Mismatch</sys:String>
-  <sys:String x:Key="CardArbitrateBtn">Manual Arbitration</sys:String>
+  <sys:String x:Key="CardArbitrateBtn">Confirm Pair Manually</sys:String>
 
   <!-- QuickLook Keys -->
   <sys:String x:Key="QuickLookLiveBadge">Live Photo</sys:String>
@@ -200,20 +202,20 @@
   <sys:String x:Key="QuickLookNextTip">Next</sys:String>
 
   <!-- Dialog Secondary Keys -->
-  <sys:String x:Key="DeleteAffectedFormat">Affected source files: {0} pairs ({1})</sys:String>
+  <sys:String x:Key="DeleteAffectedFormat">Affected originals: {0} items ({1})</sys:String>
   <sys:String x:Key="DeleteIrreversibleDesc">Deleted files cannot be recovered from the Recycle Bin or Trash.</sys:String>
   <sys:String x:Key="DeleteInputPlaceholder">Type DELETE</sys:String>
-  <sys:String x:Key="LowDiskRequiredLabel">Estimated space required (1.2x safety margin + 500MB):</sys:String>
+  <sys:String x:Key="LowDiskRequiredLabel">Estimated space required (1.2x the sources + 500 MB margin):</sys:String>
   <sys:String x:Key="LowDiskAvailableLabel">Available free space on target drive:</sys:String>
   <sys:String x:Key="LowDiskSolutionDesc">Please free up disk space or choose another output drive.</sys:String>
   <sys:String x:Key="BackupRiskTitle">Operational Impact &amp; Irreversible Risks:</sys:String>
-  <sys:String x:Key="BackupRiskPoint1">1. Motion Photo video streams will be permanently removed, keeping only static covers;</sys:String>
-  <sys:String x:Key="BackupRiskPoint2">2. Safety guarantee: .livephoto_backup will be staged atomically before deletion.</sys:String>
-  <sys:String x:Key="ArbitratePhotoTitle">Static Photo (HEIC)</sys:String>
-  <sys:String x:Key="ArbitratePhotoDesc">High-res static original</sys:String>
-  <sys:String x:Key="ArbitrateVideoTitle">Video First Frame (MOV)</sys:String>
-  <sys:String x:Key="ArbitrateVideoDesc">Live video frame at 0ms</sys:String>
-  <sys:String x:Key="ArbitrateConclusionLabel" xml:space="preserve">Time Offset Conclusion: </sys:String>
+  <sys:String x:Key="BackupRiskPoint1">1. Embedded videos are permanently removed and paired Live Photo videos go to the Recycle Bin; only the still photos are kept;</sys:String>
+  <sys:String x:Key="BackupRiskPoint2">2. Originals are replaced only after the new file is verified; if replacing fails, the original is kept.</sys:String>
+  <sys:String x:Key="ArbitratePhotoTitle">Photo</sys:String>
+  <sys:String x:Key="ArbitratePhotoDesc">Photo file</sys:String>
+  <sys:String x:Key="ArbitrateVideoTitle">Live Video</sys:String>
+  <sys:String x:Key="ArbitrateVideoDesc">Video file</sys:String>
+  <sys:String x:Key="ArbitrateConclusionLabel">Time gap:</sys:String>
 
   <!-- Settings Dialog Options -->
   <sys:String x:Key="ThemeLightOption">Light Mode</sys:String>
@@ -224,11 +226,11 @@
 
   <!-- Settings Dialog Redesign -->
   <sys:String x:Key="CancelBtn">Cancel</sys:String>
-  <sys:String x:Key="SettingsConcurrencyDesc">Number of live photo pairs processed in parallel (1~16). Higher values are faster but consume more memory and disk IO.</sys:String>
+  <sys:String x:Key="SettingsConcurrencyDesc">Number of Live Photo pairs processed in parallel (1~16). Higher values are faster but consume more memory and disk IO.</sys:String>
   <sys:String x:Key="SettingsPageDesc">Global preferences such as theme, language and conversion performance. Changes apply immediately and are saved automatically.</sys:String>
   <sys:String x:Key="SettingsSavedHint">Saved automatically</sys:String>
   <sys:String x:Key="NotifyOnCompleteTitle">Completion Notification</sys:String>
-  <sys:String x:Key="NotifyOnCompleteDesc">Play a sound when a batch conversion or strip finishes.</sys:String>
+  <sys:String x:Key="NotifyOnCompleteDesc">Play a sound when a batch conversion or slim-down finishes.</sys:String>
   <sys:String x:Key="AutoOpenOutputTitle">Open Output Folder After Convert</sys:String>
   <sys:String x:Key="AutoOpenOutputDesc">Automatically open the output folder in File Explorer when a task completes.</sys:String>
   <sys:String x:Key="AutoCleanTempTitle">Auto-clean Temporary Files</sys:String>
@@ -278,7 +280,8 @@
   <sys:String x:Key="ReportAvgSpeedFormat">{0:F2}s / item</sys:String>
   <sys:String x:Key="SplitTargetApple">Apple Live Photo</sys:String>
   <sys:String x:Key="SplitTargetExtract">Cover &amp; Video</sys:String>
-  <sys:String x:Key="MergeSuccessDesc">Successfully merged into a Live Photo</sys:String>
+  <sys:String x:Key="MergeTargetMotionPhoto">Motion Photo</sys:String>
+  <sys:String x:Key="MergeSuccessDesc">Successfully merged into a motion photo</sys:String>
   <sys:String x:Key="SplitSuccessDescFormat">Successfully split into {0}</sys:String>
 
   <!-- QuickLook Extended Playback States -->
@@ -306,6 +309,8 @@
   <sys:String x:Key="ReportKpiProblems">Issues</sys:String>
   <sys:String x:Key="ReportKpiProblemsSubFormat">Failed {0} · Cleanup {1}</sys:String>
   <sys:String x:Key="ReportKpiDuration">Total Batch Time</sys:String>
+  <sys:String x:Key="ReportDurationSecondsFormat">{0:F1}s</sys:String>
+  <sys:String x:Key="ReportDurationUnderOneSecond">&lt; 1s</sys:String>
   <sys:String x:Key="ReportDistTitle">Result Distribution</sys:String>
   <sys:String x:Key="ReportLegendSuccess">Success:</sys:String>
   <sys:String x:Key="ReportLegendSkipped">Skipped:</sys:String>
@@ -325,25 +330,24 @@
   <sys:String x:Key="EmptyStateNoDirSubtitle">Choose a folder with Live Photos (HEIC/JPG + MOV) or Android motion photos, then pick an action on the right.</sys:String>
   <sys:String x:Key="EmptyStateDropHint">Or drag a folder here</sys:String>
   <sys:String x:Key="DropOverlayTitle">Drop to open this folder</sys:String>
-  <sys:String x:Key="EmptyStateEmptyTitle">No live photos found in directory</sys:String>
-  <sys:String x:Key="EmptyStateEmptySubtitle">Please ensure the folder contains valid Live Photo pairs or Motion Photos</sys:String>
+  <sys:String x:Key="EmptyStateEmptyTitle">No Live Photos found in this folder</sys:String>
+  <sys:String x:Key="EmptyStateEmptySubtitle">Please ensure the folder contains valid Live Photo pairs or motion photos</sys:String>
   <sys:String x:Key="FunnelTotalFormat">{0:N0} files scanned</sys:String>
-  <sys:String x:Key="FunnelReadyFormat">Ready: {0:N0}</sys:String>
-  <sys:String x:Key="FunnelSuspiciousFormat">Suspicious: {0:N0}</sys:String>
+  <sys:String x:Key="FunnelReadyFormat">{0:N0} ready</sys:String>
+  <sys:String x:Key="FunnelSuspiciousFormat">{0:N0} need a decision</sys:String>
   <sys:String x:Key="FunnelItemsFormat">{0:N0} items</sys:String>
   <sys:String x:Key="FunnelIgnoredFormat">{0:N0} ignored</sys:String>
   <sys:String x:Key="FunnelTooltipFormat">Scanned {0:N0} files into {1:N0} library items (a Live Photo pair counts as one item). {2:N0} non-media, hidden or system files and conversion staging or backup files were ignored.</sys:String>
   <sys:String x:Key="PrimaryBtnMergeFormat">Merge {0} into Android motion photos</sys:String>
   <sys:String x:Key="PrimaryBtnAppleFormat">Restore {0} as Apple Live Photos</sys:String>
   <sys:String x:Key="PrimaryBtnExtractFormat">Extract {0} motion photos</sys:String>
-  <sys:String x:Key="FilterBannerSuspiciousFormat">Pending Arbitration Only ({0})</sys:String>
+  <sys:String x:Key="FilterBannerSuspiciousFormat">Needs Decision Only ({0})</sys:String>
   <sys:String x:Key="FilterBannerSelected">Selected Only</sys:String>
   <sys:String x:Key="SelectedBadgeFormat">{0} selected</sys:String>
   <sys:String x:Key="StripSavedPctFormat">Saved: {0:F1}%</sys:String>
-  <sys:String x:Key="ArbitrateTimeDiffFormat">Capture time offset {0:F2}s (safety threshold 3.0s)</sys:String>
-  <sys:String x:Key="ArbitrateVerdictFormat">Measured offset {0:F2}s. Verify both frames, device and location belong to the same shutter moment.</sys:String>
+  <sys:String x:Key="ArbitrateVerdictFormat">The capture times differ by {0:F2}s. Pair them only if they come from the same shot; otherwise keep them separate.</sys:String>
   <sys:String x:Key="NoMergePairs">No real convertible Live Photo pairs found</sys:String>
-  <sys:String x:Key="NoSplitCandidates">No real Motion Photos found to split</sys:String>
+  <sys:String x:Key="NoSplitCandidates">No motion photos found to split</sys:String>
 
   <!-- Runtime Status Strings -->
   <sys:String x:Key="AlbumSummaryNoDir">No directory selected</sys:String>
@@ -393,7 +397,7 @@
   <sys:String x:Key="TaskTitleToAndroid">Apple Live Photo to Android Motion Photo</sys:String>
   <sys:String x:Key="TaskTitleToApple">Android Motion Photo to Apple Live Photo</sys:String>
   <sys:String x:Key="TaskTitleExtract">Extract Cover and Video</sys:String>
-  <sys:String x:Key="TaskTitleStrip">Space Saver</sys:String>
+  <sys:String x:Key="TaskTitleStrip">Slim Down</sys:String>
   <sys:String x:Key="TaskRunningBadge">Running</sys:String>
   <sys:String x:Key="TaskPausedBadge">Paused</sys:String>
   <sys:String x:Key="TaskCancellingBadge">Cancelling…</sys:String>

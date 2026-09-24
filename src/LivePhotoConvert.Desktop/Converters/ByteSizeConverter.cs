@@ -4,30 +4,35 @@ using Avalonia.Data.Converters;
 namespace LivePhotoConvert.Desktop.Converters;
 
 /// <summary>
-/// 字节容量友好格式化转换器 (如 428.5 MB)
+/// 把字节数格式化为 1024 进制的容量文本（如 428.5 MB）。
 /// </summary>
 public sealed class ByteSizeConverter : IValueConverter
 {
     public static readonly ByteSizeConverter Instance = new();
 
-    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    /// <summary>
+    /// 界面文案统一走这里，固定用不变区域：中英两种界面的小数点与单位写法相同，
+    /// 且格式化可能发生在后台线程，不应随线程区域变化。
+    /// </summary>
+    public static string Format(long bytes) => Format(bytes, CultureInfo.InvariantCulture);
+
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) => Format(value switch
     {
-        if (value is null) return "0 B";
+        long l => l,
+        int i => i,
+        double d => (long)d,
+        _ => 0
+    }, culture);
 
-        long bytes = 0;
-        if (value is long l) bytes = l;
-        else if (value is int i) bytes = i;
-        else if (value is double d) bytes = (long)d;
-
-        if (bytes <= 0) return "0 B";
-        if (bytes < 1024) return $"{bytes} B";
-        if (bytes < 1024 * 1024) return $"{(bytes / 1024.0):F1} KB";
-        if (bytes < 1024L * 1024 * 1024) return $"{(bytes / (1024.0 * 1024.0)):F1} MB";
-        return $"{(bytes / (1024.0 * 1024.0 * 1024.0)):F2} GB";
-    }
-
-    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
-    {
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException();
-    }
+
+    private static string Format(long bytes, IFormatProvider culture) => bytes switch
+    {
+        <= 0 => "0 B",
+        < 1024 => string.Create(culture, $"{bytes} B"),
+        < 1024 * 1024 => string.Create(culture, $"{bytes / 1024.0:F1} KB"),
+        < 1024L * 1024 * 1024 => string.Create(culture, $"{bytes / (1024.0 * 1024.0):F1} MB"),
+        _ => string.Create(culture, $"{bytes / (1024.0 * 1024.0 * 1024.0):F2} GB")
+    };
 }

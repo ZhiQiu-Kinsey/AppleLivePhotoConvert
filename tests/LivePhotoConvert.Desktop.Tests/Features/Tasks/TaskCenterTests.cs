@@ -1,3 +1,4 @@
+using LivePhotoConvert.Core.Pairing;
 using LivePhotoConvert.Core.Pipeline;
 using LivePhotoConvert.Desktop.Features.Library;
 using LivePhotoConvert.Desktop.Features.Tasks;
@@ -156,13 +157,21 @@ public class TaskCenterTests
         var center = fixture.Center;
 
         var run = center.RunAsync(ExtractJob());
+        var running = center.Current!;
         center.TogglePause();
-        Assert.True(center.Current!.IsPaused);
+        Assert.True(running.IsPaused);
         allowStart.SetResult();
 
-        await Task.Delay(300, TestContext.Current.CancellationToken);
+        // 第一次汇报已送达界面，工作线程随即阻塞在暂停闸门上，不会继续处理
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (running.Completed == 0)
+        {
+            Assert.True(DateTime.UtcNow < deadline, "等待第一次进度超时");
+            await Task.Delay(10, TestContext.Current.CancellationToken);
+        }
+
+        await Task.Delay(100, TestContext.Current.CancellationToken);
         Assert.Equal(0, Volatile.Read(ref processed));
-        var running = center.Current!;
         Assert.Equal(1, running.Completed);
         Assert.False(run.IsCompleted);
 
@@ -268,7 +277,7 @@ public class TaskCenterTests
         Assert.Equal(2, report.FailedCount);
         Assert.Equal("未找到 exiftool", Assert.Single(report.Items).Detail);
         Assert.Same(job, report.RetryJob);
-        // 与原行为一致：失败也属于"任务结束"，照常执行完成效果
+        // 失败也属于任务结束，照常执行完成效果
         Assert.Equal(["/out"], fixture.Host.Shell.Requests);
     }
 
@@ -287,6 +296,45 @@ public class TaskCenterTests
         Assert.Equal(fixture.Host.Localizer[messageKey], report.ErrorMessage);
         Assert.Empty(runner.Jobs);
         Assert.False(report.CanRetry);
+    }
+
+    /// <summary>「移入备份文件夹」的子文件夹名在提交时按界面语言确定，Core 只接收名称。</summary>
+    [Theory]
+    [InlineData(ConversionAction.ToAndroid, "ArchiveFolderMerged")]
+    [InlineData(ConversionAction.ToApple, "ArchiveFolderSplit")]
+    [InlineData(ConversionAction.Extract, "ArchiveFolderSplit")]
+    public async Task MoveSourceAction_StampsLocalizedArchiveFolderName(ConversionAction action, string key)
+    {
+        var runner = ScriptedRunner.Returning(Jobs.Report());
+        using var fixture = new TaskCenterFixture(runner);
+        var job = Jobs.Files(action, "/out", "/in/a.jpg");
+        job = job with
+        {
+            Options = job.Options with { SourceAction = SourceFileAction.Move },
+            Inputs = job.Inputs with { Pairs = [new MediaPair("/in/a.jpg", "/in/a.mov")] }
+        };
+
+        var report = await fixture.Center.RunAsync(job).Within();
+
+        var expected = fixture.Host.Localizer[key];
+        Assert.Equal(expected, Assert.Single(runner.Jobs).Options.ArchiveFolderName);
+        Assert.Equal(expected, report.Job.Options.ArchiveFolderName);
+    }
+
+    [Fact]
+    public async Task ArchiveFolderName_IsKeptWhenAlreadySetOrNotMoving()
+    {
+        var runner = ScriptedRunner.Returning(Jobs.Report());
+        using var fixture = new TaskCenterFixture(runner);
+        var named = Jobs.Files(ConversionAction.Extract, "/out", "/in/a.jpg");
+        named = named with { Options = named.Options with { SourceAction = SourceFileAction.Move, ArchiveFolderName = "Custom" } };
+        var kept = Jobs.Files(ConversionAction.Extract, "/out", "/in/a.jpg");
+
+        await fixture.Center.RunAsync(named).Within();
+        await fixture.Center.RunAsync(kept).Within();
+
+        Assert.Equal("Custom", runner.Jobs[0].Options.ArchiveFolderName);
+        Assert.Same(kept, runner.Jobs[1]);
     }
 
     [Fact]

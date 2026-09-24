@@ -12,7 +12,7 @@ public enum AppPage
     Settings
 }
 
-/// <summary>跨页面跳转，页面之间不再互相持有回调。</summary>
+/// <summary>跨页面跳转，页面之间不互相持有回调。</summary>
 public interface INavigator : INotifyPropertyChanged
 {
     AppPage Current { get; }
