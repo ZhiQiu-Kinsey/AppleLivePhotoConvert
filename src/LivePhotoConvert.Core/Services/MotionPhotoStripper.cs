@@ -1,470 +1,236 @@
-using System.Collections.Concurrent;
-using System.Collections.Frozen;
 using LivePhotoConvert.Core.Abstractions;
 using LivePhotoConvert.Core.Io;
-using LivePhotoConvert.Core.Models;
+using LivePhotoConvert.Core.Media;
+using LivePhotoConvert.Core.Metadata;
+using LivePhotoConvert.Core.Pairing;
+using LivePhotoConvert.Core.Pipeline;
 
 namespace LivePhotoConvert.Core.Services;
 
-/// <summary>
-/// 动态照片瘦身服务：批量剥离内嵌视频并可选转换为 HEIC 格式，释放存储空间
-/// </summary>
-/// <param name="exifTool">EXIF 与 XMP 元数据读写服务</param>
-/// <param name="imageConverter">图像格式转换服务</param>
-/// <param name="progress">进度与状态汇报回调（可选）</param>
-public sealed class MotionPhotoStripper(IExifTool exifTool, IImageConverter imageConverter, IProgressReporter? progress = null)
+public sealed record StripRequest
 {
-    /// <summary>
-    /// 可能包含内嵌微视频的候选图片扩展名集合
-    /// </summary>
-    private static readonly FrozenSet<string> CandidateExtensions = new[] { ".jpg", ".jpeg", ".heic" }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
+    public required IReadOnlyList<string> Files { get; init; }
 
-    private readonly IProgressReporter _progress = progress ?? NullProgressReporter.Instance;
+    /// <summary>输出位置；为 <c>null</c> 时就地替换原文件。</summary>
+    public OutputOptions? Output { get; init; }
 
-    /// <summary>
-    /// 并发输出时的文件名原子占位锁
-    /// </summary>
-    private readonly Lock _outputGate = new();
+    public bool ConvertToHeic { get; init; } = true;
 
-    private static readonly string[] CompanionVideoExtensions = [".mov", ".MOV", ".mp4", ".MP4"];
+    public int HeicQuality { get; init; } = ConversionDefaults.HeicQuality;
 
-    /// <summary>
-    /// 寻找同名伴随短视频（用于苹果实况对或分离实况照片，如 IMG_0001.HEIC 对应 IMG_0001.MOV）
-    /// </summary>
-    public static string? FindCompanionVideo(string imagePath)
+    public int Parallelism { get; init; } = ConversionDefaults.Parallelism;
+}
+
+/// <summary>
+/// 一张待瘦身照片的分析结果。
+/// </summary>
+/// <param name="ImagePath">照片路径</param>
+/// <param name="ImageBytes">照片文件大小</param>
+/// <param name="EmbeddedVideo">内嵌视频</param>
+/// <param name="CompanionVideo">经配对校验确认属于该照片的同名视频（Apple 实况照片）</param>
+/// <param name="CompanionBytes">同名视频大小</param>
+/// <param name="HasGainMap">带 Ultra HDR 增益图时不转码 HEIC，以免丢失 HDR</param>
+public sealed record StripCandidate(string ImagePath, long ImageBytes, EmbeddedVideo? EmbeddedVideo, string? CompanionVideo, long CompanionBytes, bool HasGainMap)
+{
+    /// <summary>HEIC 质量 90 时相对 JPEG 的典型体积比例，用于预估。</summary>
+    private const double HeicSizeRatio = 0.45;
+
+    public long OriginalBytes => ImageBytes + CompanionBytes;
+
+    public long VideoBytes => (EmbeddedVideo?.Length ?? 0) + CompanionBytes;
+
+    public bool HasVideo => EmbeddedVideo is not null || CompanionVideo is not null;
+
+    public bool WillConvert(bool convertToHeic) => convertToHeic && !HasGainMap && !MediaFileTypes.IsHeic(ImagePath);
+
+    public long EstimateFinalBytes(bool convertToHeic)
     {
-        var dir = Path.GetDirectoryName(imagePath);
-        if (string.IsNullOrEmpty(dir)) return null;
-        var stem = Path.GetFileNameWithoutExtension(imagePath);
-        foreach (var ext in CompanionVideoExtensions)
-        {
-            var candidate = Path.Combine(dir, stem + ext);
-            if (File.Exists(candidate))
-            {
-                return candidate;
-            }
-        }
-        return null;
+        var photoBytes = ImageBytes - (EmbeddedVideo?.Length ?? 0);
+        return WillConvert(convertToHeic) ? (long)(photoBytes * HeicSizeRatio) : photoBytes;
     }
+}
+
+/// <summary>
+/// 空间瘦身：剥离动态照片的内嵌视频或 Apple 实况照片的配对视频，并可选转码为 HEIC。
+/// </summary>
+public sealed class MotionPhotoStripper(IMetadataService metadata, IImageConverter imageConverter)
+{
+    private static readonly string[] CompanionExtensions = [".mov", ".mp4"];
 
     /// <summary>
-    /// 扫描输入目录中所有可能需要处理的图片文件列表
+    /// 列出目录中（不含子目录）可能需要瘦身的照片。
     /// </summary>
-    /// <param name="inputDirectory">输入目录路径</param>
-    /// <returns>按字母序排列的候选文件完整路径列表</returns>
-    public static IReadOnlyList<string> FindCandidates(string inputDirectory) =>
+    public static IReadOnlyList<string> FindCandidates(string directory) =>
     [
-        .. Directory.EnumerateFiles(inputDirectory, "*", SearchOption.TopDirectoryOnly)
-                    .Where(path => CandidateExtensions.Contains(Path.GetExtension(path)))
+        .. Directory.EnumerateFiles(directory, "*", new EnumerationOptions { IgnoreInaccessible = true })
+                    .Where(path => MediaFileTypes.MotionPhotoExtensions.Contains(Path.GetExtension(path)))
                     .Order(StringComparer.OrdinalIgnoreCase)
     ];
 
     /// <summary>
-    /// 对指定输入路径（单文件或目录）执行免转码只读分析，快速估算可释放空间
+    /// 只读分析：定位内嵌视频、校验同名视频是否确属同一张实况照片。
     /// </summary>
-    /// <param name="inputPath">输入文件或目录路径</param>
-    /// <param name="convertToHeic">是否按转码 HEIC（质量 90 估算 45% 体积）预估体积</param>
-    /// <param name="cancellationToken">取消令牌</param>
-    /// <returns>包含各项明细与统计总量的只读分析报告</returns>
-    public async ValueTask<StripAnalysisReport> AnalyzeAsync(
-        string inputPath,
-        bool convertToHeic = true,
-        CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<StripCandidate>> AnalyzeAsync(IReadOnlyList<string> files, CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(inputPath);
+        var companions = files.Select(file => (Image: file, Video: FindCompanionVideo(file)))
+                              .Where(x => x.Video is not null)
+                              .ToDictionary(x => x.Image, x => x.Video!, StringComparer.Ordinal);
+        var tags = companions.Count == 0
+            ? new Dictionary<string, MediaMetadata>()
+            : await metadata.ReadAsync([.. companions.Keys, .. companions.Values], MetadataScope.Standard, cancellationToken);
 
-        IReadOnlyList<string> candidates;
-        if (Directory.Exists(inputPath))
-        {
-            candidates = FindCandidates(inputPath);
-        }
-        else if (File.Exists(inputPath))
-        {
-            candidates = [inputPath];
-        }
-        else
-        {
-            throw new DirectoryNotFoundException($"指定的输入路径不存在：{inputPath}");
-        }
-
-        if (candidates.Count == 0)
-        {
-            return new StripAnalysisReport([], 0, 0, 0, 0);
-        }
-
-        var items = new ConcurrentBag<StripAnalysisItem>();
-
+        var results = new StripCandidate[files.Count];
         await Parallel.ForEachAsync(
-            candidates,
-            new ParallelOptions
+            Enumerable.Range(0, files.Count),
+            new ParallelOptions { MaxDegreeOfParallelism = ConversionDefaults.Parallelism, CancellationToken = cancellationToken },
+            async (index, token) =>
             {
-                MaxDegreeOfParallelism = MergeOptions.DefaultParallelism,
-                CancellationToken = cancellationToken
-            },
-            async (filePath, token) =>
-            {
-                var fileInfo = new FileInfo(filePath);
-                var originalBytes = fileInfo.Length;
-                var ext = Path.GetExtension(filePath);
-                var isAlreadyHeic = ext.Equals(".heic", StringComparison.OrdinalIgnoreCase);
-
-                long videoBytes = 0;
-                var hasVideo = false;
-
-                // 1. 优先检查同名伴随短视频（苹果实况对 / 分离实况对）
-                var companionVideo = FindCompanionVideo(filePath);
-                if (companionVideo != null)
-                {
-                    try
-                    {
-                        var compInfo = new FileInfo(companionVideo);
-                        if (compInfo.Exists)
-                        {
-                            videoBytes = compInfo.Length;
-                            originalBytes += videoBytes;
-                            hasVideo = true;
-                        }
-                    }
-                    catch
-                    {
-                        // ignored
-                    }
-                }
-
-                // 2. 若无伴随短视频，再检测是否为安卓单文件内嵌视频（MicroVideo）
-                if (!hasVideo)
-                {
-                    try
-                    {
-                        var videoLength = await exifTool.TryReadMicroVideoOffsetAsync(filePath, token);
-                        if (videoLength is > 0 && videoLength.Value < originalBytes)
-                        {
-                            videoBytes = videoLength.Value;
-                            hasVideo = true;
-                        }
-                    }
-                    catch (Exception) when (!token.IsCancellationRequested)
-                    {
-                        // 只读分析容错：取消异常必须向上传播，其余异常静默跳过
-                    }
-                }
-
-                var cleanImageBytes = originalBytes - videoBytes;
-                var needsHeicConversion = convertToHeic && !isAlreadyHeic;
-
-                // 静态照片转 HEIC 压缩比通常约为原图 45%
-                long estimatedHeicBytes = needsHeicConversion
-                    ? (long)(cleanImageBytes * 0.45)
-                    : cleanImageBytes;
-
-                long estimatedFinalBytes = needsHeicConversion
-                    ? estimatedHeicBytes
-                    : cleanImageBytes;
-
-                items.Add(new StripAnalysisItem(
-                    filePath: filePath,
-                    originalBytes: originalBytes,
-                    videoBytes: videoBytes,
-                    estimatedHeicBytes: estimatedHeicBytes,
-                    hasEmbeddedVideo: hasVideo,
-                    needsHeicConversion: needsHeicConversion,
-                    estimatedFinalBytes: estimatedFinalBytes
-                ));
+                var file = files[index];
+                var layout = await ImageInspector.InspectAsync(file, metadata, token);
+                var companion = layout.Video is null
+                                && companions.TryGetValue(file, out var video)
+                                && PairValidator.Validate(tags[file], tags[video]).IsAccepted
+                    ? video
+                    : null;
+                results[index] = new StripCandidate(file, new FileInfo(file).Length, layout.Video, companion, companion is null ? 0 : new FileInfo(companion).Length, layout.HasGainMap);
             });
 
-        var orderedItems = items.OrderBy(x => x.FilePath, StringComparer.OrdinalIgnoreCase).ToList();
-        var totalOriginal = orderedItems.Sum(x => x.OriginalBytes);
-        var totalVideo = orderedItems.Sum(x => x.VideoBytes);
-        var totalEstimatedHeic = orderedItems.Sum(x => x.EstimatedHeicBytes);
-        var totalEstimatedSaved = orderedItems.Sum(x => x.EstimatedSavedBytes);
-
-        return new StripAnalysisReport(
-            orderedItems,
-            totalOriginal,
-            totalVideo,
-            totalEstimatedHeic,
-            totalEstimatedSaved
-        );
+        return results;
     }
 
-    /// <summary>
-    /// 对指定输入路径执行免转码只读分析（默认开启 HEIC 预估）
-    /// </summary>
-    public ValueTask<StripAnalysisReport> AnalyzeAsync(
-        string inputPath,
-        CancellationToken cancellationToken = default) =>
-        AnalyzeAsync(inputPath, convertToHeic: true, cancellationToken);
-
-    /// <summary>
-    /// 基于 StripOptions 对输入目录执行免转码只读分析
-    /// </summary>
-    public ValueTask<StripAnalysisReport> AnalyzeAsync(
-        StripOptions options,
-        CancellationToken cancellationToken = default)
+    public async Task<BatchReport> StripAsync(StripRequest request, IProgress<BatchProgress>? progress = null, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(options);
-        return AnalyzeAsync(options.InputDirectory, options.ConvertToHeic, cancellationToken);
-    }
-
-    /// <summary>
-    /// 执行动态照片的批量并发瘦身流水线
-    /// </summary>
-    /// <param name="options">瘦身控制选项（包含目标格式、输入输出路径、并发度等）</param>
-    /// <param name="cancellationToken">取消令牌</param>
-    /// <returns>包含成功数、跳过数、节省字节数及失败明细的 <see cref="StripReport"/></returns>
-    public async Task<StripReport> StripAsync(StripOptions options, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(options);
-
-        var isInPlace = string.IsNullOrEmpty(options.OutputDirectory);
-        if (!isInPlace)
+        ArgumentNullException.ThrowIfNull(request);
+        if (request.Files.Count == 0)
         {
-            Directory.CreateDirectory(options.OutputDirectory!);
+            return BatchReport.Empty;
         }
 
-        var candidates = FindCandidates(options.InputDirectory);
-        var failures = new ConcurrentBag<FailureRecord>();
-        var total = candidates.Count;
-        var completed = 0;
-        var stripped = 0;
-        var converted = 0;
-        var skipped = 0;
-        long savedBytes = 0;
+        var candidates = await AnalyzeAsync(request.Files, cancellationToken);
+        var protectedPaths = candidates.SelectMany(candidate => candidate.CompanionVideo is null ? [candidate.ImagePath] : (string[])[candidate.ImagePath, candidate.CompanionVideo]);
+        var committer = new OutputCommitter(request.Output?.Conflict ?? ConflictPolicy.AppendIndex, protectedPaths);
+        var companionDisposition = new SourceDisposition(SourceFileAction.Recycle, string.Empty);
+        if (request.Output is not null)
+        {
+            OutputCommitter.DeleteStaleStagingFiles(request.Output.Directory, ConversionDefaults.StaleStagingAge);
+        }
 
-        var tempDirectory = Path.Combine(Path.GetTempPath(), "LivePhotoConvert", $"strip-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(tempDirectory);
+        using var workspace = new TempWorkspace();
+        return await BatchRunner.RunAsync(
+            candidates,
+            candidate => candidate.ImagePath,
+            (candidate, token) => StripOneAsync(candidate, request, committer, companionDisposition, workspace, token),
+            request.Parallelism,
+            progress,
+            cancellationToken: cancellationToken);
+    }
 
+    private async Task<ItemOutcome> StripOneAsync(
+        StripCandidate candidate,
+        StripRequest request,
+        OutputCommitter committer,
+        SourceDisposition companionDisposition,
+        TempWorkspace workspace,
+        CancellationToken cancellationToken)
+    {
+        var source = candidate.ImagePath;
+        var convert = candidate.WillConvert(request.ConvertToHeic);
+        if (!candidate.HasVideo && !convert)
+        {
+            return ItemOutcome.Skipped(source, candidate.HasGainMap ? "带 HDR 增益图且无内嵌视频，为保留 HDR 不转码" : "无内嵌视频，且无需转换格式");
+        }
+
+        if (candidate.ImageBytes == 0)
+        {
+            throw new InvalidDataException("文件为空。");
+        }
+
+        var inPlace = request.Output is null;
+        var directory = inPlace ? Path.GetDirectoryName(Path.GetFullPath(source))! : request.Output!.DirectoryFor(source);
+        var extension = convert ? ".heic" : Path.GetExtension(source);
+        var timestamp = FileTimestamp.Read(source);
+        var photoChanged = candidate.EmbeddedVideo is not null || convert;
+
+        string? clean = null;
+        string? staged = null;
         try
         {
-            await Parallel.ForEachAsync(
-                candidates,
-                new ParallelOptions { MaxDegreeOfParallelism = options.Parallelism, CancellationToken = cancellationToken },
-                async (imagePath, token) =>
-                {
-                    try
-                    {
-                        var result = await StripOneAsync(imagePath, options, tempDirectory, token);
-                        if (result.WasStripped)
-                        {
-                            Interlocked.Increment(ref stripped);
-                        }
-
-                        if (result.WasConverted)
-                        {
-                            Interlocked.Increment(ref converted);
-                        }
-
-                        if (result.WasSkipped)
-                        {
-                            Interlocked.Increment(ref skipped);
-                        }
-
-                        Interlocked.Add(ref savedBytes, result.BytesSaved);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        throw;
-                    }
-                    catch (Exception ex)
-                    {
-                        failures.Add(new FailureRecord(Path.GetFileName(imagePath), ex.Message));
-                    }
-                    finally
-                    {
-                        _progress.Report(Interlocked.Increment(ref completed), total, Path.GetFileName(imagePath));
-                    }
-                });
-        }
-        finally
-        {
-            FileHelper.TryDeleteDirectory(tempDirectory);
-        }
-
-        return new StripReport
-        {
-            Total = total,
-            StrippedCount = stripped,
-            ConvertedCount = converted,
-            Skipped = skipped,
-            SavedBytes = savedBytes,
-            Failures = [.. failures]
-        };
-    }
-
-    /// <summary>
-    /// 处理单个文件：剥离视频（如有） + 转换 HEIC（如需要）
-    /// </summary>
-    private async Task<StripOneResult> StripOneAsync(string imagePath, StripOptions options, string tempDirectory, CancellationToken cancellationToken)
-    {
-        var originalSize = new FileInfo(imagePath).Length;
-        if (originalSize == 0)
-        {
-            throw new InvalidDataException($"输入文件为空 (0 字节)，无法执行空间瘦身：{imagePath}");
-        }
-
-        var isInPlace = string.IsNullOrEmpty(options.OutputDirectory);
-        var ext = Path.GetExtension(imagePath);
-        var isAlreadyHeic = ext.Equals(".heic", StringComparison.OrdinalIgnoreCase);
-
-        var companionVideo = FindCompanionVideo(imagePath);
-        long companionVideoBytes = 0;
-        if (companionVideo != null && File.Exists(companionVideo))
-        {
-            try
+            var photo = source;
+            if (candidate.EmbeddedVideo is { } embedded)
             {
-                companionVideoBytes = new FileInfo(companionVideo).Length;
-                originalSize += companionVideoBytes;
+                clean = workspace.NewFile(Path.GetExtension(source));
+                await BinaryFile.CopySegmentAsync(source, clean, 0, embedded.Offset, cancellationToken);
+                await metadata.RemoveMotionPhotoAsync(clean, cancellationToken);
+                photo = clean;
             }
-            catch
+
+            string final;
+            if (inPlace && !photoChanged)
             {
-                // ignored
-            }
-        }
-
-        // 1. 检测是否为动态照片（伴随视频或内嵌视频）
-        long? videoLength = null;
-        if (companionVideoBytes == 0)
-        {
-            videoLength = await exifTool.TryReadMicroVideoOffsetAsync(imagePath, cancellationToken);
-        }
-        var hasEmbeddedVideo = videoLength is not null && videoLength.Value > 0;
-        var hasCompanionVideo = companionVideoBytes > 0;
-        var hasVideo = hasCompanionVideo || hasEmbeddedVideo;
-
-        if (hasEmbeddedVideo && videoLength!.Value >= (originalSize - companionVideoBytes))
-        {
-            throw new InvalidDataException($"元数据中的视频长度 {videoLength.Value} 字节不小于文件总长度 {originalSize - companionVideoBytes} 字节，该文件可能已损坏。");
-        }
-
-        // 判定是否需要转 HEIC
-        var needsConvert = options.ConvertToHeic && !isAlreadyHeic;
-
-        // 如果既没有视频（伴随/内嵌）也不需要转 HEIC，则跳过
-        if (!hasVideo && !needsConvert)
-        {
-            return StripOneResult.Skip;
-        }
-
-        var baseName = Path.GetFileNameWithoutExtension(imagePath);
-        var tempId = $"{baseName}-{Guid.NewGuid():N}";
-
-        // 提前保存原始文件时间戳（就地模式下原文件可能被删除，必须在操作前捕获）
-        var originalCreationTime = File.GetCreationTime(imagePath);
-        var originalLastWriteTime = File.GetLastWriteTime(imagePath);
-
-        // 阶段一：剥离视频（提取纯图片部分）
-        string cleanImagePath;
-        if (hasEmbeddedVideo)
-        {
-            var photoLength = (originalSize - companionVideoBytes) - videoLength!.Value;
-            cleanImagePath = Path.Combine(tempDirectory, $"{tempId}-clean{ext}");
-            await BinaryFile.CopySegmentAsync(imagePath, cleanImagePath, 0, photoLength, cancellationToken);
-            await exifTool.RemoveMotionPhotoTagsAsync(cleanImagePath, cancellationToken);
-        }
-        else
-        {
-            // 无内嵌视频（或为伴随视频模式），直接以原文件作为输入
-            cleanImagePath = imagePath;
-        }
-
-        // 阶段二：转换为 HEIC
-        string finalPath;
-        string? tempHeicPath = null;
-        var wasConverted = false;
-
-        try
-        {
-            if (needsConvert)
-            {
-                tempHeicPath = Path.Combine(tempDirectory, $"{tempId}-heic.heic");
-                await imageConverter.ConvertToHeicAsync(cleanImagePath, tempHeicPath, options.HeicQuality, cancellationToken);
-                finalPath = tempHeicPath;
-                wasConverted = true;
+                final = source;
             }
             else
             {
-                // 已经是 HEIC，只需使用剥离后的文件
-                finalPath = cleanImagePath;
-            }
-
-            // 阶段三：写入目标位置并同步时间戳
-            string resultPath;
-            if (isInPlace)
-            {
-                // 就地模式：原子替换原文件
-                if (needsConvert)
+                staged = OutputCommitter.CreateStagingPath(directory, extension);
+                if (convert)
                 {
-                    // 扩展名从 .jpg → .heic，需要新文件名
-                    resultPath = Path.Combine(Path.GetDirectoryName(imagePath)!, baseName + ".heic");
-                    File.Move(finalPath, resultPath, overwrite: true);
-                    // 删除原始 .jpg 文件（如果扩展名不同）
-                    if (!string.Equals(imagePath, resultPath, StringComparison.OrdinalIgnoreCase))
-                    {
-                        FileHelper.TryDeleteFile(imagePath);
-                    }
+                    await imageConverter.ConvertToHeicAsync(photo, staged, request.HeicQuality, cancellationToken);
                 }
                 else
                 {
-                    // 仅剥离了视频，扩展名不变
-                    resultPath = imagePath;
-                    if (finalPath != imagePath)
-                    {
-                        File.Move(finalPath, imagePath, overwrite: true);
-                    }
+                    File.Copy(photo, staged);
                 }
 
-                // 若存在同名伴随短视频，就地删除释放空间
-                if (hasCompanionVideo && companionVideo != null)
-                {
-                    FileHelper.TryDeleteFile(companionVideo);
-                }
-            }
-            else
-            {
-                // 输出目录模式
-                var outputExt = wasConverted ? ".heic" : ext;
-                var outputFileName = $"{baseName}{outputExt}";
-                resultPath = UniquePath.ReserveAtomic(options.OutputDirectory!, outputFileName, options.Overwrite, _outputGate);
-                File.Move(finalPath, resultPath, overwrite: true);
+                EnsureValidImage(staged);
+                timestamp.ApplyTo(staged);
+                final = inPlace
+                    ? committer.ReplaceSource(staged, source, extension)
+                    : committer.Commit(staged, directory, Path.GetFileNameWithoutExtension(source) + extension);
             }
 
-            // 使用预先捕获的时间戳同步到最终文件（不依赖可能已被删除的原文件）
-            try
+            var companionError = inPlace && candidate.CompanionVideo is { } companion ? companionDisposition.Apply(companion) : null;
+            var removedCompanion = candidate.CompanionVideo is not null && inPlace && companionError is null;
+            var before = candidate.ImageBytes + (removedCompanion || !inPlace ? candidate.CompanionBytes : 0);
+            return ItemOutcome.Succeeded(source, final) with
             {
-                File.SetCreationTime(resultPath, originalCreationTime);
-                File.SetLastWriteTime(resultPath, originalLastWriteTime);
-            }
-            catch
-            {
-                // 忽略时间设置异常（例如部分只读网络驱动器）
-            }
-
-            var finalSize = new FileInfo(resultPath).Length;
-            var bytesSaved = Math.Max(0, originalSize - finalSize);
-
-            return new StripOneResult(hasVideo, wasConverted, false, bytesSaved);
+                BytesSaved = Math.Max(0, before - new FileInfo(final).Length),
+                CleanupError = companionError
+            };
+        }
+        catch
+        {
+            FileHelper.TryDeleteFile(staged);
+            throw;
         }
         finally
         {
-            // 清理阶段一生成的临时干净文件（仅当它是临时文件时）
-            if (hasVideo && cleanImagePath != imagePath)
-            {
-                FileHelper.TryDeleteFile(cleanImagePath);
-            }
-
-            // 如果 HEIC 转换后的临时文件还存在（可能在就地替换时已被 Move 走），尝试清理
-            FileHelper.TryDeleteFile(tempHeicPath);
+            FileHelper.TryDeleteFile(clean);
         }
     }
 
     /// <summary>
-    /// 单个文件处理结果
+    /// 同目录下的同名视频（IMG_0001.HEIC 对应 IMG_0001.MOV）；是否真的属于该照片需要再做配对校验。
     /// </summary>
-    private readonly record struct StripOneResult(bool WasStripped, bool WasConverted, bool WasSkipped, long BytesSaved)
+    /// <remarks>枚举目录而不是逐个 File.Exists，返回磁盘上的真实文件名（Windows 上扩展名大小写可能与探测值不同）。</remarks>
+    private static string? FindCompanionVideo(string imagePath)
     {
-        /// <summary>
-        /// 跳过的结果常量
-        /// </summary>
-        public static StripOneResult Skip { get; } = new(false, false, true, 0);
+        var directory = Path.GetDirectoryName(Path.GetFullPath(imagePath))!;
+        var stem = Path.GetFileNameWithoutExtension(imagePath);
+        return Directory.EnumerateFiles(directory, stem + ".*", new EnumerationOptions { MatchCasing = MatchCasing.CaseInsensitive, IgnoreInaccessible = true })
+                        .Where(path => CompanionExtensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase)
+                                       && Path.GetFileNameWithoutExtension(path).Equals(stem, StringComparison.OrdinalIgnoreCase))
+                        .OrderBy(MediaFileTypes.VideoRank)
+                        .FirstOrDefault();
+    }
+
+    private static void EnsureValidImage(string path)
+    {
+        Span<byte> header = stackalloc byte[32];
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        var read = stream.ReadAtLeast(header, header.Length, throwOnEndOfStream: false);
+        if (MediaFileTypes.DetectPhotoExtension(header[..read], string.Empty).Length == 0)
+        {
+            throw new InvalidDataException("生成的图片格式无效，已放弃替换。");
+        }
     }
 }

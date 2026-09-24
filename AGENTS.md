@@ -35,12 +35,14 @@
 
 ```
 src/LivePhotoConvert.Core/          # 核心引擎（纯托管、AOT 兼容、无 UI 依赖）
-  Abstractions/                     # 接口（IExifTool、IImageConverter、IVideoConverter…）
-  External/                         # ExifTool / Ffmpeg / HeifEnc / ToolDownloader
-  Io/                               # BinaryFile 流式拼接切片、UniquePath 原子占位、FileHelper/FileTimestamp
-  Matching/                         # MediaFileTypes 零分配嗅探、MediaPairMatcher 配对
-  Models/                           # MergeModels / SplitModels / StripModels 等契约
-  Services/                         # Merger / Splitter / Stripper / PairValidator
+  Abstractions/                     # IImageConverter / IVideoConverter
+  Media/                            # MediaFileTypes 嗅探、MotionPhotoLayout 视频定位、MotionPhotoXmp 解析与编辑、FastImageHeaderReader
+  Metadata/                         # IMetadataService、ExifTool 会话池与批量 JSON 读取、CaptureTime、AppleMakerNote
+  Pairing/                          # MediaPair、MediaPairMatcher（按目录 + 主干配对）、PairValidator（纯函数）
+  Pipeline/                         # BatchRunner、OutputCommitter 原子落盘、SourceDisposition、TempWorkspace、BatchReport
+  Services/                         # MotionPhotoMerger / Splitter / Stripper 及其请求模型
+  External/                         # ProcessRunner、FFmpeg / heif-enc / Magick 转换器、ToolLocator、ToolDownloader
+  Io/                               # BinaryFile 流式拼接切片、UniquePath、FileHelper / FileTimestamp
   Platform/                         # RecycleBin 等平台相关实现
 src/LivePhotoConvert.Desktop/       # Avalonia 12 桌面端
   Assets/                           # Styles.axaml、Strings.zh-CN.axaml、Strings.en-US.axaml
@@ -62,8 +64,11 @@ global.json                         # 固定 SDK 10.0.400（避免误用 11 prev
 
 ### 3.1 Google Motion Photo (XMP)
 
-- 物理结构：JPEG 前段 + 尾部二进制拼接的 MP4。
-- 需写 XMP：`GCamera:MicroVideo=1`、`GCamera:MicroVideoOffset=<视频字节长>`、`GCamera:MicroVideoPresentationTimestampUs`。
+- 物理结构：JPEG 前段（可能还跟着 Ultra HDR 增益图）+ 尾部拼接的 MP4。
+- 需写 XMP：`GCamera:MotionPhoto*`、`GCamera:MicroVideo*`（`MicroVideoOffset` = 视频字节长）以及 `Container:Directory`（Primary / GainMap / MotionPhoto 项）。
+- **读取与编辑一律走 `MotionPhotoXmp`（托管 XDocument），不依赖 ExifTool 标签表**：ExifTool 12.x 不认识 Container 命名空间，13.x 又把组名改成 `XMP-GContainer`，按标签名读写会随版本失效。写入时在原有 XMP 上合并后整包回写（`-xmp<=`），不得丢弃封面原有的其它命名空间。
+- 定位视频一律走 `MotionPhotoLayout`：候选偏移处必须是 `ftyp`（HEIC 允许 `mpvd` box 头），否则视为非动态照片；只有 GainMap 没有 MotionPhoto 项的 Ultra HDR 照片不是动态照片。
+- 剥离视频时只删除 MotionPhoto 目录项，保留 GainMap 项；带增益图的照片不转码 HEIC（会丢失 HDR）。
 - 拼接/拆分由 `BinaryFile.ConcatAsync` / `CopySegmentAsync` 流式完成，**严禁整文件读入堆内存**。
 
 ### 3.2 小米澎湃 OS `0x8897`
@@ -72,15 +77,15 @@ global.json                         # 固定 SDK 10.0.400（避免误用 11 prev
 
 ### 3.3 Apple Live Photo UUID 配对
 
-- **图片端**：MakerNotes/Exif 写入 `ContentIdentifier`（大写 UUID）。
-- **视频端**：QuickTime Keys 写入 `com.apple.quicktime.content.identifier`（同一 UUID），并同步 `creationdate`/`make`/`model`/`software`/`location.ISO6709`。
-- ⚠️ **QuickTime 时间标签（mvhd/mdhd 的 CreateDate/MediaCreateDate/TrackCreateDate）按 UTC 存储**；用 ExifTool 写入时必须带 `-api QuickTimeUTC=1`，否则本地时间被当成 UTC 写入，产生时区偏移。
+- **图片端**：Apple MakerNotes 的 `ContentIdentifier`（大写 UUID）。ExifTool 无法在没有 Apple MakerNotes 的文件里凭空创建该块，必须用 `AppleMakerNote.BuildTemplateJpeg` 生成模板后 `-tagsFromFile 模板 -MakerNotes` 整块复制，并回读校验。
+- **视频端**：QuickTime Keys 写入 `com.apple.quicktime.content.identifier`（同一 UUID），并同步 `creationdate`/`make`/`model`/`software`/`GPSCoordinates`（格式 `纬度, 经度, 海拔`）。
+- ⚠️ QuickTime 时间标签（mvhd/mdhd）按 UTC 存储。ExifTool 会话通过 `-common_args -api QuickTimeUTC=1` 对所有命令生效；写入时传入**带偏移**的时间（来自 DateTimeOriginal + OffsetTimeOriginal），由 ExifTool 换算为 UTC。
 - 还原模式用 `Guid.NewGuid().ToString().ToUpperInvariant()` 生成配对 UUID 注入两端。
 - 实测结论：`Keys:StillImageTime` 不是 ExifTool 可写标签、Apple 原片亦无此键，**不要写入**。
 
 ### 3.4 配对与校验
 
-- 优先 `ContentIdentifier` 精确匹配；否则文件名主干 + `PairValidator`（时间差 ≤3s、时长 ≤30s）。
+- 优先 `ContentIdentifier` 精确匹配；否则「同一目录 + 文件名主干」+ `PairValidator`（时间差 ≤3s、时长 ≤30s）。两侧都有时区偏移时按绝对时刻比较，否则按当地时间比较。
 - 格式优选：`HEIC > JPG > PNG`，`MOV > MP4`。
 - 时间差超阈值 → 桌面端弹「人工裁决」弹窗，用户确认后进入 `ForceAcceptedPairs` 白名单，合并阶段 O(1) 命中并跳过校验。
 
@@ -101,10 +106,17 @@ global.json                         # 固定 SDK 10.0.400（避免误用 11 prev
 
 ### 4.3 原子安全与非破坏
 
-- 临时目录隔离：`Path.GetTempPath()/LivePhotoConvert/temp-{guid}/`，启动时清理 24h 前的孤儿目录。
-- 并发写用 `UniquePath.ReserveAtomic` / `ReservePairAtomic` 原子占位。
-- `try/finally` 清理半成品；完成后校验文件大小/格式。
-- 默认不改源文件；仅当用户显式选择（如就地瘦身/物理删除）且校验成功才处理，并保留 `.livephoto_backup` 暂存。
+- 中间文件放在 `TempWorkspace`（`Path.GetTempPath()/LivePhotoConvert/temp-{guid}/`），启动时清理 24h 前的孤儿目录。
+- **最终输出必须经 `OutputCommitter`**：先写到目标目录内的 `~lpc-*` 暂存文件，校验通过后同卷重命名落盘；同一批次的文件名由它统一分配，并发任务不会写到同一路径，**任何冲突策略下都不会覆盖本批次的源文件或本批次已写出的文件**。成对输出（HEIC + MOV）用 `CommitGroup` 保证同一序号，失败整组回滚。
+- 就地替换走 `OutputCommitter.ReplaceSource`：扩展名不变时 `File.Replace` + `.livephoto_backup`，成功后**立即删除备份**；扩展名改变时先落盘新文件（不覆盖已有文件）再删除原文件，删除失败则撤销新文件。
+- 源文件处置（移动/回收站/删除）只在输出落盘并校验通过后由 `SourceDisposition` 执行；瘦身删除 Apple 配对视频前必须通过 `PairValidator`，且只走回收站。
+- 外部工具只写流程自己生成的中间或暂存文件，从不直接修改用户原文件。
+
+### 4.3.1 外部进程
+
+- 一律通过 `ProcessRunner`（参数逐项 `ArgumentList`、标准输入立即关闭、默认 10 分钟超时、取消即结束进程树）；FFmpeg 固定带 `-nostdin`。
+- ExifTool 常驻会话经标准输入逐行传参，**含换行符的参数必须拒绝**；读取一律批量 `-j -n -G1 -a` 后由 `ExifToolJson` 解析，禁止逐标签往返。
+- 工具可用性探测结果由 `ToolLocator` 按文件路径、大小与修改时间缓存，不要在热路径上重复启动 `-version`。
 
 ### 4.4 Avalonia / MVVM 规范
 
@@ -149,7 +161,7 @@ XAML 里 `&` 需写成 `&amp;`；C# 字典里直接写 `&` 即可。
 dotnet build LivePhotoConvert.slnx                  # 编译（要求 0 警告 0 错误）
 dotnet test  LivePhotoConvert.slnx                  # 全量测试（Core.Tests + E2E）
 dotnet run --project src/LivePhotoConvert.Desktop/LivePhotoConvert.Desktop.csproj   # 启动桌面端
-dotnet publish src/LivePhotoConvert.Desktop/LivePhotoConvert.Desktop.csproj /p:PublishProfile=win-x64-aot -o dist/aot
+dotnet publish src/LivePhotoConvert.Desktop/LivePhotoConvert.Desktop.csproj -r win-x64 -c Release -o dist/aot   # Native AOT，要求 0 裁剪警告
 ```
 
 > **终端环境坑**：若使用 Git Bash 等 POSIX shell，`HOME` 会是 MSYS 路径（`/c/Users/...`）、`APPDATA` 可能为空，NuGet 会抛 `Value cannot be null. (Parameter 'path1')`。构建前修正：
@@ -166,7 +178,7 @@ dotnet publish src/LivePhotoConvert.Desktop/LivePhotoConvert.Desktop.csproj /p:P
 1. 定位 Core（引擎）还是 Desktop（交互）；**Core 不得引入 UI/Console 依赖**。
 2. 遵循 AOT / 零分配 / 原子 / MVVM 规范，保持注释与 public API 语义。
 3. 新增界面文案同步三处本地化资源（见 4.6）。
-4. Core 改动必须补单元测试；涉及 UI 流程的改动补充/更新 E2E 用例。
+4. Core 改动必须补单元测试（`tests/LivePhotoConvert.Core.Tests` 按 Media / Metadata / Pairing / Pipeline / Services 分目录；真实外部工具的集成测试在工具缺失时自动跳过）；涉及 UI 流程的改动补充/更新 E2E 用例。测试必须验证产品代码，不要在测试工程里重新实现一份被测逻辑。
 5. `dotnet build` 0 警告 0 报错，`dotnet test` 全绿。
 6. 交付总结：改动内容、设计决策、验证结果。
 

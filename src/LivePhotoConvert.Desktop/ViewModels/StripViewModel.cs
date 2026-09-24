@@ -4,6 +4,12 @@ using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ImageMagick;
+using LivePhotoConvert.Core.Abstractions;
+using LivePhotoConvert.Core.External;
+using LivePhotoConvert.Core.Metadata;
+using LivePhotoConvert.Core.Pipeline;
+using LivePhotoConvert.Core.Services;
+using LivePhotoConvert.Desktop.Models;
 using LivePhotoConvert.Desktop.Services;
 using LivePhotoConvert.Desktop.ViewModels.Dialogs;
 
@@ -416,30 +422,57 @@ public sealed partial class StripViewModel : ViewModelBase
     {
         try
         {
-            var savedSettings = _settingsService.Current;
-            var explicitExif = string.IsNullOrWhiteSpace(savedSettings.ExifToolPath) ? null : savedSettings.ExifToolPath;
-            var exifToolPath = Core.External.ToolLocator.Find(Core.External.ExifTool.ExecutableName, explicitExif);
-            var exifTool = Core.External.ExifTool.Create(exifToolPath);
-            var stripper = new LivePhotoConvert.Core.Services.MotionPhotoStripper(exifTool, Core.External.MagickImageConverter.Instance);
+            var files = ResolveInputFiles(inputPath);
+            var settings = _settingsService.Current;
+            await using var metadata = ExifToolMetadataService.Create(NullIfBlank(settings.ExifToolPath), Math.Clamp(settings.Concurrency, 1, 8));
+            var stripper = new MotionPhotoStripper(metadata, MagickImageConverter.Instance);
+            var candidates = await stripper.AnalyzeAsync(files);
 
-            var report = await stripper.AnalyzeAsync(inputPath, convertToHeic: true);
-            Interlocked.Exchange(ref _analysisOriginalBytes, report.OriginalTotalBytes);
-            Interlocked.Exchange(ref _estimatedSavedBytesTotal, report.EstimatedSavedBytes);
-            TotalOriginalText = $"{(double)report.OriginalTotalBytes / 1024 / 1024:F1} MB";
-            EstimatedAfterText = $"{(double)report.EstimatedHeicTotalBytes / 1024 / 1024:F1} MB";
-            double pct = report.OriginalTotalBytes > 0 ? (double)report.EstimatedSavedBytes / report.OriginalTotalBytes * 100.0 : 0;
-            EstimatedSavedText = $"{(double)report.EstimatedSavedBytes / 1024 / 1024:F1} MB (-{pct:F1}%)";
+            var original = candidates.Sum(c => c.OriginalBytes);
+            var estimatedAfter = candidates.Sum(c => c.EstimateFinalBytes(convertToHeic: true));
+            var saved = Math.Max(0, original - estimatedAfter);
+            Interlocked.Exchange(ref _analysisOriginalBytes, original);
+            Interlocked.Exchange(ref _estimatedSavedBytesTotal, saved);
+            TotalOriginalText = $"{original / 1024.0 / 1024:F1} MB";
+            EstimatedAfterText = $"{estimatedAfter / 1024.0 / 1024:F1} MB";
+            var pct = original > 0 ? saved * 100.0 / original : 0;
+            EstimatedSavedText = $"{saved / 1024.0 / 1024:F1} MB (-{pct:F1}%)";
             BeforeTotalResult = TotalOriginalText;
             AfterTotalResult = EstimatedAfterText;
             SavedPercentResult = LocalizationService.Instance.GetFormat("StripSavedPctFormat", pct);
-            BeforeCountText = LocalizationService.Instance.GetFormat("BeforeCountFormat", report.Items.Count);
-            // 卷帘对比与徒章使用真实体积（原图 / 瘦身后估算），杜绝写死 MB
+            BeforeCountText = LocalizationService.Instance.GetFormat("BeforeCountFormat", candidates.Count);
             BeforeSizeText = TotalOriginalText;
             AfterSizeText = EstimatedAfterText;
         }
         catch (Exception ex)
         {
-            Debug.WriteLine(ex);
+            ErrorLogger.Log(ex, "空间瘦身分析");
+            ErrorText = ex.Message;
+        }
+    }
+
+    /// <summary>
+    /// 选中目录时处理目录内（不含子目录）的照片；选中单张照片时只处理这一张。
+    /// </summary>
+    private static IReadOnlyList<string> ResolveInputFiles(string? inputPath) => inputPath switch
+    {
+        _ when string.IsNullOrWhiteSpace(inputPath) => [],
+        _ when Directory.Exists(inputPath) => MotionPhotoStripper.FindCandidates(inputPath),
+        _ when File.Exists(inputPath) => [inputPath],
+        _ => []
+    };
+
+    private static string? NullIfBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
+
+    /// <summary>
+    /// 在条目之间阻塞工作线程实现暂停；进度本身转发给界面。
+    /// </summary>
+    private sealed class PausableProgress(IProgress<BatchProgress> inner, ManualResetEventSlim gate, CancellationToken cancellationToken) : IProgress<BatchProgress>
+    {
+        public void Report(BatchProgress value)
+        {
+            inner.Report(value);
+            gate.Wait(cancellationToken);
         }
     }
 
@@ -480,130 +513,103 @@ public sealed partial class StripViewModel : ViewModelBase
         // 本地 stopwatch 由后台线程独占读取耗时，避免与 UI 线程 AbortStrip 的 Stop() 产生跨线程竞争
         var stopwatch = Stopwatch.StartNew();
 
-        Task.Run(async () =>
+        var files = ResolveInputFiles(CurrentInputPathText);
+        if (files.Count == 0)
         {
-            try
+            CurrentStage = 1;
+            ErrorText = LocalizationService.Instance.GetString("NoAlbumOrPhotoSelected");
+            cts.Dispose();
+            _stripCts = null;
+            return;
+        }
+
+        var settings = _settingsService.Current;
+        var inPlace = InPlaceStrip;
+        var exportDirectory = SafeExportDirectory;
+        var request = new StripRequest
+        {
+            Files = files,
+            Output = inPlace ? null : new OutputOptions(exportDirectory),
+            ConvertToHeic = true,
+            HeicQuality = settings.HeicQuality > 0 ? settings.HeicQuality : ConversionDefaults.HeicQuality,
+            Parallelism = Math.Clamp(settings.Concurrency, 1, 8)
+        };
+        var ui = new DesktopProgressReporter(value =>
+        {
+            var elapsed = stopwatch.Elapsed.TotalSeconds;
+            var rate = elapsed > 0.05 ? value.Completed / elapsed : 0;
+            var eta = rate > 0 ? (int)Math.Ceiling((value.Total - value.Completed) / rate) : 0;
+            var released = value.Total > 0 ? Interlocked.Read(ref _estimatedSavedBytesTotal) * value.Completed / value.Total : 0;
+            var pct = value.Total > 0 ? value.Completed * 100.0 / value.Total : 0;
+            StripProgressPercent = pct;
+            StripProgressStatusText = LocalizationService.Instance.GetFormat("StripProgressFormat", pct, value.Completed, value.Total);
+            RunningFileName = value.CurrentItem;
+            InstantThroughputText = LocalizationService.Instance.GetFormat("StripThroughputFormat", rate);
+            RemainingSecondsText = LocalizationService.Instance.GetFormat("StripEtaFormat", eta);
+            ReleasedSpaceText = $"{released / (1024.0 * 1024.0):F1} MB";
+        });
+        var progress = new PausableProgress(ui, _pauseGate, token);
+        _ = RunStripAsync(request, settings, inPlace ? CurrentInputPathText : exportDirectory, progress, stopwatch, cts);
+    }
+
+    private async Task RunStripAsync(StripRequest request, DesktopSettings settings, string resultLocation, IProgress<BatchProgress> progress, Stopwatch stopwatch, CancellationTokenSource cts)
+    {
+        try
+        {
+            var report = await Task.Run(async () =>
             {
-                var reporter = new DesktopProgressReporter((completed, total, currentItem) =>
-                {
-                    // 吞吐/ETA/释放估算计算
-                    double elapsedSec = stopwatch.Elapsed.TotalSeconds;
-                    double rate = elapsedSec > 0.05 ? completed / elapsedSec : 0;
-                    int remaining = Math.Max(0, total - completed);
-                    int etaSec = rate > 0 ? (int)Math.Ceiling(remaining / rate) : 0;
-                    long savedTotal = Interlocked.Read(ref _estimatedSavedBytesTotal);
-                    long releasedEst = total > 0 ? savedTotal * completed / total : 0;
+                await using var metadata = ExifToolMetadataService.Create(NullIfBlank(settings.ExifToolPath), request.Parallelism);
+                IImageConverter imageConverter = ToolLocator.Find(HeifEncImageConverter.ExecutableName, NullIfBlank(settings.HeifEncPath)) is { } heifEnc
+                    ? HeifEncImageConverter.Create(heifEnc)
+                    : MagickImageConverter.Instance;
+                return await new MotionPhotoStripper(metadata, imageConverter).StripAsync(request, progress, cts.Token);
+            });
 
-                    Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                    {
-                        double pct = total > 0 ? (double)completed / total * 100.0 : 0;
-                        StripProgressPercent = pct;
-                        StripProgressStatusText = LocalizationService.Instance.GetFormat("StripProgressFormat", pct, completed, total);
-                        RunningFileName = currentItem;
-                        InstantThroughputText = LocalizationService.Instance.GetFormat("StripThroughputFormat", rate);
-                        RemainingSecondsText = LocalizationService.Instance.GetFormat("StripEtaFormat", etaSec);
-                        ReleasedSpaceText = $"{releasedEst / (1024.0 * 1024.0):F1} MB";
-                    });
-
-                    // 真暂停门控：在条目之间阻塞工作线程，取消时抛出（不伪造暂停）
-                    _pauseGate.Wait(token);
-                });
-
-                var savedSettings = _settingsService.Current;
-                var explicitExif = string.IsNullOrWhiteSpace(savedSettings.ExifToolPath) ? null : savedSettings.ExifToolPath;
-                var explicitHeif = string.IsNullOrWhiteSpace(savedSettings.HeifEncPath) ? null : savedSettings.HeifEncPath;
-
-                var exifToolPath = Core.External.ToolLocator.Find(Core.External.ExifTool.ExecutableName, explicitExif);
-                var heifEncPath = Core.External.ToolLocator.Find(Core.External.HeifEncImageConverter.ExecutableName, explicitHeif);
-
-                var exifTool = Core.External.ExifTool.Create(exifToolPath);
-                var imageConverter = heifEncPath is not null
-                    ? (Core.Abstractions.IImageConverter)Core.External.HeifEncImageConverter.Create(heifEncPath)
-                    : Core.External.MagickImageConverter.Instance;
-
-                var stripper = new LivePhotoConvert.Core.Services.MotionPhotoStripper(exifTool, imageConverter, reporter);
-                var rawPath = CurrentInputPathText;
-                string? inputDir = null;
-                if (!string.IsNullOrWhiteSpace(rawPath))
-                {
-                    if (Directory.Exists(rawPath))
-                    {
-                        inputDir = rawPath;
-                    }
-                    else if (File.Exists(rawPath))
-                    {
-                        inputDir = Path.GetDirectoryName(rawPath);
-                    }
-                }
-
-                if (string.IsNullOrWhiteSpace(inputDir) || !Directory.Exists(inputDir))
-                {
-                    Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                    {
-                        CurrentStage = 1;
-                        ErrorText = LocalizationService.Instance.GetString("NoAlbumOrPhotoSelected");
-                    });
-                    return;
-                }
-
-                var options = new LivePhotoConvert.Core.Models.StripOptions
-                {
-                    InputDirectory = inputDir,
-                    OutputDirectory = InPlaceStrip ? null : SafeExportDirectory,
-                    ConvertToHeic = true,
-                    HeicQuality = _settingsService.Current.HeicQuality,
-                    Overwrite = true
-                };
-
-                var result = await stripper.StripAsync(options, token);
-
-                if (!token.IsCancellationRequested)
-                {
-                    stopwatch.Stop();
-                    double savedMb = result.SavedBytes / (1024.0 * 1024.0);
-                    long analysisOriginal = Interlocked.Read(ref _analysisOriginalBytes);
-                    long actualAfterBytes = Math.Max(0, analysisOriginal - result.SavedBytes);
-                    double actualPct = analysisOriginal > 0 ? (double)result.SavedBytes / analysisOriginal * 100.0 : 0;
-                    Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                    {
-                        NetSavedResult = $"+{savedMb:F1} MB";
-                        BeforeCountText = LocalizationService.Instance.GetFormat("BeforeCountFormat", result.Total);
-                        if (analysisOriginal > 0)
-                        {
-                            AfterTotalResult = $"{actualAfterBytes / (1024.0 * 1024.0):F1} MB";
-                            SavedPercentResult = LocalizationService.Instance.GetFormat("StripSavedPctFormat", actualPct);
-                        }
-
-                        CurrentStage = 3;
-
-                        // 驱动偏好设置中的完成提醒 / 自动打开输出目录开关
-                        CompletionEffects.RunOnTaskComplete(
-                            _settingsService.Current,
-                            InPlaceStrip ? CurrentInputPathText : SafeExportDirectory);
-                    });
-                }
-            }
-            catch (OperationCanceledException) { }
-            catch (Exception ex)
+            stopwatch.Stop();
+            if (report.Canceled || _stripCts != cts)
             {
-                stopwatch.Stop();
-                Debug.WriteLine(ex);
-                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                {
-                    CurrentStage = 1;
-                    ErrorText = ex.Message;
-                });
+                return;
             }
-            finally
+
+            var original = Interlocked.Read(ref _analysisOriginalBytes);
+            NetSavedResult = $"+{report.BytesSaved / (1024.0 * 1024.0):F1} MB";
+            BeforeCountText = LocalizationService.Instance.GetFormat("BeforeCountFormat", report.Items.Count);
+            if (original > 0)
             {
-                // 释放瘦身取消令牌，避免 CancellationTokenSource 句柄泄漏
-                cts.Dispose();
-                if (_stripCts == cts)
-                {
-                    _stripCts = null;
-                }
+                AfterTotalResult = $"{Math.Max(0, original - report.BytesSaved) / (1024.0 * 1024.0):F1} MB";
+                SavedPercentResult = LocalizationService.Instance.GetFormat("StripSavedPctFormat", report.BytesSaved * 100.0 / original);
             }
-        }, token);
+
+            if (report.Failed > 0)
+            {
+                ErrorText = string.Join(Environment.NewLine, report.Items.Where(i => i.Kind == OutcomeKind.Failed).Take(5).Select(i => $"{Path.GetFileName(i.Source)}：{i.Message}"));
+            }
+
+            CurrentStage = 3;
+            CompletionEffects.RunOnTaskComplete(settings, resultLocation);
+        }
+        catch (OperationCanceledException)
+        {
+            // 用户中止，界面已由 AbortStrip 复位
+        }
+        catch (Exception ex)
+        {
+            ErrorLogger.Log(ex, "空间瘦身");
+            if (_stripCts == cts)
+            {
+                CurrentStage = 1;
+                ErrorText = ex.Message;
+            }
+        }
+        finally
+        {
+            if (_stripCts == cts)
+            {
+                _stripCts = null;
+            }
+
+            cts.Dispose();
+        }
     }
 
     [RelayCommand]

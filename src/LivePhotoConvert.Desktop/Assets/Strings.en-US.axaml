@@ -325,6 +325,7 @@
   <!-- ============================================================= -->
   <!-- Report / Strip Stage Status (ReportView / StripView runtime) -->
   <!-- ============================================================= -->
+  <sys:String x:Key="ReportCanceledSuffix" xml:space="preserve"> (canceled)</sys:String>
   <sys:String x:Key="ReportModeMerge">Apple Live (HEIC+MOV) ➔ Android Motion Photo</sys:String>
   <sys:String x:Key="ReportModeApple">Android Live ➔ Apple Live Photo</sys:String>
   <sys:String x:Key="ReportModeExtract">Motion Disassembly ➔ Extract Files</sys:String>

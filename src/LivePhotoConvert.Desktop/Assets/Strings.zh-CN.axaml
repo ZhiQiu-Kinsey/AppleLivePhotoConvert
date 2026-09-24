@@ -325,6 +325,7 @@
   <!-- ============================================================= -->
   <!-- 批次报告 / 空间瘦身 阶段状态（ReportView / StripView 运行时） -->
   <!-- ============================================================= -->
+  <sys:String x:Key="ReportCanceledSuffix" xml:space="preserve">（已取消）</sys:String>
   <sys:String x:Key="ReportModeMerge">苹果实况 (HEIC+MOV) ➔ 安卓动态照片</sys:String>
   <sys:String x:Key="ReportModeApple">安卓实况 ➔ 苹果实况</sys:String>
   <sys:String x:Key="ReportModeExtract">实况解构 ➔ 提取单文件</sys:String>

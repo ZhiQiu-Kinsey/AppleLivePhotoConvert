@@ -2,7 +2,7 @@ using System.Collections.ObjectModel;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using LivePhotoConvert.Core.Models;
+using LivePhotoConvert.Core.Pairing;
 
 namespace LivePhotoConvert.Desktop.Models;
 

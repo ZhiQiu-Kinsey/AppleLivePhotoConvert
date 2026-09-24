@@ -92,8 +92,10 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             ReportVm.Populate(model);
             Avalonia.Threading.Dispatcher.UIThread.Post(() => SelectedTabIndex = 3);
 
-            // 驱动偏好设置中的完成提醒 / 自动打开输出目录开关
-            CompletionEffects.RunOnTaskComplete(_settingsService.Current, model.OutputDirectory);
+            if (!model.WasCanceled)
+            {
+                CompletionEffects.RunOnTaskComplete(_settingsService.Current, model.OutputDirectory);
+            }
         };
 
         LocalizationService.Instance.SetLanguage(_currentLanguage);

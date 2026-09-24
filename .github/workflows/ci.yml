@@ -24,3 +24,18 @@ jobs:
 
       - name: 运行全部单元测试
         run: dotnet test LivePhotoConvert.slnx -c Release --no-build --verbosity normal
+
+  aot-publish:
+    runs-on: windows-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 配置 .NET 10 环境
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Native AOT 发布（裁剪与 AOT 警告视为错误）
+        run: dotnet publish src/LivePhotoConvert.Desktop/LivePhotoConvert.Desktop.csproj -r win-x64 -c Release -o dist/aot -p:TreatWarningsAsErrors=true

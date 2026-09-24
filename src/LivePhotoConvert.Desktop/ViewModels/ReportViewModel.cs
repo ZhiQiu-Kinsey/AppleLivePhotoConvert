@@ -32,6 +32,7 @@ public sealed record BatchReportModel
     public TimeSpan Elapsed { get; init; }
     public string OutputDirectory { get; init; } = string.Empty;
     public string ModeName { get; init; } = string.Empty;
+    public bool WasCanceled { get; init; }
 }
 
 public sealed partial class ReportViewModel : ViewModelBase
