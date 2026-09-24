@@ -196,7 +196,7 @@ internal static class Cards
             PairCandidates = [new MediaPair(photo.Path, video.Path)],
             Header = Header(aspect),
             CaptureTimeLocal = taken ?? Modified.ToLocalTime(),
-            PairValidation = requiresReview ? PairValidationResult.Reject(["拍摄时间差 12 秒"]) : PairValidationResult.Accept(),
+            PairValidation = requiresReview ? PairValidationResult.Reject(new OutcomeCause(OutcomeReason.PairCaptureTimeTooFar, 12.0, 3.0)) : PairValidationResult.Accept(),
             PairTimeDelta = requiresReview ? TimeSpan.FromSeconds(12) : TimeSpan.Zero
         };
     }

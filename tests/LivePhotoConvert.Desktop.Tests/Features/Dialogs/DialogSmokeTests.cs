@@ -1,3 +1,4 @@
+using LivePhotoConvert.Core.Pipeline;
 using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
@@ -266,7 +267,7 @@ public sealed class DialogSmokeTests : IDisposable
         {
             Video = Scanned(video),
             PairCandidates = [new MediaPair(photo, video)],
-            PairValidation = PairValidationResult.Reject(["拍摄时间差 12 秒"]),
+            PairValidation = PairValidationResult.Reject(new OutcomeCause(OutcomeReason.PairCaptureTimeTooFar, 12.0, 3.0)),
             CaptureTimeLocal = taken
         }, localizer);
     }

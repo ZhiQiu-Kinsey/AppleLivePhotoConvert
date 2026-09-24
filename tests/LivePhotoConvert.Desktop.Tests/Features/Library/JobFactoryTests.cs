@@ -70,7 +70,7 @@ public class JobFactoryTests
         {
             Video = mov,
             PairCandidates = candidates,
-            PairValidation = LivePhotoConvert.Core.Pairing.PairValidationResult.Reject(["拍摄时间差 9 秒"])
+            PairValidation = LivePhotoConvert.Core.Pairing.PairValidationResult.Reject(new OutcomeCause(OutcomeReason.PairCaptureTimeTooFar, 9.0, 3.0))
         });
         card.IsForceAccepted = true;
 

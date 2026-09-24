@@ -172,7 +172,7 @@ public static class LibraryScanner
 
         var validation = selected >= 0
             ? results[selected]
-            : PairValidationResult.Reject([.. results.SelectMany(result => result.Reasons).Distinct()]);
+            : PairValidationResult.Reject([.. results.SelectMany(result => result.Causes).Distinct()]);
         var pair = candidates[Math.Max(selected, 0)];
         var photo = byPath[pair.PhotoPath];
         var photoHeader = headers[pair.PhotoPath];
