@@ -106,7 +106,8 @@
           </StackPanel>
           <StackPanel Grid.Column="2" Spacing="3">
             <TextBlock Text="{DynamicResource QuickLookPairing}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" />
-            <TextBlock Text="{CompiledBinding Card.PairingStatusText}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" TextTrimming="CharacterEllipsis" />
+            <TextBlock Text="{DynamicResource PairStatusLocked}" IsVisible="{CompiledBinding !Card.HasSuspiciousWarning}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" TextTrimming="CharacterEllipsis" />
+            <TextBlock Text="{DynamicResource PairStatusPending}" IsVisible="{CompiledBinding Card.HasSuspiciousWarning}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" TextTrimming="CharacterEllipsis" />
           </StackPanel>
           <StackPanel Grid.Column="3" Spacing="3">
             <TextBlock Text="{DynamicResource QuickLookSize}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" />

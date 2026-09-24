@@ -89,7 +89,7 @@
                 <ic:SymbolIcon Grid.Column="0" Symbol="DocumentBulletListClock" FontSize="16" Foreground="{DynamicResource VioletBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
                 <TextBlock Grid.Column="1" Text="{DynamicResource NavTasks}" FontSize="12" Margin="10,0,0,0" VerticalAlignment="Center" />
                 <Border Grid.Column="2" Classes="nav-badge" IsVisible="{Binding Tasks.Center.IsRunning}">
-                  <TextBlock Text="{Binding Tasks.Center.Current.PercentText}" FontFamily="Consolas" />
+                  <TextBlock Text="{Binding Tasks.Center.Current?.PercentText}" FontFamily="Consolas" />
                 </Border>
               </Grid>
             </Button>

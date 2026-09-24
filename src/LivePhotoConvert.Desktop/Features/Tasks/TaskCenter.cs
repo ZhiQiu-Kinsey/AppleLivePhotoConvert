@@ -168,7 +168,7 @@ public sealed partial class TaskCenter : ObservableObject, IBackgroundWork
         catch (Exception ex)
         {
             ErrorLogger.Log(ex, TaskTexts.Title(_localizer, job.Action));
-            error = ex.Message;
+            error = ErrorMessages.Describe(_localizer, ex);
         }
         finally
         {

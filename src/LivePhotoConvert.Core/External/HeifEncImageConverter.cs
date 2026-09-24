@@ -19,7 +19,7 @@ public sealed class HeifEncImageConverter : IImageConverter
     /// <exception cref="FileNotFoundException">找不到 heif-enc</exception>
     public static HeifEncImageConverter Create(string? executablePath = null) =>
         new(ToolLocator.Find(ExecutableName, executablePath, "heif-enc", "libheif", "bin")
-            ?? throw new FileNotFoundException($"未找到 {ExecutableName}，请在「依赖引擎」页面下载或指定路径。"));
+            ?? throw new ToolNotFoundException(ExecutableName));
 
     public Task ConvertToJpegAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken = default) =>
         MagickImageConverter.Instance.ConvertToJpegAsync(sourcePath, destinationPath, cancellationToken);

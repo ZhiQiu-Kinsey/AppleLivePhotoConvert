@@ -307,6 +307,7 @@
   <sys:String x:Key="PingTesting">测试中...</sys:String>
   <sys:String x:Key="PingFailedFormat">连接失败 ({0})</sys:String>
   <sys:String x:Key="ToolNotDetectedFormat">未检测到 {0}</sys:String>
+  <sys:String x:Key="ToolMissingFormat">未找到 {0}，请在「依赖引擎」页面下载或指定路径。</sys:String>
   <sys:String x:Key="ToolReady">已就绪</sys:String>
   <sys:String x:Key="ReportTimestampFormat">批次完成时间：{0:yyyy-MM-dd HH:mm:ss}</sys:String>
   <sys:String x:Key="ReportSummaryFormat">成功 {0} 项 · 异常 {1} 项</sys:String>

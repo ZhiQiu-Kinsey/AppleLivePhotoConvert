@@ -55,7 +55,7 @@ public sealed class ExifToolMetadataService : IMetadataService
     public static ExifToolMetadataService Create(string? executablePath = null, int maxSessions = 2)
     {
         var path = ToolLocator.Find(ExecutableName, executablePath, "ExifTool", "exiftool")
-                   ?? throw new FileNotFoundException($"未找到 {ExecutableName}，请在「依赖引擎」页面下载或指定路径。");
+                   ?? throw new ToolNotFoundException(ExecutableName);
         return new ExifToolMetadataService(path, maxSessions);
     }
 
