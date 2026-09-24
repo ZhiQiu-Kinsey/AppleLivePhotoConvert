@@ -1,6 +1,9 @@
 using System.Diagnostics;
 using Avalonia;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 using LivePhotoConvert.Core.External;
+using LivePhotoConvert.Core.Media;
 using LivePhotoConvert.Desktop.Features.Playback;
 
 namespace LivePhotoConvert.Desktop.Tests.Features.Playback;
@@ -23,6 +26,116 @@ internal sealed class ManualFrameScheduler : IFrameScheduler
             callback(now);
         }
     }
+}
+
+/// <summary>
+/// 不启动 FFmpeg 的播放器替身：播放立即呈现一张纯色帧（或按 <see cref="NextError"/> 失败），记录每次调用。
+/// </summary>
+internal sealed class FakePlayer : ILivePhotoPlayer
+{
+    private readonly List<WriteableBitmap> _frames = [];
+
+    public List<(VideoSource Source, PixelSize Target, double Scaling, PlaybackBudget Budget)> Plays { get; } = [];
+
+    public int StopCalls { get; private set; }
+
+    public int StopAsyncCalls { get; private set; }
+
+    public bool IsDisposed { get; private set; }
+
+    /// <summary>下一次播放以该错误结束。</summary>
+    public PlaybackError? NextError { get; set; }
+
+    public PlayerState State { get; private set; } = PlayerState.Idle;
+
+    public Bitmap? Surface { get; private set; }
+
+    public bool IsPaused { get; set; }
+
+    public event EventHandler? SurfaceInvalidated;
+
+    public event EventHandler? StateChanged;
+
+    public Task PlayAsync(VideoSource source, PixelSize target, double scaling, PlaybackBudget budget, CancellationToken cancellationToken = default)
+    {
+        Stop();
+        Plays.Add((source, target, scaling, budget));
+        SetState(PlayerState.Loading);
+        if (NextError is { } error)
+        {
+            NextError = null;
+            SetState(PlayerState.Failed(error, "fake"));
+            return Task.CompletedTask;
+        }
+
+        var frame = new WriteableBitmap(new PixelSize(32, 24), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
+        using (var buffer = frame.Lock())
+        {
+            unsafe
+            {
+                new Span<uint>((void*)buffer.Address, buffer.RowBytes / 4 * buffer.Size.Height).Fill(0xFFFF00FF);
+            }
+        }
+
+        _frames.Add(frame);
+        Surface = frame;
+        SurfaceInvalidated?.Invoke(this, EventArgs.Empty);
+        SetState(PlayerState.Playing);
+        return Task.CompletedTask;
+    }
+
+    public void Stop()
+    {
+        StopCalls++;
+        if (Surface is not null)
+        {
+            Surface = null;
+            SurfaceInvalidated?.Invoke(this, EventArgs.Empty);
+        }
+
+        SetState(PlayerState.Idle);
+    }
+
+    public Task StopAsync()
+    {
+        StopAsyncCalls++;
+        Stop();
+        return Task.CompletedTask;
+    }
+
+    public void Dispose()
+    {
+        Stop();
+        IsDisposed = true;
+        foreach (var frame in _frames)
+        {
+            frame.Dispose();
+        }
+
+        _frames.Clear();
+    }
+
+    private void SetState(PlayerState state)
+    {
+        if (State != state)
+        {
+            State = state;
+            StateChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+}
+
+/// <summary>产出 <see cref="FakePlayer"/> 的播放服务；按创建顺序记录，画廊的悬浮播放器最先创建。</summary>
+internal sealed class FakePlayers
+{
+    public List<FakePlayer> Created { get; } = [];
+
+    public PlaybackService CreateService() => new(_ =>
+    {
+        var player = new FakePlayer();
+        Created.Add(player);
+        return player;
+    });
 }
 
 /// <summary>用本机 FFmpeg 的 lavfi 测试源生成样片；缺少 FFmpeg、libx265 或 zscale 时跳过。</summary>

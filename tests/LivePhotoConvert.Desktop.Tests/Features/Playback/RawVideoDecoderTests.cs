@@ -1,7 +1,8 @@
 using Avalonia;
+using LivePhotoConvert.Core.Media;
+using LivePhotoConvert.Core.Tests.Support;
 using LivePhotoConvert.Desktop.Features.Playback;
 using LivePhotoConvert.Desktop.Tests.Harness;
-using LivePhotoConvert.Core.Tests.Support;
 
 namespace LivePhotoConvert.Desktop.Tests.Features.Playback;
 

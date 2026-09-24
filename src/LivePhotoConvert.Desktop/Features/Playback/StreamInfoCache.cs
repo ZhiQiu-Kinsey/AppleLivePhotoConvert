@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using LivePhotoConvert.Core.External;
+using LivePhotoConvert.Core.Media;
 
 namespace LivePhotoConvert.Desktop.Features.Playback;
 

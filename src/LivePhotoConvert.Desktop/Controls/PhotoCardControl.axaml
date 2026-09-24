@@ -16,7 +16,7 @@
 
     <Grid RowDefinitions="Auto,Auto">
       <!-- 使用行布局预先算出的统一高度，缩略图异步到达时不会改变当前测量 -->
-      <Panel Grid.Row="0" Height="{CompiledBinding PreviewHeight}" ClipToBounds="True">
+      <Panel x:Name="PreviewArea" Grid.Row="0" Height="{CompiledBinding PreviewHeight}" ClipToBounds="True">
         <!-- 圆角裁剪容器 -->
         <Border CornerRadius="16,16,0,0" ClipToBounds="True">
           <Panel>
@@ -35,6 +35,14 @@
                 <TextBlock Text="{CompiledBinding FileName}" Foreground="{DynamicResource TextMutedBrush}" FontSize="11" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="160" />
               </StackPanel>
             </Border>
+
+            <!-- 悬浮播放的视频帧，由画廊的播放控制器直接赋值；停止后隐藏，露出下方缩略图 -->
+            <Image x:Name="PlaybackImage"
+                   IsVisible="False"
+                   RenderOptions.BitmapInterpolationMode="HighQuality"
+                   Stretch="UniformToFill"
+                   HorizontalAlignment="Stretch"
+                   VerticalAlignment="Center" />
           </Panel>
         </Border>
 

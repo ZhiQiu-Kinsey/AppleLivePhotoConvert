@@ -5,7 +5,7 @@ using LivePhotoConvert.Desktop.Features.Shell;
 using LivePhotoConvert.Desktop.Features.Tasks;
 using LivePhotoConvert.Desktop.Features.Tools;
 using LivePhotoConvert.Desktop.Infrastructure;
-using LivePhotoConvert.Desktop.Services;
+using LivePhotoConvert.Desktop.Features.Playback;
 using LivePhotoConvert.Desktop.Tests.Harness;
 
 namespace LivePhotoConvert.Desktop.Tests.Infrastructure;
@@ -44,7 +44,8 @@ public class AppServicesTests
         Assert.Same(host.Get<SettingsViewModel>(), shell.Settings);
         Assert.NotNull(host.Get<AppLifetime>());
         Assert.NotNull(host.Get<WindowPlacementTracker>());
-        Assert.Same(PlaybackHost.Instance, host.Get<PlaybackHost>());
+        Assert.Same(host.Get<PlaybackService>(), host.Get<IPlaybackControl>());
+        Assert.Same(host.Get<PlaybackService>(), host.Get<LibraryViewModel>().Playback);
         Assert.Same(host.FilePicker, host.Get<IFilePicker>());
     }
 
@@ -102,7 +103,7 @@ public class AppServicesTests
         host.Settings.Update(s => s.AutoCleanTemp = false);
         var dialogs = host.Get<IDialogService>();
         var work = new FakeWork { IsBusy = true };
-        var lifetime = new AppLifetime(host.Settings, dialogs, host.Localizer, PlaybackHost.Instance, [work]);
+        var lifetime = new AppLifetime(host.Settings, dialogs, host.Localizer, host.Get<IPlaybackControl>(), [work]);
 
         var declined = lifetime.PrepareShutdownAsync();
         var question = Assert.IsType<ConfirmDialogViewModel>(dialogs.Current);
@@ -124,7 +125,7 @@ public class AppServicesTests
     {
         using var host = new DesktopTestHost();
         host.Settings.Update(s => s.AutoCleanTemp = false);
-        var lifetime = new AppLifetime(host.Settings, host.Get<IDialogService>(), host.Localizer, PlaybackHost.Instance, [new FakeWork()]);
+        var lifetime = new AppLifetime(host.Settings, host.Get<IDialogService>(), host.Localizer, host.Get<IPlaybackControl>(), [new FakeWork()]);
 
         Assert.True(await lifetime.PrepareShutdownAsync().WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
         Assert.Null(host.Get<IDialogService>().Current);

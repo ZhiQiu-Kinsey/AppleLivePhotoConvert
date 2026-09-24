@@ -5,6 +5,7 @@ using LivePhotoConvert.Core.Platform;
 using LivePhotoConvert.Desktop.Features.Library;
 using LivePhotoConvert.Desktop.Features.Library.Gallery;
 using LivePhotoConvert.Desktop.Features.Library.Thumbnails;
+using LivePhotoConvert.Desktop.Features.Playback;
 using LivePhotoConvert.Desktop.Features.Settings;
 using LivePhotoConvert.Desktop.Features.Shell;
 using LivePhotoConvert.Desktop.Features.Tasks;
@@ -36,14 +37,8 @@ public static class AppServices
         services.AddSingleton(sp => new CompletionEffects(
             sp.GetRequiredService<SettingsStore>(),
             sp.GetRequiredService<IShellLauncher>()));
-        services.AddSingleton(sp =>
-        {
-            // 播放宿主本阶段仍是静态实例，只在这里接上设置中的 FFmpeg 路径
-            var settings = sp.GetRequiredService<SettingsStore>();
-            var host = PlaybackHost.Instance;
-            host.CustomFfmpegPathProvider = () => settings.Current.FfmpegPath;
-            return host;
-        });
+        services.AddSingleton(sp => new PlaybackService(sp.GetRequiredService<SettingsStore>()));
+        services.AddSingleton<IPlaybackControl>(sp => sp.GetRequiredService<PlaybackService>());
 
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IConversionEngines>(_ => ExternalToolEngines.Instance);
@@ -84,7 +79,8 @@ public static class AppServices
             sp.GetRequiredService<ILocalizer>(),
             sp.GetRequiredService<IDialogService>(),
             sp.GetRequiredService<IFilePicker>(),
-            sp.GetRequiredService<PlaybackHost>(),
+            sp.GetRequiredService<INavigator>(),
+            sp.GetRequiredService<PlaybackService>(),
             sp.GetRequiredService<IThumbnailPipeline>(),
             sp.GetRequiredService<LibraryCatalog>()));
         services.AddSingleton(sp => new InspectorViewModel(
@@ -103,7 +99,8 @@ public static class AppServices
         services.AddSingleton(sp => new ToolsViewModel(
             sp.GetRequiredService<SettingsStore>(),
             sp.GetRequiredService<ILocalizer>(),
-            sp.GetRequiredService<IFilePicker>()));
+            sp.GetRequiredService<IFilePicker>(),
+            sp.GetRequiredService<IPlaybackControl>()));
         services.AddSingleton(sp => new SettingsViewModel(
             sp.GetRequiredService<SettingsStore>(),
             sp.GetRequiredService<ILocalizer>(),
@@ -123,7 +120,7 @@ public static class AppServices
             sp.GetRequiredService<SettingsStore>(),
             sp.GetRequiredService<IDialogService>(),
             sp.GetRequiredService<ILocalizer>(),
-            sp.GetRequiredService<PlaybackHost>(),
+            sp.GetRequiredService<IPlaybackControl>(),
             [sp.GetRequiredService<TaskCenter>()]));
 
         configure?.Invoke(services);

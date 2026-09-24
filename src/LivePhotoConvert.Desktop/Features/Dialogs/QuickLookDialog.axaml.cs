@@ -1,7 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using LivePhotoConvert.Desktop.Features.Dialogs;
+using LivePhotoConvert.Desktop.Features.Playback;
 
 namespace LivePhotoConvert.Desktop.Features.Dialogs;
 
@@ -17,6 +17,11 @@ public partial class QuickLookDialog : UserControl
     {
         base.OnLoaded(e);
         ReportViewport();
+        if (DataContext is QuickLookDialogViewModel vm && TopLevel.GetTopLevel(this) is { } top)
+        {
+            vm.AttachPlayer(new TopLevelFrameScheduler(top));
+        }
+
         Focus();
     }
 

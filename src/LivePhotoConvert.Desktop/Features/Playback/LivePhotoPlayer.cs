@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using LivePhotoConvert.Core.External;
+using LivePhotoConvert.Core.Media;
 
 namespace LivePhotoConvert.Desktop.Features.Playback;
 
@@ -20,7 +21,7 @@ public sealed record PlaybackTools(string FfmpegPath, IReadOnlySet<string>? Filt
 /// <see cref="Surface"/> 每呈现一帧就换成另一张位图（双缓冲），随后触发 <see cref="SurfaceInvalidated"/>；
 /// 停止后 <see cref="Surface"/> 变为 null，旧位图在界面解除引用后再释放。
 /// </remarks>
-public sealed class LivePhotoPlayer(IFrameScheduler scheduler, Func<PlaybackTools?> toolsProvider) : IDisposable
+public sealed class LivePhotoPlayer(IFrameScheduler scheduler, Func<PlaybackTools?> toolsProvider) : ILivePhotoPlayer
 {
     private Session? _session;
     private SurfacePair? _surfaces;
@@ -30,6 +31,28 @@ public sealed class LivePhotoPlayer(IFrameScheduler scheduler, Func<PlaybackTool
 
     /// <summary>当前帧；未在播放时为 null。</summary>
     public WriteableBitmap? Surface => _surfaces?.Front;
+
+    Bitmap? ILivePhotoPlayer.Surface => Surface;
+
+    public bool IsPaused
+    {
+        get;
+        set
+        {
+            Dispatcher.UIThread.VerifyAccess();
+            if (field == value)
+            {
+                return;
+            }
+
+            field = value;
+            // 暂停时不再续订刷新，恢复时重新订阅；位置在下一次回调里接上
+            if (!value && _session is { FrameRequested: false } session && session.Store is not null)
+            {
+                RequestFrame(session);
+            }
+        }
+    }
 
     public event EventHandler? SurfaceInvalidated;
 
@@ -78,19 +101,26 @@ public sealed class LivePhotoPlayer(IFrameScheduler scheduler, Func<PlaybackTool
                 return;
             }
 
-            if (toolsProvider() is not { } tools)
+            // 查找工具与探测文件都要访问磁盘，放到线程池，界面线程只等结果
+            var (tools, sourceExists) = await Task.Run(() => (toolsProvider(), File.Exists(source.Path)), session.Token);
+            if (!IsCurrent(session))
+            {
+                return;
+            }
+
+            if (tools is null)
             {
                 Fail(session, PlaybackError.FfmpegNotFound);
                 return;
             }
 
-            if (!File.Exists(source.Path))
+            if (!sourceExists)
             {
                 Fail(session, PlaybackError.SourceNotFound);
                 return;
             }
 
-            var info = await StreamInfoCache.GetAsync(tools.FfmpegPath, source, session.Token);
+            var info = await Task.Run(() => StreamInfoCache.GetAsync(tools.FfmpegPath, source, session.Token), session.Token);
             if (!IsCurrent(session))
             {
                 return;
@@ -104,7 +134,7 @@ public sealed class LivePhotoPlayer(IFrameScheduler scheduler, Func<PlaybackTool
 
             if (info.IsHdr)
             {
-                var filters = tools.Filters ?? await FfmpegFilters.GetAsync(tools.FfmpegPath, session.Token);
+                var filters = tools.Filters ?? await Task.Run(() => FfmpegFilters.GetAsync(tools.FfmpegPath, session.Token), session.Token);
                 if (!IsCurrent(session))
                 {
                     return;
@@ -121,7 +151,7 @@ public sealed class LivePhotoPlayer(IFrameScheduler scheduler, Func<PlaybackTool
             session.Store = FrameStore.Create(session.Size, budget);
             var input = source.ToFfmpegInput();
             _lastDecoding = Task.Run(() => DecodeLoopAsync(session, tools.FfmpegPath, input, info));
-            scheduler.RequestFrame(session.Callback);
+            RequestFrame(session);
             await session.Started.Task;
         }
         catch (OperationCanceledException) when (session.Token.IsCancellationRequested)
@@ -196,8 +226,15 @@ public sealed class LivePhotoPlayer(IFrameScheduler scheduler, Func<PlaybackTool
         StateChanged?.Invoke(this, EventArgs.Empty);
     }
 
+    private void RequestFrame(Session session)
+    {
+        session.FrameRequested = true;
+        scheduler.RequestFrame(session.Callback!);
+    }
+
     private void OnFrame(Session session, TimeSpan now)
     {
+        session.FrameRequested = false;
         if (!IsCurrent(session) || session.Store is not { } store)
         {
             return;
@@ -206,6 +243,12 @@ public sealed class LivePhotoPlayer(IFrameScheduler scheduler, Func<PlaybackTool
         if (session.Origin is null && store.Count > 0)
         {
             session.Origin = now;
+        }
+        else if (session.PausedAt is { } paused && session.Origin is not null)
+        {
+            // 暂停期间时钟不走：把起点平移到让位置停在暂停处
+            session.Origin = now - paused;
+            session.PausedAt = null;
         }
 
         if (session.Origin is { } origin && store.Resolve(now - origin) is { } lookup)
@@ -230,11 +273,17 @@ public sealed class LivePhotoPlayer(IFrameScheduler scheduler, Func<PlaybackTool
                 SetState(PlayerState.Playing);
                 session.Started.TrySetResult();
             }
+
+            if (IsPaused && IsCurrent(session) && State.Status == PlayerStatus.Playing)
+            {
+                session.PausedAt = now - session.Origin!.Value;
+                return;
+            }
         }
 
         if (IsCurrent(session))
         {
-            scheduler.RequestFrame(session.Callback!);
+            RequestFrame(session);
         }
     }
 
@@ -345,6 +394,12 @@ public sealed class LivePhotoPlayer(IFrameScheduler scheduler, Func<PlaybackTool
         public TimeSpan? Origin { get; set; }
 
         public long ShownSequence { get; set; } = -1;
+
+        /// <summary>暂停时的播放位置；恢复后的第一次回调据此平移 <see cref="Origin"/>。</summary>
+        public TimeSpan? PausedAt { get; set; }
+
+        /// <summary>已登记、尚未回调的刷新请求，避免恢复播放时重复订阅。</summary>
+        public bool FrameRequested { get; set; }
 
         public int? DecoderProcessId
         {

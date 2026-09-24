@@ -57,9 +57,10 @@ src/LivePhotoConvert.Desktop/       # Avalonia 12 桌面端
     Tools/                          # 依赖引擎页
     Settings/                       # 偏好设置与关于
     Dialogs/                        # 各弹窗（DialogViewModel<TResult> + 视图）
+    Playback/                       # 实况播放器：LivePhotoPlayer（RawVideoDecoder、FrameStore、SurfacePair）、PlaybackService（工厂与统一停止）
   Infrastructure/                   # 与具体页面无关的桌面服务：AppServices（DI 组合根）、Localizer、SettingsStore/DesktopSettings、DialogService、FilePicker、ShellLauncher、Navigator、ThemeService、AppLifetime
   Models/                           # GalleryItem（卡片/行/分组头）、TimelineGroup（等高排版）、AboutCredit、AboutInfo
-  Services/                         # AlbumScanner / ThumbnailReader / PlaybackHost / SafetyGuard 等
+  Services/                         # SafetyGuard、CompletionEffects
 tests/
   LivePhotoConvert.Core.Tests/      # 引擎单元测试：Media / Metadata / Pairing / Pipeline / Services / Io，Support/ 为内存替身与合成媒体
   LivePhotoConvert.Desktop.Tests/   # 桌面单元测试与 Headless 界面冒烟：目录与产品一致（Features/*、Infrastructure、Services…），Harness/ 为测试宿主
@@ -155,9 +156,14 @@ global.json                         # 固定 SDK 10.0.400（避免误用 11 prev
 
 - 「等高自适应」由 `LibraryViewModel` / `TimelineGroup.BuildRows` 依据可用视口宽度、原图比例与目标行高动态分行；完整行需铺满，末行保持自然宽度，禁止退化为固定列数或拉伸图片。
 - 卡片尺寸必须使用实际解码宽高与方向信息；窗口、侧栏或分组状态变化后必须触发重排，不得仅保存显示模式而不更新布局。
-- 原始 `Bitmap` 是非托管像素内存，**严禁无界缓存**。当前预算：960px 缩略图最多 24 张；悬浮预览最多 1 组、60 帧、720p；QuickLook 最多 90 帧、1080p；首屏仅预热 1 段视频。调整数值必须补内存压力验证。
+- 原始 `Bitmap` 是非托管像素内存，**严禁无界缓存**，一律按字节预算：缩略图默认 192MB（设置可调，正在显示的卡片不受限）；播放 `PlaybackBudget.Hover` 96MB、`PlaybackBudget.QuickLook` 256MB（含两张显示位图）。调整数值必须补内存压力验证。
 - 缩略图解码或 Skia 像素分配失败必须降级为占位图，不得让异常穿透 UI 线程导致进程退出。
-- 悬浮与 QuickLook 解码保留源时序：FFmpeg 使用 `-fps_mode passthrough`、BMP/BGR24 帧管线和 Lanczos 缩放；不要使用 `-hwaccel auto`，进程参数用 `ProcessStartInfo.ArgumentList` 逐项传入。
+- **实况播放只走 `Features/Playback/LivePhotoPlayer`**（界面依赖 `ILivePhotoPlayer`，由 DI 中的 `PlaybackService` 创建）：
+  - 输入：iOS 直接读 MOV；安卓动态照片用 FFmpeg `subfile` 协议按扫描得到的偏移直接读照片内的视频（`VideoSource.ToFfmpegInput()`），**不切临时文件、不把任何路径写回卡片**。
+  - 帧管线：`-f rawvideo -pix_fmt bgra` 直出，解码尺寸 = 显示尺寸 × RenderScaling（不超过源尺寸，偶数对齐；UniformToFill 的卡片按覆盖尺寸）；`-fps_mode passthrough` 保留源时序，按 `showinfo` 报告的 PTS 由窗口刷新节拍（`TopLevel.RequestAnimationFrame`）换帧，不用固定间隔计时器；不要使用 `-hwaccel auto`，参数逐项传入。
+  - HDR（HLG / PQ）源经 zscale + tonemap（mobius）映射到 BT.709 再显示；FFmpeg 缺这两个滤镜时报告 `HdrToneMapUnavailable` 并提示前往依赖页，**不得静默降级为发灰画面**。
+  - 帧缓存 `FrameStore` 按字节预算：整段放得下就全缓存循环，否则环形缓冲流式解码并无缝进入下一轮，不设帧数上限；显示用 `SurfacePair` 双缓冲，界面在 `SurfaceInvalidated` 中重新赋值 `Image.Source`，正在显示的位图不会被改写或释放。
+  - 单实例：画廊整窗一个悬浮播放器（指针停留约 250ms 后开始，离开、滚动、重排、卡片被回收或页面隐藏时立即停止），QuickLook 一个播放器并独占（打开前停止悬浮）；新播放先结束上一个 FFmpeg。退出程序与替换 FFmpeg 前经 `IPlaybackControl.StopAllAsync` 结束全部播放进程。
 
 ### 4.6 本地化（两处必须同步，缺一不可）
 

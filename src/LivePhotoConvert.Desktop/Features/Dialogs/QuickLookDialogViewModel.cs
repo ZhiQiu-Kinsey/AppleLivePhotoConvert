@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using Avalonia;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -6,15 +7,16 @@ using CommunityToolkit.Mvvm.Input;
 using LivePhotoConvert.Core.Media.Thumbnails;
 using LivePhotoConvert.Core.Services;
 using LivePhotoConvert.Desktop.Features.Library.Thumbnails;
+using LivePhotoConvert.Desktop.Features.Playback;
 using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Models;
-using LivePhotoConvert.Desktop.Services;
 
 namespace LivePhotoConvert.Desktop.Features.Dialogs;
 
 /// <summary>
-/// 大图预览与实况播放；关闭时停止播放并释放帧。
+/// 大图预览与实况播放；关闭时停止播放并释放播放器。
 /// 显示中的卡片通过缩略图管线钉住，占位缩略图不会被驱逐；高清图由本弹窗独占并在切换或关闭时释放。
+/// 播放器在视图挂到窗口后创建（需要窗口的刷新节拍），存续期间独占播放。
 /// </summary>
 public sealed partial class QuickLookDialogViewModel : DialogViewModel<bool>
 {
@@ -29,13 +31,19 @@ public sealed partial class QuickLookDialogViewModel : DialogViewModel<bool>
     private readonly Func<int, PhotoCardItemViewModel?> _cardAt;
     private readonly int _count;
     private int _index;
-    private readonly LivePhotoStreamPlayer _streamPlayer = new();
+    private ILivePhotoPlayer? _player;
     private Bitmap? _ownedPhotoPreview;
     private CancellationTokenSource? _previewCts;
     private PhotoCardItemViewModel? _acquiredCard;
     private int _previewGeneration;
     private int _previewHeightPx;
-    private bool _hasPresentedVideoFrame;
+    private PixelSize? _playbackTarget;
+
+    /// <summary>
+    /// 当前卡片出现过的最大画布（逐维取最大）。弹窗按内容定尺寸，照片与视频比例不同会让画布在两种形状间来回变化，
+    /// 按当前画布重启解码会形成振荡；取历史最大值后至多重启一两次。
+    /// </summary>
+    private (double Width, double Height) _playbackArea;
     private (double Width, double Height, double Scaling) _viewport;
 
     [ObservableProperty]
@@ -45,6 +53,7 @@ public sealed partial class QuickLookDialogViewModel : DialogViewModel<bool>
     private Bitmap? _currentDisplayImage;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsStatusBadgeVisible))]
     private bool _hasVideo;
 
     [ObservableProperty]
@@ -58,6 +67,26 @@ public sealed partial class QuickLookDialogViewModel : DialogViewModel<bool>
 
     [ObservableProperty]
     private string _navigationIndexText;
+
+    /// <summary>当前卡片的视频无法播放；原因见 <see cref="PlaybackStatusText"/>。</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsStatusBadgeVisible))]
+    private bool _hasPlaybackError;
+
+    /// <summary>左上角的播放状态；失败时原因改在画面下方的提示条中显示。</summary>
+    public bool IsStatusBadgeVisible => HasVideo && !HasPlaybackError;
+
+    /// <summary>错误可在依赖页解决（缺 FFmpeg 或缺 HDR 色调映射滤镜）。</summary>
+    [ObservableProperty]
+    private bool _canOpenTools;
+
+    /// <summary>播放器来源；为 null 时只显示照片。</summary>
+    public PlaybackService? Playback { get; init; }
+
+    /// <summary>前往依赖页；弹窗先关闭。</summary>
+    public Action? OpenTools { get; init; }
+
+    internal ILivePhotoPlayer? Player => _player;
 
     /// <param name="cardAt">按序号取卡片；序号越界或卡片已失效时返回 null。</param>
     /// <param name="count">可浏览的卡片总数，左右切换在此范围内循环。</param>
@@ -88,48 +117,118 @@ public sealed partial class QuickLookDialogViewModel : DialogViewModel<bool>
 
     private void SetCard(PhotoCardItemViewModel card, string indexText)
     {
-        _streamPlayer.Stop();
+        _player?.Stop();
+        _playbackTarget = null;
+        _playbackArea = (_viewport.Width, _viewport.Height);
         int generation = ++_previewGeneration;
         ReleaseOwnedPhotoPreview();
-        _hasPresentedVideoFrame = false;
         AttachCard(card);
 
         Card = card;
         NavigationIndexText = indexText;
 
-        // 只借用卡片的静态缩略图：它已被钉住；悬浮播放的帧归播放器所有，随时可能被回收
+        // 只借用卡片的静态缩略图：它已被钉住，不会在显示期间被释放
         CurrentDisplayImage = card.Thumbnail;
         LoadHighResolutionPhotoPreview(card, generation);
 
-        if (card.IsMotionPhoto)
+        // 视频是否存在由扫描确定，界面线程不再查询磁盘；安卓动态照片直接读取照片内的视频区段
+        HasVideo = card.Video is not null;
+        (HasPlaybackError, CanOpenTools) = (false, false);
+        if (HasVideo)
         {
-            HasVideo = true;
+            // 每张卡片都从播放开始，上一张的暂停不延续
             IsPlaying = true;
-            PlayButtonText = _localizer["QuickLookPause"];
+            _player?.IsPaused = false;
             PlaybackStatusText = _localizer["QuickLookLoading"];
-            _ = PlayMotionPhotoAsync(card);
-            return;
-        }
-
-        // 视频是否存在由扫描确定，界面线程不再查询磁盘
-        HasVideo = card.VideoPath is not null;
-        if (card.VideoPath is { } videoPath)
-        {
-            IsPlaying = true;
-            PlayButtonText = _localizer["QuickLookPause"];
-            PlaybackStatusText = _localizer["QuickLookPlaying"];
-            _streamPlayer.Play(videoPath, OnFrame);
+            StartPlayback();
         }
         else
         {
-            IsPlaying = false;
-            PlayButtonText = _localizer["QuickLookStatic"];
             PlaybackStatusText = _localizer["QuickLookStatic"];
+        }
+
+        UpdatePlayButton();
+    }
+
+    /// <summary>视图已挂到窗口：按窗口的刷新节拍创建播放器，开始独占播放。</summary>
+    public void AttachPlayer(IFrameScheduler scheduler)
+    {
+        if (IsClosed || Playback is null || _player is not null)
+        {
+            return;
+        }
+
+        var player = Playback.CreatePlayer(scheduler);
+        Playback.EnterExclusive(player);
+        player.IsPaused = !IsPlaying;
+        player.SurfaceInvalidated += OnSurfaceInvalidated;
+        player.StateChanged += OnPlayerStateChanged;
+        _player = player;
+        StartPlayback();
+    }
+
+    /// <summary>画布尺寸已知后才开始解码：解码尺寸取画布的物理像素。</summary>
+    private void StartPlayback()
+    {
+        if (_player is not { } player || IsClosed || Card.Video is not { } video || PlaybackTargetFor() is not { } target)
+        {
+            return;
+        }
+
+        _playbackTarget = target;
+        (HasPlaybackError, CanOpenTools) = (false, false);
+        Observe(player.PlayAsync(video, target, _viewport.Scaling, PlaybackBudget.QuickLook), "预览实况视频");
+    }
+
+    private PixelSize? PlaybackTargetFor() => _playbackArea.Width >= 1 && _playbackArea.Height >= 1
+        ? new PixelSize((int)Math.Ceiling(_playbackArea.Width), (int)Math.Ceiling(_playbackArea.Height))
+        : null;
+
+    private void OnSurfaceInvalidated(object? sender, EventArgs e)
+    {
+        if (ReferenceEquals(sender, _player) && !IsClosed)
+        {
+            CurrentDisplayImage = _player!.Surface ?? _ownedPhotoPreview ?? Card.Thumbnail;
         }
     }
 
+    private void OnPlayerStateChanged(object? sender, EventArgs e)
+    {
+        if (!ReferenceEquals(sender, _player) || IsClosed || !HasVideo)
+        {
+            return;
+        }
+
+        var state = _player!.State;
+        switch (state.Status)
+        {
+            case PlayerStatus.Loading:
+                PlaybackStatusText = _localizer["QuickLookLoading"];
+                break;
+            case PlayerStatus.Playing:
+                PlaybackStatusText = _localizer[IsPlaying ? "QuickLookPlaying" : "QuickLookPaused"];
+                break;
+            case PlayerStatus.Error:
+                // 按钮回到「播放」，再按即重试
+                IsPlaying = false;
+                UpdatePlayButton();
+                HasPlaybackError = true;
+                CanOpenTools = OpenTools is not null && PlaybackTexts.IsToolProblem(state.Error);
+                PlaybackStatusText = _localizer[PlaybackTexts.ErrorKey(state.Error)];
+                if (state.Detail is { } detail)
+                {
+                    ErrorLogger.Log(new InvalidOperationException(detail), $"预览实况视频：{state.Error}");
+                }
+
+                break;
+        }
+    }
+
+    private void UpdatePlayButton() =>
+        PlayButtonText = _localizer[!HasVideo ? "QuickLookStatic" : IsPlaying ? "QuickLookPause" : "QuickLookLoop"];
+
     /// <summary>
-    /// 画布的逻辑尺寸与屏幕缩放比。预览按画布实际显示的像素加载（Uniform 缩放后的高度 × 缩放比），
+    /// 画布的逻辑尺寸与屏幕缩放比。预览与视频都按画布实际显示的像素解码（Uniform 缩放后的尺寸 × 缩放比），
     /// 高分屏上不会被固定档位限制而偏软；画布变大超过阈值时重新加载。
     /// </summary>
     public void SetViewport(double width, double height, double renderScaling)
@@ -139,12 +238,34 @@ public sealed partial class QuickLookDialogViewModel : DialogViewModel<bool>
             return;
         }
 
+        var previousScaling = _viewport.Scaling;
         _viewport = (width, height, renderScaling);
-        if (!IsClosed && PreviewHeightFor(Card) > _previewHeightPx * ReloadThreshold)
+        if (IsClosed)
+        {
+            return;
+        }
+
+        if (PreviewHeightFor(Card) > _previewHeightPx * ReloadThreshold)
         {
             // 旧预览留到新图到达再替换，画面不会先退回缩略图
             _previewCts?.Cancel();
             LoadHighResolutionPhotoPreview(Card, ++_previewGeneration);
+        }
+
+        var previousArea = _playbackArea;
+        _playbackArea = (Math.Max(previousArea.Width, width), Math.Max(previousArea.Height, height));
+
+        // 首次得到画布尺寸时开始播放；之后只在明显变大时按新尺寸重新解码，缩小由界面缩放
+        if (_playbackTarget is null)
+        {
+            StartPlayback();
+        }
+        else if (_player?.State.Status is PlayerStatus.Loading or PlayerStatus.Playing
+                 && (_playbackArea.Width > previousArea.Width * ReloadThreshold
+                     || _playbackArea.Height > previousArea.Height * ReloadThreshold
+                     || renderScaling > previousScaling * ReloadThreshold))
+        {
+            StartPlayback();
         }
     }
 
@@ -164,12 +285,36 @@ public sealed partial class QuickLookDialogViewModel : DialogViewModel<bool>
     [RelayCommand]
     public void TogglePlay()
     {
-        if (!HasVideo) return;
+        if (!HasVideo)
+        {
+            return;
+        }
 
-        _streamPlayer.TogglePlay();
-        IsPlaying = _streamPlayer.IsPlaying;
-        PlayButtonText = IsPlaying ? _localizer["QuickLookPause"] : _localizer["QuickLookLoop"];
-        PlaybackStatusText = IsPlaying ? _localizer["QuickLookPlaying"] : _localizer["QuickLookPaused"];
+        IsPlaying = !IsPlaying;
+        UpdatePlayButton();
+        if (_player is not { } player)
+        {
+            return;
+        }
+
+        player.IsPaused = !IsPlaying;
+        if (player.State.Status == PlayerStatus.Playing)
+        {
+            PlaybackStatusText = _localizer[IsPlaying ? "QuickLookPlaying" : "QuickLookPaused"];
+        }
+        else if (IsPlaying && player.State.Status is PlayerStatus.Error or PlayerStatus.Idle)
+        {
+            // 失败后再按播放即重试，例如刚在依赖页装好 FFmpeg
+            StartPlayback();
+        }
+    }
+
+    [RelayCommand]
+    private void GoToTools()
+    {
+        var openTools = OpenTools;
+        Cancel();
+        openTools?.Invoke();
     }
 
     [RelayCommand]
@@ -181,8 +326,14 @@ public sealed partial class QuickLookDialogViewModel : DialogViewModel<bool>
     protected internal override void OnClosed()
     {
         ++_previewGeneration;
-        _streamPlayer.Stop();
-        _streamPlayer.Dispose();
+        if (_player is { } player)
+        {
+            _player = null;
+            player.SurfaceInvalidated -= OnSurfaceInvalidated;
+            player.StateChanged -= OnPlayerStateChanged;
+            Observe(Playback!.ReleaseAsync(player), "关闭预览");
+        }
+
         ReleaseOwnedPhotoPreview();
         CurrentDisplayImage = null;
         AttachCard(null);
@@ -218,35 +369,16 @@ public sealed partial class QuickLookDialogViewModel : DialogViewModel<bool>
         }
 
         // 高清图或视频帧已在显示时不回退到缩略图
-        if (_ownedPhotoPreview is null && !_hasPresentedVideoFrame)
+        if (_ownedPhotoPreview is null && _player?.Surface is null)
         {
             CurrentDisplayImage = Card.Thumbnail;
         }
     }
 
-    private void OnFrame(Bitmap frame)
-    {
-        _hasPresentedVideoFrame = true;
-        CurrentDisplayImage = frame;
-    }
-
     /// <summary>未被等待：异常在这里记录，不能逃逸成未观察的任务异常。</summary>
-    private async Task PlayMotionPhotoAsync(PhotoCardItemViewModel card)
-    {
-        try
-        {
-            var extracted = await Task.Run(() => MotionPhotoVideoCache.EnsureVideoExtractedAsync(card));
-            if (!string.IsNullOrEmpty(extracted) && ReferenceEquals(Card, card) && !IsClosed)
-            {
-                PlaybackStatusText = _localizer["QuickLookPlaying"];
-                _streamPlayer.Play(extracted, OnFrame);
-            }
-        }
-        catch (Exception ex)
-        {
-            ErrorLogger.Log(ex, "预览动态照片");
-        }
-    }
+    private static void Observe(Task task, string context) =>
+        task.ContinueWith(t => ErrorLogger.Log(t.Exception!.GetBaseException(), context), CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
 
     private void LoadHighResolutionPhotoPreview(PhotoCardItemViewModel card, int generation)
     {
@@ -287,7 +419,7 @@ public sealed partial class QuickLookDialogViewModel : DialogViewModel<bool>
 
         var previous = _ownedPhotoPreview;
         _ownedPhotoPreview = preview;
-        if (!_hasPresentedVideoFrame)
+        if (_player?.Surface is null)
         {
             CurrentDisplayImage = preview;
         }

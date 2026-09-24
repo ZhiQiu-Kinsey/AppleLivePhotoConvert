@@ -32,6 +32,9 @@ public sealed class DesktopSettings
     public ConflictPolicy ConflictPolicy { get; set; } = ConflictPolicy.AppendIndex;
 
     public int HeicQuality { get; set; } = ConversionDefaults.HeicQuality;
+
+    /// <summary>合成时把 iPhone HDR 照片的增益图保留为 Ultra HDR 封面；旧设置文件没有该字段时按默认开启。</summary>
+    public bool PreserveHdr { get; set; } = true;
     public string OutputDirectory { get; set; } = string.Empty;
 
     // 空间瘦身

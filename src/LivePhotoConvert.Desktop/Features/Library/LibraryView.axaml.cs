@@ -1,21 +1,26 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using LivePhotoConvert.Desktop.Controls;
 using LivePhotoConvert.Desktop.Features.Library.Thumbnails;
+using LivePhotoConvert.Desktop.Features.Playback;
 using LivePhotoConvert.Desktop.Models;
 
 namespace LivePhotoConvert.Desktop.Features.Library;
 
 /// <summary>
-/// 画廊视图：把视口宽度交给排版，把列表容器接到缩略图引用计数，并在重排前后按锚点保持滚动位置。
+/// 画廊视图：把视口宽度交给排版，把列表容器接到缩略图引用计数，并在重排前后按锚点保持滚动位置；
+/// 指针停在卡片预览区时经 <see cref="GalleryHoverPlayback"/> 悬浮播放。
 /// </summary>
 public partial class LibraryView : UserControl
 {
     private LibraryViewModel? _vm;
     private ScrollViewer? _scroll;
     private GalleryThumbnailBinder? _thumbnailBinder;
+    private GalleryHoverPlayback? _hover;
     private TopLevel? _topLevel;
     private (string Key, double Delta)? _anchor;
     private List<Visual> _visibilityChain = [];
@@ -30,6 +35,9 @@ public partial class LibraryView : UserControl
     /// <summary>供界面测试检查已实例化容器持有的卡片；页面隐藏时为 null。</summary>
     internal GalleryThumbnailBinder? ThumbnailBinder => _thumbnailBinder;
 
+    /// <summary>供界面测试检查悬浮播放；视图未挂到窗口时为 null。</summary>
+    internal GalleryHoverPlayback? HoverPlayback => _hover;
+
     private void Attach()
     {
         Detach();
@@ -41,6 +49,9 @@ public partial class LibraryView : UserControl
         _vm = vm;
         GalleryListBox.SizeChanged += OnListSizeChanged;
         GalleryListBox.AddHandler(ScrollViewer.ScrollChangedEvent, OnScrollChanged, RoutingStrategies.Bubble);
+        // 卡片自身处理按下与双击，悬浮只需旁听移动，已处理的事件也要收到
+        GalleryListBox.AddHandler(PointerMovedEvent, OnGalleryPointerMoved, RoutingStrategies.Bubble, handledEventsToo: true);
+        GalleryListBox.PointerExited += OnGalleryPointerExited;
         vm.Layout.LayoutChanging += OnLayoutChanging;
         vm.Layout.LayoutChanged += OnLayoutChanged;
         _topLevel = TopLevel.GetTopLevel(this);
@@ -48,6 +59,8 @@ public partial class LibraryView : UserControl
         {
             _topLevel.ScalingChanged += OnScalingChanged;
             vm.SetRenderScaling(_topLevel.RenderScaling);
+            var topLevel = _topLevel;
+            _hover = new GalleryHoverPlayback(vm.Playback, new TopLevelFrameScheduler(topLevel), () => topLevel.RenderScaling);
         }
 
         // 页面切换只改祖先的 IsVisible，视图本身不会卸载
@@ -59,19 +72,12 @@ public partial class LibraryView : UserControl
 
         UpdateThumbnailBinding();
         ReportViewportWidth();
-
-        // 首次布局完成后预热首屏视频，不能依赖鼠标经过才触发
-        Dispatcher.UIThread.Post(() =>
-        {
-            if (_vm is not null && GalleryListBox.Bounds.Height > 0)
-            {
-                _vm.OnViewportScrolled(0, GalleryListBox.Bounds.Height);
-            }
-        });
     }
 
     private void Detach()
     {
+        _hover?.Dispose();
+        _hover = null;
         ReleaseThumbnails();
         foreach (var visual in _visibilityChain)
         {
@@ -81,6 +87,8 @@ public partial class LibraryView : UserControl
         _visibilityChain = [];
         GalleryListBox.SizeChanged -= OnListSizeChanged;
         GalleryListBox.RemoveHandler(ScrollViewer.ScrollChangedEvent, OnScrollChanged);
+        GalleryListBox.RemoveHandler(PointerMovedEvent, OnGalleryPointerMoved);
+        GalleryListBox.PointerExited -= OnGalleryPointerExited;
         if (_vm is not null)
         {
             _vm.Layout.LayoutChanging -= OnLayoutChanging;
@@ -97,6 +105,7 @@ public partial class LibraryView : UserControl
 
     /// <summary>
     /// 页面切走（不可见）时放开全部卡片的钉住，位图回到预算内按 LRU 驱逐；切回时从已实例化的容器重新钉住。
+    /// 看不见的画廊也不再悬浮播放。
     /// </summary>
     private void UpdateThumbnailBinding()
     {
@@ -111,6 +120,7 @@ public partial class LibraryView : UserControl
         }
         else
         {
+            _hover?.Stop();
             ReleaseThumbnails();
         }
     }
@@ -158,6 +168,12 @@ public partial class LibraryView : UserControl
                 ReportViewportWidth();
             }
 
+            // 滚轮滚动时指针不动，卡片却从指针下移走，必须主动停止
+            if (e.OffsetDelta.Y != 0)
+            {
+                _hover?.Stop();
+            }
+
             _vm?.OnViewportScrolled(scroll.Offset.Y, scroll.Viewport.Height);
         }
     }
@@ -165,6 +181,8 @@ public partial class LibraryView : UserControl
     /// <summary>记录视口顶部的列表项与已滚过它的距离；取实际容器位置，不依赖虚拟化面板对未实例化项的估算。</summary>
     private void OnLayoutChanging(object? sender, EventArgs e)
     {
+        // 重排会改变卡片尺寸与位置，正在播放的解码尺寸随之失效
+        _hover?.Stop();
         _anchor = null;
         if (_scroll is not { Offset.Y: > 0.5 } scroll || !IsShown)
         {
@@ -220,6 +238,30 @@ public partial class LibraryView : UserControl
             scroll.Offset = new Vector(scroll.Offset.X, Math.Max(0, scroll.Offset.Y + top.Y + delta));
         }
     }
+
+    private void OnGalleryPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (_hover is null || !IsShown)
+        {
+            return;
+        }
+
+        if ((e.Source as Visual)?.FindAncestorOfType<PhotoCardControl>(includeSelf: true) is { } control && control.IsInPreview(e))
+        {
+            if (control.DataContext is PhotoCardItemViewModel card && _vm is { } vm && !ReferenceEquals(vm.FocusedCard, card))
+            {
+                vm.FocusedCard = card;
+            }
+
+            _hover.Hover(control);
+        }
+        else
+        {
+            _hover.Leave();
+        }
+    }
+
+    private void OnGalleryPointerExited(object? sender, PointerEventArgs e) => _hover?.Leave();
 
     private static string? KeyOf(object item) => item switch
     {

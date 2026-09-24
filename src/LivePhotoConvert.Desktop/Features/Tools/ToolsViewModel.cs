@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using LivePhotoConvert.Desktop.Features.Playback;
 using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Services;
 
@@ -25,6 +26,7 @@ public sealed partial class ToolsViewModel : ViewModelBase
     private readonly SettingsStore _settings;
     private readonly ILocalizer _localizer;
     private readonly IFilePicker _filePicker;
+    private readonly IPlaybackControl _playback;
 
     // 最近一次探测结果；语言切换时据此重新生成状态文案，无需再次启动外部进程
     private bool _hasProbed;
@@ -147,11 +149,12 @@ public sealed partial class ToolsViewModel : ViewModelBase
     /// </summary>
     public Func<string, bool> ValidateToolExecutable { get; set; } = Core.External.ToolLocator.IsValidTool;
 
-    public ToolsViewModel(SettingsStore settings, ILocalizer localizer, IFilePicker filePicker)
+    public ToolsViewModel(SettingsStore settings, ILocalizer localizer, IFilePicker filePicker, IPlaybackControl playback)
     {
         _settings = settings;
         _localizer = localizer;
         _filePicker = filePicker;
+        _playback = playback;
         _mirrorPresets = BuildMirrorPresets();
         var s = _settings.Current;
         if (!string.IsNullOrWhiteSpace(s.CustomMirrorUrl))
@@ -377,6 +380,12 @@ public sealed partial class ToolsViewModel : ViewModelBase
         _installCts = cts;
         try
         {
+            if (kind == ToolKind.Ffmpeg)
+            {
+                // 运行中的 ffmpeg 可执行文件在 Windows 上无法被覆盖，播放器必须先放开它
+                await _playback.StopAllAsync();
+            }
+
             var progress = new Progress<Core.External.DownloadProgressReport>(report =>
                 InstallProgressText = FormatProgress(report));
 

@@ -17,7 +17,6 @@
 
   <!-- Toolbar & Gallery -->
   <sys:String x:Key="ToolbarAlbumTitle">Album Live Roll</sys:String>
-  <sys:String x:Key="ToolbarPlayTip">Continuously preview live videos in viewport</sys:String>
   <sys:String x:Key="SortDateTaken">Date Taken</sys:String>
   <sys:String x:Key="SortDateCreated">Date Created</sys:String>
   <sys:String x:Key="SortDateModified">Date Modified</sys:String>
@@ -57,6 +56,8 @@
   <sys:String x:Key="DeleteWarningDesc">Source files are permanently deleted after conversion; you must type a confirmation word to start.</sys:String>
   <sys:String x:Key="AutoAppendIndexTitle">Append a number on name clashes</sys:String>
   <sys:String x:Key="AutoAppendIndexDesc">When off, files with the same name in the output folder are overwritten.</sys:String>
+  <sys:String x:Key="PreserveHdrTitle">Keep HDR (Ultra HDR)</sys:String>
+  <sys:String x:Key="PreserveHdrDesc">Writes the gain map of iPhone HDR photos into an Ultra HDR cover that supporting galleries show in HDR. Requires heif-dec (part of libheif); without it a standard cover is written and the report says why.</sys:String>
   <sys:String x:Key="HeicQualityTitle">HEIC quality</sys:String>
   <sys:String x:Key="HeicQualityDesc">Quality used when encoding HEIC; higher means better quality and larger files.</sys:String>
   <sys:String x:Key="ChangeOutputDirBtn">Change</sys:String>
@@ -247,6 +248,13 @@
   <sys:String x:Key="QuickLookStatic">Static Photo</sys:String>
   <sys:String x:Key="QuickLookLoop">Loop Playback</sys:String>
   <sys:String x:Key="QuickLookPaused">Live Paused</sys:String>
+
+  <!-- Live playback failures -->
+  <sys:String x:Key="PlaybackErrorFfmpegMissing">FFmpeg was not found, so the live video cannot play.</sys:String>
+  <sys:String x:Key="PlaybackErrorSourceMissing">The video file no longer exists.</sys:String>
+  <sys:String x:Key="PlaybackErrorNoVideoStream">The file has no playable video stream.</sys:String>
+  <sys:String x:Key="PlaybackErrorHdrToneMap">This is an HDR video and the current FFmpeg lacks the zscale / tonemap filters needed to show it correctly. Switch to an FFmpeg build with libzimg on the Engines page.</sys:String>
+  <sys:String x:Key="PlaybackErrorDecodeFailed">The video could not be decoded.</sys:String>
 
   <!-- Report / Curtain / Dialog Supplemental Strings -->
   <sys:String x:Key="ReportEmptyTitle">No task reports yet</sys:String>

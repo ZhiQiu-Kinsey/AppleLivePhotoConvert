@@ -17,7 +17,6 @@
 
   <!-- 工具栏与相册卡片 -->
   <sys:String x:Key="ToolbarAlbumTitle">相册实况胶卷</sys:String>
-  <sys:String x:Key="ToolbarPlayTip">连续试播视口内实况短视频</sys:String>
   <sys:String x:Key="SortDateTaken">拍摄日期</sys:String>
   <sys:String x:Key="SortDateCreated">创建日期</sys:String>
   <sys:String x:Key="SortDateModified">修改日期</sys:String>
@@ -57,6 +56,8 @@
   <sys:String x:Key="DeleteWarningDesc">转换成功后源文件将被永久删除，开始前需要输入确认词。</sys:String>
   <sys:String x:Key="AutoAppendIndexTitle">遇到同名文件时追加序号</sys:String>
   <sys:String x:Key="AutoAppendIndexDesc">关闭后将直接覆盖输出目录中的同名文件。</sys:String>
+  <sys:String x:Key="PreserveHdrTitle">保留 HDR（Ultra HDR）</sys:String>
+  <sys:String x:Key="PreserveHdrDesc">iPhone HDR 照片的增益图写入 Ultra HDR 封面，支持的手机相册按 HDR 显示；需要 heif-dec（随 libheif 提供），缺少时输出普通封面并在报告中说明。</sys:String>
   <sys:String x:Key="HeicQualityTitle">HEIC 画质</sys:String>
   <sys:String x:Key="HeicQualityDesc">转码为 HEIC 时的画质，数值越高画质越好、文件越大。</sys:String>
   <sys:String x:Key="ChangeOutputDirBtn">更改</sys:String>
@@ -247,6 +248,13 @@
   <sys:String x:Key="QuickLookStatic">静态照片</sys:String>
   <sys:String x:Key="QuickLookLoop">循环播放</sys:String>
   <sys:String x:Key="QuickLookPaused">实况已暂停</sys:String>
+
+  <!-- 实况播放失败 -->
+  <sys:String x:Key="PlaybackErrorFfmpegMissing">未找到 FFmpeg，无法播放实况视频。</sys:String>
+  <sys:String x:Key="PlaybackErrorSourceMissing">视频文件已不存在，无法播放。</sys:String>
+  <sys:String x:Key="PlaybackErrorNoVideoStream">文件中没有可播放的视频流。</sys:String>
+  <sys:String x:Key="PlaybackErrorHdrToneMap">这是 HDR 视频，当前 FFmpeg 缺少 zscale / tonemap 滤镜，无法正确显示。请在依赖引擎页更换带 libzimg 的 FFmpeg。</sys:String>
+  <sys:String x:Key="PlaybackErrorDecodeFailed">视频解码失败，无法播放。</sys:String>
 
   <!-- 报告 / 对比 / 弹窗补充文案 -->
   <sys:String x:Key="ReportEmptyTitle">暂无任务报告</sys:String>

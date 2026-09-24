@@ -57,7 +57,7 @@
 
       <!-- 2. 核心媒体画布区 -->
       <Panel x:Name="MediaCanvas" Grid.Row="1" MinHeight="480" Background="{DynamicResource MediaCanvasBrush}" ClipToBounds="True">
-        <!-- 实况画面渲染画布（高清封面底图 + 流式动态帧平滑推进，统一原生 Image 渲染） -->
+        <!-- 高清封面与视频帧共用一个画布；视频帧到达后替换封面 -->
         <Image Source="{CompiledBinding CurrentDisplayImage}"
                RenderOptions.BitmapInterpolationMode="HighQuality"
                Stretch="Uniform"
@@ -85,10 +85,26 @@
         <!-- 播放状态左上角悬浮胶囊 -->
         <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="16"
                 Background="{DynamicResource MediaBadgeBrush}" CornerRadius="14" Padding="10,5"
-                IsVisible="{CompiledBinding HasVideo}">
+                IsVisible="{CompiledBinding IsStatusBadgeVisible}">
           <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
             <ic:SymbolIcon Symbol="Live" FontSize="13" Foreground="{DynamicResource MediaAccentBrush}"/>
             <TextBlock Text="{CompiledBinding PlaybackStatusText}" Foreground="{DynamicResource OnMediaBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
+          </StackPanel>
+        </Border>
+
+        <!-- 播放失败：说明原因，缺工具时提供前往依赖页的入口 -->
+        <Border x:Name="PlaybackErrorBanner"
+                HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="16" MaxWidth="560"
+                Background="{DynamicResource MediaBadgeBrush}" CornerRadius="14" Padding="14,8"
+                IsVisible="{CompiledBinding HasPlaybackError}">
+          <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+            <ic:SymbolIcon Symbol="Warning" FontSize="14" Foreground="{DynamicResource OnMediaBrush}" VerticalAlignment="Center"/>
+            <TextBlock Text="{CompiledBinding PlaybackStatusText}" Foreground="{DynamicResource OnMediaBrush}" FontSize="12"
+                       TextWrapping="Wrap" MaxWidth="380" VerticalAlignment="Center" />
+            <Button x:Name="OpenToolsButton" Classes="capsule-btn" Command="{CompiledBinding GoToToolsCommand}"
+                    IsVisible="{CompiledBinding CanOpenTools}" VerticalAlignment="Center">
+              <TextBlock Text="{DynamicResource MissingToolsGoBtn}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" />
+            </Button>
           </StackPanel>
         </Border>
       </Panel>

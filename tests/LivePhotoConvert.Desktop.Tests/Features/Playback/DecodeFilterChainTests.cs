@@ -1,5 +1,6 @@
 using Avalonia;
 using LivePhotoConvert.Core.External;
+using LivePhotoConvert.Core.Media;
 using LivePhotoConvert.Desktop.Features.Playback;
 
 namespace LivePhotoConvert.Desktop.Tests.Features.Playback;

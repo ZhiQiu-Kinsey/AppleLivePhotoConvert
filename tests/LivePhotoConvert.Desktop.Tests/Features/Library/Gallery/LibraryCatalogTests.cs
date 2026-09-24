@@ -144,7 +144,6 @@ public class LibraryCatalogTests
         Assert.Same(card, Assert.Single(catalog.Cards));
         Assert.True(card.IsMotionPhoto);
         Assert.Equal(new VideoSource("/album/IMG_9.heic", 5000, 4000, IsEmbedded: true), card.Video);
-        Assert.Null(card.VideoPath);
         Assert.Equal(["IMG_9"], upgrades);
     }
 

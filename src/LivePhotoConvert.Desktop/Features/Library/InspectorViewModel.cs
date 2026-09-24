@@ -87,6 +87,7 @@ public sealed partial class InspectorViewModel : ViewModelBase
         _keepSubfolderHierarchy = s.KeepSubfolderHierarchy;
         _autoAppendIndex = s.ConflictPolicy == ConflictPolicy.AppendIndex;
         _heicQuality = s.HeicQuality > 0 ? Math.Clamp(s.HeicQuality, 50, 100) : ConversionDefaults.HeicQuality;
+        _preserveHdr = s.PreserveHdr;
         _outputDirectory = JobFactory.ResolveOutputDirectory(s);
         _stripOutputDirectory = JobFactory.ResolveStripDirectory(s);
         _inPlaceStrip = s.InPlaceStrip;
@@ -179,6 +180,10 @@ public sealed partial class InspectorViewModel : ViewModelBase
     [ObservableProperty]
     private string _liveFilenameDemo = string.Empty;
 
+    /// <summary>合成时把 iPhone HDR 照片保留为 Ultra HDR 封面。</summary>
+    [ObservableProperty]
+    private bool _preserveHdr;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsDeleteWarningVisible))]
     private int _sourceAction;
@@ -267,6 +272,8 @@ public sealed partial class InspectorViewModel : ViewModelBase
     }
 
     partial void OnSourceActionChanged(int value) => _settings.Update(s => s.SourceAction = value);
+
+    partial void OnPreserveHdrChanged(bool value) => _settings.Update(s => s.PreserveHdr = value);
 
     partial void OnKeepSubfolderHierarchyChanged(bool value) => _settings.Update(s => s.KeepSubfolderHierarchy = value);
 

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Avalonia;
 using Avalonia.Headless.XUnit;
 using Avalonia.Media.Imaging;
+using LivePhotoConvert.Core.Media;
 using LivePhotoConvert.Desktop.Features.Playback;
 using LivePhotoConvert.Desktop.Tests.Harness;
 
@@ -138,6 +139,39 @@ public class LivePhotoPlayerTests
         Assert.True(player.Store!.IsStreaming);
         Assert.True(player.Store.Pass >= 1);
         Assert.Equal(PlayerStatus.Playing, player.State.Status);
+    }
+
+    /// <summary>暂停时不再订阅刷新、画面停在当前帧；恢复后从暂停处继续，而不是按墙钟跳过暂停期间。</summary>
+    [AvaloniaFact]
+    public async Task Pause_HoldsTheFrame_AndResumesFromTheSamePosition()
+    {
+        var ffmpeg = PlaybackSamples.RequireFfmpeg();
+        using var sandbox = new TestSandbox();
+        var clip = Path.Combine(sandbox.InputDirectory, "clip.mov");
+        await PlaybackSamples.SdrAsync(ffmpeg, clip);
+        var scheduler = new ManualFrameScheduler();
+        using var player = new LivePhotoPlayer(scheduler, () => new PlaybackTools(ffmpeg));
+
+        var play = player.PlayAsync(new VideoSource(clip, 0, 0, false), new PixelSize(80, 60), 1.0, PlaybackBudget.Hover);
+        await PumpAsync(scheduler, TimeSpan.Zero, () => play.IsCompleted);
+        var first = player.Surface!;
+        await PumpAsync(scheduler, TimeSpan.FromMilliseconds(45), () => !ReferenceEquals(player.Surface, first));
+        var second = player.Surface!;
+
+        player.IsPaused = true;
+        scheduler.Tick(TimeSpan.FromMilliseconds(50));
+        Assert.Equal(0, scheduler.Pending);
+        Assert.Same(second, player.Surface);
+        Assert.Equal(PlayerStatus.Playing, player.State.Status);
+
+        player.IsPaused = false;
+        Assert.Equal(1, scheduler.Pending);
+        // 暂停了 10 秒：恢复后仍停在第二帧（33.3–66.7ms）
+        scheduler.Tick(TimeSpan.FromSeconds(10));
+        Assert.Same(second, player.Surface);
+        await PumpAsync(scheduler, TimeSpan.FromSeconds(10) + TimeSpan.FromMilliseconds(30), () => !ReferenceEquals(player.Surface, second));
+        Assert.Same(first, player.Surface);
+        await player.StopAsync();
     }
 
     [AvaloniaFact]
