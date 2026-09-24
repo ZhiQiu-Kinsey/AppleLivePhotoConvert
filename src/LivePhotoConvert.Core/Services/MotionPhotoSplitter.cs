@@ -63,6 +63,11 @@ public sealed class MotionPhotoSplitter(IMetadataService metadata, IImageConvert
             path => path,
             async (path, token) =>
             {
+                if (OutcomeCause.MissingOrEmptySource(path) is { } missing)
+                {
+                    return ItemOutcome.Failed(path, missing);
+                }
+
                 var layout = await ImageInspector.InspectAsync(path, metadata, token);
                 if (layout.Video is not { } video)
                 {

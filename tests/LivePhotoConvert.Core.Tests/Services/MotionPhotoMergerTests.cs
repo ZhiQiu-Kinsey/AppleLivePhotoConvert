@@ -254,7 +254,7 @@ public class MotionPhotoMergerTests
     }
 
     [Fact]
-    public async Task MergeAsync_Canceled_ReturnsCanceledReport()
+    public async Task MergeAsync_CanceledBeforeStart_ThrowsAndWritesNothing()
     {
         using var temp = new TempDirectory();
         var photo = temp.CreateFile("IMG_0001.jpg", SyntheticMedia.Jpeg());

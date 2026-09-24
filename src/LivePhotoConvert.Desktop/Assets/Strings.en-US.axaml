@@ -506,6 +506,7 @@
   <sys:String x:Key="OutcomeReasonSourceMissingFormat">Source file is missing or empty: {0}</sys:String>
   <sys:String x:Key="OutcomeReasonSourceUnreadableFormat">Cannot read the source file (it may be damaged or access is denied): {0}</sys:String>
   <sys:String x:Key="OutcomeReasonVideoConversionFailed">Video conversion failed</sys:String>
+  <sys:String x:Key="OutcomeReasonImageConversionFailed">Image conversion failed (the source may be damaged or in an unsupported format)</sys:String>
   <sys:String x:Key="OutcomeReasonHdrEncoderUnavailable">The source video is HDR, but FFmpeg lacks the 10-bit HEVC encoder (libx265); not converted to avoid quality loss</sys:String>
   <sys:String x:Key="OutcomeReasonVerificationFailed">Output verification failed; nothing was written</sys:String>
   <sys:String x:Key="OutcomeReasonUnexpected">Processing failed; expand details for the cause</sys:String>

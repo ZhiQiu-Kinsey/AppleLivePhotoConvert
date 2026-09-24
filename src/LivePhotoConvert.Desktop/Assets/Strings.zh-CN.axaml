@@ -506,6 +506,7 @@
   <sys:String x:Key="OutcomeReasonSourceMissingFormat">源文件不存在或为空：{0}</sys:String>
   <sys:String x:Key="OutcomeReasonSourceUnreadableFormat">无法读取源文件（可能已损坏或没有访问权限）：{0}</sys:String>
   <sys:String x:Key="OutcomeReasonVideoConversionFailed">视频转换失败</sys:String>
+  <sys:String x:Key="OutcomeReasonImageConversionFailed">图片转换失败（源图可能已损坏或格式不受支持）</sys:String>
   <sys:String x:Key="OutcomeReasonHdrEncoderUnavailable">源视频为 HDR，但 FFmpeg 缺少 10-bit HEVC 编码器（libx265），为避免画质下降未转换</sys:String>
   <sys:String x:Key="OutcomeReasonVerificationFailed">输出校验未通过，已放弃写出</sys:String>
   <sys:String x:Key="OutcomeReasonUnexpected">处理出错，展开详情查看原因</sys:String>
