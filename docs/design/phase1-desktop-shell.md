@@ -155,3 +155,11 @@ public interface IDialogService
 - 全局搜索 `LocalizationService`、`.Instance`（除 `PlaybackHost`、转换器与 Core 中合法的单例外）、`OnShowModal`、`OnCloseModal`、`Request*Folder` 结果为空。
 - 界面冒烟测试覆盖中英文；截图人工审查布局（浅色、深色各一套）。
 - AGENTS.md 同步更新：4.4 MVVM（DI、弹窗服务）、4.6 本地化（两处同步）、目录结构。
+
+## 6. 实施中发现、归入 WP1.4 的问题
+
+- 设置页：主题卡片副标题与页面副标题重复；并发数卡片大面积留白，需重新排版。
+- 删除确认弹窗：取消按钮写"取消，改用回收站"，实际把源文件处理重置为"保留原片"，文案与行为统一为后者；说明文字写死"Windows 回收站"，改为平台无关表述。
+- 赞赏二维码仍是设置页内的覆盖层，改走 `IDialogService`。
+- 就地瘦身开关 `InPlaceStrip` 只读不写，由检查器负责持久化（开启仍需确认）。
+- 英文界面下"重名自动追加序号"开关卡片的副标题被开关遮挡。
