@@ -161,7 +161,34 @@ public class ToolRegistryTests
 
         Assert.True(info.IsAvailable);
         Assert.Null(info.VersionText);
-        Assert.Equal("超时", info.ProbeError);
+        Assert.Equal(ToolProbeFailure.Timeout, info.ProbeError?.Kind);
+    }
+
+    [Theory]
+    [InlineData(nameof(TimeoutException), ToolProbeFailure.Timeout)]
+    [InlineData(nameof(System.ComponentModel.Win32Exception), ToolProbeFailure.CannotStart)]
+    [InlineData(nameof(InvalidOperationException), ToolProbeFailure.CannotStart)]
+    [InlineData(nameof(InvalidDataException), ToolProbeFailure.Failed)]
+    public async Task GetAsync_ProbeFailure_IsClassifiedForDisplay(string exceptionType, ToolProbeFailure expected)
+    {
+        Exception failure = exceptionType switch
+        {
+            nameof(TimeoutException) => new TimeoutException(),
+            nameof(System.ComponentModel.Win32Exception) => new System.ComponentModel.Win32Exception(193),
+            nameof(InvalidOperationException) => new InvalidOperationException(),
+            _ => new InvalidDataException()
+        };
+        var registry = new ToolRegistry(null, ToolManifest.Embedded, new ToolRegistryOptions
+        {
+            Locator = (_, _) => "/tools/exiftool",
+            Runner = (_, _, _) => throw failure
+        });
+
+        var info = await registry.GetAsync(ToolId.ExifTool, TestContext.Current.CancellationToken);
+
+        Assert.Equal(expected, info.ProbeError?.Kind);
+        // 原始异常保留给日志
+        Assert.Same(failure, info.ProbeError?.Cause);
     }
 
     [Theory]

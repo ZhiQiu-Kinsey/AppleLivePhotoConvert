@@ -142,6 +142,10 @@
   <sys:String x:Key="ToolsInstallRootLabel">安装位置：</sys:String>
   <sys:String x:Key="ToolProbing">检测中</sys:String>
   <sys:String x:Key="ToolVersionUnknown">版本未知</sys:String>
+  <sys:String x:Key="ToolProbeTimeout">版本探测超时，程序可能卡住或被安全软件拦截</sys:String>
+  <sys:String x:Key="ToolProbeCannotStart">无法运行该程序：文件可能损坏、与系统不兼容或被安全软件拦截</sys:String>
+  <sys:String x:Key="ToolProbeFailed">读取版本失败，详情见错误日志</sys:String>
+  <sys:String x:Key="ToolInstallUnexpected">出现意外错误，详情见错误日志</sys:String>
   <sys:String x:Key="ToolUpdateAvailableFormat">有推荐版本 {0}，建议升级</sys:String>
   <sys:String x:Key="ToolUpgradeBtnFormat">升级到 {0}</sys:String>
   <sys:String x:Key="ToolHdrUnavailable">HDR 预览/转码不可用：当前 FFmpeg 缺少 HDR 色调映射或 10-bit HEVC 编码。</sys:String>

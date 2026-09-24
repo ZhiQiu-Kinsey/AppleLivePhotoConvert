@@ -150,7 +150,7 @@ public sealed partial class ToolCardViewModel : ObservableObject
             { IsAvailable: false } => (_localizer["ToolNotInstalled"], string.Empty),
             { Version: { } version, VersionText: var text } => (version.ToString(), text ?? string.Empty),
             { VersionText: { Length: > 0 } text } => (text, text),
-            _ => (_localizer["ToolVersionUnknown"], Info.ProbeError ?? string.Empty)
+            _ => (_localizer["ToolVersionUnknown"], Info.ProbeError is { } error ? ToolTexts.ProbeFailure(_localizer, error.Kind) : string.Empty)
         };
         Capabilities = BuildCapabilities();
         var recommended = Info?.RecommendedVersion ?? string.Empty;

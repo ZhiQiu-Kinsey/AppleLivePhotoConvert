@@ -142,6 +142,10 @@
   <sys:String x:Key="ToolsInstallRootLabel">Install location:</sys:String>
   <sys:String x:Key="ToolProbing">Detecting</sys:String>
   <sys:String x:Key="ToolVersionUnknown">Unknown version</sys:String>
+  <sys:String x:Key="ToolProbeTimeout">Version check timed out; the program may hang or be blocked by security software</sys:String>
+  <sys:String x:Key="ToolProbeCannotStart">Cannot run the program: the file may be damaged, incompatible or blocked by security software</sys:String>
+  <sys:String x:Key="ToolProbeFailed">Failed to read the version; see the error log</sys:String>
+  <sys:String x:Key="ToolInstallUnexpected">an unexpected error occurred; see the error log</sys:String>
   <sys:String x:Key="ToolUpdateAvailableFormat">Recommended version {0} is available</sys:String>
   <sys:String x:Key="ToolUpgradeBtnFormat">Upgrade to {0}</sys:String>
   <sys:String x:Key="ToolHdrUnavailable">HDR preview/transcoding unavailable: this FFmpeg lacks HDR tone mapping or 10-bit HEVC encoding.</sys:String>

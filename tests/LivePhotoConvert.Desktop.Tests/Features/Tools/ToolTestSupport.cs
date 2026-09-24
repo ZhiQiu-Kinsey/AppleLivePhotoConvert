@@ -20,7 +20,7 @@ public sealed class FakeToolRegistry : IToolRegistry
         new(tool, null, null, null, ToolCapabilities.None, recommended, explicitInvalid, null);
 
     public static ToolInfo Found(ToolId tool, string path, string versionText, ToolCapabilities capabilities = ToolCapabilities.None,
-        string? recommended = null, bool explicitInvalid = false, string? probeError = null) =>
+        string? recommended = null, bool explicitInvalid = false, ToolProbeError? probeError = null) =>
         new(tool, path, versionText, Version.TryParse(versionText.Split('-')[0].TrimStart('n'), out var v) ? v : null,
             capabilities, recommended, explicitInvalid, probeError);
 

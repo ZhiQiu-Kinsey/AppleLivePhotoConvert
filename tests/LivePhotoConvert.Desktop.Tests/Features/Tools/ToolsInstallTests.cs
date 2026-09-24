@@ -171,7 +171,10 @@ public class ToolsInstallTests
 
         Assert.Null(error);
         Assert.True(f.ViewModel.IsActionMessageError);
-        Assert.Equal(f.Localizer.Format("InstallFailedFormat", "ExifTool", "denied"), f.ViewModel.ActionMessageText);
+        // 异常消息只进日志，界面给出本地化原因
+        Assert.Equal(f.Localizer.Format("InstallFailedFormat", "ExifTool", f.Localizer["ToolInstallUnexpected"]), f.ViewModel.ActionMessageText);
+        f.Localizer.SetLanguage("en");
+        Assert.Equal(f.Localizer.Format("InstallFailedFormat", "ExifTool", f.Localizer["ToolInstallUnexpected"]), f.ViewModel.ActionMessageText);
     }
 
     [Fact]

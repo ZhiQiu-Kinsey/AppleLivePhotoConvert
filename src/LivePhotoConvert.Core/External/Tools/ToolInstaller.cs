@@ -55,14 +55,9 @@ public sealed class ToolInstaller : IToolInstaller
 
     private static readonly Lazy<HttpClient> SharedClient = new(ToolPackageDownloader.CreateDefaultClient);
 
-    /// <summary>使用内嵌清单与可写工具目录创建安装器。</summary>
-    public static ToolInstaller CreateDefault() => new(ToolManifest.Embedded, ToolDirectories.GetWritableToolDirectory());
-
     public string InstallRoot { get; }
 
     public ToolManifest Manifest => _manifest;
-
-    public string GetInstallDirectory(ToolId tool) => Path.Combine(InstallRoot, _manifest.Get(tool).InstallDirectory);
 
     public string GetExecutablePath(ToolId tool)
     {

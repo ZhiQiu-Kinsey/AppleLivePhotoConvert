@@ -298,7 +298,7 @@ public sealed partial class ToolsViewModel : ViewModelBase
         {
             // 命令边界：任何异常都只能变成提示，穿透到 AsyncRelayCommand 会成为界面线程未处理异常
             ErrorLogger.Log(ex, $"安装 {card.DisplayName}");
-            ShowMessage(() => _localizer.Format("InstallFailedFormat", card.DisplayName, ex.Message), isError: true);
+            ShowMessage(() => _localizer.Format("InstallFailedFormat", card.DisplayName, _localizer["ToolInstallUnexpected"]), isError: true);
         }
         finally
         {
@@ -392,6 +392,12 @@ public sealed partial class ToolsViewModel : ViewModelBase
 
         if (_refreshGeneration[card.Tool] == generation)
         {
+            // 同一次探测结果会被多次取用，只在结果变化时记录原因
+            if (info.ProbeError is { } error && !ReferenceEquals(error, card.Info?.ProbeError))
+            {
+                ErrorLogger.Log(error.Cause, $"探测 {card.DisplayName}");
+            }
+
             card.Apply(info);
         }
     }

@@ -81,13 +81,20 @@ public class ToolsViewModelTests
     public void Ffmpeg_ProbeError_DoesNotClaimMissingCapabilities()
     {
         using var f = new ToolsFixture(arrange: r =>
-            r.Infos[ToolId.Ffmpeg] = new ToolInfo(ToolId.Ffmpeg, "/usr/bin/ffmpeg", null, null, ToolCapabilities.None, null, false, "timeout"));
+            r.Infos[ToolId.Ffmpeg] = new ToolInfo(ToolId.Ffmpeg, "/usr/bin/ffmpeg", null, null, ToolCapabilities.None, null, false,
+                new ToolProbeError(ToolProbeFailure.Timeout, new TimeoutException("ffmpeg 运行超过 15 秒，已终止。"))));
         var ffmpeg = f.ViewModel.Ffmpeg;
 
         Assert.Equal(f.Localizer["ToolVersionUnknown"], ffmpeg.StatusText);
+        Assert.Equal(f.Localizer["ToolProbeTimeout"], ffmpeg.VersionDetail);
         Assert.Empty(ffmpeg.Capabilities);
         Assert.False(ffmpeg.IsHdrUnavailable);
         Assert.True(ffmpeg.HasWarning);
+
+        // 原因随语言切换，不混入 Core 异常的中文消息
+        f.Localizer.SetLanguage("en");
+        Assert.Equal(f.Localizer["ToolProbeTimeout"], ffmpeg.VersionDetail);
+        Assert.DoesNotContain("已终止", ffmpeg.VersionDetail);
     }
 
     [Fact]
