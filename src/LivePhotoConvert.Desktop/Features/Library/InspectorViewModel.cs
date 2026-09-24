@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LivePhotoConvert.Core.Pipeline;
@@ -465,8 +464,8 @@ public sealed partial class InspectorViewModel : ViewModelBase
             var proceed = await _dialogs.ShowAsync(new LowDiskSpaceDialogViewModel
             {
                 TargetDirectory = target,
-                RequiredSpaceText = FormatBytes(requiredBytes),
-                AvailableSpaceText = FormatBytes(availableBytes)
+                RequiredSpaceText = ByteSizeConverter.Format(requiredBytes),
+                AvailableSpaceText = ByteSizeConverter.Format(availableBytes)
             });
             if (!proceed)
             {
@@ -479,7 +478,7 @@ public sealed partial class InspectorViewModel : ViewModelBase
             var confirmed = await _dialogs.ShowAsync(new DeleteConfirmDialogViewModel(_localizer)
             {
                 AffectedCount = cards.Count,
-                AffectedSizeText = FormatBytes(totalBytes)
+                AffectedSizeText = ByteSizeConverter.Format(totalBytes)
             });
             if (!confirmed)
             {
@@ -552,7 +551,7 @@ public sealed partial class InspectorViewModel : ViewModelBase
         var applicable = JobFactory.Applicable(Action, _library.SelectedOrAllCards);
         ApplicableCount = applicable.Count;
         ApplicableBytes = JobFactory.SourceBytes(applicable);
-        ApplicableText = _localizer.Format("ApplicableFormat", ApplicableCount, FormatBytes(ApplicableBytes));
+        ApplicableText = _localizer.Format("ApplicableFormat", ApplicableCount, ByteSizeConverter.Format(ApplicableBytes));
         ApplicableScopeText = selectedCount > 0
             ? _localizer.Format("ApplicableScopeSelectedFormat", selectedCount)
             : _localizer["ApplicableScopeAll"];
@@ -649,10 +648,10 @@ public sealed partial class InspectorViewModel : ViewModelBase
     {
         var estimate = IsEstimating ? null : _estimate;
         HasEstimate = estimate is { Count: > 0 };
-        EstimateOriginalText = HasEstimate ? FormatBytes(estimate!.OriginalBytes) : "—";
-        EstimateAfterText = HasEstimate ? FormatBytes(estimate!.EstimatedBytes) : "—";
+        EstimateOriginalText = HasEstimate ? ByteSizeConverter.Format(estimate!.OriginalBytes) : "—";
+        EstimateAfterText = HasEstimate ? ByteSizeConverter.Format(estimate!.EstimatedBytes) : "—";
         EstimateSavedText = HasEstimate
-            ? _localizer.Format("EstimateSavedFormat", FormatBytes(estimate!.SavedBytes), estimate.SavedPercent)
+            ? _localizer.Format("EstimateSavedFormat", ByteSizeConverter.Format(estimate!.SavedBytes), estimate.SavedPercent)
             : "—";
         EstimateStatusText = IsEstimating
             ? _localizer["EstimateCalculating"]
@@ -660,8 +659,4 @@ public sealed partial class InspectorViewModel : ViewModelBase
                 ? _localizer.Format("EstimateFailedFormat", error)
                 : HasEstimate ? string.Empty : _localizer["EstimateEmpty"];
     }
-
-    private static string FormatBytes(long bytes) =>
-        ByteSizeConverter.Instance.Convert(bytes, typeof(string), null, CultureInfo.InvariantCulture) as string
-        ?? $"{bytes} B";
 }

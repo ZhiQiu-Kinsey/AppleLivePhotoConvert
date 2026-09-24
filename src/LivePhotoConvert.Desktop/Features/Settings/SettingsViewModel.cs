@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Reflection;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -133,7 +132,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
     /// <summary>磁盘缓存当前占用；统计中或尚未统计时显示对应提示。</summary>
     public string CacheUsageText => IsCacheBusy || _cacheUsageBytes is not { } bytes
         ? _localizer["ThumbnailCacheMeasuring"]
-        : _localizer.Format("ThumbnailCacheUsageFormat", ByteSizeConverter.Instance.Convert(bytes, typeof(string), null, CultureInfo.InvariantCulture));
+        : _localizer.Format("ThumbnailCacheUsageFormat", ByteSizeConverter.Format(bytes));
 
     /// <summary>当前统计任务；测试据此等待后台统计结束。</summary>
     public Task CacheUsageTask { get; private set; } = Task.CompletedTask;

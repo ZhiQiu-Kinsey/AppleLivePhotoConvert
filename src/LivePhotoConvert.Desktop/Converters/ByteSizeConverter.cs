@@ -10,7 +10,10 @@ public sealed class ByteSizeConverter : IValueConverter
 {
     public static readonly ByteSizeConverter Instance = new();
 
-    /// <summary>按固定区域格式化，中英界面显示一致。</summary>
+    /// <summary>
+    /// 界面文案统一走这里，固定用不变区域：中英两种界面的小数点与单位写法相同，
+    /// 且格式化可能发生在后台线程，不应随线程区域变化。
+    /// </summary>
     public static string Format(long bytes) => Format(bytes, CultureInfo.InvariantCulture);
 
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) => Format(value switch
