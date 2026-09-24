@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Runtime.ExceptionServices;
 using Avalonia;
 using Avalonia.Controls;
@@ -42,17 +41,15 @@ public sealed class GalleryStressTests
         AppDomain.CurrentDomain.FirstChanceException += OnFirstChance;
         try
         {
-            var scanWatch = Stopwatch.StartNew();
             library.AlbumDirectory = "/album";
             await library.RefreshAlbumAsync();
             await session.WaitUntilAsync(() => library.Layout.DisplayedCards.Count == CardCount, timeoutSeconds: 30);
             session.Pump();
-            scanWatch.Stop();
 
             var scroll = list.GetVisualDescendants().OfType<ScrollViewer>().First();
             var shownWhileAttached = new HashSet<PhotoCardItemViewModel>();
             var seen = new HashSet<PhotoCardItemViewModel>();
-            long peakResident = 0, peakPinned = 0, peakOverBudget = 0;
+            long peakPinned = 0;
             var peakAttached = 0;
             var steps = 0;
 
@@ -74,14 +71,11 @@ public sealed class GalleryStressTests
                 }
 
                 shownWhileAttached.UnionWith(attached.Where(c => c.DisplayImage is not null));
-                peakResident = Math.Max(peakResident, pipeline.ResidentBytes);
                 peakPinned = Math.Max(peakPinned, pipeline.PinnedBytes);
-                peakOverBudget = Math.Max(peakOverBudget, pipeline.ResidentBytes - pipeline.BudgetBytes);
             }
 
             // 每步跨 6 屏（相当于拖动滚动条），行全部换新；每一步等缩略图到齐，驱逐在整个滚动过程中持续发生。
             // 每 4 步渲染一帧，检查被驱逐的位图不会在渲染中被使用（等待期间的渲染节拍也会渲染）
-            var scrollWatch = Stopwatch.StartNew();
             var y = 0.0;
             while (true)
             {
@@ -99,7 +93,6 @@ public sealed class GalleryStressTests
             }
 
             session.Pump();
-            scrollWatch.Stop();
             var lastRow = Assert.IsType<PhotoGridRowViewModel>(list.ItemFromContainer(list.GetRealizedContainers().OrderBy(list.IndexFromContainer).Last()));
             Assert.Contains(library.Layout.DisplayedCards[^1], lastRow.Cards);
             Assert.True(seen.Count > CardCount / 10 && store.Requests >= seen.Count, $"应为每一步实例化的卡片加载缩略图：{seen.Count} 张，请求 {store.Requests} 次");
@@ -114,10 +107,6 @@ public sealed class GalleryStressTests
             Assert.Equal(0, disposedErrors);
             Assert.All(Attached(list), c => Assert.False(SyntheticStore.IsDisposed(c.DisplayImage!)));
             session.Log.AssertNoBindingErrors();
-
-            TestContext.Current.TestOutputHelper?.WriteLine(
-                $"1 万张卡片：扫描到排版 {scanWatch.ElapsedMilliseconds} ms；滚动 {steps} 步共 {scrollWatch.ElapsedMilliseconds} ms（每步 {scrollWatch.ElapsedMilliseconds / (double)steps:F1} ms）；" +
-                $"请求 {store.Requests} 次；卡片控件新建 {list.CardControlsCreated} 个（同时显示最多 {peakAttached} 张）；驻留峰值 {peakResident / 1024 / 1024} MB，钉住峰值 {peakPinned / 1024 / 1024} MB，预算 {pipeline.BudgetBytes / 1024 / 1024} MB，超出预算峰值 {Math.Max(0, peakOverBudget) / 1024 / 1024} MB");
         }
         finally
         {

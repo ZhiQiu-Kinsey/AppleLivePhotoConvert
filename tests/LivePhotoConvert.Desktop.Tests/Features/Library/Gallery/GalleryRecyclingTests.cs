@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
@@ -50,8 +49,6 @@ public sealed class GalleryRecyclingTests
         Assert.True(created <= gallery.PeakAttached + GalleryList.MaxIdleCards, $"新建 {created} 个，同时显示最多 {gallery.PeakAttached} 张");
 
         // 回到顶部再向下一趟：只换数据上下文，不再新建卡片控件
-        var times = new List<double>();
-        long allocated = 0;
         for (var i = steps; i >= 0; i--)
         {
             await gallery.ScrollToAsync(gallery.Scroll.Viewport.Height * 0.5 * i, render: i % 8 == 0);
@@ -60,22 +57,12 @@ public sealed class GalleryRecyclingTests
 
         for (var i = 1; i <= steps; i++)
         {
-            var before = GC.GetAllocatedBytesForCurrentThread();
-            var watch = Stopwatch.StartNew();
-            gallery.Scroll.Offset = new Vector(0, gallery.Scroll.Viewport.Height * 0.5 * i);
-            session.Window.UpdateLayout();
-            times.Add(watch.Elapsed.TotalMilliseconds);
-            allocated += GC.GetAllocatedBytesForCurrentThread() - before;
-            await SyntheticGallery.PumpUntilLoadedAsync(session, gallery.List, render: i % 8 == 0);
+            await gallery.ScrollToAsync(gallery.Scroll.Viewport.Height * 0.5 * i, render: i % 8 == 0);
             gallery.Check($"再向下 {i}");
         }
 
         Assert.Equal(created, gallery.List.CardControlsCreated);
         session.Log.AssertNoBindingErrors();
-        times.Sort();
-        TestContext.Current.TestOutputHelper?.WriteLine(
-            $"每步半屏：布局中位 {times[steps / 2]:F1} ms、P90 {times[steps * 9 / 10]:F1} ms，界面线程分配每步 {allocated / steps / 1024.0:F0} KB；" +
-            $"卡片控件共新建 {created} 个，同时显示最多 {gallery.PeakAttached} 张，空闲 {gallery.List.IdleCardCount} 个");
     }
 
     /// <summary>重排改变行的组成（换宽度、换行高档位）：行内卡片原地换数据，多出的归还、不足的借用，页面切换不重建。</summary>

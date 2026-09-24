@@ -73,7 +73,7 @@ internal static class SyntheticGallery
         Dispatcher.UIThread.RunJobs();
         session.Window.UpdateLayout();
         var deadline = DateTime.UtcNow.AddSeconds(20);
-        while (!Attached(list).All(c => c.DisplayImage is not null))
+        while (Attached(list) is not { Count: > 0 } attached || !attached.All(c => c.DisplayImage is not null))
         {
             Assert.True(DateTime.UtcNow < deadline, "等待缩略图超时");
             await Task.Delay(1, TestContext.Current.CancellationToken);
