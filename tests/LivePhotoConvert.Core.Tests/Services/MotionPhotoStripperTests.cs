@@ -168,6 +168,78 @@ public class MotionPhotoStripperTests
         Assert.False(candidate.WillConvert(convertToHeic: true));
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task HeicNotSmaller_KeepsOriginalFormat_WithSameBytesAsStripOnly(bool inPlace)
+    {
+        using var temp = new TempDirectory();
+        var motion = SyntheticMedia.MotionPhoto(SyntheticMedia.Jpeg(10_000), SyntheticMedia.Mp4(50_000));
+        var stripOnly = temp.CreateFile("ref/MVIMG.jpg", motion);
+        var source = temp.CreateFile("in/MVIMG.jpg", motion);
+        await StripAsync([stripOnly], convert: false);
+        var expected = await File.ReadAllBytesAsync(stripOnly, Token);
+        var images = new FakeImageConverter { HeicSize = expected.Length + 1 };
+
+        var report = await new MotionPhotoStripper(_metadata, images).StripAsync(
+            new StripRequest { Files = [source], Output = inPlace ? null : new OutputOptions(temp.Combine("out")) },
+            cancellationToken: Token);
+
+        var outcome = Assert.Single(report.Items);
+        Assert.Equal(OutcomeKind.Succeeded, outcome.Kind);
+        Assert.True(outcome.KeptOriginalFormat);
+        Assert.Single(images.HeicConversions);
+        var output = Assert.Single(outcome.Outputs);
+        Assert.Equal(".jpg", Path.GetExtension(output));
+        Assert.Equal(expected, await File.ReadAllBytesAsync(output, Token));
+        Assert.Equal(motion.Length - expected.Length, outcome.BytesSaved);
+        Assert.Equal(["MVIMG.jpg"], temp.FileNames(inPlace ? "in" : "out"));
+        Assert.DoesNotContain(Directory.EnumerateFiles(temp.Root, "*", SearchOption.AllDirectories), f => Path.GetFileName(f).StartsWith("~lpc", StringComparison.Ordinal));
+        if (!inPlace)
+        {
+            Assert.Equal(motion, await File.ReadAllBytesAsync(source, Token));
+        }
+    }
+
+    [Fact]
+    public async Task HeicOfEqualSize_KeepsOriginalFormat_SmallerHeicIsUsed()
+    {
+        using var temp = new TempDirectory();
+        var motion = SyntheticMedia.MotionPhoto(SyntheticMedia.Jpeg(10_000), SyntheticMedia.Mp4(50_000));
+        var reference = temp.CreateFile("ref/MVIMG.jpg", motion);
+        await StripAsync([reference], convert: false);
+        var stripped = (int)new FileInfo(reference).Length;
+
+        var equal = temp.CreateFile("equal/MVIMG.jpg", motion);
+        var kept = await new MotionPhotoStripper(_metadata, new FakeImageConverter { HeicSize = stripped })
+            .StripAsync(new StripRequest { Files = [equal] }, cancellationToken: Token);
+        var smaller = temp.CreateFile("smaller/MVIMG.jpg", motion);
+        var converted = await new MotionPhotoStripper(_metadata, new FakeImageConverter { HeicSize = stripped - 1 })
+            .StripAsync(new StripRequest { Files = [smaller] }, cancellationToken: Token);
+
+        Assert.True(Assert.Single(kept.Items).KeptOriginalFormat);
+        Assert.Equal(["MVIMG.jpg"], temp.FileNames("equal"));
+        Assert.False(Assert.Single(converted.Items).KeptOriginalFormat);
+        Assert.Equal(["MVIMG.heic"], temp.FileNames("smaller"));
+    }
+
+    [Fact]
+    public async Task HeicNotSmaller_WithoutVideo_LeavesInPlaceSourceUntouched()
+    {
+        using var temp = new TempDirectory();
+        var source = temp.CreateFile("IMG.jpg", SyntheticMedia.Jpeg(4_000));
+        var original = await File.ReadAllBytesAsync(source, Token);
+
+        var report = await new MotionPhotoStripper(_metadata, new FakeImageConverter { HeicSize = 100_000 })
+            .StripAsync(new StripRequest { Files = [source] }, cancellationToken: Token);
+
+        var outcome = Assert.Single(report.Items);
+        Assert.True(outcome.KeptOriginalFormat);
+        Assert.Equal(0, outcome.BytesSaved);
+        Assert.Equal(original, await File.ReadAllBytesAsync(source, Token));
+        Assert.Equal(["IMG.jpg"], temp.FileNames());
+    }
+
     [Fact]
     public async Task ExportMode_NeverModifiesSources()
     {

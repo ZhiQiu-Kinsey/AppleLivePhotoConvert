@@ -21,6 +21,9 @@ internal sealed class LossyStandInEncoder : IImageConverter
 
     public TaskCompletionSource? Gate { get; set; }
 
+    /// <summary>在产物末尾追加的字节数，模拟 HEIC 比原图还大的编码结果。</summary>
+    public int PadBytes { get; init; }
+
     /// <summary>编码开始时的输出路径（位于样张的临时目录内）。</summary>
     public TaskCompletionSource<string> Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -42,6 +45,11 @@ internal sealed class LossyStandInEncoder : IImageConverter
             image.AutoOrient();
             image.Quality = 20;
             image.Write(destinationPath, MagickFormat.Jpeg);
+            if (PadBytes > 0)
+            {
+                using var stream = new FileStream(destinationPath, FileMode.Append);
+                stream.Write(new byte[PadBytes]);
+            }
         }, cancellationToken);
     }
 }

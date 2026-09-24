@@ -96,6 +96,27 @@ public sealed class StripCompareDialogTests : IDisposable
     }
 
     [AvaloniaFact]
+    public async Task HeicLargerThanOriginal_ShowsKeptFormatAndComparesStrippedOriginal()
+    {
+        var encoder = new LossyStandInEncoder { PadBytes = 2_000_000 };
+        var photo = CompareSamples.WriteMotionPhoto(Path.Combine(_sandbox.InputDirectory, "MVIMG_0007.jpg"), 640, 480, videoBytes: 50_000);
+        var localizer = new Localizer();
+        var vm = new StripCompareDialogViewModel(localizer, CompareSamples.Sampler(new CountingEngines(encoder)), photo, new StripSampleOptions(ToolPaths.Auto, true, 90));
+
+        await vm.LoadTask.WaitAsync(TimeSpan.FromSeconds(30), Token);
+
+        var sample = vm.Sample!;
+        Assert.Equal(1, encoder.Calls);
+        Assert.True(sample.KeptOriginalFormat);
+        Assert.False(sample.Converted);
+        Assert.Equal(".jpg", Path.GetExtension(sample.ProductPath));
+        Assert.True(sample.OriginalBytes - sample.ProductBytes >= 50_000);
+        Assert.Equal(localizer["CompareKeptFormat"], vm.KeptFormatText);
+        Assert.Equal(localizer.Format("CompareEncoderFormat", "custom"), vm.EncoderText);
+        vm.Cancel();
+    }
+
+    [AvaloniaFact]
     public async Task Closing_WhileEncoding_CancelsAndDeletesTemporaryDirectory()
     {
         var encoder = new LossyStandInEncoder { Gate = new TaskCompletionSource() };

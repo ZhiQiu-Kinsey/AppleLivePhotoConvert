@@ -399,6 +399,7 @@
   <sys:String x:Key="ReportCsvSourcePath">Source File</sys:String>
   <sys:String x:Key="ReportCsvOutputPath">Output File</sys:String>
   <sys:String x:Key="StripItemSavedFormat">Freed {0}</sys:String>
+  <sys:String x:Key="StripItemKeptFormatFormat">Freed {0}; kept original format (HEIC was larger)</sys:String>
   <sys:String x:Key="ReportSavedFormat">Freed {0} in total</sys:String>
 
   <!-- 图库工作台与检查器 -->
@@ -442,6 +443,7 @@
   <sys:String x:Key="CompareParamsKeep">Strip video only, keep format</sys:String>
   <sys:String x:Key="CompareEncoderFormat">Encoder {0}</sys:String>
   <sys:String x:Key="CompareNotConverted">Not re-encoded: already HEIC or has an HDR gain map</sys:String>
+  <sys:String x:Key="CompareKeptFormat">HEIC is not smaller; the task keeps the original format and only strips the video</sys:String>
   <sys:String x:Key="CompareZoomInTip">Zoom in</sys:String>
   <sys:String x:Key="CompareZoomOutTip">Zoom out</sys:String>
   <sys:String x:Key="CompareZoomResetTip">Fit to window</sys:String>

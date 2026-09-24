@@ -18,7 +18,7 @@ public sealed record StripEstimate(int Count, long OriginalBytes, long Estimated
     /// <summary>实测压缩比所用的样张数；为 0 时 HEIC 体积按经验比例估算（或无需转码）。</summary>
     public int SampledCount { get; init; }
 
-    /// <summary>HEIC 相对转码前照片的体积比例；无需转码时为 <c>null</c>。</summary>
+    /// <summary>HEIC 相对转码前照片的体积比例（不超过 1）；无需转码时为 <c>null</c>。</summary>
     public double? HeicSizeRatio { get; init; }
 }
 
@@ -143,7 +143,7 @@ public sealed class StripEstimator : IStripEstimator, IDisposable
         try
         {
             using var sample = await Sampler.SampleAsync(candidate.ImagePath, new StripSampleOptions(tools, ConvertToHeic: true, heicQuality), cancellationToken);
-            if (!sample.Converted || candidate.PhotoBytes <= 0)
+            if (!sample.Converted && !sample.KeptOriginalFormat || candidate.PhotoBytes <= 0)
             {
                 return null;
             }
@@ -151,7 +151,9 @@ public sealed class StripEstimator : IStripEstimator, IDisposable
             var pixels = FastImageHeaderReader.TryReadDimensions(candidate.ImagePath, out var dimensions)
                 ? Math.Max(1L, (long)dimensions.Width * dimensions.Height)
                 : 1L;
-            var measure = new SampleMeasure((double)sample.ProductBytes / candidate.PhotoBytes, pixels);
+            // HEIC 更大时任务保留原格式，体积不会超过只剥离视频的结果，比例按 1 封顶
+            var ratio = sample.KeptOriginalFormat ? 1 : Math.Min(1, (double)sample.ProductBytes / candidate.PhotoBytes);
+            var measure = new SampleMeasure(ratio, pixels);
             if (_samples.Count >= SampleCacheCapacity)
             {
                 _samples.Clear();

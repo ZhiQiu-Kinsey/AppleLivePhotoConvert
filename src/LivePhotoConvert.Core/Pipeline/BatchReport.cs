@@ -23,6 +23,9 @@ public sealed record ItemOutcome(string Source, OutcomeKind Kind)
     /// <summary>瘦身释放的字节数。</summary>
     public long BytesSaved { get; init; }
 
+    /// <summary>瘦身时转码的 HEIC 不比保留原格式更小，因而保留了原格式（仍剥离了视频）。</summary>
+    public bool KeptOriginalFormat { get; init; }
+
     /// <summary>输出已成功，但按所选方式处理源文件时出错。</summary>
     public string? CleanupError { get; init; }
 

@@ -31,7 +31,7 @@
       <TextBlock Grid.Row="1" Text="{DynamicResource CurtainCompareDesc}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextTertiaryBrush}" />
 
       <!-- 任务参数、编码器与视图工具 -->
-      <Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,*,Auto">
+      <Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,Auto,*,Auto">
         <Border Grid.Column="0" Classes="task-chip accent" Margin="0,0,8,0">
           <TextBlock Text="{CompiledBinding ParametersText}" />
         </Border>
@@ -39,7 +39,11 @@
                 IsVisible="{CompiledBinding EncoderText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
           <TextBlock Text="{CompiledBinding EncoderText}" />
         </Border>
-        <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6">
+        <Border Grid.Column="2" Classes="task-chip warning" Margin="8,0,0,0"
+                IsVisible="{CompiledBinding KeptFormatText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+          <TextBlock Text="{CompiledBinding KeptFormatText}" />
+        </Border>
+        <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="6">
           <Button Classes="toolbar-btn" Command="{CompiledBinding ZoomOutCommand}" ToolTip.Tip="{DynamicResource CompareZoomOutTip}">
             <ic:SymbolIcon Symbol="ZoomOut" FontSize="14" />
           </Button>

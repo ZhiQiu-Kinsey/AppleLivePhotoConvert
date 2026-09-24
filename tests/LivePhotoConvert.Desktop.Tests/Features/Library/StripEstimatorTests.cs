@@ -41,6 +41,36 @@ public sealed class StripEstimatorTests : IDisposable
     }
 
     [Fact]
+    public async Task HeicLargerThanPhoto_RatioIsCappedAtOne_LikeTheTask()
+    {
+        var bloated = Photo("MVIMG_B.jpg", 400, 300);
+        var kept = Photo("MVIMG_K.jpg", 400, 300, seed: 1);
+        var photoBytes = await PhotoBytesAsync(bloated, kept);
+        var sampler = new ScriptedSampler(path => photoBytes[path] * 2) { KeptOriginalFormat = path => path == kept };
+        using var estimator = Create(sampler);
+
+        var estimate = await estimator.EstimateAsync([bloated, kept], ToolPaths.Auto, true, 90, Token);
+
+        Assert.Equal(2, estimate.SampledCount);
+        Assert.Equal(1, estimate.HeicSizeRatio);
+        Assert.Equal(photoBytes[bloated] + photoBytes[kept], estimate.EstimatedBytes);
+    }
+
+    [Fact]
+    public async Task RealSampler_KeptFormatSampleCountsAsRatioOne()
+    {
+        var photo = Photo("MVIMG_1.jpg", 320, 240);
+        var engines = new CountingEngines(new LossyStandInEncoder { PadBytes = 1_000_000 });
+        using var estimator = new StripEstimator(engines, new MetadataSessionPool(engines, TimeProvider.System), sampler: null);
+
+        var estimate = await estimator.EstimateAsync([photo], ToolPaths.Auto, true, 90, Token);
+
+        Assert.Equal(1, estimate.SampledCount);
+        Assert.Equal(1, estimate.HeicSizeRatio);
+        Assert.Equal((await PhotoBytesAsync(photo))[photo], estimate.EstimatedBytes);
+    }
+
+    [Fact]
     public async Task WithoutConversion_VideoBytesAreExactAndNothingIsSampled()
     {
         var photo = Photo("MVIMG_1.jpg", 320, 240, videoBytes: 70_000);
@@ -182,6 +212,8 @@ public sealed class StripEstimatorTests : IDisposable
 
         public Exception? Failure { get; init; }
 
+        public Func<string, bool> KeptOriginalFormat { get; init; } = _ => false;
+
         public Task<StripSample> SampleAsync(string photoPath, StripSampleOptions options, CancellationToken cancellationToken)
         {
             lock (Requests)
@@ -191,7 +223,10 @@ public sealed class StripEstimatorTests : IDisposable
 
             return Failure is { } failure
                 ? Task.FromException<StripSample>(failure)
-                : Task.FromResult(new StripSample(photoPath, photoPath, 0, productBytes(photoPath), Converted: true, "scripted"));
+                : Task.FromResult(new StripSample(photoPath, photoPath, 0, productBytes(photoPath), Converted: !KeptOriginalFormat(photoPath), "scripted")
+                {
+                    KeptOriginalFormat = KeptOriginalFormat(photoPath)
+                });
         }
     }
 }

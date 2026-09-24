@@ -213,9 +213,7 @@ public sealed class MotionPhotoStripper(IMetadataService metadata, IImageConvert
 
         var inPlace = request.Output is null;
         var directory = inPlace ? Path.GetDirectoryName(Path.GetFullPath(source))! : request.Output!.DirectoryFor(source);
-        var extension = convert ? ".heic" : Path.GetExtension(source);
         var timestamp = FileTimestamp.Read(source);
-        var photoChanged = candidate.EmbeddedVideo is not null || convert;
 
         string? clean = null;
         string? staged = null;
@@ -230,6 +228,23 @@ public sealed class MotionPhotoStripper(IMetadataService metadata, IImageConvert
                 photo = clean;
             }
 
+            var keptOriginalFormat = false;
+            if (convert)
+            {
+                staged = OutputCommitter.CreateStagingPath(directory, ".heic");
+                await imageConverter.ConvertToHeicAsync(photo, staged, request.HeicQuality, cancellationToken);
+                // 纹理重的照片 HEIC 可能比原格式还大：瘦身不能让文件变大，改为只剥离视频
+                if (new FileInfo(staged).Length >= new FileInfo(photo).Length)
+                {
+                    FileHelper.TryDeleteFile(staged);
+                    staged = null;
+                    convert = false;
+                    keptOriginalFormat = true;
+                }
+            }
+
+            var extension = convert ? ".heic" : Path.GetExtension(source);
+            var photoChanged = candidate.EmbeddedVideo is not null || convert;
             string final;
             if (inPlace && !photoChanged)
             {
@@ -237,13 +252,9 @@ public sealed class MotionPhotoStripper(IMetadataService metadata, IImageConvert
             }
             else
             {
-                staged = OutputCommitter.CreateStagingPath(directory, extension);
-                if (convert)
+                if (staged is null)
                 {
-                    await imageConverter.ConvertToHeicAsync(photo, staged, request.HeicQuality, cancellationToken);
-                }
-                else
-                {
+                    staged = OutputCommitter.CreateStagingPath(directory, extension);
                     File.Copy(photo, staged);
                 }
 
@@ -259,7 +270,8 @@ public sealed class MotionPhotoStripper(IMetadataService metadata, IImageConvert
             return ItemOutcome.Succeeded(source, final) with
             {
                 BytesSaved = Math.Max(0, before - new FileInfo(final).Length),
-                CleanupError = companionError
+                CleanupError = companionError,
+                KeptOriginalFormat = keptOriginalFormat
             };
         }
         catch

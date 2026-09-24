@@ -26,6 +26,9 @@ public sealed record StripSample(
     bool Converted,
     string EncoderName) : IDisposable
 {
+    /// <summary>HEIC 不比原格式小，任务会保留原格式（产物即只剥离视频的结果）。</summary>
+    public bool KeptOriginalFormat { get; init; }
+
     internal TempWorkspace? Workspace { get; init; }
 
     /// <summary>产物所在的临时目录。</summary>
@@ -102,9 +105,10 @@ public sealed class StripSampler(IConversionEngines engines, MetadataSessionPool
                 product,
                 candidate.OriginalBytes,
                 new FileInfo(product).Length,
-                converts && outcome.Kind == OutcomeKind.Succeeded,
+                converts && outcome.Kind == OutcomeKind.Succeeded && !outcome.KeptOriginalFormat,
                 EncoderName(images))
             {
+                KeptOriginalFormat = outcome.KeptOriginalFormat,
                 Workspace = workspace
             };
         }

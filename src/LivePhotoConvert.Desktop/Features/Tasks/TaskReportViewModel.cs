@@ -378,7 +378,7 @@ public sealed partial class TaskReportViewModel : ViewModelBase
     private string SuccessDetail(ItemOutcome outcome, string splitTarget) => Action switch
     {
         ConversionAction.ToAndroid => _localizer["MergeSuccessDesc"],
-        ConversionAction.Strip => _localizer.Format("StripItemSavedFormat", FormatBytes(outcome.BytesSaved)),
+        ConversionAction.Strip => _localizer.Format(outcome.KeptOriginalFormat ? "StripItemKeptFormatFormat" : "StripItemSavedFormat", FormatBytes(outcome.BytesSaved)),
         _ => _localizer.Format("SplitSuccessDescFormat", splitTarget)
     };
 

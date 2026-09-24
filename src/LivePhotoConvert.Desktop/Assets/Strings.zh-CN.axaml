@@ -399,6 +399,7 @@
   <sys:String x:Key="ReportCsvSourcePath">源文件</sys:String>
   <sys:String x:Key="ReportCsvOutputPath">输出文件</sys:String>
   <sys:String x:Key="StripItemSavedFormat">已释放 {0}</sys:String>
+  <sys:String x:Key="StripItemKeptFormatFormat">已释放 {0}，保留原格式（HEIC 更大）</sys:String>
   <sys:String x:Key="ReportSavedFormat">共释放 {0}</sys:String>
 
   <!-- 图库工作台与检查器 -->
@@ -442,6 +443,7 @@
   <sys:String x:Key="CompareParamsKeep">仅剥离视频，保留原格式</sys:String>
   <sys:String x:Key="CompareEncoderFormat">编码器 {0}</sys:String>
   <sys:String x:Key="CompareNotConverted">未转码：已是 HEIC 或含 HDR 增益图</sys:String>
+  <sys:String x:Key="CompareKeptFormat">HEIC 不比原图小，任务将保留原格式、只剥离视频</sys:String>
   <sys:String x:Key="CompareZoomInTip">放大</sys:String>
   <sys:String x:Key="CompareZoomOutTip">缩小</sys:String>
   <sys:String x:Key="CompareZoomResetTip">适配窗口</sys:String>

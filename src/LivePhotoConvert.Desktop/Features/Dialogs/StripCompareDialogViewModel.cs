@@ -77,6 +77,10 @@ public sealed partial class StripCompareDialogViewModel : DialogViewModel<bool>
     [ObservableProperty]
     private string _encoderText = string.Empty;
 
+    /// <summary>HEIC 不比原格式小时的提示：任务会保留原格式、只剥离视频。</summary>
+    [ObservableProperty]
+    private string _keptFormatText = string.Empty;
+
     [ObservableProperty]
     private string _beforeSizeText = "—";
 
@@ -204,9 +208,10 @@ public sealed partial class StripCompareDialogViewModel : DialogViewModel<bool>
         AfterSizeText = FormatBytes(sample.ProductBytes);
         var saved = sample.OriginalBytes > 0 ? Math.Max(0, sample.OriginalBytes - sample.ProductBytes) * 100.0 / sample.OriginalBytes : 0;
         SavedPercentResult = _localizer.Format("StripSavedPctFormat", saved);
-        EncoderText = sample.Converted
+        EncoderText = sample.Converted || sample.KeptOriginalFormat
             ? _localizer.Format("CompareEncoderFormat", sample.EncoderName)
             : _options.ConvertToHeic ? _localizer["CompareNotConverted"] : string.Empty;
+        KeptFormatText = sample.KeptOriginalFormat ? _localizer["CompareKeptFormat"] : string.Empty;
     }
 
     private void RequestDisplayDecode()
