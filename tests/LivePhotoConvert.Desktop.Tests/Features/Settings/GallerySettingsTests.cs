@@ -87,7 +87,8 @@ public sealed class GallerySettingsTests : IDisposable
         }
 
         library.Layout.SetScaleModeCommand.Execute("Large");
-        await session.WaitUntilAsync(() => Attached(list).All(c => c.Thumbnail is { } t && !shown.ContainsValue(t)));
+        // 重排瞬间可能没有已实例化的行，空集合上的 All 恒为真，必须要求至少一张卡片
+        await session.WaitUntilAsync(() => Attached(list) is { Count: > 0 } cards && cards.All(c => c.Thumbnail is { } t && !shown.ContainsValue(t)));
         Assert.NotEmpty(CacheFiles(cache));
         session.Log.AssertNoBindingErrors();
     }
