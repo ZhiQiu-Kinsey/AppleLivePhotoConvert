@@ -99,9 +99,6 @@ public sealed class ToolRegistry(Func<ToolId, string?>? explicitPathProvider = n
         return probe.WaitAsync(cancellationToken);
     }
 
-    public async Task<IReadOnlyList<ToolInfo>> GetAllAsync(CancellationToken cancellationToken = default) =>
-        await Task.WhenAll(_manifest.Tools.Select(tool => GetAsync(tool.Id, cancellationToken)));
-
     /// <summary>已完成探测时直接返回结果，不启动探测。</summary>
     public bool TryGetCached(ToolId tool, out ToolInfo? info)
     {

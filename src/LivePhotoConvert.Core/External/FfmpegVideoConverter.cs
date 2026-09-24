@@ -11,7 +11,7 @@ namespace LivePhotoConvert.Core.External;
 /// </summary>
 public sealed class FfmpegVideoConverter : IVideoConverter
 {
-    internal const string HevcEncoder = "libx265";
+    private const string HevcEncoder = "libx265";
     private const string HdrPixelFormat = "yuv420p10le";
     private const string SdrPixelFormat = "yuv420p";
 

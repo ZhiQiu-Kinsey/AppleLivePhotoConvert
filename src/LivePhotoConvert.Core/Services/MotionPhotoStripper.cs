@@ -90,16 +90,6 @@ public sealed class MotionPhotoStripper(IMetadataService metadata, IImageConvert
     private static readonly FrozenSet<string> CompanionExtensions = FrozenSet.Create(StringComparer.OrdinalIgnoreCase, ".mov", ".mp4");
 
     /// <summary>
-    /// 列出目录中（不含子目录）可能需要瘦身的照片。
-    /// </summary>
-    public static IReadOnlyList<string> FindCandidates(string directory) =>
-    [
-        .. Directory.EnumerateFiles(directory, "*", new EnumerationOptions { IgnoreInaccessible = true })
-                    .Where(path => MediaFileTypes.MotionPhotoExtensions.Contains(Path.GetExtension(path)))
-                    .Order(StringComparer.OrdinalIgnoreCase)
-    ];
-
-    /// <summary>
     /// 只读分析：定位内嵌视频、校验同名视频是否确属同一张实况照片。
     /// 单个文件分析失败只把该文件标为不可瘦身（见 <see cref="StripCandidate.AnalysisError"/>），不影响其它文件。
     /// </summary>
