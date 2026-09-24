@@ -180,6 +180,7 @@ public sealed partial class GallerySelection(ILocalizer localizer) : ObservableO
             card.IsSelected = selected;
         }
     });
+
     /// <summary>在一次批量内修改卡片状态；嵌套调用合并为最外层的一次通知。</summary>
     public void Batch(Action change)
     {

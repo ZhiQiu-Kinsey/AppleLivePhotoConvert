@@ -26,7 +26,7 @@
           </Border>
         </StackPanel>
 
-        <!-- 右侧：精简呼吸感状态指示徽章（单行自适应排版，永不截断） -->
+        <!-- 右侧：扫描统计徽章，标题栏变窄时只显示数字 -->
         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Spacing="6"
                     IsVisible="{Binding Selection.HasScannedFiles}">
           <!-- 实况就绪徽章 (绿) -->
