@@ -1,0 +1,43 @@
+namespace LivePhotoConvert.Core.Tests.Support;
+
+/// <summary>
+/// 测试用临时目录，释放时整体删除。
+/// </summary>
+internal sealed class TempDirectory : IDisposable
+{
+    public TempDirectory() => Root = Directory.CreateTempSubdirectory("lpc-test-").FullName;
+
+    public string Root { get; }
+
+    /// <summary>创建文件；名称可包含子目录。</summary>
+    public string CreateFile(string name, byte[]? content = null)
+    {
+        var path = Path.Combine(Root, name);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllBytes(path, content ?? []);
+        return path;
+    }
+
+    public string Combine(params string[] parts) => Path.Combine([Root, .. parts]);
+
+    /// <summary>目录下（含子目录）除暂存文件外的全部文件名，便于断言输出。</summary>
+    public string[] FileNames(string? subdirectory = null) =>
+        Directory.Exists(subdirectory is null ? Root : Combine(subdirectory))
+            ? [.. Directory.EnumerateFiles(subdirectory is null ? Root : Combine(subdirectory), "*", SearchOption.AllDirectories)
+                           .Select(Path.GetFileName)
+                           .OfType<string>()
+                           .Order(StringComparer.Ordinal)]
+            : [];
+
+    public void Dispose()
+    {
+        try
+        {
+            Directory.Delete(Root, recursive: true);
+        }
+        catch (IOException)
+        {
+            // 残留的临时目录不影响测试结果
+        }
+    }
+}

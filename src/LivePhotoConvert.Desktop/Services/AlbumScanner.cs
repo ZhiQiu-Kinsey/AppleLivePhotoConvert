@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Globalization;
-using LivePhotoConvert.Core.Matching;
+using LivePhotoConvert.Core.Media;
+using LivePhotoConvert.Core.Pairing;
 using LivePhotoConvert.Desktop.Converters;
 using LivePhotoConvert.Desktop.Models;
 namespace LivePhotoConvert.Desktop.Services;
@@ -75,15 +76,14 @@ public sealed class AlbumScanner
                 await Parallel.ForEachAsync(
                     candidateFiles,
                     new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cancellationToken },
-                    async (file, token) =>
+                    (file, _) =>
                     {
-                        var info = await MotionPhotoDetector.DetectAsync(file, cancellationToken: token);
-                        if (info is null) return;
+                        var info = MotionPhotoLayout.Locate(file);
+                        if (info is null) return ValueTask.CompletedTask;
 
                         FileInfo fi = new(file);
-                        long totalLen = fi.Exists ? fi.Length : 0;
-                        long vBytes = info.VideoLength;
-                        long pBytes = Math.Max(0, totalLen - vBytes);
+                        long vBytes = info.Length;
+                        long pBytes = info.ImageEnd;
                         DateTime dt = fi.Exists ? fi.LastWriteTime : DateTime.Now;
 
                         string fileName = Path.GetFileNameWithoutExtension(file);
@@ -98,8 +98,8 @@ public sealed class AlbumScanner
                             PhotoPath = file,
                             VideoPath = null, // 按需在悬停或 QuickLook 时切片
                             IsMotionPhoto = true,
-                            EmbeddedVideoOffset = info.VideoOffset,
-                            EmbeddedVideoLength = info.VideoLength,
+                            EmbeddedVideoOffset = info.Offset,
+                            EmbeddedVideoLength = info.Length,
                             FileName = fileName,
                             DateTaken = dt,
                             FormattedDate = dt.ToString(dateFormat, culture),
@@ -118,6 +118,7 @@ public sealed class AlbumScanner
                         };
 
                         motionCards.Add(card);
+                        return ValueTask.CompletedTask;
                     });
 
                 cardList.AddRange(motionCards.OrderBy(c => c.DateTaken));
@@ -254,15 +255,14 @@ public sealed class AlbumScanner
                 await Parallel.ForEachAsync(
                     remainingPhotos,
                     new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cancellationToken },
-                    async (file, token) =>
+                    (file, _) =>
                     {
-                        var info = await MotionPhotoDetector.DetectAsync(file, cancellationToken: token);
-                        if (info is null) return;
+                        var info = MotionPhotoLayout.Locate(file);
+                        if (info is null) return ValueTask.CompletedTask;
 
                         FileInfo fi = new(file);
-                        long totalLen = fi.Exists ? fi.Length : 0;
-                        long vBytes = info.VideoLength;
-                        long pBytes = Math.Max(0, totalLen - vBytes);
+                        long vBytes = info.Length;
+                        long pBytes = info.ImageEnd;
                         DateTime dt = fi.Exists ? fi.LastWriteTime : DateTime.Now;
 
                         string fileName = Path.GetFileNameWithoutExtension(file);
@@ -277,8 +277,8 @@ public sealed class AlbumScanner
                             PhotoPath = file,
                             VideoPath = null,
                             IsMotionPhoto = true,
-                            EmbeddedVideoOffset = info.VideoOffset,
-                            EmbeddedVideoLength = info.VideoLength,
+                            EmbeddedVideoOffset = info.Offset,
+                            EmbeddedVideoLength = info.Length,
                             FileName = fileName,
                             DateTaken = dt,
                             FormattedDate = dt.ToString(dateFormat, culture),
@@ -297,6 +297,7 @@ public sealed class AlbumScanner
                         };
 
                         motionCards.Add(card);
+                        return ValueTask.CompletedTask;
                     });
 
                 foreach (var c in motionCards)

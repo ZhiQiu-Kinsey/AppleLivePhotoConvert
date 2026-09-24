@@ -1,104 +1,117 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 
 namespace LivePhotoConvert.Core.External;
 
 /// <summary>
-/// 外部可执行程序的定位与真实有效性探测
+/// 定位外部可执行文件并确认其可以正常运行。
 /// </summary>
 public static class ToolLocator
 {
+    private static readonly TimeSpan ProbeTimeout = TimeSpan.FromSeconds(6);
+
+    /// <summary>探测结果按文件路径、大小与修改时间缓存，文件被替换后自动重新探测。</summary>
+    private static readonly ConcurrentDictionary<(string Path, long Length, DateTime LastWrite), bool> ProbeCache = new();
+
     /// <summary>
-    /// 按「显式指定 → 程序所在目录 → PATH」的顺序查找可执行文件（自动通过真实运行探测验证可用性）
+    /// 按「指定路径 → 程序目录及其 tools/子目录 → 本地应用数据目录 → PATH」顺序查找。
+    /// 指定了路径时只检查该路径。
     /// </summary>
-    public static string? Find(string fileName, string? explicitPath = null, params string[] subDirectories)
+    public static string? Find(string fileName, string? explicitPath = null, params ReadOnlySpan<string> subDirectories)
     {
         if (!string.IsNullOrWhiteSpace(explicitPath))
         {
-            return File.Exists(explicitPath) && IsValidTool(explicitPath) ? Path.GetFullPath(explicitPath) : null;
+            return IsValidTool(explicitPath) ? Path.GetFullPath(explicitPath) : null;
         }
 
-        var baseDirectory = AppContext.BaseDirectory;
-        var processDir = Path.GetDirectoryName(Environment.ProcessPath);
-        var baseDirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { baseDirectory };
-        if (!string.IsNullOrEmpty(processDir))
-        {
-            baseDirs.Add(processDir);
-        }
+        var baseDirectories = new[] { AppContext.BaseDirectory, Path.GetDirectoryName(Environment.ProcessPath) }
+            .Where(directory => !string.IsNullOrEmpty(directory))
+            .Distinct(StringComparer.OrdinalIgnoreCase);
 
         var candidates = new List<string>();
-        foreach (var dir in baseDirs)
+        foreach (var directory in baseDirectories)
         {
-            candidates.Add(Path.Combine(dir, fileName));
-            candidates.Add(Path.Combine(dir, "tools", fileName));
-            candidates.AddRange(subDirectories.Select(sub => Path.Combine(dir, sub, fileName)));
+            candidates.Add(Path.Combine(directory!, fileName));
+            candidates.Add(Path.Combine(directory!, "tools", fileName));
+            foreach (var subDirectory in subDirectories)
+            {
+                candidates.Add(Path.Combine(directory!, subDirectory, fileName));
+            }
         }
 
         candidates.Add(Path.Combine(ToolDownloader.LocalAppDataToolDirectory, fileName));
-        var found = candidates.FirstOrDefault(path => File.Exists(path) && IsValidTool(path));
-        return found is not null ? Path.GetFullPath(found) : FindOnPath(fileName);
+        var found = candidates.FirstOrDefault(IsValidTool) ?? FindOnPath(fileName);
+        return found is null ? null : Path.GetFullPath(found);
     }
 
     /// <summary>
-    /// 快速探测可执行文件是否真正能够正常启动与执行
+    /// 运行版本查询命令确认文件真的能执行（下载中断或被杀毒软件隔离的文件也可能存在）。
     /// </summary>
     public static bool IsValidTool(string path)
     {
-        if (!File.Exists(path))
+        FileInfo info;
+        try
+        {
+            info = new FileInfo(path);
+            if (!info.Exists)
+            {
+                return false;
+            }
+        }
+        catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException or NotSupportedException)
         {
             return false;
+        }
+
+        return ProbeCache.GetOrAdd((info.FullName, info.Length, info.LastWriteTimeUtc), static key => Probe(key.Path));
+    }
+
+    private static bool Probe(string path)
+    {
+        var name = Path.GetFileName(path);
+        var versionArgument = name.Contains("exiftool", StringComparison.OrdinalIgnoreCase) ? "-ver"
+            : name.Contains("ffmpeg", StringComparison.OrdinalIgnoreCase) || name.Contains("ffprobe", StringComparison.OrdinalIgnoreCase) ? "-version"
+            : name.Contains("heif-enc", StringComparison.OrdinalIgnoreCase) ? "-v"
+            : null;
+        if (versionArgument is null)
+        {
+            return true;
         }
 
         try
         {
-            var fileName = Path.GetFileName(path);
-            var isExifTool = fileName.Contains("exiftool", StringComparison.OrdinalIgnoreCase);
-            var isFfmpeg = fileName.Contains("ffmpeg", StringComparison.OrdinalIgnoreCase);
-            var isHeifEnc = fileName.Contains("heif-enc", StringComparison.OrdinalIgnoreCase);
-            if (!isExifTool && !isFfmpeg && !isHeifEnc)
-            {
-                return true;
-            }
-
-            var args = isExifTool ? "-ver" : (isFfmpeg ? "-version" : "-v");
-            using var proc = new Process();
-            proc.StartInfo = new ProcessStartInfo
+            using var process = Process.Start(new ProcessStartInfo
             {
                 FileName = path,
-                Arguments = args,
+                ArgumentList = { versionArgument },
+                RedirectStandardInput = true,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
-            };
-
-            if (proc.Start())
+            });
+            if (process is null)
             {
-                if (proc.WaitForExit(6000))
-                {
-                    return proc.ExitCode == 0;
-                }
-
-                try
-                {
-                    proc.Kill(entireProcessTree: true);
-                }
-                catch
-                {
-                    // 忽略进程杀除异常
-                }
+                return false;
             }
 
+            process.StandardInput.Close();
+            _ = process.StandardOutput.ReadToEndAsync();
+            _ = process.StandardError.ReadToEndAsync();
+            if (process.WaitForExit(ProbeTimeout))
+            {
+                return process.ExitCode == 0;
+            }
+
+            process.Kill(entireProcessTree: true);
             return false;
         }
-        catch
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or IOException)
         {
             return false;
         }
     }
 
-    /// <summary>
-    /// 在 PATH 环境变量列出的目录中查找
-    /// </summary>
     private static string? FindOnPath(string fileName)
     {
         var path = Environment.GetEnvironmentVariable("PATH");
@@ -109,29 +122,19 @@ public static class ToolLocator
 
         foreach (var range in path.AsSpan().Split(Path.PathSeparator))
         {
-            var directorySpan = path.AsSpan(range).Trim();
-            if (directorySpan.IsEmpty)
+            var directory = path.AsSpan(range).Trim();
+            if (directory.IsEmpty || directory.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
             {
                 continue;
             }
 
-            string candidate;
-            try
+            var candidate = Path.Combine(directory.ToString(), fileName);
+            if (IsValidTool(candidate))
             {
-                candidate = Path.Combine(directorySpan.ToString(), fileName);
-            }
-            catch (ArgumentException)
-            {
-                continue;
-            }
-
-            if (File.Exists(candidate) && IsValidTool(candidate))
-            {
-                return Path.GetFullPath(candidate);
+                return candidate;
             }
         }
 
         return null;
     }
 }
-

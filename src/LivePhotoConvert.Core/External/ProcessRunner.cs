@@ -3,45 +3,54 @@ using System.Text;
 
 namespace LivePhotoConvert.Core.External;
 
-/// <summary>
-/// 外部进程的执行结果数据记录
-/// </summary>
-/// <param name="ExitCode">进程退出状态码（0 代表成功）</param>
-/// <param name="StandardOutput">标准输出文本内容</param>
-/// <param name="StandardError">标准错误文本内容</param>
+/// <param name="ExitCode">退出码</param>
+/// <param name="StandardOutput">标准输出</param>
+/// <param name="StandardError">标准错误</param>
 public sealed record ProcessResult(int ExitCode, string StandardOutput, string StandardError)
 {
-    /// <summary>
-    /// 是否执行成功（退出码为 0）
-    /// </summary>
     public bool Success => ExitCode == 0;
+
+    /// <summary>标准错误的最后一行非空内容，通常就是失败原因。</summary>
+    public string ErrorSummary
+    {
+        get
+        {
+            ReadOnlySpan<char> last = default;
+            foreach (var line in StandardError.AsSpan().EnumerateLines())
+            {
+                if (!line.Trim().IsEmpty)
+                {
+                    last = line.Trim();
+                }
+            }
+
+            return last.IsEmpty ? "无错误输出" : last.ToString();
+        }
+    }
 }
 
 /// <summary>
-/// 高性能轻量级外部进程执行与生命周期调度器（基于 .NET 10 原生异步管道与进程树安全回收）
+/// 运行外部命令并收集输出。
 /// </summary>
 public static class ProcessRunner
 {
+    public static readonly TimeSpan DefaultTimeout = TimeSpan.FromMinutes(10);
+
     /// <summary>
-    /// 异步执行外部进程并等待其运行结束，实时捕获标准输出与标准错误
+    /// 运行命令直到退出；取消或超时时结束整个进程树。
     /// </summary>
     /// <remarks>
-    /// 1. 采用 <see cref="ProcessStartInfo.ArgumentList"/> 进行参数传递，由运行时原生负责特殊字符转义，杜绝路径引号与空格注入风险；<br/>
-    /// 2. 在调用 <see cref="Process.WaitForExitAsync"/> 之前立即挂起标准流的异步读取任务，防止输出缓冲区满导致子进程管道阻塞死锁；<br/>
-    /// 3. 当触发取消令牌时，强制递归销毁整个进程树（<c>entireProcessTree: true</c>），杜绝孤儿进程驻留。
+    /// 参数逐项传入 <see cref="ProcessStartInfo.ArgumentList"/>，由运行时负责转义；
+    /// 标准输入立即关闭，防止 FFmpeg 等工具等待交互输入而挂起。
     /// </remarks>
-    /// <param name="fileName">可执行文件绝对路径</param>
-    /// <param name="arguments">参数序列</param>
-    /// <param name="cancellationToken">取消令牌</param>
-    /// <returns>包含退出码、标准输出和标准错误的 <see cref="ProcessResult"/></returns>
-    public static async Task<ProcessResult> RunAsync(string fileName, IEnumerable<string> arguments, CancellationToken cancellationToken = default)
+    /// <exception cref="TimeoutException">超过 <paramref name="timeout"/> 仍未退出</exception>
+    public static async Task<ProcessResult> RunAsync(string fileName, IEnumerable<string> arguments, CancellationToken cancellationToken = default, TimeSpan? timeout = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(fileName);
-        ArgumentNullException.ThrowIfNull(arguments);
-
         var startInfo = new ProcessStartInfo
         {
             FileName = fileName,
+            RedirectStandardInput = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
@@ -55,70 +64,39 @@ public static class ProcessRunner
             startInfo.ArgumentList.Add(argument);
         }
 
-        using var process = new Process();
-        process.StartInfo = startInfo;
-        process.Start();
+        using var process = Process.Start(startInfo) ?? throw new InvalidOperationException($"无法启动 {fileName}。");
+        process.StandardInput.Close();
 
-        // 异步并行读取双输出流，防止管道缓冲区死锁
-        var stdoutTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
-        var stderrTask = process.StandardError.ReadToEndAsync(cancellationToken);
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        deadline.CancelAfter(timeout ?? DefaultTimeout);
 
-        string stdout;
-        string stderr;
+        // 在等待退出前开始读取两路输出，避免管道缓冲区写满导致子进程阻塞
+        var standardOutput = process.StandardOutput.ReadToEndAsync(CancellationToken.None);
+        var standardError = process.StandardError.ReadToEndAsync(CancellationToken.None);
         try
         {
-            await process.WaitForExitAsync(cancellationToken);
+            await process.WaitForExitAsync(deadline.Token);
         }
         catch (OperationCanceledException)
         {
-            // 取消令牌触发：递归销毁进程树。异常在此抛出，
-            // 两个输出流读取任务交由下方 finally 等待结束，避免释放 Process 时产生未观察异常。
-            TryKill(process);
-            throw;
-        }
-        finally
-        {
-            // 无论正常结束还是取消，都必须等待两个输出流读取任务结束，
-            // 否则 Process 被释放时后台读取会抛 ObjectDisposedException 并最终成为未观察异常。
-            try
-            {
-                stdout = await stdoutTask;
-            }
-            catch (OperationCanceledException)
-            {
-                stdout = string.Empty;
-            }
-
-            try
-            {
-                stderr = await stderrTask;
-            }
-            catch (OperationCanceledException)
-            {
-                stderr = string.Empty;
-            }
+            Kill(process);
+            await ((Task)Task.WhenAll(standardOutput, standardError)).WaitAsync(TimeSpan.FromSeconds(5), CancellationToken.None).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+            cancellationToken.ThrowIfCancellationRequested();
+            throw new TimeoutException($"{Path.GetFileName(fileName)} 运行超过 {(timeout ?? DefaultTimeout).TotalMinutes:F0} 分钟，已终止。");
         }
 
-        return new ProcessResult(process.ExitCode, stdout, stderr);
+        return new ProcessResult(process.ExitCode, await standardOutput, await standardError);
     }
 
-    /// <summary>
-    /// 安全销毁子进程及其关联的全部派生进程树
-    /// </summary>
-    /// <param name="process">目标进程实例</param>
-    private static void TryKill(Process process)
+    private static void Kill(Process process)
     {
         try
         {
-            if (!process.HasExited)
-            {
-                process.Kill(entireProcessTree: true);
-            }
+            process.Kill(entireProcessTree: true);
         }
-        catch
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException)
         {
-            // 进程可能在尝试终止时已自行退出，安全忽略
+            // 进程已退出
         }
     }
 }
-

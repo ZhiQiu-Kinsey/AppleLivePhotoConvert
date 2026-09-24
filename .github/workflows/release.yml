@@ -36,7 +36,7 @@ jobs:
       - name: 编译发布 Native AOT 原生程序包
         run: |
           dotnet publish src/LivePhotoConvert.Desktop/LivePhotoConvert.Desktop.csproj `
-            /p:PublishProfile=win-x64-aot `
+            -r win-x64 -c Release `
             -o dist/aot
           # 清除调试符号 pdb 文件
           Remove-Item -Path "dist/aot/*.pdb" -Force -ErrorAction SilentlyContinue

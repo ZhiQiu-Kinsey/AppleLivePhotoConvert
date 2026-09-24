@@ -5,7 +5,9 @@ using CommunityToolkit.Mvvm.Input;
 using Avalonia.Media.Imaging;
 using LivePhotoConvert.Core.Abstractions;
 using LivePhotoConvert.Core.External;
-using LivePhotoConvert.Core.Models;
+using LivePhotoConvert.Core.Metadata;
+using LivePhotoConvert.Core.Pairing;
+using LivePhotoConvert.Core.Pipeline;
 using LivePhotoConvert.Core.Services;
 using LivePhotoConvert.Desktop.Collections;
 using LivePhotoConvert.Desktop.Models;
@@ -1075,6 +1077,11 @@ public sealed partial class ConvertViewModel : ViewModelBase
     [RelayCommand]
     public void TriggerBatchConvert()
     {
+        if (IsRunning)
+        {
+            return;
+        }
+
         // 1. 安全矩阵预检：磁盘容量预检
         var targetCards = _groups.SelectMany(g => g.AllCards).Where(c => c.IsSelected).ToList();
         if (targetCards.Count == 0)
@@ -1123,301 +1130,156 @@ public sealed partial class ConvertViewModel : ViewModelBase
 
     private void ExecuteBatchPipeline()
     {
-        IsRunning = true;
+        if (IsRunning)
+        {
+            return;
+        }
+
+        // 启动前固定本批次的卡片与参数，运行期间切换方向或重新扫描不影响后台任务
+        var cards = _groups.SelectMany(g => g.AllCards).Where(c => c.IsSelected).ToList();
+        if (cards.Count == 0)
+        {
+            cards = _groups.SelectMany(g => g.AllCards).ToList();
+        }
+
+        var settings = _settingsService.Current;
+        var plan = new BatchPlan(
+            cards,
+            ConversionDirection,
+            new OutputOptions(OutputDirectory)
+            {
+                Conflict = AutoAppendIndex ? ConflictPolicy.AppendIndex : ConflictPolicy.Overwrite,
+                PreserveHierarchyFrom = KeepSubfolderHierarchy && !string.IsNullOrEmpty(_lastScannedDirectory) ? _lastScannedDirectory : null
+            },
+            (MergeNamingFormat)NamingFormat,
+            (SourceFileAction)SourceAction,
+            HeicQuality,
+            Math.Clamp(settings.Concurrency, 1, 8),
+            NullIfBlank(settings.ExifToolPath),
+            NullIfBlank(settings.FfmpegPath),
+            NullIfBlank(settings.HeifEncPath));
+
         var cts = new CancellationTokenSource();
         _batchCts = cts;
-        var token = cts.Token;
+        IsRunning = true;
+        CurrentProgressPercent = 0;
+        ProgressRatioText = string.Empty;
+        CurrentFileName = string.Empty;
+        _ = RunBatchAsync(plan, cts);
+    }
 
-        Task.Run(async () =>
+    private sealed record BatchPlan(
+        IReadOnlyList<PhotoCardItemViewModel> Cards,
+        int Direction,
+        OutputOptions Output,
+        MergeNamingFormat Naming,
+        SourceFileAction SourceAction,
+        int HeicQuality,
+        int Parallelism,
+        string? ExifToolPath,
+        string? FfmpegPath,
+        string? HeifEncPath);
+
+    private async Task RunBatchAsync(BatchPlan plan, CancellationTokenSource cts)
+    {
+        var loc = LocalizationService.Instance;
+        var modeName = loc.GetString(plan.Direction switch { 1 => "ReportModeApple", 2 => "ReportModeExtract", _ => "ReportModeMerge" });
+        var progress = new DesktopProgressReporter(value =>
         {
-            var reportRecords = new List<ReportItemRecord>();
-            string reportSummary = string.Empty;
-            BatchReportModel? batchModel = null;
-            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-            try
-            {
-                var selectedCards = _groups.SelectMany(g => g.AllCards).Where(c => c.IsSelected).ToList();
-                if (selectedCards.Count == 0)
-                {
-                    selectedCards = _groups.SelectMany(g => g.AllCards).ToList();
-                }
+            CurrentProgressPercent = value.Total > 0 ? value.Completed * 100.0 / value.Total : 0;
+            ProgressRatioText = $"{CurrentProgressPercent:F0}% ({value.Completed}/{value.Total})";
+            CurrentFileName = value.CurrentItem;
+        });
 
-                var reporter = new DesktopProgressReporter((completed, total, currentItem) =>
-                {
-                    Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                    {
-                        double pct = total > 0 ? (double)completed / total * 100.0 : 0;
-                        CurrentProgressPercent = pct;
-                        ProgressRatioText = $"{pct:F0}% ({completed}/{total})";
-                        CurrentFileName = currentItem;
-                    });
-                });
-
-                var savedSettings = _settingsService.Current;
-                var explicitExif = string.IsNullOrWhiteSpace(savedSettings.ExifToolPath) ? null : savedSettings.ExifToolPath;
-                var explicitFfmpeg = string.IsNullOrWhiteSpace(savedSettings.FfmpegPath) ? null : savedSettings.FfmpegPath;
-                var explicitHeif = string.IsNullOrWhiteSpace(savedSettings.HeifEncPath) ? null : savedSettings.HeifEncPath;
-
-                var exifToolPath = ToolLocator.Find(ExifTool.ExecutableName, explicitExif);
-                var ffmpegPath = ToolLocator.Find(FfmpegVideoConverter.ExecutableName, explicitFfmpeg);
-                var heifEncPath = ToolLocator.Find(HeifEncImageConverter.ExecutableName, explicitHeif);
-
-                var exifTool = ExifTool.Create(exifToolPath);
-                var videoConverter = ffmpegPath is not null ? FfmpegVideoConverter.Create(ffmpegPath) : null;
-                IImageConverter imageConverter = heifEncPath is not null
-                    ? HeifEncImageConverter.Create(heifEncPath)
-                    : MagickImageConverter.Instance;
-
-                string inputDir = _settingsService.Current.LastScanDirectory;
-                var firstCardWithDir = selectedCards.FirstOrDefault(c => Path.IsPathRooted(c.PhotoPath));
-                if (firstCardWithDir != null && !string.IsNullOrEmpty(Path.GetDirectoryName(firstCardWithDir.PhotoPath)))
-                {
-                    inputDir = Path.GetDirectoryName(firstCardWithDir.PhotoPath)!;
-                }
-
-                if (ConversionDirection == 0) // Apple -> Android (Merge)
-                {
-                    var pairs = new List<MediaPair>();
-                    var forced = new HashSet<MediaPair>(MediaPairPathEqualityComparer.Instance);
-
-                    foreach (var card in selectedCards)
-                    {
-                        if (File.Exists(card.PhotoPath) && !string.IsNullOrEmpty(card.VideoPath) && File.Exists(card.VideoPath))
-                        {
-                            var p = card.Pair ?? new MediaPair(card.PhotoPath, card.VideoPath);
-                            pairs.Add(p);
-                            if (card.IsForceAccepted) forced.Add(p);
-                        }
-                    }
-
-                    if (pairs.Count > 0 && videoConverter is not null)
-                    {
-                        var merger = new MotionPhotoMerger(exifTool, imageConverter, videoConverter, reporter);
-                        var pairing = new PairingResult
-                        {
-                            Pairs = pairs,
-                            UnmatchedPhotoCount = 0,
-                            UnmatchedVideoCount = 0
-                        };
-                        var options = new MergeOptions
-                        {
-                            InputDirectory = inputDir,
-                            OutputDirectory = OutputDirectory,
-                            Overwrite = !AutoAppendIndex,
-                            NamingFormat = (MergeNamingFormat)NamingFormat,
-                            SourceFileAction = (SourceFileAction)SourceAction,
-                            ForceAcceptedPairs = forced
-                        };
-                        var mergeReport = await merger.MergeAsync(pairing, options, token);
-                        AppendMergeRecords(reportRecords, mergeReport, selectedCards);
-                        reportSummary = LocalizationService.Instance.GetFormat(
-                            "ReportSummaryFormat", mergeReport.Succeeded, mergeReport.Failures.Count + mergeReport.CleanupFailures.Count);
-                        batchModel = new BatchReportModel
-                        {
-                            SummaryBadge = reportSummary,
-                            Records = reportRecords,
-                            TotalCount = mergeReport.Total,
-                            SuccessCount = mergeReport.Succeeded,
-                            FailedCount = mergeReport.Failed,
-                            SkippedCount = mergeReport.SkippedItems.Count,
-                            Elapsed = stopwatch.Elapsed,
-                            OutputDirectory = OutputDirectory,
-                            ModeName = LocalizationService.Instance.GetString("ReportModeMerge")
-                        };
-                    }
-                    else
-                    {
-                        // 缺少转换引擎或无可合成配对
-                        string reason = videoConverter is null
-                            ? LocalizationService.Instance.GetString("EngineMissingFfmpeg")
-                            : LocalizationService.Instance.GetString("NoMergePairs");
-                        reporter.Report(selectedCards.Count, Math.Max(1, selectedCards.Count), reason);
-                        reportRecords.Add(new ReportItemRecord(inputDir, LocalizationService.Instance.GetString("ReportStatusInfo"), reason, false));
-                        reportSummary = LocalizationService.Instance.GetFormat("ReportSummaryFormat", 0, 0);
-                    }
-                }
-                else // Android -> Apple or Extract (Split)
-                {
-                    var splitter = new MotionPhotoSplitter(exifTool, videoConverter, imageConverter, reporter);
-                    var targetFmt = ConversionDirection == 1
-                        ? SplitTargetFormat.Apple
-                        : SplitTargetFormat.Android;
-
-                    var selectedPhotoPaths = selectedCards
-                        .Select(c => c.PhotoPath)
-                        .Where(p => !string.IsNullOrWhiteSpace(p) && File.Exists(p))
-                        .ToList();
-
-                    var options = new SplitOptions
-                    {
-                        InputDirectory = inputDir,
-                        OutputDirectory = OutputDirectory,
-                        TargetFormat = targetFmt,
-                        HeicQuality = HeicQuality,
-                        Overwrite = !AutoAppendIndex,
-                        SourceFileAction = (SourceFileAction)SourceAction,
-                        ExplicitCandidateFiles = selectedPhotoPaths.Count > 0 ? selectedPhotoPaths : null
-                    };
-
-                    bool hasRealCandidate = (options.ExplicitCandidateFiles is { Count: > 0 }) ||
-                        (Directory.Exists(inputDir) && MotionPhotoSplitter.FindCandidates(inputDir).Count > 0);
-                    if (hasRealCandidate)
-                    {
-                        var splitReport = await splitter.SplitAsync(options, token);
-                        string targetName = ConversionDirection == 1
-                        ? LocalizationService.Instance.GetString("SplitTargetApple")
-                        : LocalizationService.Instance.GetString("SplitTargetExtract");
-                        AppendSplitRecords(reportRecords, splitReport, selectedCards, targetName);
-                        reportSummary = LocalizationService.Instance.GetFormat(
-                            "ReportSummaryFormat", splitReport.Succeeded, splitReport.Failures.Count + splitReport.CleanupFailures.Count);
-                        batchModel = new BatchReportModel
-                        {
-                            SummaryBadge = reportSummary,
-                            Records = reportRecords,
-                            TotalCount = splitReport.Total,
-                            SuccessCount = splitReport.Succeeded,
-                            FailedCount = splitReport.Failed,
-                            SkippedCount = splitReport.Skipped,
-                            Elapsed = stopwatch.Elapsed,
-                            OutputDirectory = OutputDirectory,
-                            ModeName = ConversionDirection == 1
-                                ? LocalizationService.Instance.GetString("ReportModeApple")
-                                : LocalizationService.Instance.GetString("ReportModeExtract")
-                        };
-                    }
-                    else
-                    {
-                        // 目标目录下无有效动态照片候选
-                        string splitReason = LocalizationService.Instance.GetString("NoSplitCandidates");
-                        reporter.Report(selectedCards.Count, Math.Max(1, selectedCards.Count), splitReason);
-                        reportRecords.Add(new ReportItemRecord(inputDir, LocalizationService.Instance.GetString("ReportStatusInfo"), splitReason, false));
-                        reportSummary = LocalizationService.Instance.GetFormat("ReportSummaryFormat", 0, 0);
-                    }
-                }
-            }
-            catch (OperationCanceledException) { }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine(ex);
-                reportRecords.Add(new ReportItemRecord(
-                    string.Empty,
-                    LocalizationService.Instance.GetString("ReportStatusFailed"),
-                    ex.Message,
-                    false,
-                    "Failed"));
-                reportSummary = LocalizationService.Instance.GetFormat("ReportSummaryFormat", 0, 1);
-            }
-            finally
-            {
-                stopwatch.Stop();
-                batchModel ??= new BatchReportModel
-                {
-                    SummaryBadge = reportSummary.Length > 0 ? reportSummary : LocalizationService.Instance.GetString("ProcessCompletedBadge"),
-                    Records = reportRecords,
-                    TotalCount = reportRecords.Count,
-                    SuccessCount = reportRecords.Count(r => r.StatusType == "Success"),
-                    FailedCount = reportRecords.Count(r => r.StatusType is "Failed" or "Cleanup"),
-                    SkippedCount = reportRecords.Count(r => r.StatusType == "Skipped"),
-                    Elapsed = stopwatch.Elapsed,
-                    OutputDirectory = OutputDirectory,
-                    ModeName = ConversionDirection switch
-                    {
-                        1 => LocalizationService.Instance.GetString("ReportModeApple"),
-                        2 => LocalizationService.Instance.GetString("ReportModeExtract"),
-                        _ => LocalizationService.Instance.GetString("ReportModeMerge")
-                    }
-                };
-
-                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                {
-                    IsRunning = false;
-                    OnBatchReportReady?.Invoke(batchModel);
-                });
-            }
-
-            // 释放批次取消令牌，避免 CancellationTokenSource 句柄泄漏
+        BatchReportModel model;
+        try
+        {
+            model = await Task.Run(() => ExecuteBatchAsync(plan, modeName, progress, cts.Token));
+        }
+        catch (OperationCanceledException)
+        {
+            model = BatchReportMapper.ToModel(new BatchReport([], TimeSpan.Zero, Canceled: true), modeName, string.Empty, string.Empty, plan.Output.Directory);
+        }
+        catch (Exception ex)
+        {
+            ErrorLogger.Log(ex, modeName);
+            model = BatchReportMapper.FromError(ex.Message, modeName, plan.Output.Directory);
+        }
+        finally
+        {
+            _batchCts = null;
             cts.Dispose();
-            if (_batchCts == cts)
-            {
-                _batchCts = null;
-            }
-        }, token);
+            IsRunning = false;
+        }
+
+        OnBatchReportReady?.Invoke(model);
     }
 
-    /// <summary>把合成报告的失败/跳过/清理失败明细与成功项转为报告页记录。</summary>
-    private static void AppendMergeRecords(List<ReportItemRecord> records, MergeReport report, IReadOnlyList<PhotoCardItemViewModel> cards)
+    private static async Task<BatchReportModel> ExecuteBatchAsync(BatchPlan plan, string modeName, IProgress<BatchProgress> progress, CancellationToken cancellationToken)
     {
         var loc = LocalizationService.Instance;
-        var failedItems = new HashSet<string>(report.Failures.Select(f => f.Item).Concat(report.SkippedItems.Select(s => s.Item)));
+        await using var metadata = ExifToolMetadataService.Create(plan.ExifToolPath, plan.Parallelism);
+        IImageConverter imageConverter = ToolLocator.Find(HeifEncImageConverter.ExecutableName, plan.HeifEncPath) is { } heifEnc
+            ? HeifEncImageConverter.Create(heifEnc)
+            : MagickImageConverter.Instance;
 
-        foreach (var c in cards)
+        if (plan.Direction == 0)
         {
-            var name = Path.GetFileName(c.PhotoPath);
-            if (!failedItems.Contains(name) && !failedItems.Contains(c.PhotoPath))
+            var cards = plan.Cards.Where(c => !c.IsMotionPhoto && !string.IsNullOrEmpty(c.VideoPath))
+                                  .Select(c => (Card: c, Pair: c.Pair ?? new MediaPair(c.PhotoPath, c.VideoPath!)))
+                                  .ToList();
+            if (cards.Count == 0)
             {
-                    records.Add(new ReportItemRecord(
-                        name,
-                        loc.GetString("ReportStatusSuccess"),
-                        loc.GetString("MergeSuccessDesc"),
-                        false,
-                        "Success",
-                        c.FormatBadgeText,
-                        "Motion Photo"));
+                return BatchReportMapper.FromError(loc.GetString("NoMergePairs"), modeName, plan.Output.Directory);
             }
+
+            var pairs = cards.Select(x => x.Pair).ToList();
+            var forced = cards.Where(x => x.Card.IsForceAccepted).Select(x => x.Pair).ToList();
+            var merger = new MotionPhotoMerger(metadata, imageConverter, FfmpegVideoConverter.Create(plan.FfmpegPath));
+            var report = await merger.MergeAsync(
+                new MergeRequest
+                {
+                    Candidates = pairs,
+                    ForceAccepted = forced,
+                    Output = plan.Output,
+                    Naming = plan.Naming,
+                    SourceAction = plan.SourceAction,
+                    Parallelism = plan.Parallelism
+                },
+                progress,
+                cancellationToken);
+            return BatchReportMapper.ToModel(report, modeName, loc.GetString("MergeSuccessDesc"), "Motion Photo", plan.Output.Directory);
         }
 
-        foreach (var f in report.Failures)
+        var files = plan.Cards.Where(c => c.IsMotionPhoto).Select(c => c.PhotoPath).ToList();
+        if (files.Count == 0)
         {
-            records.Add(new ReportItemRecord(f.Item, loc.GetString("ReportStatusFailed"), f.Message, true, "Failed", "HEIC/MOV", "Motion Photo"));
+            return BatchReportMapper.FromError(loc.GetString("NoSplitCandidates"), modeName, plan.Output.Directory);
         }
-        foreach (var s in report.SkippedItems)
-        {
-            records.Add(new ReportItemRecord(s.Item, loc.GetString("ReportStatusSkipped"), s.Message, false, "Skipped", "HEIC/MOV", "Motion Photo"));
-        }
-        foreach (var c in report.CleanupFailures)
-        {
-            records.Add(new ReportItemRecord(c.Item, loc.GetString("ReportStatusCleanup"), c.Message, false, "Cleanup"));
-        }
+
+        var target = plan.Direction == 1 ? SplitTarget.Apple : SplitTarget.Extract;
+        var videoConverter = target == SplitTarget.Apple ? FfmpegVideoConverter.Create(plan.FfmpegPath) : null;
+        var splitter = new MotionPhotoSplitter(metadata, imageConverter, videoConverter);
+        var splitReport = await splitter.SplitAsync(
+            new SplitRequest
+            {
+                Files = files,
+                Output = plan.Output,
+                Target = target,
+                SourceAction = plan.SourceAction,
+                HeicQuality = plan.HeicQuality,
+                Parallelism = plan.Parallelism
+            },
+            progress,
+            cancellationToken);
+        var targetName = loc.GetString(target == SplitTarget.Apple ? "SplitTargetApple" : "SplitTargetExtract");
+        return BatchReportMapper.ToModel(splitReport, modeName, loc.GetFormat("SplitSuccessDescFormat", targetName), targetName, plan.Output.Directory);
     }
 
-    /// <summary>把拆分报告的失败/清理失败明细与成功项转为报告页记录。</summary>
-    private static void AppendSplitRecords(List<ReportItemRecord> records, SplitReport report, IReadOnlyList<PhotoCardItemViewModel> cards, string targetFmt)
-    {
-        var loc = LocalizationService.Instance;
-        var failedItems = new HashSet<string>(report.Failures.Select(f => f.Item));
-
-        foreach (var c in cards)
-        {
-            var name = Path.GetFileName(c.PhotoPath);
-            if (!failedItems.Contains(name) && !failedItems.Contains(c.PhotoPath))
-            {
-                    records.Add(new ReportItemRecord(
-                        name,
-                        loc.GetString("ReportStatusSuccess"),
-                        loc.GetFormat("SplitSuccessDescFormat", targetFmt),
-                        false,
-                        "Success",
-                        c.FormatBadgeText,
-                        targetFmt));
-            }
-        }
-
-        foreach (var f in report.Failures)
-        {
-            records.Add(new ReportItemRecord(f.Item, loc.GetString("ReportStatusFailed"), f.Message, true, "Failed", "Motion Photo", targetFmt));
-        }
-        foreach (var c in report.CleanupFailures)
-        {
-            records.Add(new ReportItemRecord(c.Item, loc.GetString("ReportStatusCleanup"), c.Message, false, "Cleanup"));
-        }
-    }
+    private static string? NullIfBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
 
     [RelayCommand]
-    public void CancelBatch()
-    {
-        _batchCts?.Cancel();
-        IsRunning = false;
-    }
+    public void CancelBatch() => _batchCts?.Cancel();
 
     /// <summary>
     /// 试播：对当前视口内可见卡片按序触发悬停微动放映（遵循 PRD 3.2，仅处理可见项，杜绝全量并发 OOM）。

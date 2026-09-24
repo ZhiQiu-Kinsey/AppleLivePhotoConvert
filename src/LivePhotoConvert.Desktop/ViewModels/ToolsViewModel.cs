@@ -210,7 +210,7 @@ public sealed partial class ToolsViewModel : ViewModelBase
         // 探测版本需同步调用外部进程，放到后台线程执行，避免阻塞 UI
         await Task.Run(() =>
         {
-            exifPath = FindTool(Core.External.ExifTool.ExecutableName, explicitExif);
+            exifPath = FindTool(Core.Metadata.ExifToolMetadataService.ExecutableName, explicitExif);
             ffmpegPath = FindTool(Core.External.FfmpegVideoConverter.ExecutableName, explicitFfmpeg);
             heifPath = FindTool(Core.External.HeifEncImageConverter.ExecutableName, explicitHeif);
             exifVer = exifPath is not null ? ProbeVersion(exifPath, "-ver") : null;
@@ -223,7 +223,7 @@ public sealed partial class ToolsViewModel : ViewModelBase
         string notInstalled = loc.GetString("ToolNotInstalled");
 
         IsExifToolReady = exifPath is not null;
-        ExifToolPath = exifPath ?? loc.GetFormat("ToolNotDetectedFormat", Core.External.ExifTool.ExecutableName);
+        ExifToolPath = exifPath ?? loc.GetFormat("ToolNotDetectedFormat", Core.Metadata.ExifToolMetadataService.ExecutableName);
         ExifToolVersion = exifPath is not null ? exifVer! : notInstalled;
 
         IsFfmpegReady = ffmpegPath is not null;
@@ -404,7 +404,7 @@ public sealed partial class ToolsViewModel : ViewModelBase
     /// <summary>该引擎期望的可执行文件名（如 exiftool.exe）。</summary>
     private static string ExpectedExecutableName(ToolKind kind) => kind switch
     {
-        ToolKind.ExifTool => Core.External.ExifTool.ExecutableName,
+        ToolKind.ExifTool => Core.Metadata.ExifToolMetadataService.ExecutableName,
         ToolKind.Ffmpeg => Core.External.FfmpegVideoConverter.ExecutableName,
         _ => Core.External.HeifEncImageConverter.ExecutableName
     };
