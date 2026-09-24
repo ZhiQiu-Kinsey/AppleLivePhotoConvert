@@ -28,3 +28,16 @@
 - 合成时配对校验阶段跳过的项一开始就计入已完成，前几秒吞吐偏高。
 - Core 返回的跳过/失败原因是中文字面量（如"不是动态照片"），英文界面原样显示：Core 改为返回原因码 + 参数（`OutcomeReason` 枚举），由桌面端本地化；`TaskReportViewModel` 整批失败原因在创建时固化，改为显示时本地化。
 - 截图审查：英文标题栏副标题被 `MaxWidth=160` 截断；竖图卡片文件名被"Pair Locked"徽章挤压；关于页深色副标题对比度偏低；QuickLook 无缩略图时弹窗尺寸随大图到达变化导致导航按钮跳动。
+
+## CI 与发布流程（用户已同意纳入阶段 5）
+
+按优先级：
+1. **Linux 真实工具测试**：新增 `ubuntu-latest` 任务，apt 安装 exiftool / ffmpeg / heif-enc（及 libheif-examples 的 heif-dec），源码编译 libultrahdr 的 `ultrahdr_app` 并设置 `LPC_ULTRAHDR_APP`，让 E2E 与 Core 集成测试真正执行；Windows 任务可选用 `ToolInstaller` 按清单安装 win-x64 工具，验证下载、校验与原子安装链路。
+2. **速度**：`concurrency: cancel-in-progress`；NuGet 缓存（`setup-dotnet` 的 `cache: true` + `packages.lock.json`）；构建与 AOT 任务共享缓存。
+3. **结果呈现**：`--logger trx` 并上传或生成 PR 摘要；coverlet 覆盖率报告作为产物（不设门槛）；界面截图仅在失败或 Desktop 改动时上传。
+4. **版本与安全**：升级 checkout / setup-dotnet / upload-artifact 到 Node 24 的大版本；工作流声明最小权限（默认 `contents: read`）；第三方 Action 固定到提交 SHA。
+5. **发布加固（release.yml）**：发布前复用 CI 全部检查（AOT 警告视为错误）；生成 SHA256 校验文件与 `actions/attest-build-provenance` 来源证明；Release 说明取自 CHANGELOG 对应段落。仍不自行打 tag。
+6. **定时检查依赖清单**：每周校验 `tools.json` 中各源地址可访问、哈希一致。
+7. **`.github/dependabot.yml`**：NuGet 与 GitHub Actions 每周更新。
+
+需用户在 GitHub 网页开启（不在代码范围）：main 分支规则集（要求 CI 通过、禁止强推）、Dependabot 安全告警、CodeQL 默认设置、密钥扫描与推送保护、私密漏洞报告、合并方式与自动删除分支、自动合并。
