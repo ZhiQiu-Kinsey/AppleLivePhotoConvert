@@ -77,18 +77,112 @@ public class MotionPhotoLayoutTests
     }
 
     [Fact]
-    public void Inspect_HeicWithMpvdBox_SkipsBoxHeader()
+    public void Inspect_SamsungTrailer_ImageEndsBeforeSefBlockHeader()
     {
+        var cover = SyntheticMedia.Jpeg(3000);
+
+        var layout = MotionPhotoLayout.Inspect(new MemoryStream(SyntheticMedia.SamsungMotionPhoto(cover, SyntheticMedia.Mp4(4000))));
+
+        Assert.Equal(cover.Length, layout.Video?.ImageEnd);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Inspect_HeicMpvdWithXmp_SeparatesImageEndFromVideoData(bool lengthIncludesBoxHeader)
+    {
+        var heic = SyntheticMedia.Heic(3000);
         var video = SyntheticMedia.Mp4(4000);
-        var mpvd = new byte[8];
-        BinaryPrimitives.WriteUInt32BigEndian(mpvd, (uint)(video.Length + 8));
-        "mpvd"u8.CopyTo(mpvd.AsSpan(4));
-        byte[] bytes = [.. SyntheticMedia.Heic(3000), .. mpvd, .. video];
-        var xmp = MotionPhotoXmp.Apply(null, video.Length + 8, 0);
+        var bytes = SyntheticMedia.HeicMotionPhoto(heic, video);
+        var xmp = MotionPhotoXmp.Apply(null, video.Length + (lengthIncludesBoxHeader ? 8 : 0), 0);
 
         var layout = MotionPhotoLayout.Inspect(new MemoryStream(bytes), xmp);
 
-        Assert.Equal(new EmbeddedVideo(bytes.Length - video.Length, video.Length), layout.Video);
+        Assert.Equal(new EmbeddedVideo(heic.Length + 8, video.Length, heic.Length), layout.Video);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Inspect_HeicMpvdWithoutXmp_FoundByTopLevelBoxWalk(bool largeSize)
+    {
+        var heic = SyntheticMedia.Heic(3000);
+        var video = SyntheticMedia.Mp4(4000);
+        var headerLength = largeSize ? 16 : 8;
+
+        var layout = MotionPhotoLayout.Inspect(new MemoryStream(SyntheticMedia.HeicMotionPhoto(heic, video, largeSize)));
+
+        Assert.Equal(new EmbeddedVideo(heic.Length + headerLength, video.Length, heic.Length), layout.Video);
+    }
+
+    [Fact]
+    public void Locate_HeicMpvdFileWithoutXmp_IsMotionPhoto()
+    {
+        using var temp = new TempDirectory();
+        var heic = SyntheticMedia.Heic(3000);
+        var path = temp.CreateFile("IMG.heic", SyntheticMedia.HeicMotionPhoto(heic, SyntheticMedia.Mp4(4000)));
+
+        Assert.Equal(heic.Length, MotionPhotoLayout.Locate(path)?.ImageEnd);
+    }
+
+    [Fact]
+    public void Inspect_PlainHeic_HasNoVideo()
+    {
+        Assert.Null(MotionPhotoLayout.Inspect(new MemoryStream(SyntheticMedia.Heic(5000))).Video);
+    }
+
+    [Fact]
+    public void Inspect_MpvdWithoutFtypInside_HasNoVideo()
+    {
+        var notVideo = new byte[4000];
+        byte[] bytes = [.. SyntheticMedia.Heic(3000), .. SyntheticMedia.MpvdHeader(notVideo.Length), .. notVideo];
+
+        Assert.Null(MotionPhotoLayout.Inspect(new MemoryStream(bytes)).Video);
+    }
+
+    public static TheoryData<byte[]> MalformedBoxes()
+    {
+        var heic = SyntheticMedia.Heic(3000);
+        byte[] Box(uint size, string type, int extra = 0)
+        {
+            var box = new byte[8 + extra];
+            BinaryPrimitives.WriteUInt32BigEndian(box, size);
+            System.Text.Encoding.ASCII.GetBytes(type).CopyTo(box, 4);
+            return box;
+        }
+
+        byte[] LargeBox(ulong size)
+        {
+            var box = Box(1, "mpvd", 8);
+            BinaryPrimitives.WriteUInt64BigEndian(box.AsSpan(8), size);
+            return box;
+        }
+
+        byte[][] cases =
+        [
+            [.. heic, .. Box(3, "free")],                          // 长度小于 box 头
+            [.. heic, .. Box(uint.MaxValue, "free"), 1, 2, 3],     // 长度超出文件
+            [.. heic, .. Box(0, "free"), .. SyntheticMedia.MpvdHeader(100), .. SyntheticMedia.Mp4(100)], // size 0 延续到文件尾
+            [.. heic, .. LargeBox(4)],                             // 64 位长度小于 box 头
+            [.. heic, .. LargeBox(ulong.MaxValue)],                // 64 位长度溢出
+            [.. heic, .. LargeBox(0)],
+            [.. heic, 0, 0, 0],                                    // 不足一个 box 头的尾巴
+            [0, 0, 0, 24, .. "ftyp"u8.ToArray()]                   // 只有截断的 ftyp
+        ];
+        var data = new TheoryData<byte[]>();
+        foreach (var item in cases)
+        {
+            data.Add(item);
+        }
+
+        return data;
+    }
+
+    [Theory]
+    [MemberData(nameof(MalformedBoxes))]
+    public void Inspect_MalformedBoxLengths_ReturnsNoVideoWithoutThrowing(byte[] bytes)
+    {
+        Assert.Null(MotionPhotoLayout.Inspect(new MemoryStream(bytes)).Video);
     }
 
     [Fact]

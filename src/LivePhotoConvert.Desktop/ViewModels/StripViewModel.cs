@@ -422,7 +422,8 @@ public sealed partial class StripViewModel : ViewModelBase
     {
         try
         {
-            var files = ResolveInputFiles(inputPath);
+            // 大目录的枚举同样不能占用界面线程
+            var files = await Task.Run(() => ResolveInputFiles(inputPath));
             var settings = _settingsService.Current;
             await using var metadata = ExifToolMetadataService.Create(NullIfBlank(settings.ExifToolPath), Math.Clamp(settings.Concurrency, 1, 8));
             var stripper = new MotionPhotoStripper(metadata, MagickImageConverter.Instance);

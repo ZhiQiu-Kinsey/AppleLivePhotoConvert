@@ -183,7 +183,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     {
         if (_settingsService.Current.AutoCleanTemp)
         {
-            SafetyGuard.CleanAllTempDirectories();
+            SafetyGuard.CleanOwnTempDirectories();
         }
     }
 }

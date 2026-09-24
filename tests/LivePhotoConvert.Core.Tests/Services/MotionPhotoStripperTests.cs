@@ -190,6 +190,126 @@ public class MotionPhotoStripperTests
         Assert.True(File.Exists(source));
     }
 
+    [Fact]
+    public async Task AnalyzeAsync_FileVanished_DegradesOnlyThatFile()
+    {
+        using var temp = new TempDirectory();
+        var motion = temp.CreateFile("MVIMG.jpg", SyntheticMedia.MotionPhoto());
+        var missing = temp.Combine("gone.jpg");
+
+        var candidates = await CreateStripper().AnalyzeAsync([missing, motion], Token);
+
+        Assert.NotNull(candidates[0].AnalysisError);
+        Assert.False(candidates[0].HasVideo);
+        Assert.False(candidates[0].WillConvert(convertToHeic: true));
+        Assert.Null(candidates[1].AnalysisError);
+        Assert.NotNull(candidates[1].EmbeddedVideo);
+    }
+
+    [Fact]
+    public async Task AnalyzeAsync_XmpReadFails_DegradesOnlyThatFile()
+    {
+        using var temp = new TempDirectory();
+        var broken = temp.CreateFile("broken.heic", SyntheticMedia.Heic());
+        var motion = temp.CreateFile("MVIMG.jpg", SyntheticMedia.MotionPhoto());
+        _metadata.FailXmpReads = path => path.EndsWith("broken.heic", StringComparison.Ordinal);
+
+        var candidates = await CreateStripper().AnalyzeAsync([broken, motion], Token);
+
+        Assert.Contains("broken.heic", candidates[0].AnalysisError);
+        Assert.NotNull(candidates[1].EmbeddedVideo);
+    }
+
+    [Fact]
+    public async Task AnalyzeAsync_MetadataBatchReadFails_KeepsCompanionVideosUntouched()
+    {
+        using var temp = new TempDirectory();
+        var photo = temp.CreateFile("IMG_0001.heic", SyntheticMedia.Heic());
+        var video = temp.CreateFile("IMG_0001.mov", SyntheticMedia.Mov());
+        _metadata.BeforeRead = _ => throw new InvalidOperationException("ExifTool 崩溃");
+
+        var candidates = await CreateStripper().AnalyzeAsync([photo], Token);
+        var report = await StripAsync([photo]);
+
+        Assert.Null(Assert.Single(candidates).CompanionVideo);
+        Assert.Null(candidates[0].AnalysisError);
+        Assert.True(File.Exists(video));
+        Assert.Equal(OutcomeKind.Skipped, Assert.Single(report.Items).Kind);
+    }
+
+    [Fact]
+    public async Task AnalyzeAsync_CompanionWithDifferentCase_ReturnsRealFileName()
+    {
+        using var temp = new TempDirectory();
+        var photo = temp.CreateFile("IMG_0001.heic", SyntheticMedia.Heic());
+        var video = temp.CreateFile("img_0001.MOV", SyntheticMedia.Mov());
+        temp.CreateFile("IMG_0001.mp4", SyntheticMedia.Mp4());
+        _metadata.Set(photo, new MediaMetadata { Path = photo, ContentIdentifier = "UUID" });
+        _metadata.Set(video, new MediaMetadata { Path = video, ContentIdentifier = "UUID" });
+
+        var candidate = Assert.Single(await CreateStripper().AnalyzeAsync([photo], Token));
+
+        Assert.Equal(video, candidate.CompanionVideo);
+    }
+
+    [Fact]
+    public async Task AnalyzeAsync_DoesNotRunHeavyWorkOnCallingThread()
+    {
+        using var temp = new TempDirectory();
+        var photo = temp.CreateFile("IMG_0001.heic", SyntheticMedia.Heic());
+        temp.CreateFile("IMG_0001.mov", SyntheticMedia.Mov());
+        using var gate = new ManualResetEventSlim();
+        _metadata.BeforeRead = _ => gate.Wait(TimeSpan.FromSeconds(10), Token);
+
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var analysis = CreateStripper().AnalyzeAsync([photo], Token);
+        var callDuration = stopwatch.Elapsed;
+        gate.Set();
+        await analysis;
+
+        Assert.True(callDuration < TimeSpan.FromSeconds(5), $"调用方被阻塞了 {callDuration.TotalSeconds:F1} 秒");
+    }
+
+    [Fact]
+    public async Task StripAsync_FileVanishedBeforeAnalysis_FailsOnlyThatItem()
+    {
+        using var temp = new TempDirectory();
+        var motion = temp.CreateFile("MVIMG.jpg", SyntheticMedia.MotionPhoto());
+
+        var report = await StripAsync([temp.Combine("gone.jpg"), motion], convert: false);
+
+        Assert.Equal(1, report.Succeeded);
+        Assert.Single(report.Items, item => item.Kind == OutcomeKind.Failed);
+    }
+
+    [Fact]
+    public async Task InPlace_HeicMotionPhotoWithMpvd_TruncatesExactlyAtBoxStart()
+    {
+        using var temp = new TempDirectory();
+        var heic = SyntheticMedia.Heic(3000);
+        var source = temp.CreateFile("MVIMG.heic", SyntheticMedia.HeicMotionPhoto(heic, SyntheticMedia.Mp4(4000)));
+
+        var candidates = await CreateStripper().AnalyzeAsync([source], Token);
+        var report = await StripAsync([source], convert: false);
+
+        Assert.Equal(4000 + 8, Assert.Single(candidates).VideoBytes);
+        Assert.Equal(1, report.Succeeded);
+        Assert.Equal(heic, await File.ReadAllBytesAsync(source, Token));
+    }
+
+    [Fact]
+    public async Task InPlace_KeepsSourceTimestampOnResult()
+    {
+        using var temp = new TempDirectory();
+        var source = temp.CreateFile("MVIMG.jpg", SyntheticMedia.MotionPhoto());
+        var old = new DateTime(2020, 5, 1, 8, 0, 0, DateTimeKind.Utc);
+        File.SetLastWriteTimeUtc(source, old);
+
+        var report = await StripAsync([source]);
+
+        Assert.Equal(old, File.GetLastWriteTimeUtc(Assert.Single(Assert.Single(report.Items).Outputs)));
+    }
+
     private sealed class BrokenConverter : Core.Abstractions.IImageConverter
     {
         public Task ConvertToJpegAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken = default) =>

@@ -14,6 +14,9 @@ internal static class ExternalTools
     public static string RequireFfmpeg() =>
         ToolLocator.Find(FfmpegVideoConverter.ExecutableName) ?? Skip("FFmpeg");
 
+    public static string RequireHeifEnc() =>
+        ToolLocator.Find(HeifEncImageConverter.ExecutableName) ?? Skip("heif-enc");
+
     private static string Skip(string tool)
     {
         Assert.Skip($"未安装 {tool}，跳过集成测试。");

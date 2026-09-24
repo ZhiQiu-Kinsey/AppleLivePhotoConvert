@@ -146,6 +146,30 @@ internal static class SyntheticMedia
         stream.Write(payload);
     }
 
+    /// <summary>
+    /// HEIC 动态照片（三星/谷歌格式）：HEIC 顶层 box 之后追加一个包着 MP4 的 mpvd box。
+    /// </summary>
+    /// <param name="largeSize">mpvd 使用 64 位长度的 16 字节 box 头</param>
+    public static byte[] HeicMotionPhoto(byte[] heic, byte[] video, bool largeSize = false) => [.. heic, .. MpvdHeader(video.Length, largeSize), .. video];
+
+    public static byte[] MpvdHeader(int videoLength, bool largeSize = false)
+    {
+        if (!largeSize)
+        {
+            var header = new byte[8];
+            BinaryPrimitives.WriteUInt32BigEndian(header, (uint)(videoLength + 8));
+            "mpvd"u8.CopyTo(header.AsSpan(4));
+            return header;
+        }
+
+        var large = new byte[16];
+        BinaryPrimitives.WriteUInt32BigEndian(large, 1);
+        "mpvd"u8.CopyTo(large.AsSpan(4));
+        BinaryPrimitives.WriteUInt64BigEndian(large.AsSpan(8), (ulong)(videoLength + 16));
+        return large;
+    }
+
+    /// <summary>ftyp box（24 字节）+ 填满剩余长度的 mdat box，顶层 box 结构完整。</summary>
     private static byte[] IsoFile(int length, string brand)
     {
         var bytes = new byte[Math.Max(length, 32)];
@@ -153,7 +177,9 @@ internal static class SyntheticMedia
         "ftyp"u8.CopyTo(bytes.AsSpan(4));
         Encoding.ASCII.GetBytes(brand).CopyTo(bytes, 8);
         Encoding.ASCII.GetBytes(brand).CopyTo(bytes, 16);
-        for (var i = 24; i < bytes.Length; i++)
+        BinaryPrimitives.WriteUInt32BigEndian(bytes.AsSpan(24), (uint)(bytes.Length - 24));
+        "mdat"u8.CopyTo(bytes.AsSpan(28));
+        for (var i = 32; i < bytes.Length; i++)
         {
             bytes[i] = (byte)(i % 199);
         }

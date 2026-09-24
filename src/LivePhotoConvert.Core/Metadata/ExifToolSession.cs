@@ -170,16 +170,21 @@ internal sealed class ExifToolSession(string executablePath, string configPath) 
         await input.FlushAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// 按块而不是按行转发输出：-b 输出的二进制值没有尾随换行，结束标记会紧跟在内容后面。
+    /// </summary>
     private static Channel<string> Pump(StreamReader reader)
     {
         var channel = Channel.CreateUnbounded<string>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = true });
         _ = Task.Run(async () =>
         {
+            var buffer = new char[16 * 1024];
             try
             {
-                while (await reader.ReadLineAsync() is { } line)
+                int read;
+                while ((read = await reader.ReadAsync(buffer)) > 0)
                 {
-                    channel.Writer.TryWrite(line);
+                    channel.Writer.TryWrite(new string(buffer, 0, read));
                 }
 
                 channel.Writer.TryComplete();
@@ -195,17 +200,56 @@ internal sealed class ExifToolSession(string executablePath, string configPath) 
     private static async Task<string> ReadUntilAsync(ChannelReader<string> reader, string marker, CancellationToken cancellationToken)
     {
         var builder = new StringBuilder();
-        await foreach (var line in reader.ReadAllAsync(cancellationToken))
+        await foreach (var chunk in reader.ReadAllAsync(cancellationToken))
         {
-            if (line == marker)
+            builder.Append(chunk);
+            if (TryTakeResponse(builder, marker, out var content))
             {
-                return builder.ToString();
+                return content;
             }
-
-            builder.AppendLine(line);
         }
 
         throw new IOException("ExifTool 进程意外退出。");
+    }
+
+    /// <summary>
+    /// 缓冲区以「标记 + 换行」结尾时返回标记之前的内容。
+    /// </summary>
+    /// <remarks>
+    /// 只看缓冲区末尾：一次只执行一条命令，标记之后不会再有输出；
+    /// 标记前不要求换行，因为 -b 输出的内容不以换行结束。
+    /// </remarks>
+    internal static bool TryTakeResponse(StringBuilder buffer, string marker, out string content)
+    {
+        content = string.Empty;
+        var end = buffer.Length;
+        if (end == 0 || buffer[end - 1] != '\n')
+        {
+            return false;
+        }
+
+        end--;
+        if (end > 0 && buffer[end - 1] == '\r')
+        {
+            end--;
+        }
+
+        var start = end - marker.Length;
+        if (start < 0)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < marker.Length; i++)
+        {
+            if (buffer[start + i] != marker[i])
+            {
+                return false;
+            }
+        }
+
+        content = buffer.ToString(0, start);
+        return true;
     }
 
     private void StopProcess()

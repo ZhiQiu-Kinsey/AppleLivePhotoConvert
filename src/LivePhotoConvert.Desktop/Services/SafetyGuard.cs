@@ -44,7 +44,7 @@ public static class SafetyGuard
     public static void CleanOrphanTempDirectories() => TempWorkspace.DeleteOrphans(TimeSpan.FromHours(24));
 
     /// <summary>
-    /// 退出时清理全部工作目录；被占用的目录跳过，由下次启动兜底。
+    /// 退出时只清理本进程创建的工作目录，其它正在运行的实例的目录不受影响；被占用的目录由下次启动兜底。
     /// </summary>
-    public static void CleanAllTempDirectories() => TempWorkspace.DeleteOrphans(TimeSpan.Zero);
+    public static void CleanOwnTempDirectories() => TempWorkspace.DeleteOwned();
 }

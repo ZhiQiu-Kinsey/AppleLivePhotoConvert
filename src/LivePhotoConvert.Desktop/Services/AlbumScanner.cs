@@ -82,9 +82,8 @@ public sealed class AlbumScanner
                         if (info is null) return ValueTask.CompletedTask;
 
                         FileInfo fi = new(file);
-                        long totalLen = fi.Exists ? fi.Length : 0;
                         long vBytes = info.Length;
-                        long pBytes = Math.Max(0, totalLen - vBytes);
+                        long pBytes = info.ImageEnd;
                         DateTime dt = fi.Exists ? fi.LastWriteTime : DateTime.Now;
 
                         string fileName = Path.GetFileNameWithoutExtension(file);
@@ -262,9 +261,8 @@ public sealed class AlbumScanner
                         if (info is null) return ValueTask.CompletedTask;
 
                         FileInfo fi = new(file);
-                        long totalLen = fi.Exists ? fi.Length : 0;
                         long vBytes = info.Length;
-                        long pBytes = Math.Max(0, totalLen - vBytes);
+                        long pBytes = info.ImageEnd;
                         DateTime dt = fi.Exists ? fi.LastWriteTime : DateTime.Now;
 
                         string fileName = Path.GetFileNameWithoutExtension(file);

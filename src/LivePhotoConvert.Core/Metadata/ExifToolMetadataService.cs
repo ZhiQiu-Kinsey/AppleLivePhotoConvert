@@ -5,6 +5,7 @@ using System.Threading.Channels;
 using LivePhotoConvert.Core.External;
 using LivePhotoConvert.Core.Io;
 using LivePhotoConvert.Core.Media;
+using LivePhotoConvert.Core.Pipeline;
 
 namespace LivePhotoConvert.Core.Metadata;
 
@@ -245,7 +246,7 @@ public sealed class ExifToolMetadataService : IMetadataService
     }
 
     private static string SidecarPath(string target, string extension) =>
-        Path.Combine(Path.GetDirectoryName(Path.GetFullPath(target))!, $"~lpc-{Guid.NewGuid():N}{extension}");
+        OutputCommitter.CreateStagingPath(Path.GetDirectoryName(Path.GetFullPath(target))!, extension);
 
     private static void AddIfPresent(List<string> arguments, string tag, string? value)
     {

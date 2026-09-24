@@ -4,11 +4,18 @@ using System.Text;
 namespace LivePhotoConvert.Core.Media;
 
 /// <summary>
-/// 动态照片内嵌视频的位置。视频之前的字节（封面及可能的增益图）即为静态照片部分。
+/// 动态照片内嵌视频的位置。
 /// </summary>
-/// <param name="Offset">视频起始偏移，同时也是照片部分的长度</param>
-/// <param name="Length">视频字节长度</param>
-public sealed record EmbeddedVideo(long Offset, long Length);
+/// <param name="Offset">视频数据（ftyp 起）的起始偏移，切出视频或播放时使用</param>
+/// <param name="Length">视频数据的字节长度</param>
+/// <param name="ImageEnd">静态照片部分（封面及可能的增益图）的结束位置，剥离视频时在此截断。
+/// 视频包在容器里时（HEIC 的 mpvd box、三星 SEF 数据块）小于 <paramref name="Offset"/>，否则与其相等。</param>
+public sealed record EmbeddedVideo(long Offset, long Length, long ImageEnd)
+{
+    public EmbeddedVideo(long offset, long length) : this(offset, length, offset)
+    {
+    }
+}
 
 /// <summary>
 /// 图片的结构信息。
@@ -20,10 +27,17 @@ public readonly record struct ImageLayout(EmbeddedVideo? Video, bool HasGainMap)
 /// <summary>
 /// 定位动态照片中内嵌的视频。每个候选位置都必须以 ftyp box 开头才会被采用，
 /// 元数据过期（照片被编辑过）或只带增益图的 Ultra HDR 照片不会被误判为动态照片。
+/// HEIC 动态照片无需 XMP，遍历顶层 box 找到内含 ftyp 的 mpvd 即可识别。
 /// </summary>
 public static class MotionPhotoLayout
 {
     private const int MaxJpegHeaderScan = 4 * 1024 * 1024;
+
+    /// <summary>顶层 box 数量上限；正常 HEIC 只有 ftyp/meta/mdat 等少数几个，防止畸形文件拖慢扫描。</summary>
+    private const int MaxTopLevelBoxes = 1024;
+
+    private const uint Ftyp = 0x66747970; // "ftyp"
+    private const uint Mpvd = 0x6D707664; // "mpvd"
 
     private static ReadOnlySpan<byte> XmpSignature => "http://ns.adobe.com/xap/1.0/\0"u8;
 
@@ -50,7 +64,7 @@ public static class MotionPhotoLayout
         ArgumentNullException.ThrowIfNull(stream);
         xmp ??= ReadJpegXmp(stream);
         var declaration = MotionPhotoXmp.Parse(xmp);
-        var video = LocateFromXmp(stream, declaration) ?? LocateSamsungTrailer(stream);
+        var video = LocateFromXmp(stream, declaration) ?? LocateMpvdBox(stream) ?? LocateSamsungTrailer(stream);
         return new ImageLayout(video, declaration?.HasGainMap ?? false);
     }
 
@@ -156,17 +170,108 @@ public static class MotionPhotoLayout
         var offset = stream.Length - extent.TrailingBytes - extent.Length;
         if (IsVideoAt(stream, offset))
         {
-            return new EmbeddedVideo(offset, extent.Length);
+            // 声明的长度不含 mpvd box 头时，偏移直接落在 ftyp 上，box 头仍属于要截掉的部分
+            return new EmbeddedVideo(offset, extent.Length, EnclosingMpvdStart(stream, offset) ?? offset);
         }
 
-        // HEIC 动态照片把视频放在 mpvd box 中，声明的长度可能包含 8 字节的 box 头
-        if (offset > 0 && IsBoxAt(stream, offset, "mpvd"u8) && IsVideoAt(stream, offset + 8))
+        // 声明的长度包含 mpvd box 头
+        if (offset > 0 && ReadBoxHeader(stream, offset) is { } box && box.Type == Mpvd && IsVideoAt(stream, offset + box.HeaderLength))
         {
-            return new EmbeddedVideo(offset + 8, extent.Length - 8);
+            return new EmbeddedVideo(offset + box.HeaderLength, extent.Length - box.HeaderLength, offset);
         }
 
         return null;
     }
+
+    /// <summary>
+    /// 遍历 ISOBMFF（HEIC）的顶层 box，取第一个内容以 ftyp 开头的 mpvd box。
+    /// </summary>
+    private static EmbeddedVideo? LocateMpvdBox(Stream stream)
+    {
+        var length = stream.Length;
+        if (ReadBoxHeader(stream, 0)?.Type != Ftyp)
+        {
+            return null;
+        }
+
+        long offset = 0;
+        for (var count = 0; count < MaxTopLevelBoxes && offset + 8 <= length; count++)
+        {
+            if (ReadBoxHeader(stream, offset) is not { } box)
+            {
+                return null;
+            }
+
+            // size 为 0 表示延续到文件尾
+            var size = box.Size == 0 ? length - offset : box.Size;
+            if (size < box.HeaderLength || size > length - offset)
+            {
+                return null;
+            }
+
+            if (box.Type == Mpvd)
+            {
+                var dataStart = offset + box.HeaderLength;
+                return IsVideoAt(stream, dataStart) ? new EmbeddedVideo(dataStart, size - box.HeaderLength, offset) : null;
+            }
+
+            offset += size;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 视频数据紧跟在 mpvd box 头之后时返回 box 起点。
+    /// </summary>
+    private static long? EnclosingMpvdStart(Stream stream, long videoOffset)
+    {
+        foreach (var headerLength in (ReadOnlySpan<int>)[8, 16])
+        {
+            var start = videoOffset - headerLength;
+            if (start > 0 && ReadBoxHeader(stream, start) is { } box && box.Type == Mpvd && box.HeaderLength == headerLength)
+            {
+                return start;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 读取 box 头：32 位长度 + 类型；长度为 1 时后跟 64 位长度。
+    /// </summary>
+    private static BoxHeader? ReadBoxHeader(Stream stream, long offset)
+    {
+        if (offset < 0 || offset + 8 > stream.Length)
+        {
+            return null;
+        }
+
+        Span<byte> header = stackalloc byte[16];
+        stream.Position = offset;
+        if (stream.ReadAtLeast(header[..8], 8, throwOnEndOfStream: false) < 8)
+        {
+            return null;
+        }
+
+        long size = BinaryPrimitives.ReadUInt32BigEndian(header);
+        var type = BinaryPrimitives.ReadUInt32BigEndian(header[4..]);
+        if (size != 1)
+        {
+            return new BoxHeader(size, type, 8);
+        }
+
+        if (stream.ReadAtLeast(header[8..], 8, throwOnEndOfStream: false) < 8)
+        {
+            return null;
+        }
+
+        var largeSize = BinaryPrimitives.ReadUInt64BigEndian(header[8..]);
+        return largeSize > long.MaxValue ? null : new BoxHeader((long)largeSize, type, 16);
+    }
+
+    private readonly record struct BoxHeader(long Size, uint Type, int HeaderLength);
 
     /// <summary>
     /// 三星相机把视频放在文件尾部的 SEF 容器中（条目名 MotionPhoto_Data），部分机型不写 XMP。
@@ -236,17 +341,11 @@ public static class MotionPhotoLayout
             var videoLength = blockSize - 8 - nameLength;
             if (videoLength > 0 && IsVideoAt(stream, videoOffset))
             {
-                return new EmbeddedVideo(videoOffset, videoLength);
+                // 截断时连同数据块头一起去掉
+                return new EmbeddedVideo(videoOffset, videoLength, blockStart);
             }
         }
 
         return null;
-    }
-
-    private static bool IsBoxAt(Stream stream, long offset, ReadOnlySpan<byte> type)
-    {
-        Span<byte> header = stackalloc byte[8];
-        stream.Position = offset;
-        return stream.ReadAtLeast(header, 8, throwOnEndOfStream: false) == 8 && header[4..].SequenceEqual(type);
     }
 }

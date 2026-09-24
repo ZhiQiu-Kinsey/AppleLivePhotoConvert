@@ -1,5 +1,6 @@
 using ImageMagick;
 using LivePhotoConvert.Core.External;
+using LivePhotoConvert.Core.Io;
 using LivePhotoConvert.Core.Media;
 using LivePhotoConvert.Core.Metadata;
 
@@ -99,6 +100,85 @@ public class ExifToolMetadataServiceTests
         await using var service = ExifToolMetadataService.Create(exiftool);
 
         await Assert.ThrowsAsync<ArgumentException>(() => service.ReadXmpAsync("a\n-delete_original!.heic", Token));
+    }
+
+    [Fact]
+    public async Task ReadXmpAsync_Heic_ReturnsBinaryXmpPromptlyAndSessionStaysUsable()
+    {
+        var exiftool = ExternalTools.RequireExifTool();
+        using var temp = new TempDirectory();
+        var heic = await CreateHeicAsync(temp, "IMG_0001.heic");
+        await RunAsync(exiftool, "-q", "-overwrite_original", "-XMP-dc:Subject=keep-me", heic);
+        var jpeg = CreateJpeg(temp, "IMG_0002.jpg");
+        await RunAsync(exiftool, "-q", "-overwrite_original", "-DateTimeOriginal=2024:05:01 14:03:03", jpeg);
+
+        // 单个会话：-b 的输出若没有正确收尾，后续命令会读到错位的内容
+        await using var service = ExifToolMetadataService.Create(exiftool, maxSessions: 1);
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        timeout.CancelAfter(TimeSpan.FromSeconds(20));
+        var xmp = await service.ReadXmpAsync(heic, timeout.Token);
+        var tags = await service.ReadAsync([jpeg, heic], cancellationToken: timeout.Token);
+        var again = await service.ReadXmpAsync(heic, timeout.Token);
+
+        Assert.NotNull(xmp);
+        Assert.Contains("keep-me", xmp);
+        Assert.DoesNotContain("{ready", xmp, StringComparison.Ordinal);
+        Assert.Equal(xmp, again);
+        Assert.Equal(new DateTime(2024, 5, 1, 14, 3, 3), tags[jpeg].CaptureTime?.LocalTime);
+    }
+
+    [Fact]
+    public async Task ReadXmpAsync_HeicWithoutXmp_ReturnsNullPromptly()
+    {
+        var exiftool = ExternalTools.RequireExifTool();
+        using var temp = new TempDirectory();
+        var heic = await CreateHeicAsync(temp, "plain.heic");
+
+        await using var service = ExifToolMetadataService.Create(exiftool, maxSessions: 1);
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        timeout.CancelAfter(TimeSpan.FromSeconds(20));
+
+        Assert.Null(await service.ReadXmpAsync(heic, timeout.Token));
+    }
+
+    [Fact]
+    public async Task RemoveMotionPhotoAsync_HeicTruncatedAtMpvdBox_Succeeds()
+    {
+        var exiftool = ExternalTools.RequireExifTool();
+        var ffmpeg = ExternalTools.RequireFfmpeg();
+        using var temp = new TempDirectory();
+        var heic = await File.ReadAllBytesAsync(await CreateHeicAsync(temp, "cover.heic"), Token);
+        var video = temp.Combine("clip.mp4");
+        await RunAsync(ffmpeg, "-nostdin", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=size=64x48:rate=30", "-t", "1", "-pix_fmt", "yuv420p", video);
+        var source = temp.CreateFile("MVIMG_0001.heic", SyntheticMedia.HeicMotionPhoto(heic, await File.ReadAllBytesAsync(video, Token)));
+
+        var located = MotionPhotoLayout.Locate(source);
+        Assert.NotNull(located);
+        var clean = temp.Combine("clean.heic");
+        await BinaryFile.CopySegmentAsync(source, clean, 0, located.ImageEnd, Token);
+
+        await using var service = ExifToolMetadataService.Create(exiftool);
+        await service.RemoveMotionPhotoAsync(clean, Token);
+
+        // 多截 8 字节 mpvd 头时 ExifTool 会报 Truncated 'mpvd' data
+        var check = await RunAsync(exiftool, "-s3", "-validate", clean);
+        Assert.Equal("OK", check.StandardOutput.Trim());
+    }
+
+    /// <summary>用 heif-enc 生成真实 HEIC（顶层 box 为 ftyp/meta/mdat）。</summary>
+    private static async Task<string> CreateHeicAsync(TempDirectory temp, string name)
+    {
+        var heifEnc = ExternalTools.RequireHeifEnc();
+        var png = temp.CreateFile(Path.ChangeExtension(name, ".png"));
+        using (var image = new MagickImage(MagickColors.SteelBlue, 64, 48))
+        {
+            image.Write(png, MagickFormat.Png);
+        }
+
+        var heic = temp.Combine(name);
+        await RunAsync(heifEnc, "-q", "50", png, "-o", heic);
+        File.Delete(png);
+        return heic;
     }
 
     private static string CreateJpeg(TempDirectory temp, string name)

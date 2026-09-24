@@ -168,13 +168,12 @@ public sealed class MotionPhotoMerger(IMetadataService metadata, IImageConverter
         try
         {
             var (photoLength, _) = await BinaryFile.ConcatAsync(cover, video, staging, cancellationToken);
-            if (MotionPhotoLayout.Locate(staging) is not { } located || located.Offset != photoLength || located.Length != videoLength)
+            if (MotionPhotoLayout.Locate(staging) is not { } located || located.ImageEnd != photoLength || located.Offset != photoLength || located.Length != videoLength)
             {
                 throw new InvalidDataException("合成结果校验失败：无法在输出文件中按声明的位置定位到内嵌视频。");
             }
 
-            FileTimestamp.Earliest(pair.PhotoPath, pair.VideoPath).ApplyTo(staging);
-            var final = committer.Commit(staging, directory, $"MVIMG_{baseName}.jpg");
+            var final = committer.Commit(staging, directory, $"MVIMG_{baseName}.jpg", FileTimestamp.Earliest(pair.PhotoPath, pair.VideoPath));
             return ItemOutcome.Succeeded(pair.PhotoPath, final) with { CleanupError = disposition.Apply(pair.PhotoPath, pair.VideoPath) };
         }
         catch

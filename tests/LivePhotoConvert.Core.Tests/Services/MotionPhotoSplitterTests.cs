@@ -163,4 +163,45 @@ public class MotionPhotoSplitterTests
 
         Assert.Equal(video, await File.ReadAllBytesAsync(temp.Combine("out", "20240501_140303.mp4"), Token));
     }
+
+    [Fact]
+    public async Task OutputIntoSourceDirectoryWithOverwrite_SourceDifferingOnlyInCase_IsNeverOverwritten()
+    {
+        using var temp = new TempDirectory();
+        var source = temp.CreateFile("MVIMG_0001.JPG", SyntheticMedia.MotionPhoto());
+        var original = await File.ReadAllBytesAsync(source, Token);
+
+        var report = await SplitAsync(temp, [source], output: temp.Root, conflict: ConflictPolicy.Overwrite);
+
+        Assert.Equal([temp.Combine("MVIMG_0001_1.jpg"), temp.Combine("MVIMG_0001_1.mp4")], Assert.Single(report.Items).Outputs);
+        Assert.Equal(original, await File.ReadAllBytesAsync(source, Token));
+    }
+
+    [Fact]
+    public async Task Extract_HeicMotionPhotoWithoutXmp_CoverIsExactlyTheHeic()
+    {
+        using var temp = new TempDirectory();
+        var heic = SyntheticMedia.Heic(3000);
+        var video = SyntheticMedia.Mp4(4000);
+        var source = temp.CreateFile("MVIMG_0001.heic", SyntheticMedia.HeicMotionPhoto(heic, video));
+
+        var report = await SplitAsync(temp, [source]);
+
+        Assert.Equal(1, report.Succeeded);
+        Assert.Equal(heic, await File.ReadAllBytesAsync(temp.Combine("out", "MVIMG_0001.heic"), Token));
+        Assert.Equal(video, await File.ReadAllBytesAsync(temp.Combine("out", "MVIMG_0001.mp4"), Token));
+    }
+
+    [Fact]
+    public async Task Extract_OutputsCarrySourceTimestamp()
+    {
+        using var temp = new TempDirectory();
+        var source = temp.CreateFile("MVIMG_0001.jpg", SyntheticMedia.MotionPhoto());
+        var old = new DateTime(2020, 5, 1, 8, 0, 0, DateTimeKind.Utc);
+        File.SetLastWriteTimeUtc(source, old);
+
+        var report = await SplitAsync(temp, [source]);
+
+        Assert.All(Assert.Single(report.Items).Outputs, output => Assert.Equal(old, File.GetLastWriteTimeUtc(output)));
+    }
 }
