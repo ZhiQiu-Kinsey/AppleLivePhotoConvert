@@ -161,6 +161,8 @@ global.json                         # 固定 SDK 10.0.400（避免误用 11 prev
 
 - 等高排版由纯函数 `JustifiedLayoutEngine.Compute` 完成：完整行铺满，行高不超过目标 × 1.3，末行取 min(目标, 自然高)；`GalleryLayoutViewModel` 负责排序分组、窗口缩放 120ms 防抖与行对象复用。禁止退化为固定列数或拉伸图片。
 - 卡片比例取扫描得到的转正后宽高（`LibraryItem.Header`），缩略图到达不改变比例、不触发重排。几何常量只来自 `GalleryMetrics`（目标行高 180/250/320、系数 1.3、信息栏、边距、组标题 40），排版、滚动估算、分档与 XAML 共用一份。重排前后按锚点（视口顶部条目的键）恢复滚动位置。
+- 卡片控件复用：画廊列表 `GalleryList` 以 `GalleryRowPresenter` 作等高行的容器，`PhotoCardControl` 的逻辑父级固定为列表（卡片池，空闲上限 `MaxIdleCards`），行回收时卡片只进出可视树、换数据上下文。控件重新挂上逻辑树要重新套用全部样式（每张数毫秒），不要改回“行模板 + 内层 ItemsControl”。卡片内不需要绘制的容器用 `Panel` / `Decorator`，全局 `Border.*` 选择器会在每个 Border 挂上时逐条求值。
+- 配对状态徽章由 `CardTitleRow` + `CardStatusContent` 按信息栏实测宽度取舍文字或图标，文件名至少保留 96px（更短时保留自然宽度）；`IsCompact` 只管实况徽章文字、时长角标与设备信息。
 - 选择由 `GallerySelection` 推导：单击只选这一张（再点取消），Ctrl 切换，Shift 按显示顺序范围选择，勾选角标按复选框切换；一次操作只触发一次 `SelectionChanged`。未选中时动作按全部就绪卡片统计。
 
 **缩略图分档与画质**

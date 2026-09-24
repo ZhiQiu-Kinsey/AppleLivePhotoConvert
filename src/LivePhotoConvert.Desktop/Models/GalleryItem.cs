@@ -167,7 +167,7 @@ public sealed partial class PhotoCardItemViewModel : ObservableObject, IGalleryD
     [NotifyPropertyChangedFor(nameof(IsCompact), nameof(IsTiny))]
     private double _displayWidth = 260;
 
-    /// <summary>卡片较窄：状态徽章只显示图标、隐藏设备信息，让文件名保持可读。</summary>
+    /// <summary>卡片较窄：实况徽章只显示图标，隐藏时长角标与设备信息。</summary>
     public bool IsCompact => DisplayWidth < GalleryMetrics.CompactCardWidth;
 
     /// <summary>卡片很窄：再隐藏分辨率。</summary>
