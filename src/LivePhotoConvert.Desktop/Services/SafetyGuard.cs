@@ -18,7 +18,10 @@ public static class SafetyGuard
         var required = (long)(totalSourceBytes * 1.2) + SpaceReserveBytes;
         try
         {
-            var root = Path.GetPathRoot(Path.GetFullPath(targetDirectory));
+            var full = Path.GetFullPath(targetDirectory);
+            var root = OperatingSystem.IsWindows()
+                ? Path.GetPathRoot(full)
+                : DeepestMountPoint(full, DriveInfo.GetDrives().Select(d => d.Name));
             if (string.IsNullOrEmpty(root))
             {
                 return (true, required, required);
@@ -32,6 +35,14 @@ public static class SafetyGuard
             return (true, required, required);
         }
     }
+
+    /// <summary>
+    /// Unix 的路径根总是 "/"，其它卷挂载在子目录上：取包含目标路径的最深挂载点，才能读到目标所在卷的剩余空间。
+    /// </summary>
+    internal static string? DeepestMountPoint(string fullPath, IEnumerable<string> mountPoints) =>
+        mountPoints
+            .Where(mount => mount == "/" || fullPath == mount.TrimEnd('/') || fullPath.StartsWith(mount.TrimEnd('/') + "/", StringComparison.Ordinal))
+            .MaxBy(mount => mount.TrimEnd('/').Length);
 
     /// <summary>
     /// 永久删除原片前要求用户输入大写 DELETE。

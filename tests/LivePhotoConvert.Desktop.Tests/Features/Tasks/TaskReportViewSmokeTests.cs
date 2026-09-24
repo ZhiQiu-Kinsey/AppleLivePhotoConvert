@@ -87,6 +87,33 @@ public class TaskReportViewSmokeTests
     private static List<string?> RealizedFileNames(ShellSession session) =>
         [.. session.Descendants<TextBlock>().Select(t => t.Text).Where(t => t?.StartsWith("item-", StringComparison.Ordinal) == true)];
 
+    /// <summary>取消请求发出后暂停与取消按钮都不可用，直到任务真正结束。</summary>
+    [AvaloniaFact]
+    public async Task RunningTask_DisablesPauseAndCancelWhileCancelling()
+    {
+        var release = new TaskCompletionSource<BatchReport>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var runner = new ScriptedRunner((_, _, _) => release.Task);
+        using var session = new ShellSession("en", configure: services => services.AddSingleton<IConversionRunner>(runner));
+        var center = session.Host.Get<TaskCenter>();
+        var page = session.Host.Get<TasksViewModel>();
+
+        var run = center.RunAsync(Jobs.Files(ConversionAction.Extract, "/out", "/in/a.jpg"));
+        session.Navigate(AppPage.Tasks);
+        Button ButtonFor(object command) => session.Descendants<Button>().Single(b => ReferenceEquals(b.Command, command) && b.IsEffectivelyVisible);
+        Assert.True(ButtonFor(page.TogglePauseCommand).IsEffectivelyEnabled);
+        Assert.True(ButtonFor(page.CancelCommand).IsEffectivelyEnabled);
+
+        session.Click(ButtonFor(page.CancelCommand));
+
+        Assert.True(center.Current!.IsCancelling);
+        Assert.False(ButtonFor(page.TogglePauseCommand).IsEffectivelyEnabled);
+        Assert.False(ButtonFor(page.CancelCommand).IsEffectivelyEnabled);
+
+        release.SetResult(new BatchReport([], TimeSpan.Zero, Canceled: true));
+        await run;
+        session.Log.AssertNoBindingErrors();
+    }
+
     /// <summary>取消的任务：处理总量显示计划总数，副标题分列已处理与未处理。</summary>
     [AvaloniaTheory]
     [InlineData("zh", ThemeService.Light)]

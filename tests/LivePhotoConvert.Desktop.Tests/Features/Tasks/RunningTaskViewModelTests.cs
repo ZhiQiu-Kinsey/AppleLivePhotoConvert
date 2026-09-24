@@ -128,6 +128,18 @@ public class RunningTaskViewModelTests
         Assert.Equal(0, vm.Percent);
     }
 
+    [Fact]
+    public void Report_IgnoresOlderCountArrivingAfterNewerOne()
+    {
+        var vm = Create();
+
+        vm.Report(new BatchProgress(10, 10, "j.jpg"));
+        vm.Report(new BatchProgress(9, 10, "i.jpg"));
+
+        Assert.Equal(10, vm.Completed);
+        Assert.Equal("j.jpg", vm.CurrentFile);
+    }
+
     [Theory]
     [InlineData(0, "00:00")]
     [InlineData(0.2, "00:01")]

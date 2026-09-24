@@ -110,6 +110,12 @@ public sealed partial class RunningTaskViewModel : ViewModelBase
 
     public void Report(BatchProgress value)
     {
+        // 并行的工作线程各自汇报，较早的计数可能晚于较新的计数到达界面线程
+        if (value.Total == Total && value.Completed < Completed)
+        {
+            return;
+        }
+
         Total = Math.Max(0, value.Total);
         Completed = Math.Clamp(value.Completed, 0, Total);
         _preresolved = Math.Clamp(value.Preresolved, 0, Completed);

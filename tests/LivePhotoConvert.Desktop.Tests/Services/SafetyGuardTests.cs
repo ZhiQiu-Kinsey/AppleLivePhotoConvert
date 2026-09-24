@@ -50,6 +50,19 @@ public class SafetyGuardTests
         Assert.True(result.HasEnoughSpace);
     }
 
+    [Theory]
+    [InlineData("/mnt/photos/out", "/mnt/photos")]
+    [InlineData("/mnt/photos", "/mnt/photos")]
+    [InlineData("/mnt/photos-backup/out", "/")]
+    [InlineData("/home/user/out", "/")]
+    [InlineData("/mnt/photos/nested/out", "/mnt/photos/nested/")]
+    public void DeepestMountPoint_PicksMountContainingPath(string path, string expected)
+    {
+        string[] mounts = ["/", "/proc", "/mnt/photos", "/mnt/photos/nested/"];
+
+        Assert.Equal(expected, SafetyGuard.DeepestMountPoint(path, mounts));
+    }
+
     [Fact]
     public void ValidateDeletePassword_ExactUppercase_Accepted()
     {

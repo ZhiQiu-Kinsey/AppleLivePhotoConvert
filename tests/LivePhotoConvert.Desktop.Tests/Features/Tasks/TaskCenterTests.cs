@@ -156,13 +156,21 @@ public class TaskCenterTests
         var center = fixture.Center;
 
         var run = center.RunAsync(ExtractJob());
+        var running = center.Current!;
         center.TogglePause();
-        Assert.True(center.Current!.IsPaused);
+        Assert.True(running.IsPaused);
         allowStart.SetResult();
 
-        await Task.Delay(300, TestContext.Current.CancellationToken);
+        // 第一次汇报已送达界面，工作线程随即阻塞在暂停闸门上，不会继续处理
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (running.Completed == 0)
+        {
+            Assert.True(DateTime.UtcNow < deadline, "等待第一次进度超时");
+            await Task.Delay(10, TestContext.Current.CancellationToken);
+        }
+
+        await Task.Delay(100, TestContext.Current.CancellationToken);
         Assert.Equal(0, Volatile.Read(ref processed));
-        var running = center.Current!;
         Assert.Equal(1, running.Completed);
         Assert.False(run.IsCompleted);
 
