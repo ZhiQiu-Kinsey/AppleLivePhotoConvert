@@ -10,6 +10,7 @@ using LivePhotoConvert.Desktop.Tests.Harness;
 namespace LivePhotoConvert.Desktop.Tests.Features.Library.Thumbnails;
 
 /// <summary>真实外壳窗口 + 真实缩略图引擎：滚动全程检查驻留预算、占位回退与队列长度。</summary>
+[Collection(ProcessStateCollection.Name)]
 public sealed class GalleryScrollTests : IDisposable
 {
     private const int PairCount = 180;

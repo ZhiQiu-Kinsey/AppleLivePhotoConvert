@@ -1,3 +1,4 @@
+using LivePhotoConvert.Desktop.Tests.Harness;
 using System.Collections.ObjectModel;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
@@ -6,6 +7,7 @@ using LivePhotoConvert.Desktop.Models;
 
 namespace LivePhotoConvert.Desktop.Tests.Features.Library.Thumbnails;
 
+[Collection(ProcessStateCollection.Name)]
 public class GalleryThumbnailBinderTests
 {
     [AvaloniaFact]

@@ -1,3 +1,4 @@
+using LivePhotoConvert.Desktop.Tests.Harness;
 using System.Collections.Concurrent;
 using System.Text;
 using Avalonia;
@@ -16,6 +17,7 @@ using LivePhotoConvert.Desktop.Models;
 
 namespace LivePhotoConvert.Desktop.Tests.Features.Library.Thumbnails;
 
+[Collection(ProcessStateCollection.Name)]
 public class ThumbnailPipelineTests
 {
     private static readonly DateTime Modified = new(2026, 9, 1, 8, 0, 0, DateTimeKind.Utc);
