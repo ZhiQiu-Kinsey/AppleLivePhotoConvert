@@ -517,4 +517,49 @@
   <sys:String x:Key="OutcomeNoteHdrConversionFailed">HDR 转换失败，已输出 SDR</sys:String>
   <sys:String x:Key="OutcomeNoteKeptOriginalFormat">保留原格式（HEIC 更大）</sys:String>
 
+  <!-- 自动更新 -->
+  <sys:String x:Key="SettingsUpdatesTitle">更新</sys:String>
+  <sys:String x:Key="UpdateCurrentVersionLabel">当前版本</sys:String>
+  <sys:String x:Key="UpdateNewVersionLabel">新版本</sys:String>
+  <sys:String x:Key="UpdateCheckBtn">检查更新</sys:String>
+  <sys:String x:Key="UpdateShowBtn">查看更新</sys:String>
+  <sys:String x:Key="UpdateOpenDownloadPageBtn">打开下载页</sys:String>
+  <sys:String x:Key="UpdateCancelPendingRestartBtn">改为退出时安装</sys:String>
+  <sys:String x:Key="UpdateAutoCheckTitle">自动检查更新</sys:String>
+  <sys:String x:Key="UpdateAutoCheckDesc">启动后在后台检查新版本，每天最多一次；发现新版本时提醒。</sys:String>
+  <sys:String x:Key="UpdateUnsupportedDesc">当前运行方式（解压版或源码运行）不支持自动更新，请从下载页获取安装版或便携版。</sys:String>
+  <sys:String x:Key="UpdateChecking">正在检查更新…</sys:String>
+  <sys:String x:Key="UpdateWaitingForTasks">更新已下载，将在当前任务完成后自动重启安装。</sys:String>
+  <sys:String x:Key="UpdateInstallOnExitScheduled">更新已下载，将在退出程序时安装，下次启动即为新版本。</sys:String>
+  <sys:String x:Key="UpdateNeverChecked">尚未检查更新</sys:String>
+  <sys:String x:Key="UpdateLastCheckFormat">上次检查：{0:yyyy-MM-dd HH:mm}，{1}</sys:String>
+  <sys:String x:Key="UpdateResultUpToDate">已是最新版本</sys:String>
+  <sys:String x:Key="UpdateResultAvailableFormat">发现新版本 {0}</sys:String>
+  <sys:String x:Key="UpdateResultFailedFormat">检查失败：{0}</sys:String>
+  <sys:String x:Key="UpdateAvailableTipFormat">有新版本 {0}</sys:String>
+  <sys:String x:Key="UpdateFailureNetwork">无法连接更新服务器，请检查网络，或在依赖引擎页更换 GitHub 加速镜像</sys:String>
+  <sys:String x:Key="UpdateFailureRateLimited">GitHub 请求过于频繁，请稍后再试</sys:String>
+  <sys:String x:Key="UpdateFailureIntegrity">更新文件校验未通过，已丢弃</sys:String>
+  <sys:String x:Key="UpdateFailureDisk">磁盘空间不足或无法写入更新文件</sys:String>
+  <sys:String x:Key="UpdateFailureNotFound">发布中没有找到可用的更新文件</sys:String>
+  <sys:String x:Key="UpdateFailureUnknown">出现未知错误，详情见错误日志</sys:String>
+  <sys:String x:Key="UpdateDialogTitleFormat">发现新版本 {0}</sys:String>
+  <sys:String x:Key="UpdateSizeFullFormat">下载大小 {0}</sys:String>
+  <sys:String x:Key="UpdateSizeDeltaFormat">增量更新，需下载 {0}</sys:String>
+  <sys:String x:Key="UpdateNotesTitle">更新说明</sys:String>
+  <sys:String x:Key="UpdateNoNotes">此版本没有附带更新说明。</sys:String>
+  <sys:String x:Key="UpdateDownloadingFormat">正在下载… {0}%</sys:String>
+  <sys:String x:Key="UpdateReadyDesc">更新已下载并校验完成。重启即可完成安装，设置会先自动保存。</sys:String>
+  <sys:String x:Key="UpdateReadyTasksRunningDesc">有任务正在运行：可以等任务完成后自动重启更新，也可以取消任务立即更新。</sys:String>
+  <sys:String x:Key="UpdateSkipVersionBtn">跳过此版本</sys:String>
+  <sys:String x:Key="UpdateLaterBtn">稍后提醒</sys:String>
+  <sys:String x:Key="UpdateNowBtn">立即更新</sys:String>
+  <sys:String x:Key="UpdateCancelDownloadBtn">取消下载</sys:String>
+  <sys:String x:Key="UpdateInstallOnExitBtn">下次启动时安装</sys:String>
+  <sys:String x:Key="UpdateRestartNowBtn">重启并更新</sys:String>
+  <sys:String x:Key="UpdateRestartAfterTasksBtn">任务完成后更新</sys:String>
+  <sys:String x:Key="UpdateCancelTasksAndRestartBtn">取消任务并立即更新</sys:String>
+  <sys:String x:Key="AboutUpdateAvailableBadge">有新版本</sys:String>
+  <sys:String x:Key="CreditVelopackDesc">安装程序、增量更新与自动更新框架</sys:String>
+
 </ResourceDictionary>

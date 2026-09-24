@@ -334,7 +334,9 @@
                  Button.engine-install-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter,
                  Button.engine-install-btn:pressed /template/ ContentPresenter#PART_ContentPresenter,
                  Button.engine-secondary-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter,
-                 Button.engine-secondary-btn:pressed /template/ ContentPresenter#PART_ContentPresenter">
+                 Button.engine-secondary-btn:pressed /template/ ContentPresenter#PART_ContentPresenter,
+                 Button.update-badge:pointerover /template/ ContentPresenter#PART_ContentPresenter,
+                 Button.update-badge:pressed /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="{Binding $parent[Button].Background}" />
     <Setter Property="BorderBrush" Value="{Binding $parent[Button].BorderBrush}" />
     <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}" />
@@ -812,6 +814,65 @@
     <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
   </Style>
 
+  <!-- 更新弹窗：版本对比与更新说明 -->
+  <Style Selector="Border.update-versions">
+    <Setter Property="Background" Value="{DynamicResource CanvasBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Padding" Value="14,10" />
+  </Style>
+
+  <Style Selector="Border.release-notes">
+    <Setter Property="Background" Value="{DynamicResource CanvasBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Padding" Value="14,12" />
+  </Style>
+
+  <Style Selector="TextBlock.release-note-heading">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+    <Setter Property="Margin" Value="0,4,0,0" />
+  </Style>
+
+  <Style Selector="TextBlock.release-note-text">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="LineHeight" Value="18" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+
+  <Style Selector="Border.release-note-bullet">
+    <Setter Property="Width" Value="4" />
+    <Setter Property="Height" Value="4" />
+    <Setter Property="CornerRadius" Value="2" />
+    <Setter Property="Background" Value="{DynamicResource TextTertiaryBrush}" />
+    <Setter Property="VerticalAlignment" Value="Top" />
+    <Setter Property="Margin" Value="2,7,8,0" />
+  </Style>
+
+  <!-- 关于页版本号旁的"有新版本"：点击打开更新弹窗 -->
+  <Style Selector="Button.update-badge">
+    <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Padding" Value="8,3" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+
+  <Style Selector="Button.update-badge:pointerover">
+    <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource OnAccentBrush}" />
+  </Style>
+
   <!-- 任务页：运行卡片、状态胶囊与历史列表 -->
   <Style Selector="Border.task-card">
     <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
@@ -969,6 +1030,11 @@
 
   <Style Selector="Border.status-dot.warn">
     <Setter Property="Background" Value="{DynamicResource WarningBrush}" />
+  </Style>
+
+  <!-- 侧栏"设置"上的新版本提示 -->
+  <Style Selector="Border.status-dot.update">
+    <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
   </Style>
 
   <Style Selector="Border.status-dot.bad">

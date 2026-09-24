@@ -517,4 +517,49 @@
   <sys:String x:Key="OutcomeNoteHdrConversionFailed">HDR conversion failed · SDR</sys:String>
   <sys:String x:Key="OutcomeNoteKeptOriginalFormat">Kept original format (HEIC was larger)</sys:String>
 
+  <!-- 自动更新 -->
+  <sys:String x:Key="SettingsUpdatesTitle">Updates</sys:String>
+  <sys:String x:Key="UpdateCurrentVersionLabel">Current version</sys:String>
+  <sys:String x:Key="UpdateNewVersionLabel">New version</sys:String>
+  <sys:String x:Key="UpdateCheckBtn">Check for updates</sys:String>
+  <sys:String x:Key="UpdateShowBtn">View update</sys:String>
+  <sys:String x:Key="UpdateOpenDownloadPageBtn">Open download page</sys:String>
+  <sys:String x:Key="UpdateCancelPendingRestartBtn">Install on exit instead</sys:String>
+  <sys:String x:Key="UpdateAutoCheckTitle">Check for updates automatically</sys:String>
+  <sys:String x:Key="UpdateAutoCheckDesc">Checks in the background after launch, at most once a day, and tells you when a new version is out.</sys:String>
+  <sys:String x:Key="UpdateUnsupportedDesc">This copy (extracted archive or source build) can't update itself. Get the installer or the portable edition from the download page.</sys:String>
+  <sys:String x:Key="UpdateChecking">Checking for updates…</sys:String>
+  <sys:String x:Key="UpdateWaitingForTasks">The update is downloaded. The app will restart to install it when the running task finishes.</sys:String>
+  <sys:String x:Key="UpdateInstallOnExitScheduled">The update is downloaded and will be installed when you exit. The next launch runs the new version.</sys:String>
+  <sys:String x:Key="UpdateNeverChecked">Not checked yet</sys:String>
+  <sys:String x:Key="UpdateLastCheckFormat">Last checked {0:yyyy-MM-dd HH:mm}. {1}</sys:String>
+  <sys:String x:Key="UpdateResultUpToDate">You're up to date</sys:String>
+  <sys:String x:Key="UpdateResultAvailableFormat">Version {0} is available</sys:String>
+  <sys:String x:Key="UpdateResultFailedFormat">Check failed. {0}</sys:String>
+  <sys:String x:Key="UpdateAvailableTipFormat">Version {0} is available</sys:String>
+  <sys:String x:Key="UpdateFailureNetwork">Couldn't reach the update server. Check your connection, or pick another GitHub mirror on the Engines page.</sys:String>
+  <sys:String x:Key="UpdateFailureRateLimited">GitHub is rate limiting requests. Try again later.</sys:String>
+  <sys:String x:Key="UpdateFailureIntegrity">The downloaded update failed verification and was discarded.</sys:String>
+  <sys:String x:Key="UpdateFailureDisk">Not enough disk space, or the update couldn't be saved.</sys:String>
+  <sys:String x:Key="UpdateFailureNotFound">No update package was found in the release.</sys:String>
+  <sys:String x:Key="UpdateFailureUnknown">An unexpected error occurred. See the error log for details.</sys:String>
+  <sys:String x:Key="UpdateDialogTitleFormat">Version {0} is available</sys:String>
+  <sys:String x:Key="UpdateSizeFullFormat">Download size {0}</sys:String>
+  <sys:String x:Key="UpdateSizeDeltaFormat">Incremental update, {0} to download</sys:String>
+  <sys:String x:Key="UpdateNotesTitle">What's new</sys:String>
+  <sys:String x:Key="UpdateNoNotes">This release has no notes.</sys:String>
+  <sys:String x:Key="UpdateDownloadingFormat">Downloading… {0}%</sys:String>
+  <sys:String x:Key="UpdateReadyDesc">The update is downloaded and verified. Restart to finish installing; your settings are saved first.</sys:String>
+  <sys:String x:Key="UpdateReadyTasksRunningDesc">A task is still running. Update automatically when it finishes, or cancel it and update now.</sys:String>
+  <sys:String x:Key="UpdateSkipVersionBtn">Skip this version</sys:String>
+  <sys:String x:Key="UpdateLaterBtn">Remind me later</sys:String>
+  <sys:String x:Key="UpdateNowBtn">Update now</sys:String>
+  <sys:String x:Key="UpdateCancelDownloadBtn">Cancel download</sys:String>
+  <sys:String x:Key="UpdateInstallOnExitBtn">Install on next launch</sys:String>
+  <sys:String x:Key="UpdateRestartNowBtn">Restart and update</sys:String>
+  <sys:String x:Key="UpdateRestartAfterTasksBtn">Update when tasks finish</sys:String>
+  <sys:String x:Key="UpdateCancelTasksAndRestartBtn">Cancel tasks and update now</sys:String>
+  <sys:String x:Key="AboutUpdateAvailableBadge">Update available</sys:String>
+  <sys:String x:Key="CreditVelopackDesc">Installer, delta updates and auto-update framework</sys:String>
+
 </ResourceDictionary>

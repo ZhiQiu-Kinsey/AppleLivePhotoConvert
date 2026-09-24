@@ -1,0 +1,141 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dialogs="using:LivePhotoConvert.Desktop.Features.Dialogs"
+             xmlns:updates="using:LivePhotoConvert.Desktop.Features.Updates"
+             xmlns:ic="using:FluentIcons.Avalonia"
+             x:Class="LivePhotoConvert.Desktop.Features.Dialogs.UpdateDialog"
+             x:CompileBindings="True"
+             x:DataType="dialogs:UpdateDialogViewModel">
+
+  <UserControl.Resources>
+    <!-- 更新说明的一段：标题 / 列表项 / 正文 -->
+    <DataTemplate x:Key="ReleaseNoteTemplate" x:DataType="updates:ReleaseNoteBlock">
+      <Panel Margin="{CompiledBinding Indent}">
+        <TextBlock Classes="release-note-heading" Text="{CompiledBinding Text}" IsVisible="{CompiledBinding IsHeading}" />
+        <Grid ColumnDefinitions="Auto,*" IsVisible="{CompiledBinding IsBullet}">
+          <Border Grid.Column="0" Classes="release-note-bullet" />
+          <TextBlock Grid.Column="1" Classes="release-note-text" Text="{CompiledBinding Text}" />
+        </Grid>
+        <TextBlock Classes="release-note-text" Text="{CompiledBinding Text}" IsVisible="{CompiledBinding IsParagraph}" />
+      </Panel>
+    </DataTemplate>
+  </UserControl.Resources>
+
+  <Border Classes="dialog-card" Width="540" MaxHeight="640">
+    <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" RowSpacing="14">
+
+      <!-- 标题 -->
+      <Grid Grid.Row="0" ColumnDefinitions="Auto,*">
+        <Border Grid.Column="0" Classes="dialog-icon-badge info">
+          <ic:SymbolIcon Symbol="ArrowCircleDown" FontSize="20" Foreground="{DynamicResource AccentBrush}" />
+        </Border>
+        <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center" Spacing="2">
+          <TextBlock x:Name="UpdateDialogTitle" Text="{CompiledBinding Title}" FontWeight="Black" FontSize="14"
+                     Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap" />
+          <TextBlock Text="{CompiledBinding SizeText}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" />
+        </StackPanel>
+      </Grid>
+
+      <!-- 版本对比 -->
+      <Border Grid.Row="1" Classes="update-versions">
+        <Grid ColumnDefinitions="*,Auto,*">
+          <StackPanel Grid.Column="0" Spacing="2">
+            <TextBlock Text="{DynamicResource UpdateCurrentVersionLabel}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" />
+            <TextBlock Text="{CompiledBinding CurrentVersion}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+          </StackPanel>
+          <ic:SymbolIcon Grid.Column="1" Symbol="ArrowRight" FontSize="16" Foreground="{DynamicResource TextTertiaryBrush}"
+                         VerticalAlignment="Center" Margin="12,0" />
+          <StackPanel Grid.Column="2" Spacing="2">
+            <TextBlock Text="{DynamicResource UpdateNewVersionLabel}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" />
+            <TextBlock Text="{CompiledBinding NewVersion}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource AccentTextBrush}" />
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- 更新说明：可滚动 -->
+      <StackPanel Grid.Row="2" Spacing="6" MinHeight="0">
+        <TextBlock Text="{DynamicResource UpdateNotesTitle}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+        <Border Classes="release-notes">
+          <ScrollViewer x:Name="ReleaseNotesScroll" MaxHeight="260" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <Panel>
+              <ItemsControl ItemsSource="{CompiledBinding Notes}" ItemTemplate="{StaticResource ReleaseNoteTemplate}" IsVisible="{CompiledBinding HasNotes}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Spacing="6" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+              </ItemsControl>
+              <TextBlock Classes="release-note-text" Text="{DynamicResource UpdateNoNotes}" IsVisible="{CompiledBinding !HasNotes}" />
+            </Panel>
+          </ScrollViewer>
+        </Border>
+      </StackPanel>
+
+      <!-- 进度与结果 -->
+      <Panel Grid.Row="3">
+        <StackPanel Spacing="6" IsVisible="{CompiledBinding IsDownloading}">
+          <ProgressBar x:Name="UpdateProgress" Minimum="0" Maximum="100" Value="{CompiledBinding Progress}" Height="6" MinHeight="6" />
+          <TextBlock Text="{CompiledBinding ProgressText}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" />
+        </StackPanel>
+        <Grid Classes="tool-hint warning" ColumnDefinitions="Auto,*" IsVisible="{CompiledBinding IsFailed}">
+          <ic:SymbolIcon Grid.Column="0" Symbol="Warning" FontSize="14" VerticalAlignment="Top" Margin="0,1,0,0" />
+          <TextBlock Grid.Column="1" Text="{CompiledBinding ErrorText}" TextWrapping="Wrap" />
+        </Grid>
+        <Grid Classes="tool-hint accent" ColumnDefinitions="Auto,*" IsVisible="{CompiledBinding IsReadyWithoutTasks}">
+          <ic:SymbolIcon Grid.Column="0" Symbol="CheckmarkCircle" FontSize="14" VerticalAlignment="Top" Margin="0,1,0,0" />
+          <TextBlock Grid.Column="1" Text="{DynamicResource UpdateReadyDesc}" TextWrapping="Wrap" />
+        </Grid>
+        <Grid Classes="tool-hint warning" ColumnDefinitions="Auto,*" IsVisible="{CompiledBinding IsReadyWithTasks}">
+          <ic:SymbolIcon Grid.Column="0" Symbol="Warning" FontSize="14" VerticalAlignment="Top" Margin="0,1,0,0" />
+          <TextBlock Grid.Column="1" Text="{DynamicResource UpdateReadyTasksRunningDesc}" TextWrapping="Wrap" />
+        </Grid>
+      </Panel>
+
+      <!-- 按钮 -->
+      <Panel Grid.Row="4">
+        <Grid ColumnDefinitions="*,Auto" IsVisible="{CompiledBinding ShowChoiceButtons}">
+          <Button Grid.Column="0" x:Name="SkipVersionButton" Classes="nav-btn" HorizontalAlignment="Left" Command="{CompiledBinding SkipCommand}">
+            <TextBlock Text="{DynamicResource UpdateSkipVersionBtn}" FontSize="12" FontWeight="SemiBold" />
+          </Button>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+            <Button x:Name="LaterButton" Classes="engine-secondary-btn" Command="{CompiledBinding LaterCommand}">
+              <TextBlock Text="{DynamicResource UpdateLaterBtn}" FontSize="12" FontWeight="SemiBold" />
+            </Button>
+            <Button x:Name="UpdateNowButton" Classes="primary-btn" Command="{CompiledBinding UpdateNowCommand}">
+              <TextBlock Text="{DynamicResource UpdateNowBtn}" FontSize="12" FontWeight="Bold" />
+            </Button>
+          </StackPanel>
+        </Grid>
+
+        <Button x:Name="CancelDownloadButton" Classes="engine-secondary-btn" HorizontalAlignment="Right"
+                Command="{CompiledBinding CancelDownloadCommand}" IsVisible="{CompiledBinding IsDownloading}">
+          <TextBlock Text="{DynamicResource UpdateCancelDownloadBtn}" FontSize="12" FontWeight="SemiBold" />
+        </Button>
+
+        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" IsVisible="{CompiledBinding IsReadyWithoutTasks}">
+          <Button x:Name="InstallOnExitButton" Classes="engine-secondary-btn" Command="{CompiledBinding InstallOnExitCommand}">
+            <TextBlock Text="{DynamicResource UpdateInstallOnExitBtn}" FontSize="12" FontWeight="SemiBold" />
+          </Button>
+          <Button x:Name="RestartNowButton" Classes="primary-btn" Command="{CompiledBinding RestartNowCommand}">
+            <TextBlock Text="{DynamicResource UpdateRestartNowBtn}" FontSize="12" FontWeight="Bold" />
+          </Button>
+        </StackPanel>
+
+        <!-- 有任务运行：三个选择放两行，避免英文按钮被截断 -->
+        <StackPanel Spacing="8" IsVisible="{CompiledBinding IsReadyWithTasks}">
+          <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+            <Button x:Name="CancelTasksAndRestartButton" Classes="danger-btn" Command="{CompiledBinding CancelTasksAndRestartCommand}">
+              <TextBlock Text="{DynamicResource UpdateCancelTasksAndRestartBtn}" FontSize="12" FontWeight="Bold" />
+            </Button>
+            <Button x:Name="RestartAfterTasksButton" Classes="primary-btn" Command="{CompiledBinding RestartAfterTasksCommand}">
+              <TextBlock Text="{DynamicResource UpdateRestartAfterTasksBtn}" FontSize="12" FontWeight="Bold" />
+            </Button>
+          </StackPanel>
+          <Button Classes="nav-btn" HorizontalAlignment="Right" Command="{CompiledBinding InstallOnExitCommand}">
+            <TextBlock Text="{DynamicResource UpdateInstallOnExitBtn}" FontSize="12" FontWeight="SemiBold" />
+          </Button>
+        </StackPanel>
+      </Panel>
+    </Grid>
+  </Border>
+</UserControl>
