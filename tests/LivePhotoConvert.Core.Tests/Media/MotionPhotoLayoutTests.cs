@@ -86,6 +86,16 @@ public class MotionPhotoLayoutTests
         Assert.Equal(cover.Length, layout.Video?.ImageEnd);
     }
 
+    [Fact]
+    public void Inspect_SamsungBlockShorterThanItsHeader_IsRejected()
+    {
+        var bytes = SyntheticMedia.SamsungMotionPhoto(SyntheticMedia.Jpeg(3000), SyntheticMedia.Mp4(4000));
+        // 目录项记录的数据块长度小于 8 字节块头：无符号相减若回绕会得到约 4GB 的视频长度
+        BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(bytes.Length - 8 - 24 + 20), 4);
+
+        Assert.Null(MotionPhotoLayout.Inspect(new MemoryStream(bytes)).Video);
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]

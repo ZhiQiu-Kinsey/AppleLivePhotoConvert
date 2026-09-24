@@ -46,6 +46,23 @@ public class MotionPhotoXmpTests
     }
 
     [Fact]
+    public void Parse_NegativeItemLengthAfterVideo_IsTreatedAsZero()
+    {
+        const string xmp = """
+                           <x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+                           <rdf:Description rdf:about="" xmlns:Container="http://ns.google.com/photos/1.0/container/" xmlns:Item="http://ns.google.com/photos/1.0/container/item/">
+                           <Container:Directory><rdf:Seq>
+                           <rdf:li rdf:parseType="Resource"><Container:Item Item:Semantic="Primary" Item:Mime="image/jpeg"/></rdf:li>
+                           <rdf:li rdf:parseType="Resource"><Container:Item Item:Semantic="MotionPhoto" Item:Mime="video/mp4" Item:Length="5000" Item:Padding="-3"/></rdf:li>
+                           <rdf:li rdf:parseType="Resource"><Container:Item Item:Semantic="Depth" Item:Mime="image/jpeg" Item:Length="-7000"/></rdf:li>
+                           </rdf:Seq></Container:Directory>
+                           </rdf:Description></rdf:RDF></x:xmpmeta>
+                           """;
+
+        Assert.Equal((5000L, 0L), MotionPhotoXmp.Parse(xmp)?.VideoExtent);
+    }
+
+    [Fact]
     public void Parse_GainMapOnly_HasNoVideo()
     {
         using var stream = new MemoryStream(SyntheticMedia.UltraHdrStill(new byte[777]));

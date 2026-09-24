@@ -1,4 +1,3 @@
-using System.Buffers.Binary;
 using System.Collections.Frozen;
 using System.IO.Enumeration;
 using System.Runtime.CompilerServices;
@@ -23,8 +22,6 @@ public static class LibraryScanner
     public static int DefaultParallelism { get; } = Math.Clamp(Environment.ProcessorCount, 2, 8);
 
     private const int ProgressInterval = 256;
-
-    private const uint Ftyp = 0x66747970; // "ftyp"
 
     /// <summary>顶层 box 数量上限，与 <see cref="MotionPhotoLayout"/> 一致。</summary>
     private const int MaxTopLevelBoxes = 1024;
@@ -290,50 +287,26 @@ public static class LibraryScanner
     internal static bool HasUnclaimedTrailer(Stream stream)
     {
         var length = stream.Length;
-        Span<byte> header = stackalloc byte[16];
         long offset = 0;
         for (var count = 0; count < MaxTopLevelBoxes && offset < length; count++)
         {
-            if (length - offset < 8)
+            if (IsoBox.ReadHeader(stream, offset) is not { } box)
             {
                 return true;
             }
 
-            stream.Position = offset;
-            if (stream.ReadAtLeast(header[..8], 8, throwOnEndOfStream: false) < 8)
-            {
-                return true;
-            }
-
-            long size = BinaryPrimitives.ReadUInt32BigEndian(header);
-            var type = BinaryPrimitives.ReadUInt32BigEndian(header[4..]);
-            var headerLength = 8;
-            if (size == 1)
-            {
-                if (stream.ReadAtLeast(header[8..], 8, throwOnEndOfStream: false) < 8 || BinaryPrimitives.ReadUInt64BigEndian(header[8..]) > long.MaxValue)
-                {
-                    return true;
-                }
-
-                size = (long)BinaryPrimitives.ReadUInt64BigEndian(header[8..]);
-                headerLength = 16;
-            }
-            else if (size == 0)
+            // 长度 0 表示延续到文件尾
+            if (box.Size == 0 || (offset == 0 && box.Type != IsoBox.Ftyp))
             {
                 return false;
             }
 
-            if (offset == 0 && type != Ftyp)
-            {
-                return false;
-            }
-
-            if (size < headerLength || size > length - offset || (offset > 0 && type == Ftyp))
+            if (box.Size < box.HeaderLength || box.Size > length - offset || (offset > 0 && box.Type == IsoBox.Ftyp))
             {
                 return true;
             }
 
-            offset += size;
+            offset += box.Size;
         }
 
         return false;

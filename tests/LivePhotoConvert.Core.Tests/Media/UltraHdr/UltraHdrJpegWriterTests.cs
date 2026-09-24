@@ -140,6 +140,18 @@ public class UltraHdrJpegWriterTests
         Assert.Contains("GainMap", error.Message, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(8 + 4, 0xFFFFFFFFu)]          // IFD 偏移
+    [InlineData(8 + 34 + 8, 0xFFFFFFF0u)]     // MP Entry 表偏移
+    public void Inspect_MpfOffsetNearUInt32Max_ReturnsNullWithoutThrowing(int position, uint value)
+    {
+        var mpf = UltraHdrJpegWriter.BuildMpfSegment(1000, 100, 900);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(mpf.AsSpan(position), value);
+        byte[] jpeg = [0xFF, 0xD8, .. mpf, 0xFF, 0xDB, 0x00, 0x02, 0xFF, 0xD9];
+
+        Assert.Null(UltraHdrJpegWriter.Inspect(new MemoryStream(jpeg)));
+    }
+
     [Fact]
     public void Inspect_PlainJpeg_ReturnsNull()
     {

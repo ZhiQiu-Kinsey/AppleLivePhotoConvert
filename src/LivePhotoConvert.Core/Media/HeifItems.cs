@@ -1,5 +1,5 @@
+using System.Buffers;
 using System.Buffers.Binary;
-using System.Text;
 
 namespace LivePhotoConvert.Core.Media;
 
@@ -12,6 +12,9 @@ public static class HeifItems
     private const int MaxMetaBytes = 16 * 1024 * 1024;
 
     private const int MaxTopLevelBoxes = 64;
+
+    private const uint BoxIinf = 0x69696E66; // "iinf"
+    private const uint BoxInfe = 0x696E6665; // "infe"
 
     /// <summary>
     /// 文件是否含 ISO 21496-1 增益图的 tmap 派生图像（iOS 18 起可能只写这种增益图）。
@@ -26,15 +29,16 @@ public static class HeifItems
     public static bool ContainsItemType(string path, string itemType)
     {
         ArgumentException.ThrowIfNullOrEmpty(itemType);
-        if (itemType.Length != 4)
+        if (itemType.Length != 4 || !System.Text.Ascii.IsValid(itemType))
         {
-            throw new ArgumentException("item 类型必须是 4 个字符。", nameof(itemType));
+            throw new ArgumentException("item 类型必须是 4 个 ASCII 字符。", nameof(itemType));
         }
 
+        var type = (uint)itemType[0] << 24 | (uint)itemType[1] << 16 | (uint)itemType[2] << 8 | itemType[3];
         try
         {
             using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 4096, FileOptions.RandomAccess);
-            return ReadMeta(stream) is { } meta && ContainsItemType(meta, Encoding.ASCII.GetBytes(itemType));
+            return FindMeta(stream) is { } meta && ContainsItemType(stream, meta, type);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -43,159 +47,92 @@ public static class HeifItems
     }
 
     /// <summary>
-    /// 在顶层 box 中找到 meta 并读出其内容（不含 box 头）。
+    /// 在 iinf box 的内容中查找第一个指定类型的 item。只认 infe 版本 2（16 位 ID）与 3（32 位 ID），更早的版本没有 item_type。
     /// </summary>
-    private static byte[]? ReadMeta(Stream stream)
+    /// <param name="iinf">iinf box 的内容（不含 box 头）</param>
+    /// <param name="itemType">大端四字符类型</param>
+    internal static uint? FindItemId(ReadOnlySpan<byte> iinf, uint itemType)
     {
-        Span<byte> header = stackalloc byte[16];
-        long offset = 0;
-        for (var count = 0; count < MaxTopLevelBoxes && offset + 8 <= stream.Length; count++)
+        // iinf 是 FullBox：版本 0 的条目数为 16 位，否则为 32 位
+        var entriesStart = iinf.Length > 0 && iinf[0] == 0 ? 6 : 8;
+        if (iinf.Length < entriesStart)
         {
-            stream.Position = offset;
-            if (stream.ReadAtLeast(header[..8], 8, throwOnEndOfStream: false) < 8)
+            return null;
+        }
+
+        foreach (var (type, infe) in new IsoBoxEnumerator(iinf[entriesStart..]))
+        {
+            if (type != BoxInfe || infe.Length < 4 || infe[0] is not (2 or 3))
             {
-                return null;
+                continue;
             }
 
-            long size = BinaryPrimitives.ReadUInt32BigEndian(header);
-            var headerLength = 8;
-            if (size == 1)
+            // version/flags | item_ID | protection_index（16 位）| item_type
+            var idLength = infe[0] == 2 ? 2 : 4;
+            var typeOffset = 4 + idLength + 2;
+            if (infe.Length >= typeOffset + 4 && BinaryPrimitives.ReadUInt32BigEndian(infe[typeOffset..]) == itemType)
             {
-                if (stream.ReadAtLeast(header[8..16], 8, throwOnEndOfStream: false) < 8)
-                {
-                    return null;
-                }
-
-                size = (long)Math.Min(BinaryPrimitives.ReadUInt64BigEndian(header[8..]), long.MaxValue);
-                headerLength = 16;
+                return idLength == 2 ? BinaryPrimitives.ReadUInt16BigEndian(infe[4..]) : BinaryPrimitives.ReadUInt32BigEndian(infe[4..]);
             }
-            else if (size == 0)
-            {
-                size = stream.Length - offset;
-            }
-
-            if (size < headerLength || size > stream.Length - offset)
-            {
-                return null;
-            }
-
-            if (count == 0 && !header[4..8].SequenceEqual("ftyp"u8))
-            {
-                return null;
-            }
-
-            if (header[4..8].SequenceEqual("meta"u8))
-            {
-                if (size - headerLength > MaxMetaBytes)
-                {
-                    return null;
-                }
-
-                var meta = new byte[size - headerLength];
-                stream.Position = offset + headerLength;
-                stream.ReadExactly(meta);
-                return meta;
-            }
-
-            offset += size;
         }
 
         return null;
     }
 
-    internal static bool ContainsItemType(ReadOnlySpan<byte> meta, ReadOnlySpan<byte> itemType)
-    {
-        // meta 是 FullBox：先跳过 version 与 flags
-        if (meta.Length < 4)
-        {
-            return false;
-        }
-
-        var iinf = FindChild(meta[4..], "iinf"u8);
-        var entryCountLength = iinf.Length > 0 && iinf[0] == 0 ? 2 : 4;
-        if (iinf.Length < 4 + entryCountLength)
-        {
-            return false;
-        }
-
-        var children = iinf[(4 + entryCountLength)..];
-        var position = 0;
-        while (NextBox(children, ref position) is { } box)
-        {
-            var content = children[box.ContentStart..box.End];
-            if (!children.Slice(box.TypeOffset, 4).SequenceEqual("infe"u8) || content.Length < 4)
-            {
-                continue;
-            }
-
-            var version = content[0];
-            if (version < 2)
-            {
-                continue;
-            }
-
-            // version 2 的 item_ID 为 16 位，version 3 为 32 位；之后是 16 位 protection_index 与 4 字节类型
-            var typeOffset = 4 + (version == 2 ? 2 : 4) + 2;
-            if (content.Length >= typeOffset + 4 && content.Slice(typeOffset, 4).SequenceEqual(itemType))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static ReadOnlySpan<byte> FindChild(ReadOnlySpan<byte> boxes, ReadOnlySpan<byte> wanted)
-    {
-        var position = 0;
-        while (NextBox(boxes, ref position) is { } box)
-        {
-            if (boxes.Slice(box.TypeOffset, 4).SequenceEqual(wanted))
-            {
-                return boxes[box.ContentStart..box.End];
-            }
-        }
-
-        return default;
-    }
-
     /// <summary>
-    /// 读取 <paramref name="position"/> 处的 box 并前移到下一个 box；越界或畸形时返回 <c>null</c>。
+    /// 在顶层 box 中找到 meta，返回其内容的位置与长度（不含 box 头）。
     /// </summary>
-    private static BoxRange? NextBox(ReadOnlySpan<byte> boxes, ref int position)
+    private static (long Offset, int Length)? FindMeta(Stream stream)
     {
-        var remaining = boxes[position..];
-        if (remaining.Length < 8)
+        var length = stream.Length;
+        long offset = 0;
+        for (var count = 0; count < MaxTopLevelBoxes && offset + 8 <= length; count++)
         {
-            return null;
-        }
-
-        long size = BinaryPrimitives.ReadUInt32BigEndian(remaining);
-        var headerLength = 8;
-        if (size == 1)
-        {
-            if (remaining.Length < 16)
+            if (IsoBox.ReadBounded(stream, offset, length) is not { } box || (count == 0 && box.Type != IsoBox.Ftyp))
             {
                 return null;
             }
 
-            size = (long)Math.Min(BinaryPrimitives.ReadUInt64BigEndian(remaining[8..]), long.MaxValue);
-            headerLength = 16;
-        }
-        else if (size == 0)
-        {
-            size = remaining.Length;
+            if (box.Type == IsoBox.Meta)
+            {
+                var contentLength = box.Size - box.HeaderLength;
+                return contentLength <= MaxMetaBytes ? (offset + box.HeaderLength, (int)contentLength) : null;
+            }
+
+            offset += box.Size;
         }
 
-        if (size < headerLength || size > remaining.Length)
-        {
-            return null;
-        }
-
-        var box = new BoxRange(position + 4, position + headerLength, position + (int)size);
-        position = box.End;
-        return box;
+        return null;
     }
 
-    private readonly record struct BoxRange(int TypeOffset, int ContentStart, int End);
+    private static bool ContainsItemType(Stream stream, (long Offset, int Length) meta, uint itemType)
+    {
+        var buffer = ArrayPool<byte>.Shared.Rent(meta.Length);
+        try
+        {
+            var content = buffer.AsSpan(0, meta.Length);
+            stream.Position = meta.Offset;
+            stream.ReadExactly(content);
+
+            // meta 是 FullBox：子 box 从 version/flags 之后开始
+            if (content.Length < 4)
+            {
+                return false;
+            }
+
+            foreach (var (type, body) in new IsoBoxEnumerator(content[4..]))
+            {
+                if (type == BoxIinf)
+                {
+                    return FindItemId(body, itemType) is not null;
+                }
+            }
+
+            return false;
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
+    }
 }
