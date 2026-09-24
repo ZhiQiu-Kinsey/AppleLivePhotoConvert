@@ -31,7 +31,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="LivePhotoConvert.E2E" />
+    <InternalsVisibleTo Include="LivePhotoConvert.Desktop.Tests" />
   </ItemGroup>
 
   <ItemGroup>

@@ -173,6 +173,10 @@ public sealed partial class InspectorViewModel : ViewModelBase
     [ObservableProperty]
     private int _namingFormat;
 
+    /// <summary>顺序与 <see cref="NamingFormat"/> 的取值一一对应。</summary>
+    public IReadOnlyList<LocalizedOption> NamingFormatOptions { get; } =
+        [new("NamingFormatOriginalShort"), new("NamingFormatDateNameShort"), new("NamingFormatCleanShort")];
+
     [ObservableProperty]
     private string _liveFilenameDemo = string.Empty;
 
@@ -181,6 +185,15 @@ public sealed partial class InspectorViewModel : ViewModelBase
     private int _sourceAction;
 
     public bool IsDeleteWarningVisible => HasSourceAction && SourceAction == DeleteSourceAction;
+
+    /// <summary>顺序与 <see cref="SourceAction"/> 的取值一一对应。</summary>
+    public IReadOnlyList<LocalizedOption> SourceActionOptions { get; } =
+    [
+        new("SourceActionKeepShort"),
+        new("SourceActionSubfolderShort"),
+        new("SourceActionRecycleShort"),
+        new("SourceActionDeleteShort", isDanger: true)
+    ];
 
     [ObservableProperty]
     private int _heicQuality;
@@ -500,6 +513,11 @@ public sealed partial class InspectorViewModel : ViewModelBase
 
     private void RefreshTexts()
     {
+        foreach (var option in NamingFormatOptions.Concat(SourceActionOptions))
+        {
+            option.Refresh(_localizer);
+        }
+
         ActionDescription = _localizer[Action switch
         {
             ConversionAction.ToAndroid => "ActionToAndroidDesc",
@@ -573,7 +591,7 @@ public sealed partial class InspectorViewModel : ViewModelBase
         {
             ErrorLogger.Log(ex, "空间瘦身预估");
             _estimate = null;
-            _estimateError = ex.Message;
+            _estimateError = ErrorMessages.Describe(_localizer, ex);
         }
 
         IsEstimating = false;

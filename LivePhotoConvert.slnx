@@ -5,6 +5,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/LivePhotoConvert.Core.Tests/LivePhotoConvert.Core.Tests.csproj" />
+    <Project Path="tests/LivePhotoConvert.Desktop.Tests/LivePhotoConvert.Desktop.Tests.csproj" />
     <Project Path="tests/LivePhotoConvert.E2E/LivePhotoConvert.E2E.csproj" />
   </Folder>
 </Solution>

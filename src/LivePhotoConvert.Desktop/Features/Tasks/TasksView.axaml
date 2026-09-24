@@ -25,37 +25,37 @@
 
             <StackPanel Grid.Column="1" Margin="14,0,12,0" Spacing="4" VerticalAlignment="Center">
               <StackPanel Orientation="Horizontal" Spacing="8">
-                <TextBlock Text="{Binding Center.Current.Title}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
-                <Border Classes="task-chip accent" IsVisible="{Binding !Center.Current.IsPaused}">
+                <TextBlock Text="{Binding Center.Current?.Title}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                <Border Classes="task-chip accent" IsVisible="{Binding !Center.Current?.IsPaused, TargetNullValue=True}">
                   <TextBlock Text="{DynamicResource TaskRunningBadge}" />
                 </Border>
-                <Border Classes="task-chip warning" IsVisible="{Binding Center.Current.IsPaused}">
+                <Border Classes="task-chip warning" IsVisible="{Binding Center.Current?.IsPaused, TargetNullValue=False}">
                   <TextBlock Text="{DynamicResource TaskPausedBadge}" />
                 </Border>
-                <Border Classes="task-chip danger" IsVisible="{Binding Center.Current.IsCancelling}">
+                <Border Classes="task-chip danger" IsVisible="{Binding Center.Current?.IsCancelling, TargetNullValue=False}">
                   <TextBlock Text="{DynamicResource TaskCancellingBadge}" />
                 </Border>
               </StackPanel>
               <Grid ColumnDefinitions="Auto,*">
                 <TextBlock Grid.Column="0" Text="{DynamicResource CurrentFileLabel}" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,0,4,0" />
-                <TextBlock Grid.Column="1" Text="{Binding Center.Current.CurrentFile}" FontSize="12" FontFamily="Consolas" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="1" Text="{Binding Center.Current?.CurrentFile}" FontSize="12" FontFamily="Consolas" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" />
               </Grid>
             </StackPanel>
 
             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
               <Button Classes="toolbar-btn" Command="{Binding TogglePauseCommand}" Padding="12,0">
                 <Panel>
-                  <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding !Center.Current.IsPaused}">
+                  <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding !Center.Current?.IsPaused, TargetNullValue=True}">
                     <ic:SymbolIcon Symbol="Pause" FontSize="13" VerticalAlignment="Center" />
                     <TextBlock Text="{DynamicResource PauseBtn}" FontSize="12" VerticalAlignment="Center" />
                   </StackPanel>
-                  <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding Center.Current.IsPaused}">
+                  <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding Center.Current?.IsPaused, TargetNullValue=False}">
                     <ic:SymbolIcon Symbol="Play" FontSize="13" VerticalAlignment="Center" />
                     <TextBlock Text="{DynamicResource ResumeBtn}" FontSize="12" VerticalAlignment="Center" />
                   </StackPanel>
                 </Panel>
               </Button>
-              <Button Classes="danger-btn" Command="{Binding CancelCommand}" Padding="12,6" IsEnabled="{Binding !Center.Current.IsCancelling}">
+              <Button Classes="danger-btn" Command="{Binding CancelCommand}" Padding="12,6" IsEnabled="{Binding !Center.Current?.IsCancelling, TargetNullValue=True}">
                 <StackPanel Orientation="Horizontal" Spacing="6">
                   <ic:SymbolIcon Symbol="Dismiss" FontSize="12" Foreground="{DynamicResource OnAccentBrush}" VerticalAlignment="Center" />
                   <TextBlock Text="{DynamicResource CancelTaskBtn}" FontSize="12" VerticalAlignment="Center" />
@@ -65,19 +65,19 @@
           </Grid>
 
           <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Grid.Column="0" Text="{Binding Center.Current.PercentText}" FontSize="24" FontWeight="Black" FontFamily="Consolas" Foreground="{DynamicResource AccentTextBrush}" VerticalAlignment="Bottom" />
-            <TextBlock Grid.Column="1" Text="{Binding Center.Current.RatioText}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Bottom" Margin="0,0,0,4" />
+            <TextBlock Grid.Column="0" Text="{Binding Center.Current?.PercentText}" FontSize="24" FontWeight="Black" FontFamily="Consolas" Foreground="{DynamicResource AccentTextBrush}" VerticalAlignment="Bottom" />
+            <TextBlock Grid.Column="1" Text="{Binding Center.Current?.RatioText}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Bottom" Margin="0,0,0,4" />
           </Grid>
-          <ProgressBar Value="{Binding Center.Current.Percent}" Minimum="0" Maximum="100" Height="8" CornerRadius="4"
+          <ProgressBar Value="{Binding Center.Current?.Percent, TargetNullValue=0}" Minimum="0" Maximum="100" Height="8" CornerRadius="4"
                        Foreground="{DynamicResource AccentBrush}" Background="{DynamicResource LineBrush}" />
           <Grid ColumnDefinitions="*,Auto">
             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
               <ic:SymbolIcon Symbol="TopSpeed" FontSize="13" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
-              <TextBlock Text="{Binding Center.Current.ThroughputText}" FontSize="12" FontFamily="Consolas" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding Center.Current?.ThroughputText}" FontSize="12" FontFamily="Consolas" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
               <ic:SymbolIcon Symbol="Timer" FontSize="13" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
-              <TextBlock Text="{Binding Center.Current.RemainingText}" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding Center.Current?.RemainingText}" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
             </StackPanel>
           </Grid>
         </StackPanel>

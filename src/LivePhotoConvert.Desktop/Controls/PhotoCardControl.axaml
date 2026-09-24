@@ -59,7 +59,7 @@
         <!-- 时长角标 -->
         <Border Background="#99000000" CornerRadius="6" Padding="6,2"
                 HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="8">
-          <TextBlock Text="{CompiledBinding DurationText}" Foreground="{DynamicResource OnAccentBrush}" FontSize="10" FontWeight="SemiBold" />
+          <TextBlock Text="{DynamicResource CardDurationLive}" Foreground="{DynamicResource OnAccentBrush}" FontSize="10" FontWeight="SemiBold" />
         </Border>
 
       </Panel>
@@ -77,7 +77,7 @@
               <Border Background="{DynamicResource SuccessSoftBrush}" BorderBrush="{DynamicResource SuccessBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="6,2"
                       VerticalAlignment="Top"
                       IsVisible="{CompiledBinding !HasSuspiciousWarning}">
-                <TextBlock Text="{CompiledBinding PairingStatusText}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" />
+                <TextBlock Text="{DynamicResource PairStatusLocked}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" />
               </Border>
 
               <Button Command="{CompiledBinding RequestArbitrateCommand}"

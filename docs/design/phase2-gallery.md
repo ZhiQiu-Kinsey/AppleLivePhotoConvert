@@ -37,6 +37,7 @@
 18. 裁决通过后卡片仍未选中、可疑徽章仍显示（`HasSuspiciousWarning` 为 init-only）。
 19. QuickLook 借用卡片位图显示，可能被 LRU 驱逐释放；QuickLook 自建 `ThumbnailReader` 做 1600px 完整解码，绕开并发限制并非原子写同一缓存目录。
 20. `LibraryViewModel`/`LibraryView.axaml.cs` 仍有 Action 回调接线；`PhotoCardControl` 使用静态 `PlaybackHost.Instance`。
+22. 图库与任务对"配对可疑"判定不一致：图库按修改时间差 >3s，任务按 `PairValidator` 比拍摄时间；照片无 EXIF 拍摄时间、视频有时，图库显示"配对锁定"而任务跳过。扫描阶段必须直接用 `PairValidator` 的完整判定。
 21. 滚动恢复按像素偏移，重排后跳位；`async void` 与丢弃的 Task 未观察异常；`Directory.Exists` 被绑定在 UI 线程反复调用；QuickLook 序列包含被筛掉的卡片；待裁决阈值写死 3.0 未引用 `PairValidator`；窄视口 `Math.Max(260, w-24)` 溢出。
 
 ## 工作包
