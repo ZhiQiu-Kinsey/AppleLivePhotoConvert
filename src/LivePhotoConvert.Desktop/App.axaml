@@ -8,12 +8,6 @@
     <StyleInclude Source="avares://LivePhotoConvert/Assets/Styles.axaml" />
   </Application.Styles>
 
-  <Application.Resources>
-    <ResourceDictionary>
-      <ResourceDictionary.MergedDictionaries>
-        <ResourceInclude Source="avares://LivePhotoConvert/Assets/Strings.zh-CN.axaml" />
-      </ResourceDictionary.MergedDictionaries>
-    </ResourceDictionary>
-  </Application.Resources>
+  <!-- 字符串字典由 Localizer 在创建任何页面之前按设置语言合并，这里不再预置，避免中英两份同时存在 -->
 
 </Application>

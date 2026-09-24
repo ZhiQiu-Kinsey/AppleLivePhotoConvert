@@ -17,7 +17,7 @@ public sealed class FfmpegVideoConverter : IVideoConverter
     /// <exception cref="FileNotFoundException">找不到 FFmpeg</exception>
     public static FfmpegVideoConverter Create(string? executablePath = null) =>
         new(ToolLocator.Find(ExecutableName, executablePath, "ffmpeg", "FFmpeg", "bin")
-            ?? throw new FileNotFoundException($"未找到 {ExecutableName}，请在「依赖引擎」页面下载或指定路径。"));
+            ?? throw new ToolNotFoundException(ExecutableName));
 
     public Task ConvertToMp4Async(string sourcePath, string destinationPath, bool forceTranscode = false, CancellationToken cancellationToken = default) =>
         RemuxOrTranscodeAsync(

@@ -3,7 +3,7 @@ namespace LivePhotoConvert.Desktop.Models;
 /// <summary>
 /// “关于”页面的静态元数据：项目身份、链接与开源鸣谢清单。
 /// 数据集中在此处，避免散落到视图或业务逻辑中；描述文本仅保存本地化键，
-/// 由调用方通过 <see cref="Services.LocalizationService"/> 解析为当前语言。
+/// 由调用方通过 <see cref="Infrastructure.ILocalizer"/> 解析为当前语言。
 /// </summary>
 public static class AboutInfo
 {

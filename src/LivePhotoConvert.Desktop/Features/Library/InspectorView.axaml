@@ -1,0 +1,229 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:library="using:LivePhotoConvert.Desktop.Features.Library"
+             xmlns:infra="using:LivePhotoConvert.Desktop.Infrastructure"
+             xmlns:ic="using:FluentIcons.Avalonia"
+             x:Class="LivePhotoConvert.Desktop.Features.Library.InspectorView"
+             x:CompileBindings="True"
+             x:DataType="library:InspectorViewModel">
+
+  <UserControl.Resources>
+    <DataTemplate x:Key="LocalizedOptionTemplate" x:DataType="infra:LocalizedOption">
+      <TextBlock Text="{Binding Text}" Classes.danger-option="{Binding IsDanger}" />
+    </DataTemplate>
+  </UserControl.Resources>
+
+  <Border Classes="inspector">
+    <Grid RowDefinitions="Auto,*,Auto">
+
+      <!-- 动作选择 -->
+      <StackPanel Grid.Row="0" Margin="16,14,16,10" Spacing="10">
+        <TextBlock Classes="inspector-title" Text="{DynamicResource InspectorTitle}" />
+        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="6" RowSpacing="6">
+          <Button Grid.Row="0" Grid.Column="0" Classes="action-tile" Classes.active="{Binding IsToAndroid}"
+                  Command="{Binding SetActionCommand}" CommandParameter="ToAndroid">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <ic:SymbolIcon Symbol="PhoneArrowRight" VerticalAlignment="Center" />
+              <TextBlock Text="{DynamicResource ActionToAndroid}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+          </Button>
+          <Button Grid.Row="0" Grid.Column="1" Classes="action-tile" Classes.active="{Binding IsToApple}"
+                  Command="{Binding SetActionCommand}" CommandParameter="ToApple">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <ic:SymbolIcon Symbol="ArrowUndo" VerticalAlignment="Center" />
+              <TextBlock Text="{DynamicResource ActionToApple}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+          </Button>
+          <Button Grid.Row="1" Grid.Column="0" Classes="action-tile" Classes.active="{Binding IsExtract}"
+                  Command="{Binding SetActionCommand}" CommandParameter="Extract">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <ic:SymbolIcon Symbol="ArrowSplit" VerticalAlignment="Center" />
+              <TextBlock Text="{DynamicResource ActionExtract}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+          </Button>
+          <Button Grid.Row="1" Grid.Column="1" Classes="action-tile" Classes.active="{Binding IsStrip}"
+                  Command="{Binding SetActionCommand}" CommandParameter="Strip">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <ic:SymbolIcon Symbol="Archive" VerticalAlignment="Center" />
+              <TextBlock Text="{DynamicResource ActionStrip}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+          </Button>
+        </Grid>
+        <TextBlock Classes="option-desc" Text="{Binding ActionDescription}" />
+      </StackPanel>
+
+      <!-- 参数 -->
+      <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="16,0,16,12" Spacing="12">
+
+          <!-- 适用项统计 -->
+          <Border Classes="inspector-card accent">
+            <Grid ColumnDefinitions="Auto,*">
+              <ic:SymbolIcon Grid.Column="0" Symbol="CheckmarkCircle" FontSize="16" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Top" Margin="0,1,8,0" />
+              <StackPanel Grid.Column="1" Spacing="2">
+                <TextBlock Text="{Binding ApplicableText}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource AccentTextBrush}" TextWrapping="Wrap" />
+                <TextBlock Classes="option-desc" Text="{Binding ApplicableScopeText}" />
+              </StackPanel>
+            </Grid>
+          </Border>
+
+          <!-- 合成：命名格式 -->
+          <StackPanel Spacing="6" IsVisible="{Binding IsToAndroid}">
+            <TextBlock Classes="option-title" Text="{DynamicResource NamingFormatTitle}" />
+            <ComboBox Classes="engine-select" ItemsSource="{Binding NamingFormatOptions}" ItemTemplate="{StaticResource LocalizedOptionTemplate}"
+                      SelectedIndex="{Binding NamingFormat, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+            <Border Classes="inspector-card" Padding="8,6">
+              <TextBlock Text="{Binding LiveFilenameDemo}" FontSize="11" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource AccentBrush}" TextTrimming="CharacterEllipsis" />
+            </Border>
+          </StackPanel>
+
+          <!-- 瘦身：就地替换与转码 -->
+          <StackPanel Spacing="12" IsVisible="{Binding IsStrip}">
+            <Grid Classes="option-row" ColumnDefinitions="*,Auto">
+              <StackPanel>
+                <TextBlock Classes="option-title" Text="{DynamicResource InPlaceStripTitle}" />
+                <TextBlock Classes="option-desc" Text="{DynamicResource InPlaceStripDesc}" />
+              </StackPanel>
+              <ToggleSwitch Grid.Column="1" Classes="row-switch"
+                            IsChecked="{Binding InPlaceStrip, Mode=TwoWay}"
+                            Command="{Binding ToggleInPlaceStripCommand}"
+                            CommandParameter="{Binding $self.IsChecked}" />
+            </Grid>
+            <Grid Classes="option-row" ColumnDefinitions="*,Auto">
+              <StackPanel>
+                <TextBlock Classes="option-title" Text="{DynamicResource StripConvertHeicTitle}" />
+                <TextBlock Classes="option-desc" Text="{DynamicResource StripConvertHeicDesc}" />
+              </StackPanel>
+              <ToggleSwitch Grid.Column="1" Classes="row-switch" IsChecked="{Binding StripConvertToHeic, Mode=TwoWay}" />
+            </Grid>
+          </StackPanel>
+
+          <!-- HEIC 质量：还原与瘦身转码共用 -->
+          <StackPanel Spacing="4" IsVisible="{Binding HasHeicQuality}">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Grid.Column="0" Classes="option-title" Text="{DynamicResource HeicQualityTitle}" />
+              <TextBlock Grid.Column="1" Text="{Binding HeicQuality}" FontSize="12" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource AccentBrush}" />
+            </Grid>
+            <Slider Classes="inspector-slider" Value="{Binding HeicQuality, Mode=TwoWay}" Minimum="50" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True" />
+            <TextBlock Classes="option-desc" Text="{DynamicResource HeicQualityDesc}" />
+          </StackPanel>
+
+          <!-- 源文件处理 -->
+          <StackPanel Spacing="6" IsVisible="{Binding HasSourceAction}">
+            <TextBlock Classes="option-title" Text="{DynamicResource SourceActionTitle}" />
+            <ComboBox Classes="engine-select" ItemsSource="{Binding SourceActionOptions}" ItemTemplate="{StaticResource LocalizedOptionTemplate}"
+                      SelectedIndex="{Binding SourceAction, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+            <Border Classes="inspector-card danger" IsVisible="{Binding IsDeleteWarningVisible}">
+              <StackPanel Spacing="2">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                  <ic:SymbolIcon Symbol="ShieldError" FontSize="12" Foreground="{DynamicResource DangerBrush}" VerticalAlignment="Center" />
+                  <TextBlock Text="{DynamicResource DeleteWarningTitle}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource DangerTextBrush}" />
+                </StackPanel>
+                <TextBlock Text="{DynamicResource DeleteWarningDesc}" FontSize="11" Foreground="{DynamicResource DangerTextBrush}" TextWrapping="Wrap" />
+              </StackPanel>
+            </Border>
+          </StackPanel>
+
+          <!-- 输出位置 -->
+          <StackPanel Spacing="10" IsVisible="{Binding IsOutputSectionVisible}">
+            <TextBlock Classes="inspector-section-title" Text="{DynamicResource InspectorOutputTitle}" />
+
+            <Border Classes="path-box" IsVisible="{Binding IsOutputDirectoryVisible}">
+              <Grid ColumnDefinitions="Auto,*,Auto,Auto" VerticalAlignment="Center">
+                <ic:SymbolIcon Grid.Column="0" Symbol="Folder" FontSize="13" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" Margin="0,1,6,0" />
+                <TextBlock Grid.Column="1" Text="{Binding OutputDirectory}" FontSize="11" FontFamily="Consolas" Foreground="{DynamicResource TextPrimaryBrush}"
+                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" ToolTip.Tip="{Binding OutputDirectory}" Margin="0,0,6,0" />
+                <Button Grid.Column="2" Classes="capsule-btn" Command="{Binding SelectOutputFolderCommand}" Margin="0,0,2,0">
+                  <TextBlock Text="{DynamicResource ChangeOutputDirBtn}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" />
+                </Button>
+                <Button Grid.Column="3" Classes="capsule-icon-btn" Command="{Binding OpenOutputFolderCommand}" ToolTip.Tip="{DynamicResource OpenOutputDirTip}">
+                  <ic:SymbolIcon Symbol="Open" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}" />
+                </Button>
+              </Grid>
+            </Border>
+
+            <Border Classes="path-box" IsVisible="{Binding IsStripExportVisible}">
+              <Grid ColumnDefinitions="Auto,*,Auto,Auto" VerticalAlignment="Center">
+                <ic:SymbolIcon Grid.Column="0" Symbol="Folder" FontSize="13" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" Margin="0,1,6,0" />
+                <TextBlock Grid.Column="1" Text="{Binding StripOutputDirectory}" FontSize="11" FontFamily="Consolas" Foreground="{DynamicResource TextPrimaryBrush}"
+                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" ToolTip.Tip="{Binding StripOutputDirectory}" Margin="0,0,6,0" />
+                <Button Grid.Column="2" Classes="capsule-btn" Command="{Binding SelectStripFolderCommand}" Margin="0,0,2,0">
+                  <TextBlock Text="{DynamicResource ChangeOutputDirBtn}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" />
+                </Button>
+                <Button Grid.Column="3" Classes="capsule-icon-btn" Command="{Binding OpenStripFolderCommand}" ToolTip.Tip="{DynamicResource OpenOutputDirTip}">
+                  <ic:SymbolIcon Symbol="Open" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}" />
+                </Button>
+              </Grid>
+            </Border>
+
+            <Grid Classes="option-row" ColumnDefinitions="*,Auto">
+              <StackPanel>
+                <TextBlock Classes="option-title" Text="{DynamicResource KeepSubfoldersLabel}" />
+                <TextBlock Classes="option-desc" Text="{DynamicResource KeepSubfoldersDesc}" />
+              </StackPanel>
+              <ToggleSwitch Grid.Column="1" Classes="row-switch" IsChecked="{Binding KeepSubfolderHierarchy, Mode=TwoWay}" />
+            </Grid>
+
+            <Grid Classes="option-row" ColumnDefinitions="*,Auto">
+              <StackPanel>
+                <TextBlock Classes="option-title" Text="{DynamicResource AutoAppendIndexTitle}" />
+                <TextBlock Classes="option-desc" Text="{DynamicResource AutoAppendIndexDesc}" />
+              </StackPanel>
+              <ToggleSwitch Grid.Column="1" Classes="row-switch" IsChecked="{Binding AutoAppendIndex, Mode=TwoWay}" />
+            </Grid>
+          </StackPanel>
+
+          <!-- 瘦身：空间预估与画质对比 -->
+          <StackPanel Spacing="10" IsVisible="{Binding IsStrip}">
+            <TextBlock Classes="inspector-section-title" Text="{DynamicResource SpaceEstimateTitle}" />
+            <Border Classes="inspector-card">
+              <StackPanel Spacing="6">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Grid.Column="0" Text="{DynamicResource OriginalSizeLabel}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" />
+                  <TextBlock Grid.Column="1" Text="{Binding EstimateOriginalText}" FontSize="12" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource TextSecondaryBrush}" />
+                </Grid>
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Grid.Column="0" Text="{DynamicResource StrippedSizeLabel}" FontSize="11" Foreground="{DynamicResource SuccessBrush}" />
+                  <TextBlock Grid.Column="1" Text="{Binding EstimateAfterText}" FontSize="12" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource SuccessBrush}" />
+                </Grid>
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Grid.Column="0" Text="{DynamicResource SavedSizeLabel}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}" />
+                  <TextBlock Grid.Column="1" Text="{Binding EstimateSavedText}" FontSize="12" FontWeight="Black" FontFamily="Consolas" Foreground="{DynamicResource AccentTextBrush}" />
+                </Grid>
+                <TextBlock Classes="option-desc" Text="{Binding EstimateStatusText}"
+                           IsVisible="{Binding EstimateStatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+              </StackPanel>
+            </Border>
+            <Button Classes="toolbar-btn" Command="{Binding OpenStripCompareCommand}" HorizontalAlignment="Stretch">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <ic:SymbolIcon Symbol="ArrowBidirectionalLeftRight" FontSize="14" VerticalAlignment="Center" />
+                <TextBlock Text="{DynamicResource StripCompareBtn}" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+          </StackPanel>
+
+        </StackPanel>
+      </ScrollViewer>
+
+      <!-- 运行状态与主按钮 -->
+      <StackPanel Grid.Row="2" Margin="16,10,16,16" Spacing="8">
+        <Border Classes="inspector-card accent" Padding="10,6" IsVisible="{Binding Tasks.IsRunning}">
+          <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+            <ic:SymbolIcon Grid.Column="0" Symbol="ArrowSync" FontSize="13" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" Margin="0,1,8,0" />
+            <TextBlock Grid.Column="1" Text="{Binding Tasks.Current?.Title}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            <TextBlock Grid.Column="2" Text="{Binding Tasks.Current?.PercentText}" FontSize="11" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource AccentTextBrush}" VerticalAlignment="Center" Margin="6,0" />
+            <Button Grid.Column="3" Classes="capsule-btn" Command="{Binding ViewTasksCommand}">
+              <TextBlock Text="{DynamicResource TaskViewBtn}" FontSize="11" />
+            </Button>
+          </Grid>
+        </Border>
+        <Button Classes="primary-btn" Command="{Binding StartCommand}" HorizontalAlignment="Stretch">
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
+            <ic:SymbolIcon Symbol="Play" FontSize="14" Foreground="{DynamicResource OnAccentBrush}" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding PrimaryButtonText}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+        </Button>
+      </StackPanel>
+    </Grid>
+  </Border>
+</UserControl>

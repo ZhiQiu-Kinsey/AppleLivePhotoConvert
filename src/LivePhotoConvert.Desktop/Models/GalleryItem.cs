@@ -91,7 +91,6 @@ public sealed partial class PhotoCardItemViewModel : ObservableObject, IGalleryD
     [ObservableProperty]
     private string _resolutionText = string.Empty;
 
-    public string DurationText { get; init; } = string.Empty;
     public string PhotoSizeText { get; init; } = string.Empty;
     public string VideoSizeText { get; init; } = string.Empty;
     public string SizeSummary => string.IsNullOrEmpty(VideoSizeText) ? PhotoSizeText : $"{PhotoSizeText} + {VideoSizeText}";
@@ -108,7 +107,6 @@ public sealed partial class PhotoCardItemViewModel : ObservableObject, IGalleryD
                 : $"{Path.GetExtension(PhotoPath).TrimStart('.').ToUpperInvariant()}+{Path.GetExtension(VideoPath).TrimStart('.').ToUpperInvariant()}";
         }
     }
-    public string PairingStatusText { get; init; } = string.Empty;
 
     /// <summary>原图宽高比。扫描阶段可能未知，缩略图解码后会渐进修正。</summary>
     [ObservableProperty]

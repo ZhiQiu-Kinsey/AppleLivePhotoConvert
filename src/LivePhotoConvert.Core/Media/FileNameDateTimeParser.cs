@@ -225,32 +225,15 @@ public static partial class FileNameDateTimeParser
         out DateTime result)
     {
         result = default;
-        if (!int.TryParse(yearSpan, out var year) || year < 1990 || year > 2099)
+        if (!TryParseComponent(yearSpan, 1990, 2099, out var year) || !TryParseComponent(monthSpan, 1, 12, out var month))
         {
             return false;
         }
 
-        if (!int.TryParse(monthSpan, out var month) || month < 1 || month > 12)
-        {
-            return false;
-        }
-
-        if (!int.TryParse(daySpan, out var day) || day < 1 || day > DateTime.DaysInMonth(year, month))
-        {
-            return false;
-        }
-
-        if (!int.TryParse(hourSpan, out var hour) || hour < 0 || hour > 23)
-        {
-            return false;
-        }
-
-        if (!int.TryParse(minuteSpan, out var minute) || minute < 0 || minute > 59)
-        {
-            return false;
-        }
-
-        if (!int.TryParse(secondSpan, out var second) || second < 0 || second > 59)
+        if (!TryParseComponent(daySpan, 1, DateTime.DaysInMonth(year, month), out var day)
+            || !TryParseComponent(hourSpan, 0, 23, out var hour)
+            || !TryParseComponent(minuteSpan, 0, 59, out var minute)
+            || !TryParseComponent(secondSpan, 0, 59, out var second))
         {
             return false;
         }
@@ -258,6 +241,9 @@ public static partial class FileNameDateTimeParser
         result = new DateTime(year, month, day, hour, minute, second, DateTimeKind.Local);
         return true;
     }
+
+    private static bool TryParseComponent(ReadOnlySpan<char> span, int min, int max, out int value) =>
+        int.TryParse(span, out value) && value >= min && value <= max;
 
     // ── 正则表达式（基于 .NET 10 GeneratedRegex 源生成器，完全 AOT 兼容且零分配） ──
 

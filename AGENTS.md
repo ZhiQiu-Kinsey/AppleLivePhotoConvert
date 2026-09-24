@@ -15,9 +15,9 @@
 | **实况互转 · 合成** | iPhone 实况对（HEIC/JPG + MOV）→ 单文件安卓动态照片（JPEG + 内嵌 MP4） |
 | **实况互转 · 还原** | 安卓动态照片 → 苹果实况对（`.HEIC` + `.MOV`），JPEG 封面自动转码 HEIC，注入配对 UUID |
 | **实况互转 · 解包** | 安卓动态照片 → 封面图 + 独立 `.mp4`（无损切片） |
-| **空间瘦身** | 剥离内嵌视频并可选转码 HEIC（默认质量 90），释放 60%~96% 空间 |
+| **空间瘦身** | 图库检查器中的「瘦身」动作：剥离内嵌/配对视频并可选转码 HEIC（默认质量 90），可就地替换或导出，附卷帘对比预览 |
 | **依赖引擎** | 检测 / 下载 ExifTool、FFmpeg、heif-enc（内置国内加速镜像） |
-| **批次报告** | 展示批处理成败明细、阶段进度与可导出的错误信息 |
+| **任务中心** | 运行中任务的进度、暂停与取消；本次会话的历史报告（成败明细、重试失败项、导出 CSV） |
 | **偏好设置 / 关于** | 主题、语言、并发数；版本、贡献者、仓库、MIT 协议与引用开源项目 |
 
 **技术栈（当前真实状态，勿参考历史文档中的过期信息）**
@@ -26,7 +26,7 @@
 - UI：**Avalonia 12.1.2**（`Avalonia.Desktop` / `Themes.Fluent` / `Fonts.Inter`）+ CommunityToolkit.Mvvm 8.4.0 + FluentIcons.Avalonia 2.1.339.1
 - 核心引擎：`LivePhotoConvert.Core`，零 UI 依赖，除 `Magick.NET-Q8-x64` 14.16.0（图像解码/缩略图）外无第三方包
 - 外部工具：ExifTool（元数据/XMP）、FFmpeg（转码/流复制）、heif-enc（HEIC 编码）
-- 测试：xunit.v3（`LivePhotoConvert.Core.Tests` 单元测试 + `LivePhotoConvert.E2E` 黑盒端到端）
+- 测试：xunit.v3（`LivePhotoConvert.Core.Tests` 引擎单元测试 + `LivePhotoConvert.Desktop.Tests` 桌面 VM/服务单元测试与 Avalonia Headless 界面冒烟 + `LivePhotoConvert.E2E` 黑盒端到端）
 - **已移除**：`LivePhotoConvert.Cli`、Spectre.Console、手写 `CliParser` 及旧命令行入口。不要再引用、恢复或为新功能增加 CLI 分支；可复用能力必须放入 Core，交互入口放入 Desktop。
 
 ---
@@ -45,14 +45,25 @@ src/LivePhotoConvert.Core/          # 核心引擎（纯托管、AOT 兼容、�
   Io/                               # BinaryFile 流式拼接切片、UniquePath、FileHelper / FileTimestamp
   Platform/                         # RecycleBin 等平台相关实现
 src/LivePhotoConvert.Desktop/       # Avalonia 12 桌面端
+  App.axaml(.cs) / Program.cs       # 组合根（主题与语言先于页面 VM 生效）/ 全局异常钩子
   Assets/                           # Styles.axaml、Strings.zh-CN.axaml、Strings.en-US.axaml
+  Collections/                      # BulkObservableCollection（批量替换只发一次 Reset）
   Controls/                         # CompactToolbar / CurtainCompareControl / PhotoCardControl
   Converters/                       # ByteSizeConverter 等 XAML 值转换器
-  Models/                           # DesktopSettings、GalleryItem、AboutCredit、AboutInfo
-  Services/                         # AlbumScanner / ThumbnailReader / PlaybackHost / SettingsService 等
-  ViewModels/                       # Main / Convert / Strip / Tools / Report + Dialogs/
-  Views/                            # 对应视图与 Dialogs/
-tests/                              # Core.Tests（单元）与 E2E（黑盒）
+  Features/                         # 按功能组织的视图 + VM
+    Shell/                          # ShellWindow（导航、弹窗宿主、Esc）、ShellViewModel
+    Library/                        # 图库工作台：LibraryView/VM（画廊）、InspectorView/VM（动作与参数）、JobFactory、StripEstimator
+    Tasks/                          # 任务中心：TaskCenter、ConversionRunner、TasksView/VM、TaskReportView/VM、CsvWriter
+    Tools/                          # 依赖引擎页
+    Settings/                       # 偏好设置与关于
+    Dialogs/                        # 各弹窗（DialogViewModel<TResult> + 视图）
+  Infrastructure/                   # 与具体页面无关的桌面服务：AppServices（DI 组合根）、Localizer、SettingsStore/DesktopSettings、DialogService、FilePicker、ShellLauncher、Navigator、ThemeService、AppLifetime
+  Models/                           # GalleryItem（卡片/行/分组头）、TimelineGroup（等高排版）、AboutCredit、AboutInfo
+  Services/                         # AlbumScanner / ThumbnailReader / PlaybackHost / SafetyGuard 等
+tests/
+  LivePhotoConvert.Core.Tests/      # 引擎单元测试：Media / Metadata / Pairing / Pipeline / Services / Io，Support/ 为内存替身与合成媒体
+  LivePhotoConvert.Desktop.Tests/   # 桌面单元测试与 Headless 界面冒烟：目录与产品一致（Features/*、Infrastructure、Services…），Harness/ 为测试宿主
+  LivePhotoConvert.E2E/             # 黑盒端到端：真实外壳 + 真实外部工具，按用户操作点击界面，只看磁盘结果（工具缺失时跳过）
 docs/                               # 截图、架构文档、英文 README、赞赏码
 Directory.Build.props               # 统一版本与语言配置
 global.json                         # 固定 SDK 10.0.400（避免误用 11 preview）
@@ -124,27 +135,34 @@ global.json                         # 固定 SDK 10.0.400（避免误用 11 prev
 
 - 所有视图必须 `x:CompileBindings="True"` + 显式 `x:DataType`；绑定一律 `CompiledBinding`，界面文案一律 `DynamicResource`。
 - 视图模型继承 `ViewModelBase`，使用 CommunityToolkit `[ObservableProperty]` / `[RelayCommand]`。
+- 服务与页面 VM 由 `Infrastructure/AppServices` 显式工厂注册（禁止反射扫描），通过构造函数注入；VM 之间不用 `Action` 回调互相接线，不新增静态单例。
+- 弹窗继承 `DialogViewModel<TResult>`，调用方 `await dialogs.ShowAsync(...)` 取结果；Esc 与遮罩点击走 `CancelCommand`，资源在 `OnClosed` 中释放。
+- 设置只经 `SettingsStore.Update(...)` 修改（防抖原子写入）；文件选择与打开目录/链接只经 `IFilePicker` / `IShellLauncher`，不直接 `Process.Start`。
 - **零 Emoji 策略**：UI 只用 FluentIcons 矢量图标（`ic:SymbolIcon`），不得用 emoji 字符充当图标。
 - 新增按钮/卡片样式统一写入 `Assets/Styles.axaml`（如 `Button.credit-row`），不要在视图里堆内联样式。
 - 复用型列表项模板放 `UserControl.Resources` 的 `DataTemplate`，跨级取命令用 `((vm:XxxViewModel)$parent[ItemsControl].DataContext).Command` 语法。
+- 路径中间可能为空的绑定写成 `Current?.Title`（值类型再加 `TargetNullValue`），否则会产生绑定错误日志。
+- **界面改动补 Headless 冒烟测试**（`tests/LivePhotoConvert.Desktop.Tests`，`[AvaloniaFact]` + `Harness/ShellSession`）：新页面/弹窗/参数区要能在真实外壳中实例化，绑定错误日志为空，中英文切换后不残留另一语言或资源键名；截图输出到测试输出目录的 `screenshots/`（CI 作为产物上传）供人工审查。
 
 ### 4.5 响应式相册与预览内存安全
 
-- 「等高自适应」由 `ConvertViewModel` 依据可用视口宽度、原图比例与目标行高动态分行；完整行需铺满，末行保持自然宽度，禁止退化为固定列数或拉伸图片。
+- 「等高自适应」由 `LibraryViewModel` / `TimelineGroup.BuildRows` 依据可用视口宽度、原图比例与目标行高动态分行；完整行需铺满，末行保持自然宽度，禁止退化为固定列数或拉伸图片。
 - 卡片尺寸必须使用实际解码宽高与方向信息；窗口、侧栏或分组状态变化后必须触发重排，不得仅保存显示模式而不更新布局。
 - 原始 `Bitmap` 是非托管像素内存，**严禁无界缓存**。当前预算：960px 缩略图最多 24 张；悬浮预览最多 1 组、60 帧、720p；QuickLook 最多 90 帧、1080p；首屏仅预热 1 段视频。调整数值必须补内存压力验证。
 - 缩略图解码或 Skia 像素分配失败必须降级为占位图，不得让异常穿透 UI 线程导致进程退出。
 - 悬浮与 QuickLook 解码保留源时序：FFmpeg 使用 `-fps_mode passthrough`、BMP/BGR24 帧管线和 Lanczos 缩放；不要使用 `-hwaccel auto`，进程参数用 `ProcessStartInfo.ArgumentList` 逐项传入。
 
-### 4.6 本地化（三处必须同步，缺一不可）
+### 4.6 本地化（两处必须同步，缺一不可）
 
-新增/修改界面文案时，**必须同时更新三处**：
+两份 XAML 字符串字典是唯一数据源。新增/修改界面文案时，**必须同时更新两处**，键集合保持一致（`StringResourceTests` 会校验）：
 
 1. `Assets/Strings.zh-CN.axaml`
 2. `Assets/Strings.en-US.axaml`
-3. `Services/LocalizationService.cs` 中的 `ZhStrings` 与 `EnStrings`（`SetLanguage` 会用字典覆盖 `Application.Resources`，缺失会退化成显示 key）
 
-XAML 里 `&` 需写成 `&amp;`；C# 字典里直接写 `&` 即可。
+- 视图用 `{DynamicResource Key}`；代码通过 `Infrastructure/ILocalizer` 取文案（`localizer["Key"]`、`localizer.Format("KeyFormat", ...)`），不要在 .cs 里写界面可见的中文或英文字面量。
+- 格式串以 `Format` 结尾，中英两版占位符编号必须一致；日期格式也放进资源（如 `GroupTitleMonthFormat`）。
+- XAML 里 `&`、`<`、`>` 需转义；带前导/尾随空格的值加 `xml:space="preserve"`。
+- 缺失键在 Debug 下会触发 `Debug.Fail`（测试进程会直接终止），发布版返回键名。
 
 ### 4.7 语言风格
 
@@ -161,7 +179,7 @@ XAML 里 `&` 需写成 `&amp;`；C# 字典里直接写 `&` 即可。
 
 ```bash
 dotnet build LivePhotoConvert.slnx                  # 编译（要求 0 警告 0 错误）
-dotnet test  LivePhotoConvert.slnx                  # 全量测试（Core.Tests + E2E）
+dotnet test  LivePhotoConvert.slnx                  # 全量测试（Core.Tests + Desktop.Tests + E2E，Headless 无需显示器）
 dotnet run --project src/LivePhotoConvert.Desktop/LivePhotoConvert.Desktop.csproj   # 启动桌面端
 dotnet publish src/LivePhotoConvert.Desktop/LivePhotoConvert.Desktop.csproj -r win-x64 -c Release -o dist/aot   # Native AOT，要求 0 裁剪警告
 ```
@@ -179,8 +197,8 @@ dotnet publish src/LivePhotoConvert.Desktop/LivePhotoConvert.Desktop.csproj -r w
 
 1. 定位 Core（引擎）还是 Desktop（交互）；**Core 不得引入 UI/Console 依赖**。
 2. 遵循 AOT / 零分配 / 原子 / MVVM 规范，保持注释与 public API 语义。
-3. 新增界面文案同步三处本地化资源（见 4.6）。
-4. Core 改动必须补单元测试（`tests/LivePhotoConvert.Core.Tests` 按 Media / Metadata / Pairing / Pipeline / Services 分目录；真实外部工具的集成测试在工具缺失时自动跳过）；涉及 UI 流程的改动补充/更新 E2E 用例。测试必须验证产品代码，不要在测试工程里重新实现一份被测逻辑。
+3. 新增界面文案同步两处本地化资源（见 4.6）。
+4. Core 改动必须补单元测试（`tests/LivePhotoConvert.Core.Tests` 按 Media / Metadata / Pairing / Pipeline / Services 分目录；真实外部工具的集成测试在工具缺失时自动跳过）；Desktop 改动补 `tests/LivePhotoConvert.Desktop.Tests`（目录与命名空间对应产品的 `Features/*`、`Infrastructure` 等，界面改动含 Headless 冒烟）；跨越「选相册 → 执行 → 落盘」的完整流程改动补充/更新 `tests/LivePhotoConvert.E2E` 用例。测试必须验证产品代码，不要在测试工程里重新实现一份被测逻辑。
 5. `dotnet build` 0 警告 0 报错，`dotnet test` 全绿。
 6. 交付总结：改动内容、设计决策、验证结果。
 

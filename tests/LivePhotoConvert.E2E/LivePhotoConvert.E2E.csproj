@@ -10,11 +10,24 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
     <PackageReference Include="xunit.v3" Version="3.2.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
-    <PackageReference Include="System.Drawing.Common" Version="9.0.2" />
+    <PackageReference Include="Avalonia.Headless.XUnit" Version="12.1.2" />
   </ItemGroup>
 
   <ItemGroup>
     <Using Include="Xunit" />
+  </ItemGroup>
+
+  <!-- 与桌面测试共用 Headless 外壳宿主与样例媒体；Core 测试的合成媒体与工具探测同理 -->
+  <ItemGroup>
+    <Compile Include="..\LivePhotoConvert.Desktop.Tests\Harness\TestAppBuilder.cs" Link="Harness\TestAppBuilder.cs" />
+    <Compile Include="..\LivePhotoConvert.Desktop.Tests\Harness\CultureScope.cs" Link="Harness\CultureScope.cs" />
+    <Compile Include="..\LivePhotoConvert.Desktop.Tests\Harness\DesktopTestHost.cs" Link="Harness\DesktopTestHost.cs" />
+    <Compile Include="..\LivePhotoConvert.Desktop.Tests\Harness\ShellSession.cs" Link="Harness\ShellSession.cs" />
+    <Compile Include="..\LivePhotoConvert.Desktop.Tests\Harness\UiLogSink.cs" Link="Harness\UiLogSink.cs" />
+    <Compile Include="..\LivePhotoConvert.Desktop.Tests\Harness\TestSandbox.cs" Link="Harness\TestSandbox.cs" />
+    <Compile Include="..\LivePhotoConvert.Desktop.Tests\Harness\SampleAlbum.cs" Link="Harness\SampleAlbum.cs" />
+    <Compile Include="..\LivePhotoConvert.Core.Tests\Support\SyntheticMedia.cs" Link="Support\SyntheticMedia.cs" />
+    <Compile Include="..\LivePhotoConvert.Core.Tests\Support\ExternalTools.cs" Link="Support\ExternalTools.cs" />
   </ItemGroup>
 
   <ItemGroup>

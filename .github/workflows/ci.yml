@@ -25,8 +25,17 @@ jobs:
       - name: 编译解决方案
         run: dotnet build LivePhotoConvert.slnx -c Release
 
-      - name: 运行全部单元测试
+      # 含 Avalonia Headless 界面冒烟测试：Skia 离屏渲染，不需要显示器
+      - name: 运行全部测试
         run: dotnet test LivePhotoConvert.slnx -c Release --no-build --verbosity normal
+
+      - name: 上传界面截图
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-screenshots
+          path: tests/LivePhotoConvert.Desktop.Tests/bin/Release/net10.0/screenshots/
+          if-no-files-found: warn
 
   aot-publish:
     runs-on: windows-latest

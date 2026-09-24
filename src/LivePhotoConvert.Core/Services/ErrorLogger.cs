@@ -4,7 +4,7 @@ using LivePhotoConvert.Core.Io;
 namespace LivePhotoConvert.Core.Services;
 
 /// <summary>
-/// 全局错误日志静默记录器（捕获未处理异常并记录至本地文件，避免在控制台向普通用户直接输出惊悚的原始调用堆栈）
+/// 全局错误日志静默记录器：捕获未处理异常并记录至本地文件，不向用户直接展示原始调用堆栈。
 /// </summary>
 public static class ErrorLogger
 {
@@ -20,7 +20,7 @@ public static class ErrorLogger
     {
         get
         {
-            var logDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LivePhotoConvert", "logs");
+            var logDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.Create), "LivePhotoConvert", "logs");
             try
             {
                 Directory.CreateDirectory(logDir);
@@ -38,7 +38,7 @@ public static class ErrorLogger
     /// </summary>
     /// <remarks>
     /// 1. 采用单文件 5MB 滚动轮转策略（超过 5MB 自动重命名备份为 error.log.bak）；<br/>
-    /// 2. 日志写入失败时静默吞掉，绝对不反向影响或崩溃命令行主流程。
+    /// 2. 日志写入失败时静默吞掉，不反向影响主流程。
     /// </remarks>
     /// <param name="ex">异常对象</param>
     /// <param name="contextDescription">发生异常的业务场景或上下文说明</param>

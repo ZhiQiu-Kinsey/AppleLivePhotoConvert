@@ -1,0 +1,289 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:LivePhotoConvert.Desktop.Features.Settings"
+             xmlns:models="using:LivePhotoConvert.Desktop.Models"
+             x:Class="LivePhotoConvert.Desktop.Features.Settings.SettingsView"
+             x:CompileBindings="True"
+             x:DataType="vm:SettingsViewModel"
+        xmlns:ic="using:FluentIcons.Avalonia">
+
+  <UserControl.Resources>
+    <!-- “关于”页鸣谢行：点击即跳转对应项目主页，命令由页面视图模型统一提供 -->
+    <DataTemplate x:Key="AboutCreditRowTemplate" x:DataType="models:AboutCredit">
+      <Button Classes="credit-row"
+              Command="{CompiledBinding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).OpenUrlCommand}"
+              CommandParameter="{CompiledBinding Url}">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Grid.Column="0" Spacing="1" VerticalAlignment="Center">
+            <TextBlock Text="{CompiledBinding Name}" FontSize="11.5" FontWeight="SemiBold"
+                       Foreground="{DynamicResource TextPrimaryBrush}" />
+            <TextBlock Text="{CompiledBinding Description}" FontSize="10" TextWrapping="Wrap"
+                       Foreground="{DynamicResource TextMutedBrush}" />
+          </StackPanel>
+          <Border Grid.Column="1" Background="{DynamicResource HoverBrush}" CornerRadius="5" Padding="6,2"
+                  VerticalAlignment="Center" Margin="8,0,0,0">
+            <TextBlock Text="{CompiledBinding Badge}" FontSize="9" Foreground="{DynamicResource TextTertiaryBrush}" />
+          </Border>
+        </Grid>
+      </Button>
+    </DataTemplate>
+  </UserControl.Resources>
+
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+    <StackPanel Spacing="20" Margin="24" MaxWidth="900">
+
+      <!-- 页头：标题 / 说明 / 自动保存提示 -->
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Grid.Column="0" Spacing="4" VerticalAlignment="Center">
+          <TextBlock Text="{DynamicResource SettingsPageTitle}" FontWeight="Bold" FontSize="16"
+                     Foreground="{DynamicResource TextPrimaryBrush}" />
+          <TextBlock Text="{DynamicResource SettingsPageDesc}" FontSize="11"
+                     Foreground="{DynamicResource TextTertiaryBrush}" TextWrapping="Wrap" />
+        </StackPanel>
+        <Border Grid.Column="1" Background="{DynamicResource SuccessSoftBrush}" BorderBrush="{DynamicResource SuccessBorderBrush}"
+                BorderThickness="1" CornerRadius="8" Padding="10,4" VerticalAlignment="Center"
+                IsVisible="{CompiledBinding IsSettingsSaved}">
+          <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+            <ic:SymbolIcon Symbol="Checkmark" FontSize="11" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
+            <TextBlock Text="{DynamicResource SettingsSavedHint}" FontSize="11" FontWeight="SemiBold"
+                       Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" />
+          </StackPanel>
+        </Border>
+      </Grid>
+
+      <!-- 页内导航：将编辑偏好与项目说明分离，避免单页信息过长。 -->
+      <Border Classes="segmented-group" HorizontalAlignment="Left">
+        <StackPanel Orientation="Horizontal">
+          <Button Classes="segmented-item" Classes.active="{CompiledBinding IsSettingsSelected}"
+                  Command="{CompiledBinding ShowSettingsCommand}">
+            <TextBlock Text="{DynamicResource SettingsTabTitle}" />
+          </Button>
+          <Button Classes="segmented-item" Classes.active="{CompiledBinding IsAboutSelected}"
+                  Command="{CompiledBinding ShowAboutCommand}">
+            <TextBlock Text="{DynamicResource AboutTabTitle}" />
+          </Button>
+        </StackPanel>
+      </Border>
+
+      <!-- ===== 偏好设置：外观与行为两张列表卡片，每行 图标 / 文字 / 控件 ===== -->
+      <StackPanel IsVisible="{CompiledBinding IsSettingsSelected}" Spacing="14">
+        <StackPanel Spacing="6">
+          <TextBlock Text="{DynamicResource SettingsAppearanceTitle}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+          <Border Classes="settings-card">
+            <StackPanel>
+              <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto">
+                <Border Classes="settings-icon-badge"><ic:SymbolIcon Symbol="WeatherSunny" FontSize="16" Foreground="{DynamicResource AccentBrush}" /></Border>
+                <StackPanel Grid.Column="1">
+                  <TextBlock Text="{DynamicResource ThemeTitle}" Classes="settings-card-title" />
+                </StackPanel>
+                <Border Grid.Column="2" Classes="segmented-group" VerticalAlignment="Center">
+                  <StackPanel Orientation="Horizontal">
+                    <Button Classes="segmented-item" Classes.active="{CompiledBinding IsLightTheme}" Command="{CompiledBinding SetThemeCommand}" CommandParameter="Light">
+                      <TextBlock Text="{DynamicResource ThemeLightOption}" />
+                    </Button>
+                    <Button Classes="segmented-item" Classes.active="{CompiledBinding IsDarkTheme}" Command="{CompiledBinding SetThemeCommand}" CommandParameter="Dark">
+                      <TextBlock Text="{DynamicResource ThemeDarkOption}" />
+                    </Button>
+                    <Button Classes="segmented-item" Classes.active="{CompiledBinding IsAutoTheme}" Command="{CompiledBinding SetThemeCommand}" CommandParameter="Auto">
+                      <TextBlock Text="{DynamicResource ThemeAutoOption}" />
+                    </Button>
+                  </StackPanel>
+                </Border>
+              </Grid>
+              <Border Classes="settings-divider" />
+              <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto">
+                <Border Classes="settings-icon-badge"><ic:SymbolIcon Symbol="Globe" FontSize="16" Foreground="{DynamicResource AccentBrush}" /></Border>
+                <StackPanel Grid.Column="1">
+                  <TextBlock Text="{DynamicResource LangTitle}" Classes="settings-card-title" />
+                </StackPanel>
+                <Border Grid.Column="2" Classes="segmented-group" VerticalAlignment="Center">
+                  <StackPanel Orientation="Horizontal">
+                    <Button Classes="segmented-item" Classes.active="{CompiledBinding IsChineseLanguage}" Command="{CompiledBinding SetLanguageCommand}" CommandParameter="zh">
+                      <TextBlock Text="{DynamicResource LangZhOption}" />
+                    </Button>
+                    <Button Classes="segmented-item" Classes.active="{CompiledBinding IsEnglishLanguage}" Command="{CompiledBinding SetLanguageCommand}" CommandParameter="en">
+                      <TextBlock Text="{DynamicResource LangEnOption}" />
+                    </Button>
+                  </StackPanel>
+                </Border>
+              </Grid>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+
+        <StackPanel Spacing="6">
+          <TextBlock Text="{DynamicResource SettingsBehaviorTitle}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+          <Border Classes="settings-card">
+            <StackPanel>
+              <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto">
+                <Border Classes="settings-icon-badge"><ic:SymbolIcon Symbol="Timer" FontSize="16" Foreground="{DynamicResource AccentBrush}" /></Border>
+                <StackPanel Grid.Column="1">
+                  <TextBlock Text="{DynamicResource ConcurrencyTitle}" Classes="settings-card-title" />
+                  <TextBlock Text="{DynamicResource SettingsConcurrencyDesc}" Classes="settings-card-caption" />
+                </StackPanel>
+                <NumericUpDown Grid.Column="2" Value="{CompiledBinding Concurrency, Mode=TwoWay}" Minimum="1" Maximum="16" Increment="1"
+                               Width="112" Height="34" Padding="8,0" TextAlignment="Center" VerticalAlignment="Center" VerticalContentAlignment="Center" />
+              </Grid>
+              <Border Classes="settings-divider" />
+              <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto">
+                <Border Classes="settings-icon-badge"><ic:SymbolIcon Symbol="Alert" FontSize="16" Foreground="{DynamicResource AccentBrush}" /></Border>
+                <StackPanel Grid.Column="1">
+                  <TextBlock Text="{DynamicResource NotifyOnCompleteTitle}" Classes="settings-card-title" />
+                  <TextBlock Text="{DynamicResource NotifyOnCompleteDesc}" Classes="settings-card-caption" />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="2" Classes="row-switch" IsChecked="{CompiledBinding NotifyOnComplete, Mode=TwoWay}" />
+              </Grid>
+              <Border Classes="settings-divider" />
+              <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto">
+                <Border Classes="settings-icon-badge"><ic:SymbolIcon Symbol="FolderOpen" FontSize="16" Foreground="{DynamicResource AccentBrush}" /></Border>
+                <StackPanel Grid.Column="1">
+                  <TextBlock Text="{DynamicResource AutoOpenOutputTitle}" Classes="settings-card-title" />
+                  <TextBlock Text="{DynamicResource AutoOpenOutputDesc}" Classes="settings-card-caption" />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="2" Classes="row-switch" IsChecked="{CompiledBinding AutoOpenOutput, Mode=TwoWay}" />
+              </Grid>
+              <Border Classes="settings-divider" />
+              <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto">
+                <Border Classes="settings-icon-badge"><ic:SymbolIcon Symbol="Broom" FontSize="16" Foreground="{DynamicResource AccentBrush}" /></Border>
+                <StackPanel Grid.Column="1">
+                  <TextBlock Text="{DynamicResource AutoCleanTempTitle}" Classes="settings-card-title" />
+                  <TextBlock Text="{DynamicResource AutoCleanTempDesc}" Classes="settings-card-caption" />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="2" Classes="row-switch" IsChecked="{CompiledBinding AutoCleanTemp, Mode=TwoWay}" />
+              </Grid>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </StackPanel>
+
+      <!-- ===== 关于 ===== -->
+      <StackPanel IsVisible="{CompiledBinding IsAboutSelected}" Spacing="14" Margin="0,8,0,0">
+
+        <!-- 项目标识 -->
+        <Border Classes="about-hero">
+          <StackPanel Spacing="8" HorizontalAlignment="Center">
+          <Border Width="54" Height="54" CornerRadius="16" Background="{DynamicResource AccentSoftBrush}"
+                  BorderBrush="{DynamicResource AccentBorderBrush}" BorderThickness="1">
+            <ic:SymbolIcon Symbol="Camera" FontSize="26" Foreground="{DynamicResource AccentBrush}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          </Border>
+          <TextBlock Text="LivePhotoConvert" FontSize="17" FontWeight="Bold"
+                     Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center" />
+          <TextBlock Text="{DynamicResource AppSubtitle}" FontSize="11"
+                     Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" />
+          <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+            <Border Background="{DynamicResource HoverBrush}" CornerRadius="6" Padding="8,3">
+              <TextBlock FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}">
+                <Run Text="{DynamicResource AboutVersionLabel}" />
+                <Run Text=" " />
+                <Run Text="{CompiledBinding AppVersion}" />
+              </TextBlock>
+            </Border>
+            <Border Background="{DynamicResource SuccessSoftBrush}" BorderBrush="{DynamicResource SuccessBorderBrush}"
+                    BorderThickness="1" CornerRadius="6" Padding="8,3">
+              <TextBlock Text="{CompiledBinding LicenseName}" FontSize="10" FontWeight="SemiBold"
+                         Foreground="{DynamicResource SuccessBrush}" />
+            </Border>
+          </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- 作者 -->
+        <Border Classes="settings-card" Padding="12,10" MaxWidth="1000" HorizontalAlignment="Stretch">
+          <Grid ColumnDefinitions="Auto,*,Auto">
+            <ic:SymbolIcon Grid.Column="0" Symbol="Person" FontSize="16" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+            <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+              <TextBlock Text="{DynamicResource AboutAuthorLabel}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" />
+              <TextBlock Text="{CompiledBinding AuthorName}" FontSize="12" FontWeight="SemiBold"
+                         Foreground="{DynamicResource TextPrimaryBrush}" />
+            </StackPanel>
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+              <Button Classes="sponsor-btn" Command="{CompiledBinding OpenSponsorDialogCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="5" HorizontalAlignment="Center" VerticalAlignment="Center">
+                  <ic:SymbolIcon Symbol="Heart" FontSize="12" VerticalAlignment="Center" />
+                  <TextBlock Text="{DynamicResource AboutSponsorTitle}" FontSize="10.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+              <Button Classes="toolbar-btn" Height="28" Padding="10,0"
+                      Command="{CompiledBinding OpenUrlCommand}" CommandParameter="{x:Static models:AboutInfo.AuthorUrl}">
+                <TextBlock Text="{DynamicResource AboutAuthorHomeBtn}" FontSize="11" FontWeight="SemiBold" />
+              </Button>
+              <Button Classes="toolbar-btn" Height="28" Padding="9,0"
+                      Command="{CompiledBinding OpenUrlCommand}" CommandParameter="{x:Static models:AboutInfo.RepositoryUrl}">
+                <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                  <ic:SymbolIcon Symbol="BranchFork" FontSize="11" VerticalAlignment="Center" />
+                  <TextBlock Text="{DynamicResource AboutRepoBtn}" FontSize="10.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+              <Button Classes="toolbar-btn" Height="28" Padding="9,0"
+                      Command="{CompiledBinding OpenUrlCommand}" CommandParameter="{x:Static models:AboutInfo.IssuesUrl}">
+                <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                  <ic:SymbolIcon Symbol="Info" FontSize="11" VerticalAlignment="Center" />
+                  <TextBlock Text="{DynamicResource AboutIssuesBtn}" FontSize="10.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+              <Button Classes="toolbar-btn" Height="28" Padding="9,0"
+                      Command="{CompiledBinding OpenUrlCommand}" CommandParameter="{x:Static models:AboutInfo.ReleasesUrl}">
+                <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                  <ic:SymbolIcon Symbol="Open" FontSize="11" VerticalAlignment="Center" />
+                  <TextBlock Text="{DynamicResource AboutReleasesBtn}" FontSize="10.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+            </StackPanel>
+          </Grid>
+        </Border>
+
+        <!-- 开源协议 -->
+        <StackPanel Spacing="6">
+          <TextBlock Text="{DynamicResource AboutLicenseTitle}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+          <Border Classes="settings-card" Padding="12" MaxWidth="1000" HorizontalAlignment="Stretch">
+            <StackPanel Spacing="6">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" Text="{CompiledBinding LicenseName}" FontSize="12" FontWeight="Bold"
+                           Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Classes="toolbar-btn" Height="26" Padding="10,0"
+                        Command="{CompiledBinding OpenUrlCommand}" CommandParameter="{x:Static models:AboutInfo.LicenseUrl}">
+                  <TextBlock Text="{DynamicResource AboutViewLicenseBtn}" FontSize="10.5" FontWeight="SemiBold" />
+                </Button>
+              </Grid>
+              <TextBlock Text="{DynamicResource AboutLicenseDesc}" FontSize="10.5" LineHeight="16" TextWrapping="Wrap"
+                         Foreground="{DynamicResource TextTertiaryBrush}" />
+              <TextBlock Text="{DynamicResource AboutCopyrightLine}" FontSize="10"
+                         Foreground="{DynamicResource TextMutedBrush}" />
+            </StackPanel>
+          </Border>
+        </StackPanel>
+
+        <!-- 贡献者 -->
+        <StackPanel Spacing="6">
+          <TextBlock Text="{DynamicResource AboutContributorsTitle}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+          <Border Classes="settings-card" Padding="6" MaxWidth="1000" HorizontalAlignment="Stretch">
+            <ItemsControl ItemsSource="{CompiledBinding Contributors}" ItemTemplate="{StaticResource AboutCreditRowTemplate}" />
+          </Border>
+          <TextBlock Text="{DynamicResource AboutContributorsHint}" FontSize="10" TextWrapping="Wrap"
+                     Foreground="{DynamicResource TextMutedBrush}" />
+        </StackPanel>
+
+        <!-- 引用的开源项目：运行时引擎 -->
+        <StackPanel Spacing="6">
+          <TextBlock Text="{DynamicResource AboutCreditsRuntimeTitle}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+          <TextBlock Text="{DynamicResource AboutCreditsRuntimeDesc}" FontSize="10" TextWrapping="Wrap"
+                     Foreground="{DynamicResource TextMutedBrush}" />
+          <Border Classes="settings-card" Padding="6" MaxWidth="1000" HorizontalAlignment="Stretch">
+            <ItemsControl ItemsSource="{CompiledBinding RuntimeCredits}" ItemTemplate="{StaticResource AboutCreditRowTemplate}" />
+          </Border>
+        </StackPanel>
+
+        <!-- 引用的开源项目：构建框架 -->
+        <StackPanel Spacing="6">
+          <TextBlock Text="{DynamicResource AboutCreditsBuildTitle}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+          <Border Classes="settings-card" Padding="6" MaxWidth="1000" HorizontalAlignment="Stretch">
+            <ItemsControl ItemsSource="{CompiledBinding BuildCredits}" ItemTemplate="{StaticResource AboutCreditRowTemplate}" />
+          </Border>
+        </StackPanel>
+
+      </StackPanel>
+
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>
