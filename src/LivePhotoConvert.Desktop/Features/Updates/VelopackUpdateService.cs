@@ -115,10 +115,10 @@ public sealed class VelopackUpdateService : IUpdateService
         var asset = manager.UpdatePendingRestart ?? throw new InvalidOperationException("没有已下载的更新。");
         lock (_gate)
         {
+            manager.WaitExitThenApplyUpdates(asset, silent: false, restart: true);
+            // 启动成功后才标记：更新程序没能启动时，退出收尾仍要尝试"退出时安装"
             _updaterLaunched = true;
         }
-
-        manager.WaitExitThenApplyUpdates(asset, silent: false, restart: true);
     }
 
     public void ApplyOnExit()

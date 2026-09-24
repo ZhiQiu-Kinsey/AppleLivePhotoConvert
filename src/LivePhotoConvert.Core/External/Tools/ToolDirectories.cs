@@ -7,6 +7,9 @@ public static class ToolDirectories
 {
     private const string MigrationStagingPrefix = ".migrate-";
 
+    /// <summary>超过这个时间仍未改名就位的迁移暂存目录视为中途退出的残留；远长于一次复制，不会误删另一个实例正在用的目录。</summary>
+    private static readonly TimeSpan StaleStagingAge = TimeSpan.FromHours(1);
+
     /// <summary>本地应用数据下的工具目录：安装版与可更新版的安装位置，也是程序目录不可写时的退路。</summary>
     public static string LocalAppDataToolDirectory => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.Create),
@@ -76,6 +79,7 @@ public static class ToolDirectories
     /// <summary>
     /// 把旧位置的工具复制到新的安装根目录。只复制目标中还没有的条目，复制完整并逐文件核对大小后才改名就位；
     /// 源文件保留不动（程序目录下的副本会随下次更新一起被替换），失败只跳过该条目，不影响程序使用。
+    /// 多个实例同时迁移时各用各的暂存目录，改名就位只有一个成功，其余视为已迁移。
     /// </summary>
     /// <param name="legacyRoots">旧的工具目录；不存在或与目标相同的会被忽略</param>
     /// <param name="targetRoot">新的安装根目录</param>
@@ -84,6 +88,7 @@ public static class ToolDirectories
     public static IReadOnlyList<string> MigrateLegacyTools(IEnumerable<string> legacyRoots, string targetRoot, Action<string, Exception>? onError = null)
     {
         var target = Path.GetFullPath(targetRoot);
+        DeleteStaleStaging(target);
         var migrated = new List<string>();
         foreach (var legacy in legacyRoots.Select(Path.GetFullPath).Distinct(PathComparer))
         {
@@ -125,11 +130,11 @@ public static class ToolDirectories
     private static bool TryMigrateEntry(string source, string targetRoot, string name, Action<string, Exception>? onError)
     {
         var staging = Path.Combine(targetRoot, $"{MigrationStagingPrefix}{Guid.NewGuid():N}");
+        var destination = Path.Combine(targetRoot, name);
         try
         {
             Directory.CreateDirectory(staging);
             var stagedEntry = Path.Combine(staging, name);
-            var destination = Path.Combine(targetRoot, name);
             if (Directory.Exists(source))
             {
                 CopyDirectory(source, stagedEntry);
@@ -147,12 +152,36 @@ public static class ToolDirectories
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException)
         {
-            onError?.Invoke(source, ex);
+            // 另一个实例或工具安装抢先放好了同名条目：不算失败
+            if (!Exists(destination))
+            {
+                onError?.Invoke(source, ex);
+            }
+
             return false;
         }
         finally
         {
             FileHelper.TryDeleteDirectory(staging);
+        }
+    }
+
+    private static void DeleteStaleStaging(string targetRoot)
+    {
+        try
+        {
+            var staleBefore = DateTime.UtcNow - StaleStagingAge;
+            foreach (var staging in Directory.EnumerateDirectories(targetRoot, $"{MigrationStagingPrefix}*"))
+            {
+                if (Directory.GetLastWriteTimeUtc(staging) < staleBefore)
+                {
+                    FileHelper.TryDeleteDirectory(staging);
+                }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // 目标根目录尚不存在或不可读：没有残留可清
         }
     }
 

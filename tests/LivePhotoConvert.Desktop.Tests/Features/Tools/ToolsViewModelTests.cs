@@ -81,13 +81,20 @@ public class ToolsViewModelTests
     public void Ffmpeg_ProbeError_DoesNotClaimMissingCapabilities()
     {
         using var f = new ToolsFixture(arrange: r =>
-            r.Infos[ToolId.Ffmpeg] = new ToolInfo(ToolId.Ffmpeg, "/usr/bin/ffmpeg", null, null, ToolCapabilities.None, null, false, "timeout"));
+            r.Infos[ToolId.Ffmpeg] = new ToolInfo(ToolId.Ffmpeg, "/usr/bin/ffmpeg", null, null, ToolCapabilities.None, null, false,
+                new ToolProbeError(ToolProbeFailure.Timeout, new TimeoutException("ffmpeg 运行超过 15 秒，已终止。"))));
         var ffmpeg = f.ViewModel.Ffmpeg;
 
         Assert.Equal(f.Localizer["ToolVersionUnknown"], ffmpeg.StatusText);
+        Assert.Equal(f.Localizer["ToolProbeTimeout"], ffmpeg.VersionDetail);
         Assert.Empty(ffmpeg.Capabilities);
         Assert.False(ffmpeg.IsHdrUnavailable);
         Assert.True(ffmpeg.HasWarning);
+
+        // 原因随语言切换，不混入 Core 异常的中文消息
+        f.Localizer.SetLanguage("en");
+        Assert.Equal(f.Localizer["ToolProbeTimeout"], ffmpeg.VersionDetail);
+        Assert.DoesNotContain("已终止", ffmpeg.VersionDetail);
     }
 
     [Fact]
@@ -242,6 +249,22 @@ public class ToolsViewModelTests
         Assert.Equal(f.Localizer.Format("PingFailedFormat", f.Localizer["PingInvalidAddress"]), f.ViewModel.PingLatencyText);
     }
 
+    [Theory]
+    [InlineData(HttpRequestError.NameResolutionError, "PingDnsFailed")]
+    [InlineData(HttpRequestError.SecureConnectionError, "PingTlsFailed")]
+    [InlineData(HttpRequestError.ConnectionError, "PingUnreachable")]
+    public async Task TestMirrorSpeed_ConnectionFailure_ShowsLocalizedReason(HttpRequestError error, string reasonKey)
+    {
+        var handler = new ScriptedHandler((_, _) => throw new HttpRequestException(error, "runtime message"));
+        using var f = new ToolsFixture(http: handler);
+        f.ViewModel.CustomMirrorUrl = "ghproxy.net";
+
+        await f.ViewModel.TestMirrorSpeedAsync();
+
+        Assert.False(f.ViewModel.IsPingHealthy);
+        Assert.Equal(f.Localizer.Format("PingFailedFormat", f.Localizer[reasonKey]), f.ViewModel.PingLatencyText);
+    }
+
     [Fact]
     public async Task TestMirrorSpeed_NoResponse_TimesOut()
     {
@@ -270,7 +293,8 @@ public class ToolsViewModelTests
         await f.ViewModel.TestMirrorSpeedAsync();
 
         Assert.False(f.ViewModel.IsPingHealthy);
-        Assert.Equal(f.Localizer.Format("PingFailedFormat", "refused"), f.ViewModel.PingLatencyText);
+        // 运行时的英文异常消息不直接显示
+        Assert.Equal(f.Localizer.Format("PingFailedFormat", f.Localizer["PingUnreachable"]), f.ViewModel.PingLatencyText);
     }
 
     [Theory]

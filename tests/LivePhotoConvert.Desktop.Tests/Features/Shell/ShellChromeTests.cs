@@ -179,6 +179,7 @@ public sealed class ShellChromeTests
         Assert.Equal(3, cardDots.Count);
         Assert.All(cardDots, dot => Assert.Equal(["large", "probing"], dot.Classes.Where(c => c is "large" or "ok" or "warn" or "bad" or "probing").Order()));
         var pills = session.Descendants<Border>().Where(b => b.Classes.Contains("status-pill")).ToList();
+        Assert.Equal(3, pills.Count);
         Assert.All(pills, pill =>
         {
             Assert.Contains("muted", pill.Classes);

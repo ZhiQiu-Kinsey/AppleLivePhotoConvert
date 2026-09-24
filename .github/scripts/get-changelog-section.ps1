@@ -81,7 +81,8 @@ if ($body.Count -eq 0) {
 $text = ($body -join "`n") + "`n"
 if ($OutFile) {
     # UTF-8 无 BOM、LF 换行
-    [IO.File]::WriteAllText([IO.Path]::GetFullPath($OutFile), $text, [Text.UTF8Encoding]::new($false))
+    # 相对路径按 PowerShell 当前位置解析，而非进程工作目录
+    [IO.File]::WriteAllText($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutFile), $text, [Text.UTF8Encoding]::new($false))
     Write-Host "已提取 $normalized 的更新说明（$($body.Count) 行）到 $OutFile。"
 }
 else {

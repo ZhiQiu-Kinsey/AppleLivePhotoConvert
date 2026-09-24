@@ -185,6 +185,35 @@ public sealed class VelopackUpdateServiceTests : IDisposable
     }
 
     [Fact]
+    public void UpdaterFailingToStart_IsRetriedSilentlyOnExit()
+    {
+        var updateExe = _temp.Combine("Update.exe");
+        var process = new RecordingProcess();
+        var downloaded = new VelopackAsset
+        {
+            PackageId = FakeGithubReleases.PackId,
+            Version = SemanticVersion.Parse("3.1.0"),
+            Type = VelopackAssetType.Full,
+            FileName = $"{FakeGithubReleases.PackId}-3.1.0-full.nupkg"
+        };
+        var locator = new RecordingLocator(PackagesDir, _temp.Root, updateExe, downloaded, process);
+        var service = new VelopackUpdateService(() => null, locator, new HttpClient(_github.Handler));
+
+        // Update.exe 缺失：立即重启失败
+        Assert.Throws<FileNotFoundException>(service.ApplyAndRestart);
+        Assert.Empty(process.Started);
+
+        // 调用方随后改为退出时安装；更新程序恢复后，退出收尾必须真的启动它
+        File.WriteAllBytes(updateExe, []);
+        service.ApplyOnExit();
+        service.OnExiting();
+
+        var args = Assert.Single(process.Started);
+        Assert.Contains("--silent", args);
+        Assert.Contains("--norestart", args);
+    }
+
+    [Fact]
     public void ComposeNotes_SingleRelease_HasNoVersionHeading()
     {
         Assert.Equal("- a", VelopackUpdateService.ComposeNotes([new ReleaseNotesEntry("3.1.0", "- a")], "fallback"));
@@ -235,6 +264,27 @@ public sealed class VelopackUpdateServiceTests : IDisposable
                 _github.Handler.Map(Mirror + direct, () => _github.Handler.Respond(direct));
             }
         }
+    }
+
+    /// <summary>带本地已下载更新包与更新程序路径的定位器；启动进程只记录参数。</summary>
+    private sealed class RecordingLocator(string packagesDir, string rootDir, string updateExe, VelopackAsset localPackage, RecordingProcess process)
+        : TestVelopackLocator(FakeGithubReleases.PackId, "3.0.3", packagesDir, null, rootDir, updateExe, channel: "win",
+            logger: new NullVelopackLogger(), localPackage: localPackage)
+    {
+        public override IProcessImpl Process => process;
+    }
+
+    private sealed class RecordingProcess : IProcessImpl
+    {
+        public List<string[]> Started { get; } = [];
+
+        public string GetCurrentProcessPath() => Environment.ProcessPath ?? string.Empty;
+
+        public uint GetCurrentProcessId() => (uint)Environment.ProcessId;
+
+        public void StartProcess(string exePath, IEnumerable<string> args, string workDir, bool showWindow) => Started.Add([.. args]);
+
+        public void Exit(int exitCode) => throw new InvalidOperationException("测试中不应退出进程。");
     }
 
     /// <summary>同步回报的进度（Progress&lt;T&gt; 经线程池异步回报，断言时可能尚未到达）。</summary>
