@@ -197,6 +197,56 @@ public sealed class SettingsStoreTests : IDisposable
     }
 
     [Fact]
+    public void VersionThreeFile_GainsThumbnailBudgets_AndKeepsGalleryPreferences()
+    {
+        File.WriteAllText(SettingsPath, """
+            {
+              "schemaVersion": 3,
+              "gallery": { "scale": "Large", "crop": "Square" }
+            }
+            """);
+
+        using var store = new SettingsStore(SettingsPath);
+
+        Assert.Equal(("Large", "Square"), (store.Current.Gallery.Scale, store.Current.Gallery.Crop));
+        Assert.Equal(192, store.Current.Gallery.ThumbnailBudgetMb);
+        Assert.Equal(1024, store.Current.Gallery.ThumbnailDiskCacheMb);
+        var gallery = (JsonObject)ReadJson(SettingsPath)["gallery"]!;
+        Assert.Equal(192, (int?)gallery["thumbnailBudgetMb"]);
+        Assert.Equal(1024, (int?)gallery["thumbnailDiskCacheMb"]);
+    }
+
+    [Fact]
+    public void VersionThreeFile_WithoutGallery_GetsDefaultBudgets()
+    {
+        var root = new JsonObject { ["schemaVersion"] = 3 };
+
+        Assert.True(SettingsStore.Migrate(root));
+
+        Assert.Equal(192, (int?)root["gallery"]!["thumbnailBudgetMb"]);
+        Assert.Equal(1024, (int?)root["gallery"]!["thumbnailDiskCacheMb"]);
+    }
+
+    [Fact]
+    public void ThumbnailBudgets_RoundTrip()
+    {
+        using (var store = new SettingsStore(SettingsPath))
+        {
+            store.Update(s =>
+            {
+                s.Gallery.ThumbnailBudgetMb = 512;
+                s.Gallery.ThumbnailDiskCacheMb = 4096;
+            });
+        }
+
+        var gallery = (JsonObject)ReadJson(SettingsPath)["gallery"]!;
+        Assert.False(gallery.ContainsKey("thumbnailBudgetBytes"), "换算出的字节数不应写入设置文件");
+        using var reloaded = new SettingsStore(SettingsPath);
+        Assert.Equal((512, 4096), (reloaded.Current.Gallery.ThumbnailBudgetMb, reloaded.Current.Gallery.ThumbnailDiskCacheMb));
+        Assert.Equal(4096L * 1024 * 1024, reloaded.Current.Gallery.ThumbnailDiskCacheBytes);
+    }
+
+    [Fact]
     public void Migrate_CurrentVersion_IsNoOp()
     {
         var root = new JsonObject { ["schemaVersion"] = SettingsStore.CurrentSchemaVersion, ["conflictPolicy"] = "Overwrite" };

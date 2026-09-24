@@ -62,6 +62,26 @@ public sealed class GalleryPreferences
     public string Grouping { get; set; } = "Date";
     public string Scale { get; set; } = "Medium";
     public string Crop { get; set; } = "Natural";
+
+    public const int DefaultThumbnailBudgetMb = 192;
+    public const int MinThumbnailBudgetMb = 64;
+    public const int MaxThumbnailBudgetMb = 1024;
+    public const int DefaultThumbnailDiskCacheMb = 1024;
+    public const int MinThumbnailDiskCacheMb = 128;
+    public const int MaxThumbnailDiskCacheMb = 16384;
+
+    /// <summary>缩略图位图的内存预算（MB）；正在显示的卡片不受限。</summary>
+    public int ThumbnailBudgetMb { get; set; } = DefaultThumbnailBudgetMb;
+
+    /// <summary>缩略图磁盘缓存上限（MB）。</summary>
+    public int ThumbnailDiskCacheMb { get; set; } = DefaultThumbnailDiskCacheMb;
+
+    /// <summary>手工编辑成越界值时夹到可用范围，而不是让预算失效或占满磁盘。</summary>
+    [JsonIgnore]
+    public long ThumbnailBudgetBytes => Math.Clamp(ThumbnailBudgetMb, MinThumbnailBudgetMb, MaxThumbnailBudgetMb) * 1024L * 1024;
+
+    [JsonIgnore]
+    public long ThumbnailDiskCacheBytes => Math.Clamp(ThumbnailDiskCacheMb, MinThumbnailDiskCacheMb, MaxThumbnailDiskCacheMb) * 1024L * 1024;
 }
 
 /// <summary>窗口位置为物理像素，宽高为与缩放无关的逻辑单位（与 Avalonia 的 Position / Width 一致）。</summary>

@@ -38,6 +38,21 @@ public class ExifToolJsonTests
         Assert.True(metadata.IsMirrored);
     }
 
+    [Theory]
+    [InlineData("1904:01:01 00:00:00+00:00")]
+    [InlineData("1904:01:01 08:00:00+08:00")]
+    [InlineData("1903:12:31 19:00:00-05:00")]
+    [InlineData("1904:01:01 05:21:10+05:21")]
+    [InlineData("1904:01:01 00:00:00")]
+    public void ParseMetadata_ZeroQuickTimeDate_IsTreatedAsMissing(string zero)
+    {
+        var json = $$"""
+                     [{"SourceFile":"a.mov","QuickTime:CreateDate":"{{zero}}","Track1:MediaCreateDate":"{{zero}}","QuickTime:Duration":1}]
+                     """;
+
+        Assert.Null(Assert.Single(ExifToolJson.ParseMetadata(json)).CaptureTime);
+    }
+
     [Fact]
     public void ParseMetadata_StillImageTime_SubtractsSampleDuration()
     {

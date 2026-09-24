@@ -14,7 +14,7 @@
                   IsVisible="{Binding #RootBar.Bounds.Width, Converter={x:Static conv:MinWidthToBoolConverter.Instance}, ConverterParameter=680}">
         <TextBlock Text="{DynamicResource ToolbarAlbumTitle}" FontWeight="Bold" FontSize="13" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimaryBrush}" />
         <Border Width="1" Height="12" Background="{DynamicResource LineStrongBrush}" VerticalAlignment="Center" />
-        <TextBlock Text="{Binding SelectedSummaryText}" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
+        <TextBlock Text="{Binding Selection.SelectedSummaryText}" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
       </StackPanel>
 
       <!-- 右侧精简工具栏 -->
@@ -45,34 +45,34 @@
             <Flyout Placement="BottomEdgeAlignedRight">
               <StackPanel Spacing="2" MinWidth="170">
                 <!-- Button: SetSortModeCommand -->
-                <Button Classes="nav-btn" Command="{Binding SetSortModeCommand}" CommandParameter="DateTaken" HorizontalAlignment="Stretch">
+                <Button Classes="nav-btn" Command="{Binding Layout.SetSortModeCommand}" CommandParameter="DateTaken" HorizontalAlignment="Stretch">
                   <Grid ColumnDefinitions="20,20,*">
                     <TextBlock Grid.Column="0" Text="•" FontSize="12" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"
-                               IsVisible="{Binding SortMode, Converter={x:Static conv:EqualityConverter.Instance}, ConverterParameter=DateTaken}"/>
+                               IsVisible="{Binding Layout.SortMode, Converter={x:Static conv:EqualityConverter.Instance}, ConverterParameter=DateTaken}"/>
                     <ic:SymbolIcon Symbol="Calendar" FontSize="12" Grid.Column="1" Foreground="{DynamicResource TextTertiaryBrush}"/>
                     <TextBlock Grid.Column="2" Text="{DynamicResource SortDateTaken}" FontSize="12" Margin="6,0,0,0" VerticalAlignment="Center" />
                   </Grid>
                 </Button>
-                <Button Classes="nav-btn" Command="{Binding SetSortModeCommand}" CommandParameter="DateCreated" HorizontalAlignment="Stretch">
+                <Button Classes="nav-btn" Command="{Binding Layout.SetSortModeCommand}" CommandParameter="DateCreated" HorizontalAlignment="Stretch">
                   <Grid ColumnDefinitions="20,20,*">
                     <TextBlock Grid.Column="0" Text="•" FontSize="12" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"
-                               IsVisible="{Binding SortMode, Converter={x:Static conv:EqualityConverter.Instance}, ConverterParameter=DateCreated}"/>
+                               IsVisible="{Binding Layout.SortMode, Converter={x:Static conv:EqualityConverter.Instance}, ConverterParameter=DateCreated}"/>
                     <ic:SymbolIcon Symbol="Clock" FontSize="12" Grid.Column="1" Foreground="{DynamicResource TextTertiaryBrush}"/>
                     <TextBlock Grid.Column="2" Text="{DynamicResource SortDateCreated}" FontSize="12" Margin="6,0,0,0" VerticalAlignment="Center" />
                   </Grid>
                 </Button>
-                <Button Classes="nav-btn" Command="{Binding SetSortModeCommand}" CommandParameter="DateModified" HorizontalAlignment="Stretch">
+                <Button Classes="nav-btn" Command="{Binding Layout.SetSortModeCommand}" CommandParameter="DateModified" HorizontalAlignment="Stretch">
                   <Grid ColumnDefinitions="20,20,*">
                     <TextBlock Grid.Column="0" Text="•" FontSize="12" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"
-                               IsVisible="{Binding SortMode, Converter={x:Static conv:EqualityConverter.Instance}, ConverterParameter=DateModified}"/>
+                               IsVisible="{Binding Layout.SortMode, Converter={x:Static conv:EqualityConverter.Instance}, ConverterParameter=DateModified}"/>
                     <ic:SymbolIcon Symbol="Calendar" FontSize="12" Grid.Column="1" Foreground="{DynamicResource TextTertiaryBrush}"/>
                     <TextBlock Grid.Column="2" Text="{DynamicResource SortDateModified}" FontSize="12" Margin="6,0,0,0" VerticalAlignment="Center" />
                   </Grid>
                 </Button>
-                <Button Classes="nav-btn" Command="{Binding SetSortModeCommand}" CommandParameter="Name" HorizontalAlignment="Stretch">
+                <Button Classes="nav-btn" Command="{Binding Layout.SetSortModeCommand}" CommandParameter="Name" HorizontalAlignment="Stretch">
                   <Grid ColumnDefinitions="20,20,*">
                     <TextBlock Grid.Column="0" Text="•" FontSize="12" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"
-                               IsVisible="{Binding SortMode, Converter={x:Static conv:EqualityConverter.Instance}, ConverterParameter=Name}"/>
+                               IsVisible="{Binding Layout.SortMode, Converter={x:Static conv:EqualityConverter.Instance}, ConverterParameter=Name}"/>
                     <ic:SymbolIcon Symbol="Document" FontSize="12" Grid.Column="1" Foreground="{DynamicResource TextTertiaryBrush}"/>
                     <TextBlock Grid.Column="2" Text="{DynamicResource SortName}" FontSize="12" Margin="6,0,0,0" VerticalAlignment="Center" />
                   </Grid>
@@ -81,16 +81,16 @@
                 <Border Height="1" Background="{DynamicResource LineBrush}" Margin="4,3" />
 
                 <!-- 排序方向 -->
-                <Button Classes="nav-btn" Command="{Binding SetSortDirectionCommand}" CommandParameter="{x:True}" HorizontalAlignment="Stretch">
+                <Button Classes="nav-btn" Command="{Binding Layout.SetSortDirectionCommand}" CommandParameter="{x:True}" HorizontalAlignment="Stretch">
                   <Grid ColumnDefinitions="20,20,*">
-                    <TextBlock Grid.Column="0" Text="•" FontSize="12" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" IsVisible="{Binding IsSortAscending}"/>
+                    <TextBlock Grid.Column="0" Text="•" FontSize="12" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" IsVisible="{Binding Layout.IsSortAscending}"/>
                     <ic:SymbolIcon Symbol="ArrowSortUp" FontSize="12" Grid.Column="1" Foreground="{DynamicResource TextTertiaryBrush}"/>
                     <TextBlock Grid.Column="2" Text="{DynamicResource SortAsc}" FontSize="12" Margin="6,0,0,0" VerticalAlignment="Center" />
                   </Grid>
                 </Button>
-                <Button Classes="nav-btn" Command="{Binding SetSortDirectionCommand}" CommandParameter="{x:False}" HorizontalAlignment="Stretch">
+                <Button Classes="nav-btn" Command="{Binding Layout.SetSortDirectionCommand}" CommandParameter="{x:False}" HorizontalAlignment="Stretch">
                   <Grid ColumnDefinitions="20,20,*">
-                    <TextBlock Grid.Column="0" Text="•" FontSize="12" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" IsVisible="{Binding !IsSortAscending}"/>
+                    <TextBlock Grid.Column="0" Text="•" FontSize="12" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" IsVisible="{Binding !Layout.IsSortAscending}"/>
                     <ic:SymbolIcon Symbol="ArrowSortDown" FontSize="12" Grid.Column="1" Foreground="{DynamicResource TextTertiaryBrush}"/>
                     <TextBlock Grid.Column="2" Text="{DynamicResource SortDesc}" FontSize="12" Margin="6,0,0,0" VerticalAlignment="Center" />
                   </Grid>
@@ -112,13 +112,13 @@
                 <Button Classes="nav-btn" Command="{Binding SetFilterModeCommand}" CommandParameter="All" HorizontalAlignment="Stretch">
                   <Grid ColumnDefinitions="20,*">
                     <ic:SymbolIcon Symbol="Checkmark" FontSize="12" Grid.Column="0" Foreground="{DynamicResource AccentBrush}"/>
-                    <TextBlock Grid.Column="1" Text="{Binding FilterAllText}" FontSize="12" Margin="4,0,0,0" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{Binding Selection.FilterAllText}" FontSize="12" Margin="4,0,0,0" VerticalAlignment="Center" />
                   </Grid>
                 </Button>
                 <Button Classes="nav-btn" Command="{Binding SetFilterModeCommand}" CommandParameter="SuspiciousOnly" HorizontalAlignment="Stretch">
                   <Grid ColumnDefinitions="20,*">
                     <ic:SymbolIcon Symbol="Warning" FontSize="12" Grid.Column="0" Foreground="{DynamicResource WarningBrush}"/>
-                    <TextBlock Grid.Column="1" Text="{Binding FilterSuspiciousText}" FontSize="12" Margin="4,0,0,0" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{Binding Selection.FilterSuspiciousText}" FontSize="12" Margin="4,0,0,0" VerticalAlignment="Center" />
                   </Grid>
                 </Button>
                 <Button Classes="nav-btn" Command="{Binding SetFilterModeCommand}" CommandParameter="SelectedOnly" HorizontalAlignment="Stretch">
@@ -142,18 +142,18 @@
             <Flyout Placement="BottomEdgeAlignedRight">
               <StackPanel Spacing="2" MinWidth="220">
                 <!-- Section 1: Crop (dot indicates current selection per prototype) -->
-                <Button Classes="nav-btn" Command="{Binding SetCropModeCommand}" CommandParameter="Natural" HorizontalAlignment="Stretch">
+                <Button Classes="nav-btn" Command="{Binding Layout.SetCropModeCommand}" CommandParameter="Natural" HorizontalAlignment="Stretch">
                   <Grid ColumnDefinitions="12,20,*">
                     <TextBlock Grid.Column="0" Text="•" FontSize="12" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"
-                               IsVisible="{Binding CropMode, Converter={x:Static conv:EqualityConverter.Instance}, ConverterParameter=Natural}"/>
+                               IsVisible="{Binding Layout.CropMode, Converter={x:Static conv:EqualityConverter.Instance}, ConverterParameter=Natural}"/>
                     <ic:SymbolIcon Symbol="Apps" FontSize="12" Grid.Column="1" Foreground="{DynamicResource TextTertiaryBrush}"/>
                     <TextBlock Grid.Column="2" Text="{DynamicResource CropNatural}" FontSize="12" Margin="6,0,0,0" VerticalAlignment="Center" />
                   </Grid>
                 </Button>
-                <Button Classes="nav-btn" Command="{Binding SetCropModeCommand}" CommandParameter="Square" HorizontalAlignment="Stretch">
+                <Button Classes="nav-btn" Command="{Binding Layout.SetCropModeCommand}" CommandParameter="Square" HorizontalAlignment="Stretch">
                   <Grid ColumnDefinitions="12,20,*">
                     <TextBlock Grid.Column="0" Text="•" FontSize="12" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"
-                               IsVisible="{Binding CropMode, Converter={x:Static conv:EqualityConverter.Instance}, ConverterParameter=Square}"/>
+                               IsVisible="{Binding Layout.CropMode, Converter={x:Static conv:EqualityConverter.Instance}, ConverterParameter=Square}"/>
                     <ic:SymbolIcon Symbol="Resize" FontSize="12" Grid.Column="1" Foreground="{DynamicResource TextTertiaryBrush}"/>
                     <TextBlock Grid.Column="2" Text="{DynamicResource CropSquare}" FontSize="12" Margin="6,0,0,0" VerticalAlignment="Center" />
                   </Grid>
@@ -162,26 +162,26 @@
                 <Border Height="1" Background="{DynamicResource LineBrush}" Margin="4,3" />
 
                 <!-- Section 2: Scale -->
-                <Button Classes="nav-btn" Command="{Binding SetScaleModeCommand}" CommandParameter="Small" HorizontalAlignment="Stretch">
+                <Button Classes="nav-btn" Command="{Binding Layout.SetScaleModeCommand}" CommandParameter="Small" HorizontalAlignment="Stretch">
                   <Grid ColumnDefinitions="12,20,*">
                     <TextBlock Grid.Column="0" Text="•" FontSize="12" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"
-                               IsVisible="{Binding ScaleMode, Converter={x:Static conv:EqualityConverter.Instance}, ConverterParameter=Small}"/>
+                               IsVisible="{Binding Layout.ScaleMode, Converter={x:Static conv:EqualityConverter.Instance}, ConverterParameter=Small}"/>
                     <ic:SymbolIcon Symbol="ResizeSmall" FontSize="12" Grid.Column="1" Foreground="{DynamicResource TextTertiaryBrush}"/>
                     <TextBlock Grid.Column="2" Text="{DynamicResource ScaleSmall}" FontSize="12" Margin="6,0,0,0" VerticalAlignment="Center" />
                   </Grid>
                 </Button>
-                <Button Classes="nav-btn" Command="{Binding SetScaleModeCommand}" CommandParameter="Medium" HorizontalAlignment="Stretch">
+                <Button Classes="nav-btn" Command="{Binding Layout.SetScaleModeCommand}" CommandParameter="Medium" HorizontalAlignment="Stretch">
                   <Grid ColumnDefinitions="12,20,*">
                     <TextBlock Grid.Column="0" Text="•" FontSize="12" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"
-                               IsVisible="{Binding ScaleMode, Converter={x:Static conv:EqualityConverter.Instance}, ConverterParameter=Medium}"/>
+                               IsVisible="{Binding Layout.ScaleMode, Converter={x:Static conv:EqualityConverter.Instance}, ConverterParameter=Medium}"/>
                     <ic:SymbolIcon Symbol="Resize" FontSize="12" Grid.Column="1" Foreground="{DynamicResource TextTertiaryBrush}"/>
                     <TextBlock Grid.Column="2" Text="{DynamicResource ScaleMedium}" FontSize="12" Margin="6,0,0,0" VerticalAlignment="Center" />
                   </Grid>
                 </Button>
-                <Button Classes="nav-btn" Command="{Binding SetScaleModeCommand}" CommandParameter="Large" HorizontalAlignment="Stretch">
+                <Button Classes="nav-btn" Command="{Binding Layout.SetScaleModeCommand}" CommandParameter="Large" HorizontalAlignment="Stretch">
                   <Grid ColumnDefinitions="12,20,*">
                     <TextBlock Grid.Column="0" Text="•" FontSize="12" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"
-                               IsVisible="{Binding ScaleMode, Converter={x:Static conv:EqualityConverter.Instance}, ConverterParameter=Large}"/>
+                               IsVisible="{Binding Layout.ScaleMode, Converter={x:Static conv:EqualityConverter.Instance}, ConverterParameter=Large}"/>
                     <ic:SymbolIcon Symbol="ResizeLarge" FontSize="12" Grid.Column="1" Foreground="{DynamicResource TextTertiaryBrush}"/>
                     <TextBlock Grid.Column="2" Text="{DynamicResource ScaleLarge}" FontSize="12" Margin="6,0,0,0" VerticalAlignment="Center" />
                   </Grid>
@@ -190,34 +190,34 @@
                 <Border Height="1" Background="{DynamicResource LineBrush}" Margin="4,3" />
 
                 <!-- Section 3: Grouping -->
-                <Button Classes="nav-btn" Command="{Binding SetGroupingModeCommand}" CommandParameter="Date" HorizontalAlignment="Stretch">
+                <Button Classes="nav-btn" Command="{Binding Layout.SetGroupingModeCommand}" CommandParameter="Date" HorizontalAlignment="Stretch">
                   <Grid ColumnDefinitions="12,20,*">
                     <TextBlock Grid.Column="0" Text="•" FontSize="12" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"
-                               IsVisible="{Binding GroupingMode, Converter={x:Static conv:EqualityConverter.Instance}, ConverterParameter=Date}"/>
+                               IsVisible="{Binding Layout.GroupingMode, Converter={x:Static conv:EqualityConverter.Instance}, ConverterParameter=Date}"/>
                     <ic:SymbolIcon Symbol="Calendar" FontSize="12" Grid.Column="1" Foreground="{DynamicResource TextTertiaryBrush}"/>
                     <TextBlock Grid.Column="2" Text="{DynamicResource GroupDate}" FontSize="12" Margin="6,0,0,0" VerticalAlignment="Center" />
                   </Grid>
                 </Button>
-                <Button Classes="nav-btn" Command="{Binding SetGroupingModeCommand}" CommandParameter="Month" HorizontalAlignment="Stretch">
+                <Button Classes="nav-btn" Command="{Binding Layout.SetGroupingModeCommand}" CommandParameter="Month" HorizontalAlignment="Stretch">
                   <Grid ColumnDefinitions="12,20,*">
                     <TextBlock Grid.Column="0" Text="•" FontSize="12" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"
-                               IsVisible="{Binding GroupingMode, Converter={x:Static conv:EqualityConverter.Instance}, ConverterParameter=Month}"/>
+                               IsVisible="{Binding Layout.GroupingMode, Converter={x:Static conv:EqualityConverter.Instance}, ConverterParameter=Month}"/>
                     <ic:SymbolIcon Symbol="CalendarMonth" FontSize="12" Grid.Column="1" Foreground="{DynamicResource TextTertiaryBrush}"/>
                     <TextBlock Grid.Column="2" Text="{DynamicResource GroupMonth}" FontSize="12" Margin="6,0,0,0" VerticalAlignment="Center" />
                   </Grid>
                 </Button>
-                <Button Classes="nav-btn" Command="{Binding SetGroupingModeCommand}" CommandParameter="Year" HorizontalAlignment="Stretch">
+                <Button Classes="nav-btn" Command="{Binding Layout.SetGroupingModeCommand}" CommandParameter="Year" HorizontalAlignment="Stretch">
                   <Grid ColumnDefinitions="12,20,*">
                     <TextBlock Grid.Column="0" Text="•" FontSize="12" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"
-                               IsVisible="{Binding GroupingMode, Converter={x:Static conv:EqualityConverter.Instance}, ConverterParameter=Year}"/>
+                               IsVisible="{Binding Layout.GroupingMode, Converter={x:Static conv:EqualityConverter.Instance}, ConverterParameter=Year}"/>
                     <ic:SymbolIcon Symbol="CalendarAgenda" FontSize="12" Grid.Column="1" Foreground="{DynamicResource TextTertiaryBrush}"/>
                     <TextBlock Grid.Column="2" Text="{DynamicResource GroupYear}" FontSize="12" Margin="6,0,0,0" VerticalAlignment="Center" />
                   </Grid>
                 </Button>
-                <Button Classes="nav-btn" Command="{Binding SetGroupingModeCommand}" CommandParameter="None" HorizontalAlignment="Stretch">
+                <Button Classes="nav-btn" Command="{Binding Layout.SetGroupingModeCommand}" CommandParameter="None" HorizontalAlignment="Stretch">
                   <Grid ColumnDefinitions="12,20,*">
                     <TextBlock Grid.Column="0" Text="•" FontSize="12" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"
-                               IsVisible="{Binding GroupingMode, Converter={x:Static conv:EqualityConverter.Instance}, ConverterParameter=None}"/>
+                               IsVisible="{Binding Layout.GroupingMode, Converter={x:Static conv:EqualityConverter.Instance}, ConverterParameter=None}"/>
                     <ic:SymbolIcon Symbol="List" FontSize="12" Grid.Column="1" Foreground="{DynamicResource TextTertiaryBrush}"/>
                     <TextBlock Grid.Column="2" Text="{DynamicResource GroupNone}" FontSize="12" Margin="6,0,0,0" VerticalAlignment="Center" />
                   </Grid>

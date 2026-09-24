@@ -1,3 +1,5 @@
+using LivePhotoConvert.Core.Media;
+using LivePhotoConvert.Core.Pairing;
 using LivePhotoConvert.Core.Pipeline;
 using LivePhotoConvert.Core.Tests.Support;
 using LivePhotoConvert.Desktop.Features.Library;
@@ -127,6 +129,13 @@ internal sealed class InspectorFixture : IDisposable
         Album.CreateInputFile(stem + ".mov", new byte[5000]);
     }
 
+    /// <summary>写入拍摄时间相差 11 秒的实况对：扫描按配对校验判为待裁决。</summary>
+    public void AddReviewPair(string stem)
+    {
+        Album.CreateInputFile(stem + ".jpg", Core.Tests.Support.SyntheticImages.Jpeg(64, 48, dateTimeOriginal: "2024:05:06 07:08:09", offsetTimeOriginal: "+08:00"));
+        Album.CreateInputFile(stem + ".mov", Core.Tests.Support.SyntheticImages.Mov(new DateTime(2024, 5, 5, 23, 8, 20, DateTimeKind.Utc), 2));
+    }
+
     /// <summary>写入结构合法的安卓动态照片。</summary>
     public string AddMotionPhoto(string stem) => Album.CreateInputFile(stem + ".jpg", SyntheticMedia.MotionPhoto());
 
@@ -164,29 +173,52 @@ internal static class DialogWaits
     }
 }
 
+/// <summary>不落盘的卡片：条目信息与扫描结果同构，文件并不存在（卡片不再访问磁盘）。</summary>
 internal static class Cards
 {
-    public static PhotoCardItemViewModel ApplePair(string name, bool forced = false, bool selected = true) => new()
-    {
-        Key = name,
-        PhotoPath = $"/album/{name}.heic",
-        VideoPath = $"/album/{name}.mov",
-        IsForceAccepted = forced,
-        IsSelected = selected
-    };
+    public static readonly DateTime Modified = new(2026, 9, 1, 8, 0, 0, DateTimeKind.Utc);
 
-    public static PhotoCardItemViewModel MotionPhoto(string name, bool selected = true) => new()
-    {
-        Key = name,
-        PhotoPath = $"/album/{name}.jpg",
-        IsMotionPhoto = true,
-        IsSelected = selected
-    };
+    /// <summary>测试共享的本地化服务（不切换语言）。</summary>
+    public static ILocalizer Localizer { get; } = new Localizer();
 
-    /// <summary>非苹果对、非动态照片的静态图（例如播放后才补上临时视频的情况以外）。</summary>
-    public static PhotoCardItemViewModel Still(string name) => new()
+    public static LibraryFile File(string path, long length = 1000, DateTime? modified = null, DateTime? created = null) =>
+        new(path, length, modified ?? Modified, created ?? modified ?? Modified);
+
+    public static PhotoCardItemViewModel Of(LibraryItem item) => new(item, Localizer);
+
+    public static LibraryItem ApplePairItem(string name, bool requiresReview = false, double aspect = 4.0 / 3.0, DateTime? taken = null)
     {
-        Key = name,
-        PhotoPath = $"/album/{name}.jpg"
-    };
+        var photo = File($"/album/{name}.heic", 3000);
+        var video = File($"/album/{name}.mov", 5000);
+        return new LibraryItem(LibraryItemKind.ApplePair, photo)
+        {
+            Video = video,
+            PairCandidates = [new MediaPair(photo.Path, video.Path)],
+            Header = Header(aspect),
+            CaptureTimeLocal = taken ?? Modified.ToLocalTime(),
+            PairValidation = requiresReview ? PairValidationResult.Reject(["拍摄时间差 12 秒"]) : PairValidationResult.Accept(),
+            PairTimeDelta = requiresReview ? TimeSpan.FromSeconds(12) : TimeSpan.Zero
+        };
+    }
+
+    public static PhotoCardItemViewModel ApplePair(string name, bool forced = false, bool selected = false) =>
+        new(ApplePairItem(name), Localizer) { IsForceAccepted = forced, IsSelected = selected };
+
+    public static PhotoCardItemViewModel MotionPhoto(string name, bool selected = false) =>
+        new(new LibraryItem(LibraryItemKind.MotionPhoto, File($"/album/{name}.jpg", 9000))
+        {
+            Embedded = new EmbeddedVideo(6000, 3000, 6000),
+            Header = Header(4.0 / 3.0),
+            CaptureTimeLocal = Modified.ToLocalTime()
+        }, Localizer) { IsSelected = selected };
+
+    public static PhotoCardItemViewModel Still(string name, double aspect = 4.0 / 3.0, DateTime? taken = null, DateTime? created = null, DateTime? modified = null) =>
+        new(new LibraryItem(LibraryItemKind.Still, File($"/album/{name}.jpg", 2000, modified, created))
+        {
+            Header = Header(aspect),
+            CaptureTimeLocal = taken ?? Modified.ToLocalTime()
+        }, Localizer);
+
+    /// <summary>给定宽高比的头部（高 3000）。</summary>
+    public static ImageHeader Header(double aspect) => new((int)Math.Round(3000 * aspect), 3000);
 }

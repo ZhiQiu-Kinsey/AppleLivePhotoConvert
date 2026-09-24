@@ -9,10 +9,10 @@ internal sealed class TempDirectory : IDisposable
 
     public string Root { get; }
 
-    /// <summary>创建文件；名称可包含子目录。</summary>
+    /// <summary>创建文件；名称可包含子目录，返回规范化路径（Windows 上 "/" 转为 "\"），与被测代码返回的路径可直接比较。</summary>
     public string CreateFile(string name, byte[]? content = null)
     {
-        var path = Path.Combine(Root, name);
+        var path = Path.GetFullPath(Path.Combine(Root, name));
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllBytes(path, content ?? []);
         return path;

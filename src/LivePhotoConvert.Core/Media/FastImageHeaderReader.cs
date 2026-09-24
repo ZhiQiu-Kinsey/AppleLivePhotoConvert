@@ -1,10 +1,11 @@
+using System.Buffers;
 using System.Buffers.Binary;
-using System.IO;
+using LivePhotoConvert.Core.Metadata;
 
 namespace LivePhotoConvert.Core.Media;
 
 /// <summary>
-/// 图片分辨率尺寸元数据（包含物理宽高与方向矫正）
+/// 图片显示宽高（已按方向转正）。
 /// </summary>
 public readonly record struct ImageDimensions(int Width, int Height)
 {
@@ -12,432 +13,936 @@ public readonly record struct ImageDimensions(int Width, int Height)
 }
 
 /// <summary>
-/// 零分配、超高速图片头部尺寸嗅探器
+/// 图片头部信息。
+/// </summary>
+/// <param name="Width">显示宽度（已按方向转正）</param>
+/// <param name="Height">显示高度（已按方向转正）</param>
+/// <param name="Orientation">显示前需施加的变换，取 EXIF Orientation 的 1～8；HEIC 由 irot 换算</param>
+/// <param name="DateTimeOriginal">EXIF 拍摄时间（相机当地时间）</param>
+/// <param name="OffsetTimeOriginal">EXIF 拍摄时间的 UTC 偏移</param>
+/// <param name="DateTimeDigitized">EXIF 数字化时间（CreateDate），拍摄时间缺失时的后备</param>
+/// <param name="ContentIdentifier">Apple MakerNotes 中的实况配对标识</param>
+public readonly record struct ImageHeader(int Width, int Height, int Orientation = 1, DateTime? DateTimeOriginal = null, TimeSpan? OffsetTimeOriginal = null,
+                                          DateTime? DateTimeDigitized = null, string? ContentIdentifier = null)
+{
+    /// <summary>
+    /// 与 ExifTool 读取照片拍摄时间的优先级一致：DateTimeOriginal（配合 OffsetTimeOriginal），其次 ExifIFD 的 CreateDate。
+    /// </summary>
+    public CaptureTime? CaptureTime =>
+        DateTimeOriginal is { } original ? new CaptureTime(original, OffsetTimeOriginal)
+        : DateTimeDigitized is { } digitized ? new CaptureTime(digitized, null)
+        : null;
+
+    public double AspectRatio => Height > 0 ? (double)Width / Height : 4.0 / 3.0;
+
+    public ImageDimensions Dimensions => new(Width, Height);
+
+    /// <summary>方向 5～8 含 90° 旋转，存储宽高与显示宽高互换。</summary>
+    public bool IsTransposed => Orientation is >= 5 and <= 8;
+}
+
+/// <summary>
+/// 只读文件头部的图片信息嗅探：宽高、方向、EXIF 拍摄时间与 Apple 实况配对标识。
 /// </summary>
 /// <remarks>
-/// 仅读取文件头部几百字节至数 KB 数据，不将整图像素解压至堆内存。
-/// 支持从 JPEG (SOF + Exif Orientation)、PNG (IHDR)、HEIC/HEIF/AVIF (ISOBMFF ispe + irot) 中瞬间提取真实显示尺寸。
+/// 支持 JPEG（SOF + APP1 Exif 的 IFD0/ExifIFD）、PNG（IHDR）、HEIC/HEIF/AVIF（meta 中的 ispe/irot/ipma，
+/// 以及 iinf/iloc 指向的 Exif 项）。不解码像素，单文件通常只需几 KB 读取。
 /// </remarks>
 public static class FastImageHeaderReader
 {
-    private const int MaxScanBytes = 512 * 1024; // 最多扫描前 512KB
+    /// <summary>JPEG 段与 HEIC 顶层 box 的扫描上限，防止畸形文件拖慢扫描。</summary>
+    private const int MaxScanBytes = 512 * 1024;
+
+    /// <summary>JPEG APP1 首次读取量：IFD0 与 ExifIFD 通常位于段首几 KB，MakerNote 与内嵌缩略图在后部，不必读满 64KB。</summary>
+    private const int InitialExifWindow = 16 * 1024;
+
+    /// <summary>HEIC meta box 上限；手机 HEIC 的 meta 通常只有数 KB。</summary>
+    private const int MaxHeifMetaBytes = 2 * 1024 * 1024;
+
+    /// <summary>HEIC Exif 项读取上限：拍摄时间位于 IFD 前部，MakerNote 可以截断。</summary>
+    private const int MaxHeifExifBytes = 64 * 1024;
+
+    private const uint BoxMeta = 0x6D657461; // "meta"
+    private const uint BoxPitm = 0x7069746D; // "pitm"
+    private const uint BoxIinf = 0x69696E66; // "iinf"
+    private const uint BoxInfe = 0x696E6665; // "infe"
+    private const uint BoxIloc = 0x696C6F63; // "iloc"
+    private const uint BoxIprp = 0x69707270; // "iprp"
+    private const uint BoxIpco = 0x6970636F; // "ipco"
+    private const uint BoxIpma = 0x69706D61; // "ipma"
+    private const uint BoxIspe = 0x69737065; // "ispe"
+    private const uint BoxIrot = 0x69726F74; // "irot"
+    private const uint ItemExif = 0x45786966; // "Exif"
+
+    private const ushort TypeAscii = 2;
+    private const ushort TypeUndefined = 7;
+
+    private static ReadOnlySpan<byte> ExifSignature => "Exif\0\0"u8;
 
     /// <summary>
-    /// 尝试读取指定图片文件的真实显示宽高
+    /// 尝试读取图片的显示宽高。
     /// </summary>
     public static bool TryReadDimensions(string filePath, out ImageDimensions dimensions)
     {
-        dimensions = default;
-        if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+        var ok = TryReadHeader(filePath, out var header);
+        dimensions = header.Dimensions;
+        return ok;
+    }
+
+    /// <summary>
+    /// 尝试从流中读取显示宽高。
+    /// </summary>
+    public static bool TryReadDimensions(Stream stream, string extension, out ImageDimensions dimensions)
+    {
+        var ok = TryReadHeader(stream, extension, out var header);
+        dimensions = header.Dimensions;
+        return ok;
+    }
+
+    /// <summary>
+    /// 尝试读取图片头部信息；文件不存在、无权限或格式无法识别时返回 <c>false</c>。
+    /// </summary>
+    public static bool TryReadHeader(string filePath, out ImageHeader header)
+    {
+        header = default;
+        if (string.IsNullOrWhiteSpace(filePath))
         {
             return false;
         }
 
         try
         {
-            using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-            string ext = Path.GetExtension(filePath);
-            return TryReadDimensions(stream, ext, out dimensions);
+            using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 4096, FileOptions.RandomAccess);
+            return TryReadHeader(stream, Path.GetExtension(filePath), out header);
         }
-        catch
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
             return false;
         }
     }
 
     /// <summary>
-    /// 尝试从流中读取真实显示宽高
+    /// 尝试从流中读取图片头部信息。流必须可定位，总是从起点读取；扩展名无法识别时按文件头魔数判断。
     /// </summary>
-    public static bool TryReadDimensions(Stream stream, string extension, out ImageDimensions dimensions)
+    public static bool TryReadHeader(Stream stream, string extension, out ImageHeader header)
     {
-        dimensions = default;
-        if (!stream.CanRead)
+        ArgumentNullException.ThrowIfNull(stream);
+        header = default;
+        if (!stream.CanRead || !stream.CanSeek)
         {
             return false;
         }
 
+        stream.Position = 0;
         if (extension.Equals(".png", StringComparison.OrdinalIgnoreCase))
         {
-            return TryReadPng(stream, out dimensions);
+            return TryReadPng(stream, out header);
         }
 
-        if (extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) ||
-            extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase))
+        if (extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) || extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase))
         {
-            return TryReadJpeg(stream, out dimensions);
+            return TryReadJpeg(stream, out header);
         }
 
-        if (extension.Equals(".heic", StringComparison.OrdinalIgnoreCase) ||
-            extension.Equals(".heif", StringComparison.OrdinalIgnoreCase) ||
-            extension.Equals(".avif", StringComparison.OrdinalIgnoreCase))
+        if (extension.Equals(".heic", StringComparison.OrdinalIgnoreCase) || extension.Equals(".heif", StringComparison.OrdinalIgnoreCase)
+            || extension.Equals(".avif", StringComparison.OrdinalIgnoreCase))
         {
-            return TryReadHeic(stream, out dimensions);
+            return TryReadHeif(stream, out header);
         }
 
-        // 扩展名未识别时，根据文件头魔数尝试探测
-        Span<byte> header = stackalloc byte[16];
-        int read = stream.Read(header);
-        if (read < 4) return false;
-        stream.Seek(-read, SeekOrigin.Current);
-
-        if (read >= 8 && header[0] == 0x89 && header[1] == 0x50 && header[2] == 0x4E && header[3] == 0x47)
+        Span<byte> magic = stackalloc byte[12];
+        var read = stream.ReadAtLeast(magic, magic.Length, throwOnEndOfStream: false);
+        stream.Position = 0;
+        return magic[..read] switch
         {
-            return TryReadPng(stream, out dimensions);
-        }
-
-        if (header[0] == 0xFF && header[1] == 0xD8)
-        {
-            return TryReadJpeg(stream, out dimensions);
-        }
-
-        if (read >= 12 && header[4] == (byte)'f' && header[5] == (byte)'t' && header[6] == (byte)'y' && header[7] == (byte)'p')
-        {
-            return TryReadHeic(stream, out dimensions);
-        }
-
-        return false;
+            [0x89, 0x50, 0x4E, 0x47, ..] => TryReadPng(stream, out header),
+            [0xFF, 0xD8, ..] => TryReadJpeg(stream, out header),
+            [_, _, _, _, (byte)'f', (byte)'t', (byte)'y', (byte)'p', ..] => TryReadHeif(stream, out header),
+            _ => false
+        };
     }
 
-    /// <summary>
-    /// 读取 PNG (IHDR 块)
-    /// </summary>
-    private static bool TryReadPng(Stream stream, out ImageDimensions dimensions)
+    private static bool TryReadPng(Stream stream, out ImageHeader header)
     {
-        dimensions = default;
+        header = default;
         Span<byte> buf = stackalloc byte[24];
-        if (stream.Read(buf) < 24) return false;
-
-        // PNG 签名: 89 50 4E 47 0D 0A 1A 0A
-        if (buf[0] != 0x89 || buf[1] != 0x50 || buf[2] != 0x4E || buf[3] != 0x47 ||
-            buf[4] != 0x0D || buf[5] != 0x0A || buf[6] != 0x1A || buf[7] != 0x0A)
+        if (stream.ReadAtLeast(buf, buf.Length, throwOnEndOfStream: false) < buf.Length
+            || !buf[..8].SequenceEqual((ReadOnlySpan<byte>)[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
+            || !buf[12..16].SequenceEqual("IHDR"u8))
         {
             return false;
         }
 
-        // IHDR 块类型必须为 "IHDR" (49 48 44 52)
-        if (buf[12] != 0x49 || buf[13] != 0x48 || buf[14] != 0x44 || buf[15] != 0x52)
+        var width = BinaryPrimitives.ReadUInt32BigEndian(buf[16..]);
+        var height = BinaryPrimitives.ReadUInt32BigEndian(buf[20..]);
+        if (width is 0 or > int.MaxValue || height is 0 or > int.MaxValue)
         {
             return false;
         }
 
-        uint width = BinaryPrimitives.ReadUInt32BigEndian(buf.Slice(16, 4));
-        uint height = BinaryPrimitives.ReadUInt32BigEndian(buf.Slice(20, 4));
-
-        if (width > 0 && height > 0 && width <= int.MaxValue && height <= int.MaxValue)
-        {
-            dimensions = new ImageDimensions((int)width, (int)height);
-            return true;
-        }
-
-        return false;
+        header = new ImageHeader((int)width, (int)height);
+        return true;
     }
 
-    /// <summary>
-    /// 读取 JPEG (解析 SOF 标头与 Exif Orientation)
-    /// </summary>
-    private static bool TryReadJpeg(Stream stream, out ImageDimensions dimensions)
+    private static bool TryReadJpeg(Stream stream, out ImageHeader header)
     {
-        dimensions = default;
-        Span<byte> markerBuf = stackalloc byte[2];
-        if (stream.Read(markerBuf) < 2 || markerBuf[0] != 0xFF || markerBuf[1] != 0xD8)
+        header = default;
+        Span<byte> buf = stackalloc byte[5];
+        if (stream.ReadAtLeast(buf[..2], 2, throwOnEndOfStream: false) < 2 || buf[0] != 0xFF || buf[1] != 0xD8)
         {
             return false;
         }
 
-        int width = 0;
-        int height = 0;
-        int orientation = 1; // 默认正常方向
-
-        Span<byte> app1Buf = stackalloc byte[4096];
-        Span<byte> sofBuf = stackalloc byte[5];
-        long startPos = stream.Position;
-
-        while (stream.Position - startPos < MaxScanBytes)
+        var exif = ExifFields.Default;
+        var exifParsed = false;
+        int width = 0, height = 0;
+        while (stream.Position < MaxScanBytes)
         {
-            int b = stream.ReadByte();
-            if (b < 0) break;
-            if (b != 0xFF) continue;
+            var b = stream.ReadByte();
+            if (b < 0)
+            {
+                break;
+            }
 
-            // 读取非 0xFF 的标记字节
+            if (b != 0xFF)
+            {
+                continue;
+            }
+
             int marker;
             do
             {
                 marker = stream.ReadByte();
-                if (marker < 0) break;
             } while (marker == 0xFF);
 
-            if (marker < 0) break;
-
-            // SOS (图像数据开始) 或 EOI (结束)
-            if (marker == 0xDA || marker == 0xD9)
+            if (marker < 0 || marker is 0xDA or 0xD9)
             {
                 break;
             }
 
-            // 无负载标记
-            if (marker == 0xD8 || marker == 0x01 || (marker >= 0xD0 && marker <= 0xD7))
+            if (marker is 0xD8 or 0x01 or (>= 0xD0 and <= 0xD7))
             {
                 continue;
             }
 
-            // 读取段长度 (大端 16 位，包含这 2 字节本身)
-            if (stream.Read(markerBuf) < 2) break;
-            ushort segLen = BinaryPrimitives.ReadUInt16BigEndian(markerBuf);
-            if (segLen < 2) break;
-            int payloadLen = segLen - 2;
-
-            // APP1 (Exif) - 查找旋转方向
-            if (marker == 0xE1 && orientation == 1 && payloadLen >= 14)
+            if (stream.ReadAtLeast(buf[..2], 2, throwOnEndOfStream: false) < 2)
             {
-                int readLen = Math.Min(payloadLen, app1Buf.Length);
-                var slice = app1Buf.Slice(0, readLen);
-                if (stream.Read(slice) == readLen)
-                {
-                    orientation = ParseJpegExifOrientation(slice);
-                }
-                int remaining = payloadLen - readLen;
-                if (remaining > 0)
-                {
-                    stream.Seek(remaining, SeekOrigin.Current);
-                }
-                continue;
-            }
-
-            // SOF 标头 (SOF0 ~ SOF15，除 DHT/JPG/DAC 外)
-            bool isSof = (marker >= 0xC0 && marker <= 0xC3) ||
-                         (marker >= 0xC5 && marker <= 0xC7) ||
-                         (marker >= 0xC9 && marker <= 0xCB) ||
-                         (marker >= 0xCD && marker <= 0xCF);
-
-            if (isSof && payloadLen >= 5)
-            {
-                if (stream.Read(sofBuf) == 5)
-                {
-                    // sofBuf: [0]=精度, [1..2]=高度, [3..4]=宽度
-                    height = BinaryPrimitives.ReadUInt16BigEndian(sofBuf.Slice(1, 2));
-                    width = BinaryPrimitives.ReadUInt16BigEndian(sofBuf.Slice(3, 2));
-                }
                 break;
             }
 
-            // 跳过其他段负载
-            stream.Seek(payloadLen, SeekOrigin.Current);
+            var payloadLength = BinaryPrimitives.ReadUInt16BigEndian(buf) - 2;
+            if (payloadLength < 0)
+            {
+                break;
+            }
+
+            var segmentEnd = stream.Position + payloadLength;
+            if (marker == 0xE1 && !exifParsed)
+            {
+                // 第一个 APP1 可能是 XMP 而非 Exif，只有签名命中才算读过
+                exifParsed = TryReadJpegExif(stream, payloadLength, ref exif);
+                stream.Position = segmentEnd;
+                continue;
+            }
+
+            // SOF0～SOF15，排除 DHT(C4)/JPG(C8)/DAC(CC)
+            if (marker is (>= 0xC0 and <= 0xC3) or (>= 0xC5 and <= 0xC7) or (>= 0xC9 and <= 0xCB) or (>= 0xCD and <= 0xCF))
+            {
+                if (payloadLength >= 5 && stream.ReadAtLeast(buf, 5, throwOnEndOfStream: false) == 5)
+                {
+                    height = BinaryPrimitives.ReadUInt16BigEndian(buf[1..]);
+                    width = BinaryPrimitives.ReadUInt16BigEndian(buf[3..]);
+                }
+
+                break;
+            }
+
+            stream.Position = segmentEnd;
         }
 
-        if (width > 0 && height > 0)
+        if (width <= 0 || height <= 0)
         {
-            // Exif Orientation: 5, 6, 7, 8 表示旋转 90 或 270 度（宽高互换）
-            if (orientation is >= 5 and <= 8)
+            return false;
+        }
+
+        header = Build(width, height, exif);
+        return true;
+    }
+
+    private static bool TryReadJpegExif(Stream stream, int payloadLength, ref ExifFields fields)
+    {
+        // 先核对签名，XMP 等其它 APP1 段不必读入
+        Span<byte> signature = stackalloc byte[6];
+        if (payloadLength < ExifSignature.Length + 8
+            || stream.ReadAtLeast(signature, signature.Length, throwOnEndOfStream: false) < signature.Length
+            || !signature.SequenceEqual(ExifSignature))
+        {
+            return false;
+        }
+
+        var tiffLength = payloadLength - ExifSignature.Length;
+        var buffer = ArrayPool<byte>.Shared.Rent(tiffLength);
+        try
+        {
+            var window = Math.Min(tiffLength, InitialExifWindow);
+            var read = stream.ReadAtLeast(buffer.AsSpan(0, window), window, throwOnEndOfStream: false);
+            if (!ParseTiff(buffer.AsSpan(0, read), ref fields) && read == window && read < tiffLength)
             {
-                (width, height) = (height, width);
+                read += stream.ReadAtLeast(buffer.AsSpan(read, tiffLength - read), tiffLength - read, throwOnEndOfStream: false);
+                ParseTiff(buffer.AsSpan(0, read), ref fields);
             }
-            dimensions = new ImageDimensions(width, height);
+
             return true;
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
+    }
+
+    private static bool TryReadHeif(Stream stream, out ImageHeader header)
+    {
+        header = default;
+        var length = stream.Length;
+        Span<byte> box = stackalloc byte[16];
+        long offset = 0;
+        while (offset + 8 <= length && offset < MaxScanBytes)
+        {
+            stream.Position = offset;
+            if (stream.ReadAtLeast(box[..8], 8, throwOnEndOfStream: false) < 8)
+            {
+                return false;
+            }
+
+            long size = BinaryPrimitives.ReadUInt32BigEndian(box);
+            var type = BinaryPrimitives.ReadUInt32BigEndian(box[4..]);
+            var headerLength = 8;
+            if (size == 1)
+            {
+                if (stream.ReadAtLeast(box[8..], 8, throwOnEndOfStream: false) < 8 || BinaryPrimitives.ReadUInt64BigEndian(box[8..]) > long.MaxValue)
+                {
+                    return false;
+                }
+
+                size = (long)BinaryPrimitives.ReadUInt64BigEndian(box[8..]);
+                headerLength = 16;
+            }
+            else if (size == 0)
+            {
+                size = length - offset;
+            }
+
+            if (size < headerLength || size > length - offset)
+            {
+                return false;
+            }
+
+            if (type == BoxMeta)
+            {
+                var payloadLength = size - headerLength;
+                return payloadLength is >= 4 and <= MaxHeifMetaBytes && TryReadHeifMeta(stream, (int)payloadLength, out header);
+            }
+
+            offset += size;
         }
 
         return false;
     }
 
-    /// <summary>
-    /// 解析 JPEG APP1 数据中的 Exif Orientation 标签
-    /// </summary>
-    private static int ParseJpegExifOrientation(ReadOnlySpan<byte> data)
+    private static bool TryReadHeifMeta(Stream stream, int payloadLength, out ImageHeader header)
     {
-        // 需满足 "Exif\0\0"
-        if (data.Length < 14) return 1;
-        if (data[0] != (byte)'E' || data[1] != (byte)'x' || data[2] != (byte)'i' || data[3] != (byte)'f' ||
-            data[4] != 0 || data[5] != 0)
+        header = default;
+        var buffer = ArrayPool<byte>.Shared.Rent(payloadLength);
+        try
         {
-            return 1;
+            if (stream.ReadAtLeast(buffer.AsSpan(0, payloadLength), payloadLength, throwOnEndOfStream: false) < payloadLength)
+            {
+                return false;
+            }
+
+            // meta 是 FullBox，子 box 从 version/flags 之后开始
+            var meta = new HeifMeta(buffer.AsSpan(4, payloadLength - 4));
+            if (!meta.TryGetPrimaryGeometry(out var width, out var height, out var rotation))
+            {
+                return false;
+            }
+
+            var exif = ExifFields.Default;
+            if (meta.TryGetExifExtent(out var exifOffset, out var exifLength))
+            {
+                ReadHeifExif(stream, exifOffset, exifLength, ref exif);
+            }
+
+            // HEIC 的方向由 irot 决定，解码器会自动应用；Exif 中的 Orientation 仅供参考，不采用
+            var orientation = rotation switch { 1 => 8, 2 => 3, 3 => 6, _ => 1 };
+            header = Build(width, height, exif with { Orientation = orientation });
+            return true;
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
+    }
+
+    private static void ReadHeifExif(Stream stream, long offset, long length, ref ExifFields fields)
+    {
+        if (offset <= 0 || length < 4 + 8 || offset >= stream.Length)
+        {
+            return;
         }
 
-        var tiff = data[6..];
-        if (tiff.Length < 8) return 1;
+        var count = (int)Math.Min(Math.Min(length, MaxHeifExifBytes), stream.Length - offset);
+        var buffer = ArrayPool<byte>.Shared.Rent(count);
+        try
+        {
+            stream.Position = offset;
+            var read = stream.ReadAtLeast(buffer.AsSpan(0, count), count, throwOnEndOfStream: false);
+            if (read < 4)
+            {
+                return;
+            }
 
-        bool isLittleEndian;
-        if (tiff[0] == 0x49 && tiff[1] == 0x49) // "II"
-        {
-            isLittleEndian = true;
+            // Exif 项以 4 字节的 TIFF 头偏移开头，其后通常是 "Exif\0\0"
+            var tiffStart = 4 + (long)BinaryPrimitives.ReadUInt32BigEndian(buffer);
+            if (tiffStart < read)
+            {
+                ParseTiff(buffer.AsSpan((int)tiffStart, read - (int)tiffStart), ref fields);
+            }
         }
-        else if (tiff[0] == 0x4D && tiff[1] == 0x4D) // "MM"
+        finally
         {
-            isLittleEndian = false;
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
+    }
+
+    private static ImageHeader Build(int width, int height, ExifFields exif)
+    {
+        var orientation = exif.Orientation is >= 1 and <= 8 ? exif.Orientation : 1;
+        if (orientation is >= 5 and <= 8)
+        {
+            (width, height) = (height, width);
+        }
+
+        return new ImageHeader(width, height, orientation, exif.DateTimeOriginal, exif.OffsetTimeOriginal, exif.DateTimeDigitized, exif.ContentIdentifier);
+    }
+
+    /// <summary>
+    /// 解析 TIFF 结构中 IFD0 的方向与 ExifIFD 的拍摄时间。
+    /// </summary>
+    /// <returns>引用的数据全部落在 <paramref name="tiff"/> 之内时为 <c>true</c>；否则需读入更多数据后重试</returns>
+    private static bool ParseTiff(ReadOnlySpan<byte> tiff, ref ExifFields fields)
+    {
+        if (tiff.Length < 8)
+        {
+            return false;
+        }
+
+        bool littleEndian;
+        if (tiff[0] == 0x49 && tiff[1] == 0x49)
+        {
+            littleEndian = true;
+        }
+        else if (tiff[0] == 0x4D && tiff[1] == 0x4D)
+        {
+            littleEndian = false;
         }
         else
         {
-            return 1;
-        }
-
-        ushort magic = isLittleEndian
-            ? BinaryPrimitives.ReadUInt16LittleEndian(tiff.Slice(2, 2))
-            : BinaryPrimitives.ReadUInt16BigEndian(tiff.Slice(2, 2));
-        if (magic != 0x002A) return 1;
-
-        uint ifdOffset = isLittleEndian
-            ? BinaryPrimitives.ReadUInt32LittleEndian(tiff.Slice(4, 4))
-            : BinaryPrimitives.ReadUInt32BigEndian(tiff.Slice(4, 4));
-
-        if (ifdOffset + 2 > tiff.Length) return 1;
-
-        ushort entriesCount = isLittleEndian
-            ? BinaryPrimitives.ReadUInt16LittleEndian(tiff.Slice((int)ifdOffset, 2))
-            : BinaryPrimitives.ReadUInt16BigEndian(tiff.Slice((int)ifdOffset, 2));
-
-        int entryPos = (int)ifdOffset + 2;
-        for (int i = 0; i < entriesCount && entryPos + 12 <= tiff.Length; i++, entryPos += 12)
-        {
-            var entry = tiff.Slice(entryPos, 12);
-            ushort tag = isLittleEndian
-                ? BinaryPrimitives.ReadUInt16LittleEndian(entry.Slice(0, 2))
-                : BinaryPrimitives.ReadUInt16BigEndian(entry.Slice(0, 2));
-
-            // Tag 0x0112 = Orientation
-            if (tag == 0x0112)
-            {
-                ushort val = isLittleEndian
-                    ? BinaryPrimitives.ReadUInt16LittleEndian(entry.Slice(8, 2))
-                    : BinaryPrimitives.ReadUInt16BigEndian(entry.Slice(8, 2));
-                return val is >= 1 and <= 8 ? val : 1;
-            }
-        }
-
-        return 1;
-    }
-
-    /// <summary>
-    /// 读取 HEIC / HEIF / AVIF (基于 ISOBMFF ispe 与 irot)
-    /// </summary>
-    private static bool TryReadHeic(Stream stream, out ImageDimensions dimensions)
-    {
-        dimensions = default;
-        Span<byte> boxHeader = stackalloc byte[8];
-
-        int bestWidth = 0;
-        int bestHeight = 0;
-        int rotationAngle = 0; // 0, 90, 180, 270
-
-        long streamLen = stream.CanSeek ? stream.Length : long.MaxValue;
-
-        Span<byte> size64Buf = stackalloc byte[8];
-
-        while (stream.Position + 8 <= streamLen && stream.Position < MaxScanBytes)
-        {
-            if (stream.Read(boxHeader) < 8) break;
-
-            uint size32 = BinaryPrimitives.ReadUInt32BigEndian(boxHeader.Slice(0, 4));
-            uint type = BinaryPrimitives.ReadUInt32BigEndian(boxHeader.Slice(4, 4));
-
-            long payloadSize;
-            if (size32 == 1) // 64位扩展尺寸
-            {
-                if (stream.Read(size64Buf) < 8) break;
-                payloadSize = (long)BinaryPrimitives.ReadUInt64BigEndian(size64Buf) - 16;
-            }
-            else if (size32 == 0) // 到文件尾部
-            {
-                payloadSize = streamLen - stream.Position;
-            }
-            else
-            {
-                payloadSize = size32 - 8;
-            }
-
-            if (payloadSize < 0) break;
-
-            // "meta" box (0x6D657461)
-            if (type == 0x6D657461)
-            {
-                // meta 是 FullBox，跳过 4 字节 version + flags
-                if (payloadSize < 4) break;
-                stream.Seek(4, SeekOrigin.Current);
-                long metaEnd = stream.Position + payloadSize - 4;
-
-                ParseIsobiffContainer(stream, metaEnd, ref bestWidth, ref bestHeight, ref rotationAngle);
-                break;
-            }
-
-            // 跳过其他非 meta 根 box
-            stream.Seek(payloadSize, SeekOrigin.Current);
-        }
-
-        if (bestWidth > 0 && bestHeight > 0)
-        {
-            if (rotationAngle is 90 or 270)
-            {
-                (bestWidth, bestHeight) = (bestHeight, bestWidth);
-            }
-            dimensions = new ImageDimensions(bestWidth, bestHeight);
             return true;
         }
 
-        return false;
+        var reader = new TiffReader(tiff, littleEndian);
+        if (reader.U16(2) != 0x002A)
+        {
+            return true;
+        }
+
+        var complete = true;
+        uint exifIfd = 0;
+        complete &= ReadIfd(reader, reader.U32(4), isExifIfd: false, ref fields, ref exifIfd);
+        if (exifIfd != 0)
+        {
+            complete &= ReadIfd(reader, exifIfd, isExifIfd: true, ref fields, ref exifIfd);
+        }
+
+        return complete;
+    }
+
+    private static bool ReadIfd(TiffReader reader, uint ifdOffset, bool isExifIfd, ref ExifFields fields, ref uint exifIfd)
+    {
+        if (ifdOffset < 8 || ifdOffset > reader.Length - 2)
+        {
+            return ifdOffset < 8;
+        }
+
+        var count = reader.U16((int)ifdOffset);
+        var complete = true;
+        Span<char> chars = stackalloc char[32];
+        var position = (int)ifdOffset + 2;
+        for (var i = 0; i < count; i++, position += 12)
+        {
+            if (position > reader.Length - 12)
+            {
+                return false;
+            }
+
+            var tag = reader.U16(position);
+            switch (tag)
+            {
+                case 0x0112 when !isExifIfd:
+                    fields.Orientation = reader.U16(position + 8);
+                    break;
+                case 0x8769 when !isExifIfd:
+                    exifIfd = reader.U32(position + 8);
+                    break;
+                case 0x9003 when isExifIfd:
+                    if (reader.TryGetValue(position, TypeAscii, 64, out var original))
+                    {
+                        if (CaptureTime.TryParse(ToChars(original, chars), out var time))
+                        {
+                            // 与 ExifTool 读取一致：时间字符串自带的偏移优先于 OffsetTimeOriginal
+                            fields.DateTimeOriginal = time.LocalTime;
+                            fields.OffsetTimeOriginal = time.Offset ?? fields.OffsetTimeOriginal;
+                        }
+                    }
+                    else
+                    {
+                        complete = false;
+                    }
+
+                    break;
+                case 0x9004 when isExifIfd:
+                    if (reader.TryGetValue(position, TypeAscii, 64, out var digitized))
+                    {
+                        if (CaptureTime.TryParse(ToChars(digitized, chars), out var time))
+                        {
+                            fields.DateTimeDigitized = time.LocalTime;
+                        }
+                    }
+                    else
+                    {
+                        complete = false;
+                    }
+
+                    break;
+                case 0x9011 when isExifIfd:
+                    if (reader.TryGetValue(position, TypeAscii, 64, out var offset))
+                    {
+                        fields.OffsetTimeOriginal ??= CaptureTime.ParseOffset(ToChars(offset, chars));
+                    }
+                    else
+                    {
+                        complete = false;
+                    }
+
+                    break;
+                case 0x927C when isExifIfd:
+                    if (reader.TryGetValue(position, TypeUndefined, 1024 * 1024, out var makerNote))
+                    {
+                        fields.ContentIdentifier = ReadAppleContentIdentifier(makerNote) ?? fields.ContentIdentifier;
+                    }
+                    else
+                    {
+                        complete = false;
+                    }
+
+                    break;
+            }
+        }
+
+        return complete;
     }
 
     /// <summary>
-    /// 递归扫描 ISOBMFF 容器查找 iprp -> ipco -> ispe / irot
+    /// Apple MakerNotes：<c>"Apple iOS\0" | 版本 | 字节序 | IFD</c>，IFD 中的偏移相对 MakerNotes 起点；配对标识为标签 0x0011。
     /// </summary>
-    private static void ParseIsobiffContainer(Stream stream, long endPos, ref int bestWidth, ref int bestHeight, ref int rotationAngle)
+    private static string? ReadAppleContentIdentifier(ReadOnlySpan<byte> note)
     {
-        Span<byte> subHeader = stackalloc byte[8];
-        Span<byte> size64Buf = stackalloc byte[8];
-        Span<byte> ispeData = stackalloc byte[12];
-
-        while (stream.Position + 8 <= endPos)
+        if (note.Length < 16 || !note.StartsWith("Apple iOS\0"u8))
         {
-            if (stream.Read(subHeader) < 8) break;
+            return null;
+        }
 
-            uint size = BinaryPrimitives.ReadUInt32BigEndian(subHeader.Slice(0, 4));
-            uint type = BinaryPrimitives.ReadUInt32BigEndian(subHeader.Slice(4, 4));
+        var reader = new TiffReader(note, littleEndian: note[12] == (byte)'I' && note[13] == (byte)'I');
+        var count = reader.U16(14);
+        for (int i = 0, position = 16; i < count && position <= note.Length - 12; i++, position += 12)
+        {
+            if (reader.U16(position) == 0x0011 && reader.TryGetValue(position, TypeAscii, 256, out var value) && !value.IsEmpty)
+            {
+                var terminator = value.IndexOf((byte)0);
+                var identifier = System.Text.Encoding.ASCII.GetString(terminator >= 0 ? value[..terminator] : value).Trim();
+                return identifier.Length > 0 ? identifier : null;
+            }
+        }
 
-            long boxEnd;
-            if (size == 1)
+        return null;
+    }
+
+    private static ReadOnlySpan<char> ToChars(ReadOnlySpan<byte> ascii, Span<char> destination)
+    {
+        var terminator = ascii.IndexOf((byte)0);
+        if (terminator >= 0)
+        {
+            ascii = ascii[..terminator];
+        }
+
+        var length = Math.Min(ascii.Length, destination.Length);
+        for (var i = 0; i < length; i++)
+        {
+            destination[i] = (char)ascii[i];
+        }
+
+        return destination[..length];
+    }
+
+    private record struct ExifFields(int Orientation, DateTime? DateTimeOriginal, TimeSpan? OffsetTimeOriginal, DateTime? DateTimeDigitized, string? ContentIdentifier)
+    {
+        public static ExifFields Default => new(1, null, null, null, null);
+    }
+
+    private readonly ref struct TiffReader(ReadOnlySpan<byte> data, bool littleEndian)
+    {
+        private readonly ReadOnlySpan<byte> _data = data;
+
+        public int Length => _data.Length;
+
+        public ushort U16(int offset) => littleEndian
+            ? BinaryPrimitives.ReadUInt16LittleEndian(_data[offset..])
+            : BinaryPrimitives.ReadUInt16BigEndian(_data[offset..]);
+
+        public uint U32(int offset) => littleEndian
+            ? BinaryPrimitives.ReadUInt32LittleEndian(_data[offset..])
+            : BinaryPrimitives.ReadUInt32BigEndian(_data[offset..]);
+
+        /// <summary>
+        /// 读取单字节类型（ASCII/UNDEFINED）的值：不超过 4 字节时内联在条目里，否则条目存偏移。
+        /// 类型不符或超长时视为缺失；值落在数据之外时返回 <c>false</c>，提示调用方读入更多数据。
+        /// </summary>
+        public bool TryGetValue(int entry, ushort type, uint maxCount, out ReadOnlySpan<byte> value)
+        {
+            value = default;
+            var count = U32(entry + 4);
+            if (U16(entry + 2) != type || count > maxCount)
             {
-                if (stream.Read(size64Buf) < 8) break;
-                boxEnd = stream.Position - 8 + (long)BinaryPrimitives.ReadUInt64BigEndian(size64Buf) - 8;
-            }
-            else
-            {
-                boxEnd = stream.Position + size - 8;
+                return true;
             }
 
-            if (boxEnd > endPos || size < 8)
+            if (count <= 4)
             {
-                break;
+                value = _data.Slice(entry + 8, (int)count);
+                return true;
             }
 
-            // "iprp" (0x69707270) 或 "ipco" (0x6970636F)
-            if (type is 0x69707270 or 0x6970636F)
+            var offset = U32(entry + 8);
+            if (offset > (uint)_data.Length || count > (uint)_data.Length - offset)
             {
-                ParseIsobiffContainer(stream, boxEnd, ref bestWidth, ref bestHeight, ref rotationAngle);
+                return false;
             }
-            // "ispe" (Image Spatial Extent, 0x69737065)
-            else if (type == 0x69737065 && boxEnd - stream.Position >= 12)
+
+            value = _data.Slice((int)offset, (int)count);
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// HEIF meta box 的子 box 视图：主图的 ispe/irot（经 ipma 关联）与 Exif 项在文件中的位置（iinf + iloc）。
+    /// </summary>
+    private readonly ref struct HeifMeta
+    {
+        private readonly ReadOnlySpan<byte> _pitm;
+        private readonly ReadOnlySpan<byte> _iinf;
+        private readonly ReadOnlySpan<byte> _iloc;
+        private readonly ReadOnlySpan<byte> _ipco;
+        private readonly ReadOnlySpan<byte> _ipma;
+
+        public HeifMeta(ReadOnlySpan<byte> children)
+        {
+            foreach (var (type, body) in new BoxEnumerator(children))
             {
-                // FullBox: 4 字节 version+flags + 4 字节 width + 4 字节 height
-                if (stream.Read(ispeData) == 12)
+                switch (type)
                 {
-                    uint w = BinaryPrimitives.ReadUInt32BigEndian(ispeData.Slice(4, 4));
-                    uint h = BinaryPrimitives.ReadUInt32BigEndian(ispeData.Slice(8, 4));
+                    case BoxPitm: _pitm = body; break;
+                    case BoxIinf: _iinf = body; break;
+                    case BoxIloc: _iloc = body; break;
+                    case BoxIprp:
+                        foreach (var (childType, childBody) in new BoxEnumerator(body))
+                        {
+                            switch (childType)
+                            {
+                                case BoxIpco: _ipco = childBody; break;
+                                case BoxIpma when _ipma.IsEmpty: _ipma = childBody; break;
+                            }
+                        }
 
-                    // 取最大尺寸的 ispe（避免取到微缩略图）
-                    if (w * (long)h > bestWidth * (long)bestHeight)
+                        break;
+                }
+            }
+        }
+
+        private uint? PrimaryItemId =>
+            _pitm.Length >= 6 && _pitm[0] == 0 ? BinaryPrimitives.ReadUInt16BigEndian(_pitm[4..])
+            : _pitm.Length >= 8 ? BinaryPrimitives.ReadUInt32BigEndian(_pitm[4..])
+            : null;
+
+        /// <summary>
+        /// 取主图关联的 ispe 与 irot；缺少 pitm/ipma 时退化为面积最大的 ispe（排除缩略图与切片）。
+        /// </summary>
+        public bool TryGetPrimaryGeometry(out int width, out int height, out int rotation)
+        {
+            Span<ushort> associated = stackalloc ushort[64];
+            var associatedCount = PrimaryItemId is { } primary ? FindAssociations(primary, associated) : -1;
+            return (associatedCount >= 0 && TryGetGeometry(associated[..associatedCount], filter: true, out width, out height, out rotation))
+                   || TryGetGeometry([], filter: false, out width, out height, out rotation);
+        }
+
+        private bool TryGetGeometry(ReadOnlySpan<ushort> associated, bool filter, out int width, out int height, out int rotation)
+        {
+            width = height = rotation = 0;
+            var index = 0;
+            long bestArea = 0;
+            foreach (var (type, body) in new BoxEnumerator(_ipco))
+            {
+                // ipma 中的属性序号从 1 开始
+                index++;
+                if (filter && !associated.Contains((ushort)index))
+                {
+                    continue;
+                }
+
+                if (type == BoxIspe && body.Length >= 12)
+                {
+                    var w = BinaryPrimitives.ReadUInt32BigEndian(body[4..]);
+                    var h = BinaryPrimitives.ReadUInt32BigEndian(body[8..]);
+                    if (w is > 0 and <= int.MaxValue && h is > 0 and <= int.MaxValue && (long)w * h > bestArea)
                     {
-                        bestWidth = (int)w;
-                        bestHeight = (int)h;
+                        bestArea = (long)w * h;
+                        (width, height) = ((int)w, (int)h);
+                    }
+                }
+                else if (type == BoxIrot && body.Length >= 1)
+                {
+                    rotation = body[0] & 3;
+                }
+            }
+
+            return bestArea > 0;
+        }
+
+        /// <returns>主图关联的属性序号个数；ipma 缺失或没有该项时返回 -1</returns>
+        private int FindAssociations(uint itemId, Span<ushort> destination)
+        {
+            var ipma = _ipma;
+            if (ipma.Length < 8)
+            {
+                return -1;
+            }
+
+            var version = ipma[0];
+            var wideIndex = (ipma[3] & 1) != 0;
+            var entryCount = BinaryPrimitives.ReadUInt32BigEndian(ipma[4..]);
+            var position = 8;
+            for (uint i = 0; i < entryCount; i++)
+            {
+                var idLength = version < 1 ? 2 : 4;
+                if (position + idLength + 1 > ipma.Length)
+                {
+                    return -1;
+                }
+
+                var id = version < 1 ? BinaryPrimitives.ReadUInt16BigEndian(ipma[position..]) : BinaryPrimitives.ReadUInt32BigEndian(ipma[position..]);
+                position += idLength;
+                int associations = ipma[position++];
+                var entryLength = associations * (wideIndex ? 2 : 1);
+                if (position + entryLength > ipma.Length)
+                {
+                    return -1;
+                }
+
+                if (id == itemId)
+                {
+                    var count = Math.Min(associations, destination.Length);
+                    for (var j = 0; j < count; j++)
+                    {
+                        destination[j] = wideIndex
+                            ? (ushort)(BinaryPrimitives.ReadUInt16BigEndian(ipma[(position + j * 2)..]) & 0x7FFF)
+                            : (ushort)(ipma[position + j] & 0x7F);
+                    }
+
+                    return count;
+                }
+
+                position += entryLength;
+            }
+
+            return -1;
+        }
+
+        /// <summary>
+        /// 定位第一个 Exif 项；只支持数据直接存放在文件中（construction_method 0）的情形。
+        /// </summary>
+        public bool TryGetExifExtent(out long offset, out long length)
+        {
+            offset = length = 0;
+            return FindExifItemId() is { } itemId && TryGetItemExtent(itemId, out offset, out length);
+        }
+
+        private uint? FindExifItemId()
+        {
+            var iinf = _iinf;
+            if (iinf.Length < 6)
+            {
+                return null;
+            }
+
+            var entries = iinf[(iinf[0] == 0 ? 6 : 8)..];
+            foreach (var (type, infe) in new BoxEnumerator(entries))
+            {
+                // infe 版本 2 用 16 位项 ID，版本 3 用 32 位；更早的版本没有 item_type
+                if (type != BoxInfe || infe.Length < 4 || infe[0] is not (2 or 3))
+                {
+                    continue;
+                }
+
+                var idLength = infe[0] == 2 ? 2 : 4;
+                if (infe.Length < 4 + idLength + 2 + 4)
+                {
+                    continue;
+                }
+
+                var itemType = BinaryPrimitives.ReadUInt32BigEndian(infe[(4 + idLength + 2)..]);
+                if (itemType == ItemExif)
+                {
+                    return idLength == 2 ? BinaryPrimitives.ReadUInt16BigEndian(infe[4..]) : BinaryPrimitives.ReadUInt32BigEndian(infe[4..]);
+                }
+            }
+
+            return null;
+        }
+
+        private bool TryGetItemExtent(uint itemId, out long offset, out long length)
+        {
+            offset = length = 0;
+            var iloc = _iloc;
+            if (iloc.Length < 8)
+            {
+                return false;
+            }
+
+            var version = iloc[0];
+            var offsetSize = iloc[4] >> 4;
+            var lengthSize = iloc[4] & 0xF;
+            var baseOffsetSize = iloc[5] >> 4;
+            var indexSize = version is 1 or 2 ? iloc[5] & 0xF : 0;
+            var position = 6;
+            if (!TryReadUInt(iloc, ref position, version < 2 ? 2 : 4, out var itemCount))
+            {
+                return false;
+            }
+
+            for (ulong i = 0; i < itemCount; i++)
+            {
+                if (!TryReadUInt(iloc, ref position, version < 2 ? 2 : 4, out var id))
+                {
+                    return false;
+                }
+
+                ulong constructionMethod = 0;
+                if (version is 1 or 2 && !TryReadUInt(iloc, ref position, 2, out constructionMethod))
+                {
+                    return false;
+                }
+
+                if (!TryReadUInt(iloc, ref position, 2, out _)
+                    || !TryReadUInt(iloc, ref position, baseOffsetSize, out var baseOffset)
+                    || !TryReadUInt(iloc, ref position, 2, out var extentCount))
+                {
+                    return false;
+                }
+
+                for (ulong e = 0; e < extentCount; e++)
+                {
+                    if (!TryReadUInt(iloc, ref position, indexSize, out _)
+                        || !TryReadUInt(iloc, ref position, offsetSize, out var extentOffset)
+                        || !TryReadUInt(iloc, ref position, lengthSize, out var extentLength))
+                    {
+                        return false;
+                    }
+
+                    if (id == itemId && e == 0)
+                    {
+                        if ((constructionMethod & 0xF) != 0 || baseOffset + extentOffset > long.MaxValue || extentLength > long.MaxValue)
+                        {
+                            return false;
+                        }
+
+                        offset = (long)(baseOffset + extentOffset);
+                        length = extentLength == 0 ? long.MaxValue : (long)extentLength;
+                        return true;
                     }
                 }
             }
-            // "irot" (Image Rotation, 0x69726F74)
-            else if (type == 0x69726F74 && boxEnd - stream.Position >= 1)
+
+            return false;
+        }
+
+        private static bool TryReadUInt(ReadOnlySpan<byte> data, ref int position, int size, out ulong value)
+        {
+            value = 0;
+            if (size is not (0 or 2 or 4 or 8) || position + size > data.Length)
             {
-                int rotByte = stream.ReadByte();
-                if (rotByte >= 0)
-                {
-                    rotationAngle = (rotByte & 3) * 90;
-                }
+                return false;
             }
 
-            stream.Seek(boxEnd, SeekOrigin.Begin);
+            for (var i = 0; i < size; i++)
+            {
+                value = (value << 8) | data[position + i];
+            }
+
+            position += size;
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// 在内存中依次枚举 ISOBMFF box（32 位长度，不支持延续到末尾的 0 长度）。
+    /// </summary>
+    private ref struct BoxEnumerator(ReadOnlySpan<byte> data)
+    {
+        private readonly ReadOnlySpan<byte> _data = data;
+        private int _next;
+
+        public Box Current { get; private set; }
+
+        public readonly BoxEnumerator GetEnumerator() => this;
+
+        public bool MoveNext()
+        {
+            if (_next > _data.Length - 8)
+            {
+                return false;
+            }
+
+            var size = BinaryPrimitives.ReadUInt32BigEndian(_data[_next..]);
+            var type = BinaryPrimitives.ReadUInt32BigEndian(_data[(_next + 4)..]);
+            if (size < 8 || size > (uint)(_data.Length - _next))
+            {
+                return false;
+            }
+
+            Current = new Box(type, _data.Slice(_next + 8, (int)size - 8));
+            _next += (int)size;
+            return true;
+        }
+    }
+
+    private readonly ref struct Box(uint type, ReadOnlySpan<byte> body)
+    {
+        private readonly ReadOnlySpan<byte> _body = body;
+
+        public void Deconstruct(out uint boxType, out ReadOnlySpan<byte> boxBody)
+        {
+            boxType = type;
+            boxBody = _body;
         }
     }
 }

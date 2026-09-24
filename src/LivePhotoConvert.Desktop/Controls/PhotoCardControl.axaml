@@ -1,113 +1,131 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:models="using:LivePhotoConvert.Desktop.Models"
+             xmlns:library="using:LivePhotoConvert.Desktop.Features.Library"
+             xmlns:thumbs="using:LivePhotoConvert.Desktop.Features.Library.Thumbnails"
              x:Class="LivePhotoConvert.Desktop.Controls.PhotoCardControl"
              x:CompileBindings="True"
              x:DataType="models:PhotoCardItemViewModel"
         xmlns:ic="using:FluentIcons.Avalonia">
 
-  <Border Background="{DynamicResource SurfaceBrush}"
-          CornerRadius="16"
-          ClipToBounds="True"
-          Margin="4"
-          BoxShadow="0 2 8 0 #10000000">
+  <Panel Margin="{x:Static thumbs:GalleryMetrics.CardMarginThickness}">
+    <Border Background="{DynamicResource SurfaceBrush}"
+            CornerRadius="16"
+            ClipToBounds="True"
+            BoxShadow="0 2 8 0 #10000000">
 
-    <Grid RowDefinitions="Auto,Auto">
-      <!-- 使用行布局预先算出的统一高度，缩略图异步到达时不会改变当前测量 -->
-      <Panel Grid.Row="0" Height="{CompiledBinding PreviewHeight}" ClipToBounds="True">
-        <!-- 圆角裁剪容器 -->
-        <Border CornerRadius="16,16,0,0" ClipToBounds="True">
-          <Panel>
-            <!-- 自适应等高模式下容器保持原图比例；方形模式下同一视口负责居中裁切 -->
-            <Image Source="{CompiledBinding DisplayImage}"
-                   RenderOptions.BitmapInterpolationMode="HighQuality"
-                   Stretch="UniformToFill"
-                   HorizontalAlignment="Stretch"
-                   VerticalAlignment="Center" />
+      <Grid RowDefinitions="Auto,Auto">
+        <!-- 使用行布局预先算出的统一高度，缩略图异步到达时不会改变当前测量 -->
+        <Panel Grid.Row="0" Height="{CompiledBinding PreviewHeight}" ClipToBounds="True">
+          <!-- 圆角裁剪容器 -->
+          <Border CornerRadius="16,16,0,0" ClipToBounds="True">
+            <Panel>
+              <!-- 自适应等高模式下容器保持原图比例；方形模式下同一视口负责居中裁切 -->
+              <Image Source="{CompiledBinding DisplayImage}"
+                     RenderOptions.BitmapInterpolationMode="HighQuality"
+                     Stretch="UniformToFill"
+                     HorizontalAlignment="Stretch"
+                     VerticalAlignment="Center" />
 
-            <!-- 缩略图未就绪时的占位底色 -->
-            <Border Background="{DynamicResource CanvasBrush}"
-                    IsVisible="{CompiledBinding DisplayImage, Converter={x:Static ObjectConverters.IsNull}}">
-              <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6" Margin="0,30">
-                <ic:SymbolIcon Symbol="Camera" FontSize="32" Foreground="{DynamicResource TextTertiaryBrush}"/>
-                <TextBlock Text="{CompiledBinding FileName}" Foreground="{DynamicResource TextMutedBrush}" FontSize="11" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="160" />
-              </StackPanel>
-            </Border>
-          </Panel>
-        </Border>
-
-        <!-- 实况徽章 -->
-        <Border Background="#80000000" CornerRadius="12" Padding="8,4"
-                HorizontalAlignment="Left" VerticalAlignment="Top" Margin="8"
-                IsVisible="{CompiledBinding !HasSuspiciousWarning}">
-          <StackPanel Orientation="Horizontal" Spacing="4">
-            <ic:SymbolIcon Symbol="Live" FontSize="12" Foreground="#38BDF8"/>
-            <TextBlock Text="{DynamicResource CardLiveBadge}" Foreground="{DynamicResource OnAccentBrush}" FontSize="10" FontWeight="Bold" />
-          </StackPanel>
-        </Border>
-
-        <!-- 警示徽章 -->
-        <Border Background="{DynamicResource WarningBrush}" CornerRadius="12" Padding="8,4"
-                HorizontalAlignment="Left" VerticalAlignment="Top" Margin="8"
-                IsVisible="{CompiledBinding HasSuspiciousWarning}">
-          <StackPanel Orientation="Horizontal" Spacing="4">
-            <ic:SymbolIcon Symbol="Warning" FontSize="12" Foreground="{DynamicResource OnAccentBrush}"/>
-            <TextBlock Text="{DynamicResource CardTimeMismatch}" Foreground="{DynamicResource OnAccentBrush}" FontSize="10" FontWeight="Bold" />
-          </StackPanel>
-        </Border>
-
-        <!-- 时长角标 -->
-        <Border Background="#99000000" CornerRadius="6" Padding="6,2"
-                HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="8">
-          <TextBlock Text="{DynamicResource CardDurationLive}" Foreground="{DynamicResource OnAccentBrush}" FontSize="10" FontWeight="SemiBold" />
-        </Border>
-
-      </Panel>
-
-      <!-- 信息面板固定高度，保证同一行的卡片底部对齐 -->
-      <Border Grid.Row="1" Height="78" Padding="12,10" Background="{DynamicResource SurfaceBrush}">
-        <StackPanel Spacing="6">
-          <Grid ColumnDefinitions="*,Auto">
-            <StackPanel Grid.Column="0" Spacing="2">
-              <TextBlock Text="{CompiledBinding FileName}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
-              <TextBlock Text="{CompiledBinding SizeSummary}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" TextTrimming="CharacterEllipsis" />
-            </StackPanel>
-
-            <Panel Grid.Column="1">
-              <Border Background="{DynamicResource SuccessSoftBrush}" BorderBrush="{DynamicResource SuccessBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="6,2"
-                      VerticalAlignment="Top"
-                      IsVisible="{CompiledBinding !HasSuspiciousWarning}">
-                <TextBlock Text="{DynamicResource PairStatusLocked}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" />
+              <!-- 缩略图未就绪时的占位底色 -->
+              <Border Background="{DynamicResource CanvasBrush}"
+                      IsVisible="{CompiledBinding DisplayImage, Converter={x:Static ObjectConverters.IsNull}}">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6" Margin="0,30">
+                  <ic:SymbolIcon Symbol="Camera" FontSize="32" Foreground="{DynamicResource TextTertiaryBrush}"/>
+                  <TextBlock Text="{CompiledBinding FileName}" Foreground="{DynamicResource TextMutedBrush}" FontSize="11" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="160" />
+                </StackPanel>
               </Border>
-
-              <Button Command="{CompiledBinding RequestArbitrateCommand}"
-                      Background="{DynamicResource WarningSoftBrush}" BorderBrush="{DynamicResource WarningBorderBrush}" BorderThickness="1"
-                      CornerRadius="6" Padding="6,2"
-                      VerticalAlignment="Top"
-                      IsVisible="{CompiledBinding HasSuspiciousWarning}"
-                      Cursor="Hand">
-                <TextBlock Text="{DynamicResource CardArbitrateBtn}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource WarningBrush}" />
-              </Button>
             </Panel>
-          </Grid>
+          </Border>
 
-          <!-- 分隔线 -->
-          <Border Height="1" Background="{DynamicResource HoverBrush}" Margin="0,2" />
-
-          <Grid ColumnDefinitions="Auto,*,Auto">
-            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4">
-              <ic:SymbolIcon Symbol="Clock" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"/>
-              <TextBlock Text="{CompiledBinding FormattedTime}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
+          <!-- 实况徽章；窄卡片只显示图标 -->
+          <Border Classes="card-media-badge" IsVisible="{CompiledBinding !RequiresPairReview}">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <ic:SymbolIcon Symbol="Live" FontSize="12" Foreground="#38BDF8"/>
+              <TextBlock Text="{DynamicResource CardLiveBadge}" Foreground="{DynamicResource OnAccentBrush}" FontSize="10" FontWeight="Bold"
+                         IsVisible="{CompiledBinding !IsCompact}" />
             </StackPanel>
+          </Border>
 
-            <TextBlock Grid.Column="1" Text="{CompiledBinding DeviceInfo}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}"
-                       TextAlignment="Center" TextTrimming="CharacterEllipsis" Margin="4,0" VerticalAlignment="Center" />
+          <!-- 警示徽章 -->
+          <Border Classes="card-media-badge warning" IsVisible="{CompiledBinding RequiresPairReview}"
+                  ToolTip.Tip="{CompiledBinding WarningReason}">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <ic:SymbolIcon Symbol="Warning" FontSize="12" Foreground="{DynamicResource OnAccentBrush}"/>
+              <TextBlock Text="{DynamicResource CardTimeMismatch}" Foreground="{DynamicResource OnAccentBrush}" FontSize="10" FontWeight="Bold"
+                         IsVisible="{CompiledBinding !IsCompact}" />
+            </StackPanel>
+          </Border>
 
-            <TextBlock Grid.Column="2" Text="{CompiledBinding ResolutionText}" FontSize="10" FontWeight="SemiBold"
-                       Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
-          </Grid>
-        </StackPanel>
-      </Border>
-    </Grid>
-  </Border>
+          <!-- 勾选角标：选中时常显，未选中时悬停出现；点击它只切换这一张 -->
+          <Border Classes="card-check" Classes.selected="{CompiledBinding IsSelected}">
+            <ic:SymbolIcon Symbol="Checkmark" FontSize="13" Foreground="{DynamicResource OnSelectionBrush}"
+                           IsVisible="{CompiledBinding IsSelected}" />
+          </Border>
+
+          <!-- 时长角标 -->
+          <Border Background="#99000000" CornerRadius="6" Padding="6,2"
+                  HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="8"
+                  IsVisible="{CompiledBinding !IsCompact}">
+            <TextBlock Text="{DynamicResource CardDurationLive}" Foreground="{DynamicResource OnAccentBrush}" FontSize="10" FontWeight="SemiBold" />
+          </Border>
+
+        </Panel>
+
+        <!-- 信息面板固定高度，保证同一行的卡片底部对齐；窄卡片把状态收成图标，文件名保持可读 -->
+        <Border Grid.Row="1" Height="{x:Static thumbs:GalleryMetrics.InfoBarHeight}" Padding="12,10" Background="{DynamicResource SurfaceBrush}">
+          <StackPanel Spacing="6">
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel Grid.Column="0" Spacing="2">
+                <TextBlock Text="{CompiledBinding FileName}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}"
+                           TextTrimming="CharacterEllipsis" ToolTip.Tip="{CompiledBinding FileName}" />
+                <TextBlock Text="{CompiledBinding SizeSummary}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+
+              <Panel Grid.Column="1" Margin="6,0,0,0">
+                <Border Classes="card-status locked" IsVisible="{CompiledBinding !RequiresPairReview}" ToolTip.Tip="{DynamicResource PairStatusLocked}">
+                  <Panel>
+                    <TextBlock Text="{DynamicResource PairStatusLocked}" IsVisible="{CompiledBinding !IsCompact}" />
+                    <ic:SymbolIcon Symbol="LockClosed" FontSize="11" Foreground="{DynamicResource SuccessBrush}" IsVisible="{CompiledBinding IsCompact}" />
+                  </Panel>
+                </Border>
+
+                <Button Classes="card-status pending"
+                        Command="{Binding $parent[ListBox].((library:LibraryViewModel)DataContext).ArbitrateCommand}"
+                        CommandParameter="{CompiledBinding}"
+                        IsVisible="{CompiledBinding RequiresPairReview}"
+                        ToolTip.Tip="{DynamicResource CardArbitrateBtn}">
+                  <Panel>
+                    <TextBlock Text="{DynamicResource CardArbitrateBtn}" IsVisible="{CompiledBinding !IsCompact}" />
+                    <ic:SymbolIcon Symbol="Warning" FontSize="11" Foreground="{DynamicResource WarningBrush}" IsVisible="{CompiledBinding IsCompact}" />
+                  </Panel>
+                </Button>
+              </Panel>
+            </Grid>
+
+            <!-- 分隔线 -->
+            <Border Height="1" Background="{DynamicResource HoverBrush}" Margin="0,2" />
+
+            <Grid ColumnDefinitions="Auto,*,Auto">
+              <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4">
+                <ic:SymbolIcon Symbol="Clock" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"/>
+                <TextBlock Text="{CompiledBinding FormattedTime}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
+              </StackPanel>
+
+              <TextBlock Grid.Column="1" Text="{CompiledBinding DeviceInfo}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}"
+                         TextAlignment="Center" TextTrimming="CharacterEllipsis" Margin="4,0" VerticalAlignment="Center"
+                         IsVisible="{CompiledBinding !IsCompact}" />
+
+              <TextBlock Grid.Column="2" Text="{CompiledBinding ResolutionText}" FontSize="10" FontWeight="SemiBold"
+                         Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"
+                         IsVisible="{CompiledBinding !IsTiny}" />
+            </Grid>
+          </StackPanel>
+        </Border>
+      </Grid>
+    </Border>
+
+    <!-- 选中描边叠在卡片之上，不参与布局，行高估算不受影响 -->
+    <Border Classes="card-selection-ring" IsVisible="{CompiledBinding IsSelected}" />
+  </Panel>
 </UserControl>

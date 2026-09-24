@@ -49,7 +49,6 @@ public sealed partial class InspectorViewModel : ViewModelBase
     private readonly IStripEstimator _estimator;
     private readonly IDiskSpaceGuard _diskSpace;
     private readonly TimeProvider _time;
-    private readonly Dictionary<PhotoCardItemViewModel, long> _sizeCache = [];
     private CancellationTokenSource? _estimateCts;
     private StripEstimate? _estimate;
     private string? _estimateError;
@@ -255,7 +254,7 @@ public sealed partial class InspectorViewModel : ViewModelBase
     partial void OnActionChanged(ConversionAction value)
     {
         _settings.Update(s => s.Action = value);
-        _ = _library.SetScanModeAsync(ScanModes.For(value));
+        _library.SetActionFilter(value);
         RefreshApplicable();
         RefreshTexts();
         ScheduleEstimate();
@@ -274,7 +273,11 @@ public sealed partial class InspectorViewModel : ViewModelBase
     partial void OnAutoAppendIndexChanged(bool value) =>
         _settings.Update(s => s.ConflictPolicy = value ? ConflictPolicy.AppendIndex : ConflictPolicy.Overwrite);
 
-    partial void OnHeicQualityChanged(int value) => _settings.Update(s => s.HeicQuality = value);
+    partial void OnHeicQualityChanged(int value)
+    {
+        _settings.Update(s => s.HeicQuality = value);
+        ScheduleEstimate();
+    }
 
     partial void OnOutputDirectoryChanged(string value) => _settings.Update(s => s.OutputDirectory = value);
 
@@ -386,7 +389,7 @@ public sealed partial class InspectorViewModel : ViewModelBase
             return;
         }
 
-        var totalBytes = BytesOf(cards);
+        var totalBytes = JobFactory.SourceBytes(cards);
         var target = JobFactory.ResolveTargetDirectory(action, settings, _library.AlbumDirectory);
         var (hasSpace, requiredBytes, availableBytes) = _diskSpace.Check(target, totalBytes);
         if (!hasSpace)
@@ -477,38 +480,14 @@ public sealed partial class InspectorViewModel : ViewModelBase
 
     private void RefreshApplicable()
     {
-        var all = _library.AllCards;
-        // 卡片集合整体更换后旧的体积缓存不再有用
-        if (_sizeCache.Count > all.Count * 2 + 64)
-        {
-            _sizeCache.Clear();
-        }
-
-        var selectedCount = _library.SelectedCount;
+        var selectedCount = _library.Selection.SelectedCount;
         var applicable = JobFactory.Applicable(Action, _library.SelectedOrAllCards);
         ApplicableCount = applicable.Count;
-        ApplicableBytes = BytesOf(applicable);
+        ApplicableBytes = JobFactory.SourceBytes(applicable);
         ApplicableText = _localizer.Format("ApplicableFormat", ApplicableCount, FormatBytes(ApplicableBytes));
         ApplicableScopeText = selectedCount > 0
             ? _localizer.Format("ApplicableScopeSelectedFormat", selectedCount)
             : _localizer["ApplicableScopeAll"];
-    }
-
-    private long BytesOf(IEnumerable<PhotoCardItemViewModel> cards)
-    {
-        long sum = 0;
-        foreach (var card in cards)
-        {
-            if (!_sizeCache.TryGetValue(card, out var bytes))
-            {
-                bytes = JobFactory.SourceBytes([card]);
-                _sizeCache[card] = bytes;
-            }
-
-            sum += bytes;
-        }
-
-        return sum;
     }
 
     private void RefreshTexts()

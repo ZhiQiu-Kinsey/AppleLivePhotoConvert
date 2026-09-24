@@ -104,7 +104,7 @@ public class DialogViewModelTests
     [InlineData(ArbitrationVerdict.Reject)]
     public async Task Arbitrate_ReturnsVerdict_WithoutTouchingCard(ArbitrationVerdict expected)
     {
-        var card = new PhotoCardItemViewModel { Key = "k", PhotoPath = "missing.heic" };
+        var card = LivePhotoConvert.Desktop.Tests.Features.Library.Cards.ApplePair("missing");
         var dialog = new ArbitrateDialogViewModel(new Localizer()) { TargetCard = card };
 
         var verdict = await ShowAndAct(dialog, () =>

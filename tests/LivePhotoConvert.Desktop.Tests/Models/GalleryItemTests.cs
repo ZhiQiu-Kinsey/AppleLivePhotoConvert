@@ -7,11 +7,7 @@ public class GalleryItemTests
     [Fact]
     public void PhotoCard_ThumbnailEviction_ResetsDisplayImage()
     {
-        var card = new PhotoCardItemViewModel
-        {
-            Key = "test_1",
-            PhotoPath = "test.jpg"
-        };
+        var card = LivePhotoConvert.Desktop.Tests.Features.Library.Cards.Still("test");
 
         Assert.Null(card.Thumbnail);
         Assert.Null(card.DisplayImage);
