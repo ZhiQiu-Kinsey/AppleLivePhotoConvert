@@ -138,6 +138,19 @@ public sealed class PlaybackHost
         _decodeCompleted = false;
     }
 
+    /// <summary>停止悬浮播放并取消全部预热任务（退出程序时调用）。</summary>
+    public void StopAll()
+    {
+        StopHoverPlayback();
+        lock (_preloadLock)
+        {
+            foreach (var cts in _preloadCts.Values)
+            {
+                cts.Cancel();
+            }
+        }
+    }
+
     public void TriggerQuickLook(PhotoCardItemViewModel card)
     {
         OnQuickLookTriggered?.Invoke(card);

@@ -1,21 +1,19 @@
 using CommunityToolkit.Mvvm.Input;
+using LivePhotoConvert.Desktop.Infrastructure;
 
 namespace LivePhotoConvert.Desktop.ViewModels.Dialogs;
 
 /// <summary>
-/// 磁盘剩余容量不足预检阻断弹窗 (SEC-03: ENOSPC Pre-check)
+/// 输出盘剩余空间不足的提醒；返回 true 表示用户选择仍然继续。
 /// </summary>
-public sealed partial class LowDiskSpaceDialogViewModel : ViewModelBase
+public sealed partial class LowDiskSpaceDialogViewModel : DialogViewModel<bool>
 {
     public string TargetDirectory { get; init; } = string.Empty;
+
     public string RequiredSpaceText { get; init; } = string.Empty;
+
     public string AvailableSpaceText { get; init; } = string.Empty;
 
-    public Action? OnDismiss { get; init; }
-
     [RelayCommand]
-    private void Dismiss()
-    {
-        OnDismiss?.Invoke();
-    }
+    private void Continue() => Close(true);
 }

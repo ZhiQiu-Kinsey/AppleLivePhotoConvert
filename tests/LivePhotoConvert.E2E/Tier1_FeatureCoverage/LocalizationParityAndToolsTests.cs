@@ -3,6 +3,7 @@ using LivePhotoConvert.Core.External;
 using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Services;
 using LivePhotoConvert.Desktop.ViewModels;
+using LivePhotoConvert.E2E.Harness;
 
 namespace LivePhotoConvert.E2E.Tier1_FeatureCoverage;
 
@@ -76,64 +77,53 @@ public class LocalizationParityAndToolsTests
     [Fact]
     public async Task ToolsViewModel_RescanToolsAsync_ReflectsRealToolLocatorPaths()
     {
-        var tempSettingsFile = Path.Combine(Path.GetTempPath(), $"test_settings_{Guid.NewGuid():N}.json");
-        try
+        using var host = new DesktopTestHost();
+        var vm = host.Get<ToolsViewModel>();
+
+        await vm.RescanToolsAsync();
+
+        var expectedExifPath = ToolLocator.Find(ExifToolMetadataService.ExecutableName);
+        var expectedFfmpegPath = ToolLocator.Find(FfmpegVideoConverter.ExecutableName);
+        var expectedHeifPath = ToolLocator.Find(HeifEncImageConverter.ExecutableName);
+
+        // 验证 FFmpeg
+        if (expectedFfmpegPath is not null)
         {
-            var settingsService = new SettingsService(tempSettingsFile);
-            var vm = new ToolsViewModel(settingsService, Localizer.Current);
-
-            await vm.RescanToolsAsync();
-
-            var expectedExifPath = ToolLocator.Find(ExifToolMetadataService.ExecutableName);
-            var expectedFfmpegPath = ToolLocator.Find(FfmpegVideoConverter.ExecutableName);
-            var expectedHeifPath = ToolLocator.Find(HeifEncImageConverter.ExecutableName);
-
-            // 验证 FFmpeg
-            if (expectedFfmpegPath is not null)
-            {
-                Assert.True(vm.IsFfmpegReady);
-                Assert.Equal(expectedFfmpegPath, vm.FfmpegPath);
-                Assert.NotEqual("未安装", vm.FfmpegVersion);
-            }
-            else
-            {
-                Assert.False(vm.IsFfmpegReady);
-                Assert.Equal("未检测到 ffmpeg.exe", vm.FfmpegPath);
-                Assert.Equal("未安装", vm.FfmpegVersion);
-            }
-
-            // 验证 ExifTool
-            if (expectedExifPath is not null)
-            {
-                Assert.True(vm.IsExifToolReady);
-                Assert.Equal(expectedExifPath, vm.ExifToolPath);
-            }
-            else
-            {
-                Assert.False(vm.IsExifToolReady);
-                Assert.Equal("未检测到 exiftool.exe", vm.ExifToolPath);
-                Assert.Equal("未安装", vm.ExifToolVersion);
-            }
-
-            // 验证 heif-enc
-            if (expectedHeifPath is not null)
-            {
-                Assert.True(vm.IsHeifEncReady);
-                Assert.Equal(expectedHeifPath, vm.HeifEncPath);
-            }
-            else
-            {
-                Assert.False(vm.IsHeifEncReady);
-                Assert.Equal("未检测到 heif-enc.exe", vm.HeifEncPath);
-                Assert.Equal("未安装", vm.HeifEncVersion);
-            }
+            Assert.True(vm.IsFfmpegReady);
+            Assert.Equal(expectedFfmpegPath, vm.FfmpegPath);
+            Assert.NotEqual("未安装", vm.FfmpegVersion);
         }
-        finally
+        else
         {
-            if (File.Exists(tempSettingsFile))
-            {
-                File.Delete(tempSettingsFile);
-            }
+            Assert.False(vm.IsFfmpegReady);
+            Assert.Equal("未检测到 ffmpeg.exe", vm.FfmpegPath);
+            Assert.Equal("未安装", vm.FfmpegVersion);
+        }
+
+        // 验证 ExifTool
+        if (expectedExifPath is not null)
+        {
+            Assert.True(vm.IsExifToolReady);
+            Assert.Equal(expectedExifPath, vm.ExifToolPath);
+        }
+        else
+        {
+            Assert.False(vm.IsExifToolReady);
+            Assert.Equal("未检测到 exiftool.exe", vm.ExifToolPath);
+            Assert.Equal("未安装", vm.ExifToolVersion);
+        }
+
+        // 验证 heif-enc
+        if (expectedHeifPath is not null)
+        {
+            Assert.True(vm.IsHeifEncReady);
+            Assert.Equal(expectedHeifPath, vm.HeifEncPath);
+        }
+        else
+        {
+            Assert.False(vm.IsHeifEncReady);
+            Assert.Equal("未检测到 heif-enc.exe", vm.HeifEncPath);
+            Assert.Equal("未安装", vm.HeifEncVersion);
         }
     }
 
@@ -145,11 +135,9 @@ public class LocalizationParityAndToolsTests
     [InlineData("https://this-is-a-completely-non-existent-domain-9876543210.xyz")]
     public async Task ToolsViewModel_TestMirrorSpeedAsync_InvalidUrls_HandlesGracefullyWithoutCrashing(string invalidUrl)
     {
-        var settingsService = new SettingsService();
-        var vm = new ToolsViewModel(settingsService, Localizer.Current)
-        {
-            CustomMirrorUrl = invalidUrl
-        };
+        using var host = new DesktopTestHost();
+        var vm = host.Get<ToolsViewModel>();
+        vm.CustomMirrorUrl = invalidUrl;
 
         // 必须优雅捕获异常，严禁发生未捕获崩溃
         var exception = await Record.ExceptionAsync(() => vm.TestMirrorSpeedAsync());
@@ -165,11 +153,9 @@ public class LocalizationParityAndToolsTests
     [InlineData(null)]
     public async Task ToolsViewModel_TestMirrorSpeedAsync_EmptyOrWhitespaceUrl_DefaultsSafelyWithoutCrashing(string? emptyUrl)
     {
-        var settingsService = new SettingsService();
-        var vm = new ToolsViewModel(settingsService, Localizer.Current)
-        {
-            CustomMirrorUrl = emptyUrl!
-        };
+        using var host = new DesktopTestHost();
+        var vm = host.Get<ToolsViewModel>();
+        vm.CustomMirrorUrl = emptyUrl!;
 
         var exception = await Record.ExceptionAsync(() => vm.TestMirrorSpeedAsync());
         Assert.Null(exception);
@@ -179,12 +165,10 @@ public class LocalizationParityAndToolsTests
     [Fact]
     public async Task ToolsViewModel_TestMirrorSpeedAsync_NonRoutableTimeout_HandlesGracefullyWithoutCrashing()
     {
-        var settingsService = new SettingsService();
-        var vm = new ToolsViewModel(settingsService, Localizer.Current)
-        {
-            // 10.255.255.1 是私有不可路由黑洞 IP，通常触发 5 秒 HttpClient 超时
-            CustomMirrorUrl = "http://10.255.255.1:65432"
-        };
+        using var host = new DesktopTestHost();
+        var vm = host.Get<ToolsViewModel>();
+        // 10.255.255.1 是私有不可路由黑洞 IP，通常触发 5 秒 HttpClient 超时
+        vm.CustomMirrorUrl = "http://10.255.255.1:65432";
 
         var exception = await Record.ExceptionAsync(() => vm.TestMirrorSpeedAsync());
 

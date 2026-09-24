@@ -17,9 +17,6 @@ public sealed class Localizer : ILocalizer
     public const string Chinese = "zh-CN";
     public const string English = "en-US";
 
-    /// <summary>尚未接入依赖注入的调用方使用的共享实例。</summary>
-    public static ILocalizer Current { get; } = new Localizer();
-
     private readonly LanguagePack _zh;
     private readonly LanguagePack _en;
 

@@ -151,7 +151,7 @@
         </Grid>
       </Border>
 
-      <!-- Convert tab -->
+      <!-- 页面内容 -->
       <Panel Grid.Column="1">
         <Panel IsVisible="{Binding IsConvertTabSelected}">
           <views:ConvertView DataContext="{Binding ConvertVm}" />
@@ -168,11 +168,16 @@
         <Panel IsVisible="{Binding IsSettingsTabSelected}">
           <views:SettingsView DataContext="{Binding SettingsVm}" />
         </Panel>
+      </Panel>
 
-        <!-- Dynamic content host -->
-        <ContentControl Content="{Binding ActiveDialog}"
-                        IsVisible="{Binding ActiveDialog, Converter={x:Static ObjectConverters.IsNotNull}}">
+      <!-- 弹窗宿主：遮罩点击与 Esc 都走当前弹窗的 CancelCommand -->
+      <Panel Grid.Column="0" Grid.ColumnSpan="2" IsVisible="{Binding HasActiveDialog}">
+        <Border x:Name="DialogOverlay" Background="{DynamicResource OverlayBrush}" PointerPressed="DialogOverlay_PointerPressed" />
+        <ContentControl Content="{Binding ActiveDialog}">
           <ContentControl.DataTemplates>
+            <DataTemplate DataType="dialogs:ConfirmDialogViewModel">
+              <dialogViews:ConfirmDialog />
+            </DataTemplate>
             <DataTemplate DataType="dialogs:DeleteConfirmDialogViewModel">
               <dialogViews:DeleteConfirmDialog />
             </DataTemplate>

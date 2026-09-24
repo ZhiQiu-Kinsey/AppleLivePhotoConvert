@@ -19,19 +19,23 @@ namespace LivePhotoConvert.Desktop.ViewModels;
 /// <summary>
 /// 空间瘦身优化工坊全生命周期三阶段闭环视图模型
 /// </summary>
-public sealed partial class StripViewModel : ViewModelBase
+public sealed partial class StripViewModel : ViewModelBase, IBackgroundWork
 {
-    private readonly SettingsService _settingsService;
+    private static readonly string[] SamplePhotoPatterns = ["*.heic", "*.HEIC", "*.jpg", "*.JPG", "*.jpeg", "*.JPEG", "*.png", "*.PNG"];
+
+    private readonly SettingsStore _settings;
     private readonly ILocalizer _localizer;
+    private readonly IDialogService _dialogs;
+    private readonly IFilePicker _filePicker;
+    private readonly IShellLauncher _shell;
+    private readonly CompletionEffects _completion;
     private CancellationTokenSource? _stripCts;
+    private Task? _stripTask;
     private readonly ManualResetEventSlim _pauseGate = new(true);
     // 在 UI 线程（StartAnalysisAsync）写入、后台工作线程（StartStripExecution 汇报回调）读取，
     // 使用 Interlocked 保证 64 位原子性与跨线程可见性，杜绝工作线程读到过期缓存（volatile 不可用于 long）。
     private long _estimatedSavedBytesTotal;
     private long _analysisOriginalBytes;
-
-    public Action<ViewModelBase>? OnShowModal { get; init; }
-    public Action? OnCloseModal { get; init; }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsStage1))]
@@ -124,9 +128,6 @@ public sealed partial class StripViewModel : ViewModelBase
         StartStripExecutionCommand.NotifyCanExecuteChanged();
     }
 
-    public Func<Task<string?>>? RequestSelectFolder { get; set; }
-    public Func<Task<string?>>? RequestSelectFile { get; set; }
-
     [ObservableProperty]
     private string _totalOriginalText = "—";
 
@@ -189,11 +190,21 @@ public sealed partial class StripViewModel : ViewModelBase
     [ObservableProperty]
     private string _beforeCountText = string.Empty;
 
-    public StripViewModel(SettingsService settingsService, ILocalizer localizer)
+    public StripViewModel(
+        SettingsStore settings,
+        ILocalizer localizer,
+        IDialogService dialogs,
+        IFilePicker filePicker,
+        IShellLauncher shell,
+        CompletionEffects completion)
     {
-        _settingsService = settingsService;
+        _settings = settings;
         _localizer = localizer;
-        var s = _settingsService.Current;
+        _dialogs = dialogs;
+        _filePicker = filePicker;
+        _shell = shell;
+        _completion = completion;
+        var s = _settings.Current;
         _inPlaceStrip = s.InPlaceStrip;
         if (!string.IsNullOrWhiteSpace(s.StripOutputDirectory))
         {
@@ -227,8 +238,8 @@ public sealed partial class StripViewModel : ViewModelBase
     [RelayCommand]
     public async Task PickSamplePhotoAsync()
     {
-        if (RequestSelectFile is null) return;
-        var file = await RequestSelectFile();
+        FileTypeFilter[] filters = [new(_localizer["PickerImageFilterLabel"], SamplePhotoPatterns)];
+        var file = await _filePicker.PickFileAsync(_localizer["PickerSamplePhotoTitle"], filters, _settings.Current.StripLastDirectory);
         if (!string.IsNullOrWhiteSpace(file) && File.Exists(file))
         {
             CurrentInputPathText = file;
@@ -239,54 +250,55 @@ public sealed partial class StripViewModel : ViewModelBase
     [RelayCommand]
     public async Task PickStripFolderAsync()
     {
-        if (RequestSelectFolder is null) return;
-        var folder = await RequestSelectFolder();
-        if (!string.IsNullOrWhiteSpace(folder) && Directory.Exists(folder))
+        var folder = await _filePicker.PickFolderAsync(_localizer["SelectAlbumFolderBtn"], _settings.Current.StripLastDirectory);
+        if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder))
         {
-            CurrentInputPathText = folder;
-            _settingsService.Current.LastScanDirectory = folder;
-            _settingsService.Save();
-            await StartAnalysisAsync(folder);
+            return;
+        }
 
-            // 自动加载首张照片进沙盒对比
-            var firstPhoto = Directory.EnumerateFiles(folder, "*.*", SearchOption.TopDirectoryOnly)
-                .FirstOrDefault(f =>
-                {
-                    var ext = Path.GetExtension(f).ToLowerInvariant();
-                    return ext is ".heic" or ".jpg" or ".jpeg" or ".png";
-                });
-            if (firstPhoto != null)
-            {
-                await LoadSinglePhotoComparisonAsync(firstPhoto);
-            }
+        CurrentInputPathText = folder;
+        _settings.Update(s => s.StripLastDirectory = folder);
+        await StartAnalysisAsync(folder);
+
+        // 大目录枚举可能耗时，放到后台线程
+        var firstPhoto = await Task.Run(() => FindFirstPhoto(folder));
+        if (firstPhoto is not null)
+        {
+            await LoadSinglePhotoComparisonAsync(firstPhoto);
+        }
+    }
+
+    private static string? FindFirstPhoto(string folder)
+    {
+        try
+        {
+            return Directory.EnumerateFiles(folder, "*.*", SearchOption.TopDirectoryOnly)
+                .FirstOrDefault(f => Path.GetExtension(f).ToLowerInvariant() is ".heic" or ".jpg" or ".jpeg" or ".png");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
         }
     }
 
     [RelayCommand]
     public async Task BrowseOutputDirAsync()
     {
-        if (RequestSelectFolder is null) return;
-        var folder = await RequestSelectFolder();
+        var folder = await _filePicker.PickFolderAsync(_localizer["PickerOutputFolderTitle"], SafeExportDirectory);
         if (!string.IsNullOrWhiteSpace(folder))
         {
             SafeExportDirectory = folder;
-            _settingsService.Current.StripOutputDirectory = folder;
-            _settingsService.Save();
+            _settings.Update(s => s.StripOutputDirectory = folder);
         }
     }
 
     [RelayCommand]
-    public void OpenOutputDir()
+    public async Task OpenOutputDirAsync()
     {
         var target = InPlaceStrip ? CurrentInputPathText : SafeExportDirectory;
-        if (File.Exists(target)) target = Path.GetDirectoryName(target);
-        if (!string.IsNullOrWhiteSpace(target) && Directory.Exists(target))
+        if (!_shell.OpenFolder(target))
         {
-            using var _ = Process.Start(new ProcessStartInfo
-            {
-                FileName = target,
-                UseShellExecute = true
-            });
+            await _dialogs.AlertAsync(_localizer["ShellOpenFailedTitle"], _localizer.Format("ShellOpenFailedFormat", target), _localizer["ConfirmDialogOk"]);
         }
     }
 
@@ -328,7 +340,7 @@ public sealed partial class StripViewModel : ViewModelBase
                 var origBmp = new Bitmap(origMem);
 
                 // 模拟空间瘦身转码（转为 HEIC，质量使用偏好设置，默认 90）
-                var quality = (uint)(_settingsService.Current.HeicQuality > 0 ? _settingsService.Current.HeicQuality : 90);
+                var quality = (uint)(_settings.Current.HeicQuality > 0 ? _settings.Current.HeicQuality : ConversionDefaults.HeicQuality);
                 Bitmap strippedBmp;
                 long strippedEstimatedBytes;
 
@@ -395,30 +407,17 @@ public sealed partial class StripViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    public void ToggleInPlaceStrip(bool value)
+    public async Task ToggleInPlaceStripAsync(bool value)
     {
-        if (value)
-        {
-            // SEC-02: 弹出就地覆盖二次确认弹窗
-            BackupConfirmDialogViewModel backupVm = new()
-            {
-                OnConfirmed = () =>
-                {
-                    InPlaceStrip = true;
-                    OnCloseModal?.Invoke();
-                },
-                OnCancelled = () =>
-                {
-                    InPlaceStrip = false;
-                    OnCloseModal?.Invoke();
-                }
-            };
-            OnShowModal?.Invoke(backupVm);
-        }
-        else
+        if (!value)
         {
             InPlaceStrip = false;
+            return;
         }
+
+        // 确认之前保持关闭，避免弹窗期间误用就地模式
+        InPlaceStrip = false;
+        InPlaceStrip = await _dialogs.ShowAsync(new BackupConfirmDialogViewModel());
     }
 
     public async Task StartAnalysisAsync(string inputPath)
@@ -426,7 +425,7 @@ public sealed partial class StripViewModel : ViewModelBase
         try
         {
             var files = ResolveInputFiles(inputPath);
-            var settings = _settingsService.Current;
+            var settings = _settings.Current;
             await using var metadata = ExifToolMetadataService.Create(NullIfBlank(settings.ExifToolPath), Math.Clamp(settings.Concurrency, 1, 8));
             var stripper = new MotionPhotoStripper(metadata, MagickImageConverter.Instance);
             var candidates = await stripper.AnalyzeAsync(files);
@@ -526,7 +525,7 @@ public sealed partial class StripViewModel : ViewModelBase
             return;
         }
 
-        var settings = _settingsService.Current;
+        var settings = _settings.Current;
         var inPlace = InPlaceStrip;
         var exportDirectory = SafeExportDirectory;
         var request = new StripRequest
@@ -552,7 +551,20 @@ public sealed partial class StripViewModel : ViewModelBase
             ReleasedSpaceText = $"{released / (1024.0 * 1024.0):F1} MB";
         });
         var progress = new PausableProgress(ui, _pauseGate, token);
-        _ = RunStripAsync(request, settings, inPlace ? CurrentInputPathText : exportDirectory, progress, stopwatch, cts);
+        _stripTask = RunStripAsync(request, settings, inPlace ? CurrentInputPathText : exportDirectory, progress, stopwatch, cts);
+    }
+
+    public bool IsBusy => _stripTask is { IsCompleted: false };
+
+    public async Task CancelAndWaitAsync(TimeSpan timeout)
+    {
+        if (_stripTask is not { IsCompleted: false } task)
+        {
+            return;
+        }
+
+        AbortStrip();
+        await Task.WhenAny(task, Task.Delay(timeout));
     }
 
     private async Task RunStripAsync(StripRequest request, DesktopSettings settings, string resultLocation, IProgress<BatchProgress> progress, Stopwatch stopwatch, CancellationTokenSource cts)
@@ -589,7 +601,7 @@ public sealed partial class StripViewModel : ViewModelBase
             }
 
             CurrentStage = 3;
-            CompletionEffects.RunOnTaskComplete(settings, resultLocation);
+            _completion.RunOnTaskComplete(resultLocation);
         }
         catch (OperationCanceledException)
         {

@@ -8,10 +8,16 @@ using LivePhotoConvert.Desktop.Services;
 
 namespace LivePhotoConvert.Desktop.ViewModels.Dialogs;
 
-public sealed partial class QuickLookDialogViewModel : ViewModelBase
+/// <summary>
+/// 大图预览与实况播放；关闭时停止播放并释放帧。
+/// </summary>
+public sealed partial class QuickLookDialogViewModel : DialogViewModel<bool>
 {
     private const int QuickLookPhotoMaxSize = 1600;
     private readonly ILocalizer _localizer;
+    private readonly Func<int, PhotoCardItemViewModel?> _cardAt;
+    private readonly int _count;
+    private int _index;
     private readonly LivePhotoStreamPlayer _streamPlayer = new();
     private readonly ThumbnailReader _thumbnailReader = new();
     private Bitmap? _ownedPhotoPreview;
@@ -39,19 +45,33 @@ public sealed partial class QuickLookDialogViewModel : ViewModelBase
     [ObservableProperty]
     private string _navigationIndexText;
 
-    public Action? OnClose { get; init; }
-    public Action<int>? OnNavigate { get; init; }
-
-    public QuickLookDialogViewModel(ILocalizer localizer, PhotoCardItemViewModel initialCard, string initialIndexText = "")
+    /// <param name="cardAt">按序号取卡片；序号越界或卡片已失效时返回 null。</param>
+    /// <param name="count">可浏览的卡片总数，左右切换在此范围内循环。</param>
+    /// <param name="startIndex">首张卡片的序号。</param>
+    public QuickLookDialogViewModel(ILocalizer localizer, Func<int, PhotoCardItemViewModel?> cardAt, int count, int startIndex)
     {
         _localizer = localizer;
+        _cardAt = cardAt;
+        _count = Math.Max(1, count);
         _playButtonText = localizer["QuickLookPause"];
-        _card = initialCard;
-        _navigationIndexText = initialIndexText;
-        SetCard(initialCard, initialIndexText);
+        _card = cardAt(startIndex) ?? throw new ArgumentOutOfRangeException(nameof(startIndex));
+        _navigationIndexText = string.Empty;
+        ShowIndex(startIndex);
     }
 
-    public void SetCard(PhotoCardItemViewModel card, string indexText = "")
+    /// <summary>切换到指定序号的卡片；卡片不存在时保持当前画面。</summary>
+    public void ShowIndex(int index)
+    {
+        if (IsClosed || _cardAt(index) is not { } card)
+        {
+            return;
+        }
+
+        _index = index;
+        SetCard(card, $"{index + 1} / {_count}");
+    }
+
+    private void SetCard(PhotoCardItemViewModel card, string indexText)
     {
         _streamPlayer.Stop();
         int generation = ++_previewGeneration;
@@ -78,7 +98,7 @@ public sealed partial class QuickLookDialogViewModel : ViewModelBase
                 {
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
-                        if (Card == card)
+                        if (Card == card && !IsClosed)
                         {
                             PlaybackStatusText = _localizer["QuickLookPlaying"];
                             _streamPlayer.Play(extracted, frame =>
@@ -129,25 +149,12 @@ public sealed partial class QuickLookDialogViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    public void PrevItem()
-    {
-        OnNavigate?.Invoke(-1);
-    }
+    public void PrevItem() => ShowIndex((_index - 1 + _count) % _count);
 
     [RelayCommand]
-    public void NextItem()
-    {
-        OnNavigate?.Invoke(1);
-    }
+    public void NextItem() => ShowIndex((_index + 1) % _count);
 
-    [RelayCommand]
-    public void Close()
-    {
-        Cleanup();
-        OnClose?.Invoke();
-    }
-
-    public void Cleanup()
+    protected internal override void OnClosed()
     {
         ++_previewGeneration;
         _streamPlayer.Stop();

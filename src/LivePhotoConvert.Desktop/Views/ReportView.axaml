@@ -237,8 +237,8 @@
                                 IsVisible="{Binding SourceFormat, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                           <TextBlock Text="{Binding SourceFormat}" FontSize="9" FontFamily="Consolas" Foreground="{DynamicResource TextTertiaryBrush}" />
                         </Border>
-                        <TextBlock Text="➔" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}"
-                                   IsVisible="{Binding TargetFormat, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                        <ic:SymbolIcon Symbol="ArrowRight" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"
+                                       IsVisible="{Binding TargetFormat, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                         <Border Background="{DynamicResource AccentSoftBrush}" CornerRadius="4" Padding="6,1"
                                 IsVisible="{Binding TargetFormat, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                           <TextBlock Text="{Binding TargetFormat}" FontSize="9" FontWeight="SemiBold" FontFamily="Consolas" Foreground="{DynamicResource AccentTextBrush}" />

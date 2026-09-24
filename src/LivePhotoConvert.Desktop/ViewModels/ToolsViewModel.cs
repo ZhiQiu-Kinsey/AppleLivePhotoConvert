@@ -22,8 +22,9 @@ public sealed partial class ToolsViewModel : ViewModelBase
     {
         Timeout = TimeSpan.FromSeconds(5)
     };
-    private readonly SettingsService _settingsService;
+    private readonly SettingsStore _settings;
     private readonly ILocalizer _localizer;
+    private readonly IFilePicker _filePicker;
 
     // 最近一次探测结果；语言切换时据此重新生成状态文案，无需再次启动外部进程
     private bool _hasProbed;
@@ -78,9 +79,6 @@ public sealed partial class ToolsViewModel : ViewModelBase
     private string _heifEncPath = string.Empty;
 
     [ObservableProperty]
-    private bool _autoDownload;
-
-    [ObservableProperty]
     private IReadOnlyList<MirrorPreset> _mirrorPresets;
 
     [ObservableProperty]
@@ -94,19 +92,13 @@ public sealed partial class ToolsViewModel : ViewModelBase
         if (!_isRebuildingMirrorPresets && value is not null && !string.IsNullOrWhiteSpace(value.Url))
         {
             CustomMirrorUrl = value.Url;
-            _settingsService.Current.CustomMirrorUrl = value.Url;
-            _settingsService.Save();
         }
     }
 
     [ObservableProperty]
     private string _customMirrorUrl = "https://ghfast.top/";
 
-    partial void OnCustomMirrorUrlChanged(string value)
-    {
-        _settingsService.Current.CustomMirrorUrl = value;
-        _settingsService.Save();
-    }
+    partial void OnCustomMirrorUrlChanged(string value) => _settings.Update(s => s.CustomMirrorUrl = value);
 
     [ObservableProperty]
     private string _pingLatencyText = string.Empty;
@@ -150,22 +142,18 @@ public sealed partial class ToolsViewModel : ViewModelBase
     /// <summary>三大核心引擎（ExifTool / FFmpeg / heif-enc）是否全部就绪。</summary>
     public bool AllToolsReady => IsExifToolReady && IsFfmpegReady && IsHeifEncReady;
 
-    /// <summary>由主窗口注入的“选择引擎可执行文件”系统文件选择器。</summary>
-    public Func<Task<string?>>? RequestPickToolFile { get; set; }
-
     /// <summary>
-    /// 引擎可执行文件的可用性探测委托，默认走 Core 的真实启动探测。
-    /// 与 <see cref="RequestPickToolFile"/> 一样作为可替换成员暴露，便于在无真实引擎的环境下验证路径回写逻辑。
+    /// 引擎可执行文件的可用性探测委托，默认走 Core 的真实启动探测；可替换以便在无真实引擎的环境下验证路径回写逻辑。
     /// </summary>
     public Func<string, bool> ValidateToolExecutable { get; set; } = Core.External.ToolLocator.IsValidTool;
 
-    public ToolsViewModel(SettingsService settingsService, ILocalizer localizer)
+    public ToolsViewModel(SettingsStore settings, ILocalizer localizer, IFilePicker filePicker)
     {
-        _settingsService = settingsService;
+        _settings = settings;
         _localizer = localizer;
+        _filePicker = filePicker;
         _mirrorPresets = BuildMirrorPresets();
-        var s = _settingsService.Current;
-        _autoDownload = s.AutoDownloadDependencies;
+        var s = _settings.Current;
         if (!string.IsNullOrWhiteSpace(s.CustomMirrorUrl))
         {
             _customMirrorUrl = s.CustomMirrorUrl;
@@ -242,7 +230,7 @@ public sealed partial class ToolsViewModel : ViewModelBase
         ToolProbe exif = default, ffmpeg = default, heif = default;
 
         // 优先使用用户在设置中显式指定的路径，失效时自动回退到程序目录 / PATH 探测
-        var saved = _settingsService.Current;
+        var saved = _settings.Current;
         var explicitExif = NormalizeExplicitPath(saved.ExifToolPath);
         var explicitFfmpeg = NormalizeExplicitPath(saved.FfmpegPath);
         var explicitHeif = NormalizeExplicitPath(saved.HeifEncPath);
@@ -435,12 +423,7 @@ public sealed partial class ToolsViewModel : ViewModelBase
     /// <summary>调用系统文件选择器为指定引擎选择可执行文件，校验通过后写入设置并重扫。</summary>
     private async Task PickCustomToolPathAsync(ToolKind kind)
     {
-        if (RequestPickToolFile is null)
-        {
-            return;
-        }
-
-        var file = await RequestPickToolFile();
+        var file = await _filePicker.PickFileAsync(_localizer["PickerToolExecutableTitle"]);
         if (string.IsNullOrWhiteSpace(file))
         {
             return;
@@ -492,21 +475,21 @@ public sealed partial class ToolsViewModel : ViewModelBase
     /// <summary>将引擎路径写入设置并持久化（安装完成与手动指定共用）。</summary>
     private void ApplyCustomToolPath(ToolKind kind, string path)
     {
-        var s = _settingsService.Current;
-        switch (kind)
+        _settings.Update(s =>
         {
-            case ToolKind.ExifTool:
-                s.ExifToolPath = path;
-                break;
-            case ToolKind.Ffmpeg:
-                s.FfmpegPath = path;
-                break;
-            default:
-                s.HeifEncPath = path;
-                break;
-        }
-
-        _settingsService.Save(s);
+            switch (kind)
+            {
+                case ToolKind.ExifTool:
+                    s.ExifToolPath = path;
+                    break;
+                case ToolKind.Ffmpeg:
+                    s.FfmpegPath = path;
+                    break;
+                default:
+                    s.HeifEncPath = path;
+                    break;
+            }
+        });
     }
 
     private void SetInstalling(ToolKind kind, bool value)
@@ -543,10 +526,5 @@ public sealed partial class ToolsViewModel : ViewModelBase
     };
 
     [RelayCommand]
-    public void SetMirrorPreset(string url)
-    {
-        CustomMirrorUrl = url;
-        _settingsService.Current.CustomMirrorUrl = url;
-        _settingsService.Save(_settingsService.Current);
-    }
+    public void SetMirrorPreset(string url) => CustomMirrorUrl = url;
 }

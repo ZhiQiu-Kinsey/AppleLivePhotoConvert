@@ -3,11 +3,16 @@ using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Models;
 using LivePhotoConvert.Desktop.Services;
 using LivePhotoConvert.Desktop.ViewModels;
+using LivePhotoConvert.E2E.Harness;
 
 namespace LivePhotoConvert.E2E.Tier1_FeatureCoverage;
 
-public class GalleryGroupingAndSortingTests
+public class GalleryGroupingAndSortingTests : IDisposable
 {
+    private readonly DesktopTestHost _host = new();
+
+    public void Dispose() => _host.Dispose();
+
     private static PhotoCardItemViewModel CreateLayoutCard(string key, double aspectRatio) => new()
     {
         Key = key,
@@ -30,11 +35,7 @@ public class GalleryGroupingAndSortingTests
         return (List<TimelineGroup>)field.GetValue(vm)!;
     }
 
-    private static ConvertViewModel CreateCleanViewModel()
-    {
-        string tempPath = Path.Combine(Path.GetTempPath(), $"settings_{Guid.NewGuid():N}.json");
-        return new ConvertViewModel(new SettingsService(tempPath), Localizer.Current);
-    }
+    private ConvertViewModel CreateCleanViewModel() => _host.Get<ConvertViewModel>();
 
     [Fact]
     public void GroupingMode_Date_GroupsByDay()

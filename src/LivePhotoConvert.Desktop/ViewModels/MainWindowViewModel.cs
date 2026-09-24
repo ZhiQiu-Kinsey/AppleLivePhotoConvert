@@ -1,37 +1,35 @@
+using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LivePhotoConvert.Desktop.Infrastructure;
-using LivePhotoConvert.Desktop.Services;
 
 namespace LivePhotoConvert.Desktop.ViewModels;
 
 public sealed partial class MainWindowViewModel : ViewModelBase
 {
-    private readonly SettingsService _settingsService;
-    private readonly ILocalizer _localizer;
+    private readonly INavigator _navigator;
+    private readonly IDialogService _dialogs;
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsConvertTabSelected))]
-    [NotifyPropertyChangedFor(nameof(IsStripTabSelected))]
-    [NotifyPropertyChangedFor(nameof(IsToolsTabSelected))]
-    [NotifyPropertyChangedFor(nameof(IsReportTabSelected))]
-    [NotifyPropertyChangedFor(nameof(IsSettingsTabSelected))]
-    private int _selectedTabIndex; // 0=Convert, 1=Strip, 2=Tools, 3=Report, 4=Settings
+    public MainWindowViewModel(
+        INavigator navigator,
+        IDialogService dialogs,
+        ConvertViewModel convertVm,
+        StripViewModel stripVm,
+        ToolsViewModel toolsVm,
+        ReportViewModel reportVm,
+        SettingsViewModel settingsVm)
+    {
+        _navigator = navigator;
+        _dialogs = dialogs;
+        ConvertVm = convertVm;
+        StripVm = stripVm;
+        ToolsVm = toolsVm;
+        ReportVm = reportVm;
+        SettingsVm = settingsVm;
 
-    public bool IsConvertTabSelected => SelectedTabIndex == 0;
-    public bool IsStripTabSelected => SelectedTabIndex == 1;
-    public bool IsToolsTabSelected => SelectedTabIndex == 2;
-    public bool IsReportTabSelected => SelectedTabIndex == 3;
-    public bool IsSettingsTabSelected => SelectedTabIndex == 4;
-
-    [ObservableProperty]
-    private string _currentTheme;
-
-    [ObservableProperty]
-    private string _currentLanguage;
-
-    [ObservableProperty]
-    private ViewModelBase? _activeDialog;
+        _navigator.PropertyChanged += OnNavigatorChanged;
+        _dialogs.PropertyChanged += OnDialogsChanged;
+    }
 
     public ConvertViewModel ConvertVm { get; }
     public StripViewModel StripVm { get; }
@@ -39,9 +37,27 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     public ReportViewModel ReportVm { get; }
     public SettingsViewModel SettingsVm { get; }
 
+    public int SelectedTabIndex
+    {
+        get => (int)_navigator.Current;
+        set => _navigator.NavigateTo((AppPage)value);
+    }
+
+    public bool IsConvertTabSelected => _navigator.Current == AppPage.Convert;
+    public bool IsStripTabSelected => _navigator.Current == AppPage.Strip;
+    public bool IsToolsTabSelected => _navigator.Current == AppPage.Tools;
+    public bool IsReportTabSelected => _navigator.Current == AppPage.Report;
+    public bool IsSettingsTabSelected => _navigator.Current == AppPage.Settings;
+
+    /// <summary>弹窗宿主显示的内容。</summary>
+    public DialogViewModel? ActiveDialog => _dialogs.Current;
+
+    public bool HasActiveDialog => _dialogs.Current is not null;
+
     /// <summary>窗口显示的版本号。</summary>
     public string VersionText { get; } = "v" + (typeof(MainWindowViewModel).Assembly.GetName().Version?.ToString(3) ?? "0.0.0");
 
+    // 标题栏按钮由窗口在绑定数据上下文时接管
     public Action? RequestCloseWindow { get; set; }
     public Action? RequestMinimizeWindow { get; set; }
     public Action? RequestMaximizeWindow { get; set; }
@@ -49,146 +65,56 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isWindowMaximized;
 
-    public MainWindowViewModel(ILocalizer localizer)
-    {
-        _localizer = localizer;
-        _settingsService = new SettingsService();
-
-        var s = _settingsService.Current;
-        _currentTheme = s.Theme;
-        _currentLanguage = s.Language;
-
-        // 页面 VM 在构造时就会读取文案，语言必须先于它们生效
-        _localizer.SetLanguage(_currentLanguage);
-
-        ConvertVm = new ConvertViewModel(_settingsService, _localizer)
-        {
-            OnShowModal = vm => ActiveDialog = vm,
-            OnCloseModal = () => ActiveDialog = null
-        };
-
-        StripVm = new StripViewModel(_settingsService, _localizer)
-        {
-            OnShowModal = vm => ActiveDialog = vm,
-            OnCloseModal = () => ActiveDialog = null
-        };
-
-        ToolsVm = new ToolsViewModel(_settingsService, _localizer);
-
-        PlaybackHost.Instance.CustomFfmpegPathProvider = () => _settingsService.Current.FfmpegPath;
-
-        ReportVm = new ReportViewModel(_localizer)
-        {
-            OnSwitchToConvertTab = () => SelectedTabIndex = 0
-        };
-
-        // 偏好设置作为独立页面（Tab 4）常驻，保存后回调主窗口把主题/语言应用到全局
-        SettingsVm = new SettingsViewModel(_settingsService, _localizer)
-        {
-            OnSettingsSaved = s =>
-            {
-                SetTheme(s.Theme);
-                SetLanguage(s.Language);
-            }
-        };
-
-        // 批次转换完成后回填报告并自动跳转至报告页面展示报表与图表
-        ConvertVm.OnBatchReportReady = model =>
-        {
-            ReportVm.Populate(model);
-            Avalonia.Threading.Dispatcher.UIThread.Post(() => SelectedTabIndex = 3);
-
-            if (!model.WasCanceled)
-            {
-                CompletionEffects.RunOnTaskComplete(_settingsService.Current, model.OutputDirectory);
-            }
-        };
-
-        if (Avalonia.Application.Current is not null)
-        {
-            Avalonia.Application.Current.RequestedThemeVariant = ResolveThemeVariant(_currentTheme);
-        }
-
-        SafetyGuard.CleanOrphanTempDirectories();
-    }
-
     [RelayCommand]
     public void SelectTab(object? index)
     {
-        SelectedTabIndex = index switch
+        int? target = index switch
         {
             int i => i,
             string s when int.TryParse(s, out int p) => p,
-            _ => SelectedTabIndex
+            _ => null
         };
-    }
 
-    [RelayCommand]
-    public void SetTheme(string theme)
-    {
-        CurrentTheme = theme;
-        var s = _settingsService.Current;
-        s.Theme = theme;
-        _settingsService.Save(s);
-        if (Avalonia.Application.Current is not null)
+        if (target is { } page && Enum.IsDefined((AppPage)page))
         {
-            Avalonia.Application.Current.RequestedThemeVariant = ResolveThemeVariant(theme);
+            _navigator.NavigateTo((AppPage)page);
         }
     }
 
-    private static Avalonia.Styling.ThemeVariant ResolveThemeVariant(string theme) => theme switch
+    /// <summary>Esc 关闭当前弹窗；没有弹窗时返回 false，按键继续交给页面。</summary>
+    public bool TryCancelActiveDialog()
     {
-        "Dark" => Avalonia.Styling.ThemeVariant.Dark,
-        "Auto" => Avalonia.Styling.ThemeVariant.Default,
-        _ => Avalonia.Styling.ThemeVariant.Light
-    };
-
-    [RelayCommand]
-    public void SetLanguage(string lang)
-    {
-        CurrentLanguage = lang;
-        var s = _settingsService.Current;
-        s.Language = lang;
-        _settingsService.Save(s);
-        _localizer.SetLanguage(lang);
-    }
-
-    [RelayCommand]
-    public void TriggerQuickLook()
-    {
-        ConvertVm.TriggerQuickLook();
-    }
-
-    [RelayCommand]
-    public void CloseModal()
-    {
-        ActiveDialog = null;
-    }
-
-    [RelayCommand]
-    public void MinimizeWindow()
-    {
-        RequestMinimizeWindow?.Invoke();
-    }
-
-    [RelayCommand]
-    public void MaximizeWindow()
-    {
-        RequestMaximizeWindow?.Invoke();
-    }
-
-    [RelayCommand]
-    public void CloseWindow()
-    {
-        RequestCloseWindow?.Invoke();
-    }
-
-    /// <summary>应用退出时（含标题栏关闭）清理转换临时目录，受 AutoCleanTemp 开关控制。</summary>
-    public void HandleAppExit()
-    {
-        if (_settingsService.Current.AutoCleanTemp)
+        if (_dialogs.Current is not { } dialog)
         {
-            SafetyGuard.CleanAllTempDirectories();
+            return false;
         }
+
+        dialog.CancelCommand.Execute(null);
+        return true;
+    }
+
+    [RelayCommand]
+    public void MinimizeWindow() => RequestMinimizeWindow?.Invoke();
+
+    [RelayCommand]
+    public void MaximizeWindow() => RequestMaximizeWindow?.Invoke();
+
+    [RelayCommand]
+    public void CloseWindow() => RequestCloseWindow?.Invoke();
+
+    private void OnNavigatorChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        OnPropertyChanged(nameof(SelectedTabIndex));
+        OnPropertyChanged(nameof(IsConvertTabSelected));
+        OnPropertyChanged(nameof(IsStripTabSelected));
+        OnPropertyChanged(nameof(IsToolsTabSelected));
+        OnPropertyChanged(nameof(IsReportTabSelected));
+        OnPropertyChanged(nameof(IsSettingsTabSelected));
+    }
+
+    private void OnDialogsChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        OnPropertyChanged(nameof(ActiveDialog));
+        OnPropertyChanged(nameof(HasActiveDialog));
     }
 }

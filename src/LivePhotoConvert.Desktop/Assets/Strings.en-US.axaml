@@ -109,7 +109,6 @@
   <sys:String x:Key="MirrorPresetMirrorGhproxy">Accelerated node (mirror.ghproxy.com)</sys:String>
   <sys:String x:Key="MirrorPresetGithub">Direct (github.com)</sys:String>
   <sys:String x:Key="MirrorPresetCustom">Custom mirror (enter manually)</sys:String>
-  <sys:String x:Key="AutoDownloadLabel">Auto-download when missing</sys:String>
   <sys:String x:Key="TestPingBtn">Test Connectivity</sys:String>
 
   <!-- Reports -->
@@ -126,7 +125,7 @@
 
   <sys:String x:Key="LowDiskDialogTitle">Low Disk Space Alert (ENOSPC)</sys:String>
   <sys:String x:Key="LowDiskDialogDesc">Target drive has insufficient space for safe conversion</sys:String>
-  <sys:String x:Key="LowDiskDialogDismiss">Understood</sys:String>
+  <sys:String x:Key="LowDiskDialogDismiss">Go Back</sys:String>
 
   <sys:String x:Key="BackupDialogTitle">High-Risk Confirmation: In-Place Overwrite</sys:String>
   <sys:String x:Key="BackupDialogDesc">Enabling this will permanently strip embedded video streams!</sys:String>
@@ -142,7 +141,6 @@
   <sys:String x:Key="ThemeTitle">Appearance Theme</sys:String>
   <sys:String x:Key="LangTitle">System Language</sys:String>
   <sys:String x:Key="ConcurrencyTitle">Concurrent Task Count</sys:String>
-  <sys:String x:Key="SaveSettingsBtn">Save Settings</sys:String>
 
   <!-- CompactToolbar Keys -->
   <sys:String x:Key="ToolbarSortTip">Sort by</sys:String>
@@ -222,10 +220,8 @@
   <!-- Settings Dialog Redesign -->
   <sys:String x:Key="CancelBtn">Cancel</sys:String>
   <sys:String x:Key="SettingsConcurrencyDesc">Number of live photo pairs processed in parallel (1~16). Higher values are faster but consume more memory and disk IO.</sys:String>
-  <sys:String x:Key="SettingsPageDesc">Global preferences such as theme, language and conversion performance. Changes take effect right after saving.</sys:String>
-  <sys:String x:Key="SettingsSavedHint">Saved</sys:String>
-  <sys:String x:Key="SettingsHeicQualityTitle">HEIC Transcode Quality</sys:String>
-  <sys:String x:Key="SettingsHeicQualityDesc">Quality (50~100) when transcoding to HEIC during strip or restore. Higher means better quality and larger size.</sys:String>
+  <sys:String x:Key="SettingsPageDesc">Global preferences such as theme, language and conversion performance. Changes apply immediately and are saved automatically.</sys:String>
+  <sys:String x:Key="SettingsSavedHint">Saved automatically</sys:String>
   <sys:String x:Key="NotifyOnCompleteTitle">Completion Notification</sys:String>
   <sys:String x:Key="NotifyOnCompleteDesc">Play a sound when a batch conversion or strip finishes.</sys:String>
   <sys:String x:Key="AutoOpenOutputTitle">Open Output Folder After Convert</sys:String>
@@ -384,5 +380,17 @@
   <sys:String x:Key="PickerOutputFolderTitle">Select Output Folder</sys:String>
   <sys:String x:Key="PickerSamplePhotoTitle">Select Live Photo or Image Sample</sys:String>
   <sys:String x:Key="PickerImageFilterLabel">Images &amp; Live Photos (*.heic;*.jpg;*.jpeg;*.png)</sys:String>
+
+  <!-- Dialogs & Lifecycle -->
+  <sys:String x:Key="ConfirmDialogOk">OK</sys:String>
+  <sys:String x:Key="ConfirmDialogCancel">Cancel</sys:String>
+  <sys:String x:Key="ShellOpenFailedTitle">Unable to Open</sys:String>
+  <sys:String x:Key="ShellOpenFailedFormat">Could not open "{0}". Make sure it exists and is accessible.</sys:String>
+  <sys:String x:Key="UnexpectedErrorTitle">Something Went Wrong</sys:String>
+  <sys:String x:Key="UnexpectedErrorFormat">The operation could not be completed: {0}. Details were written to the log: {1}</sys:String>
+  <sys:String x:Key="ExitConfirmTitle">A Task Is Still Running</sys:String>
+  <sys:String x:Key="ExitConfirmDesc">Exiting cancels the current task. Finished files are kept; unfinished files are not written. Exit now?</sys:String>
+  <sys:String x:Key="ExitConfirmBtn">Cancel Task and Exit</sys:String>
+  <sys:String x:Key="LowDiskDialogContinue">Continue Anyway</sys:String>
 
 </ResourceDictionary>

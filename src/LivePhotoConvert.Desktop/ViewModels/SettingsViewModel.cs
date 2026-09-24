@@ -1,24 +1,24 @@
-using System.Diagnostics;
 using System.Reflection;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Models;
-using LivePhotoConvert.Desktop.Services;
 
 namespace LivePhotoConvert.Desktop.ViewModels;
 
 /// <summary>
-/// 偏好设置页面视图模型（内建“关于”分页：作者、贡献者、仓库、开源协议与引用项目）。
-/// 由主窗口作为独立页面（导航索引 4）承载，保存后立即生效，无需关闭页面。
+/// 偏好设置与“关于”页。修改即时生效并自动保存。
 /// </summary>
 public sealed partial class SettingsViewModel : ViewModelBase
 {
-    /// <summary>“已保存”轻量提示的展示时长。</summary>
     private static readonly TimeSpan SavedHintDuration = TimeSpan.FromMilliseconds(2200);
 
-    private readonly SettingsService _settingsService;
+    private readonly SettingsStore _settings;
     private readonly ILocalizer _localizer;
+    private readonly ThemeService _themeService;
+    private readonly IShellLauncher _shell;
+    private readonly IDialogService _dialogs;
+    private CancellationTokenSource? _savedHintCts;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsLightTheme))]
@@ -35,9 +35,6 @@ public sealed partial class SettingsViewModel : ViewModelBase
     private int _concurrency;
 
     [ObservableProperty]
-    private int _heicQuality;
-
-    [ObservableProperty]
     private bool _notifyOnComplete;
 
     [ObservableProperty]
@@ -47,13 +44,13 @@ public sealed partial class SettingsViewModel : ViewModelBase
     private bool _autoCleanTemp;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSettingsSelected))]
     private bool _isAboutSelected;
 
-    /// <summary>保存成功后的轻量提示开关（自动熄灭）。</summary>
+    /// <summary>“已自动保存”提示，最后一次修改后一段时间自动熄灭。</summary>
     [ObservableProperty]
     private bool _isSettingsSaved;
 
-    /// <summary>是否显示居中的赞赏二维码弹窗。</summary>
     [ObservableProperty]
     private bool _isSponsorDialogOpen;
 
@@ -66,72 +63,55 @@ public sealed partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private IReadOnlyList<AboutCredit> _buildCredits = [];
 
-    /// <summary>设置保存后的全局应用回调（由主窗口注入，用于同步主题与语言）。</summary>
-    public Action<DesktopSettings>? OnSettingsSaved { get; init; }
+    public SettingsViewModel(SettingsStore settings, ILocalizer localizer, ThemeService theme, IShellLauncher shell, IDialogService dialogs)
+    {
+        _settings = settings;
+        _localizer = localizer;
+        _themeService = theme;
+        _shell = shell;
+        _dialogs = dialogs;
 
-    /// <summary>当前程序集版本号（如 2.6.0），用于“关于”页展示。</summary>
+        var current = settings.Current;
+        _theme = current.Theme;
+        _language = current.Language;
+        _concurrency = current.Concurrency;
+        _notifyOnComplete = current.NotifyOnComplete;
+        _autoOpenOutput = current.AutoOpenOutput;
+        _autoCleanTemp = current.AutoCleanTemp;
+
+        RefreshCredits();
+        _localizer.LanguageChanged += (_, _) => RefreshCredits();
+    }
+
     public string AppVersion { get; } = ResolveAppVersion();
 
     public string AuthorName => AboutInfo.AuthorName;
 
     public string LicenseName => AboutInfo.LicenseName;
 
-    /// <summary>“偏好设置”分页是否处于选中状态。</summary>
     public bool IsSettingsSelected => !IsAboutSelected;
 
-    public bool IsLightTheme => Theme == "Light";
+    public bool IsLightTheme => Theme == ThemeService.Light;
 
-    public bool IsDarkTheme => Theme == "Dark";
+    public bool IsDarkTheme => Theme == ThemeService.Dark;
 
-    public bool IsAutoTheme => Theme == "Auto";
+    public bool IsAutoTheme => Theme == ThemeService.Auto;
 
     public bool IsChineseLanguage => Language == "zh";
 
     public bool IsEnglishLanguage => Language == "en";
 
-    public SettingsViewModel(SettingsService settingsService, ILocalizer localizer)
-    {
-        _settingsService = settingsService;
-        _localizer = localizer;
-        var current = _settingsService.Current;
-        _theme = current.Theme;
-        _language = current.Language;
-        _concurrency = current.Concurrency;
-        _heicQuality = current.HeicQuality;
-        _notifyOnComplete = current.NotifyOnComplete;
-        _autoOpenOutput = current.AutoOpenOutput;
-        _autoCleanTemp = current.AutoCleanTemp;
-
-        RefreshCredits();
-        // 语言也可能由标题栏切换，统一以本地化服务的通知为准刷新鸣谢描述
-        _localizer.LanguageChanged += (_, _) => RefreshCredits();
-    }
+    [RelayCommand]
+    private void SetTheme(string theme) => Theme = theme;
 
     [RelayCommand]
-    private void SetTheme(string theme)
-    {
-        Theme = theme;
-        ApplyTheme();
-    }
+    private void SetLanguage(string lang) => Language = lang;
 
     [RelayCommand]
-    private void SetLanguage(string lang)
-    {
-        Language = lang;
-        ApplyLanguage();
-    }
+    private void ShowSettings() => IsAboutSelected = false;
 
     [RelayCommand]
-    private void ShowSettings()
-    {
-        IsAboutSelected = false;
-    }
-
-    [RelayCommand]
-    private void ShowAbout()
-    {
-        IsAboutSelected = true;
-    }
+    private void ShowAbout() => IsAboutSelected = true;
 
     [RelayCommand]
     private void OpenSponsorDialog() => IsSponsorDialogOpen = true;
@@ -139,82 +119,55 @@ public sealed partial class SettingsViewModel : ViewModelBase
     [RelayCommand]
     private void CloseSponsorDialog() => IsSponsorDialogOpen = false;
 
-    partial void OnIsAboutSelectedChanged(bool value) => OnPropertyChanged(nameof(IsSettingsSelected));
-
-    /// <summary>在系统默认浏览器中打开外部链接（仓库、Issue、许可证与鸣谢项目主页）。</summary>
     [RelayCommand]
-    private static void OpenUrl(string? url)
+    private async Task OpenUrlAsync(string? url)
     {
-        if (string.IsNullOrWhiteSpace(url))
+        if (!string.IsNullOrWhiteSpace(url) && !_shell.OpenUri(url))
         {
-            return;
-        }
-
-        try
-        {
-            using var _ = Process.Start(new ProcessStartInfo
-            {
-                FileName = url,
-                UseShellExecute = true
-            });
-        }
-        catch (Exception)
-        {
-            // 外部浏览器不可用或系统策略拦截时静默降级，绝不中断设置页交互。
+            await _dialogs.AlertAsync(_localizer["ShellOpenFailedTitle"], _localizer.Format("ShellOpenFailedFormat", url), _localizer["ConfirmDialogOk"]);
         }
     }
 
-    /// <summary>持久化偏好设置并立即应用到全局（主题 / 语言），随后展示“已保存”提示。</summary>
-    [RelayCommand]
-    private void Save()
+    partial void OnThemeChanged(string value)
     {
-        var current = _settingsService.Current;
-        current.Theme = Theme;
-        current.Language = Language;
-        current.Concurrency = Concurrency;
-        current.HeicQuality = HeicQuality;
-        current.NotifyOnComplete = NotifyOnComplete;
-        current.AutoOpenOutput = AutoOpenOutput;
-        current.AutoCleanTemp = AutoCleanTemp;
+        _themeService.Apply(value);
+        Save(s => s.Theme = value);
+    }
 
-        _settingsService.Save(current);
-        ApplyLanguage();
-        ApplyTheme();
+    partial void OnLanguageChanged(string value)
+    {
+        _localizer.SetLanguage(value);
+        Save(s => s.Language = value);
+    }
 
-        OnSettingsSaved?.Invoke(current);
+    partial void OnConcurrencyChanged(int value) => Save(s => s.Concurrency = value);
+
+    partial void OnNotifyOnCompleteChanged(bool value) => Save(s => s.NotifyOnComplete = value);
+
+    partial void OnAutoOpenOutputChanged(bool value) => Save(s => s.AutoOpenOutput = value);
+
+    partial void OnAutoCleanTempChanged(bool value) => Save(s => s.AutoCleanTemp = value);
+
+    private void Save(Action<DesktopSettings> change)
+    {
+        _settings.Update(change);
         _ = ShowSavedHintAsync();
     }
 
-    /// <summary>即时预览主题；点击保存后才写入磁盘。</summary>
-    private void ApplyTheme()
-    {
-        if (Avalonia.Application.Current is not null)
-        {
-            // 与 MainWindowViewModel.ResolveThemeVariant 保持一致：Auto 跟随系统（Default），不可误判为 Light
-            Avalonia.Application.Current.RequestedThemeVariant = Theme switch
-            {
-                "Dark" => Avalonia.Styling.ThemeVariant.Dark,
-                "Auto" => Avalonia.Styling.ThemeVariant.Default,
-                _ => Avalonia.Styling.ThemeVariant.Light
-            };
-        }
-    }
-
-    /// <summary>即时预览语言；鸣谢信息随 LanguageChanged 重建。</summary>
-    private void ApplyLanguage() => _localizer.SetLanguage(Language);
-
-    /// <summary>展示“已保存”提示并在固定时长后自动熄灭（失败不影响任何交互）。</summary>
     private async Task ShowSavedHintAsync()
     {
+        _savedHintCts?.Cancel();
+        var cts = new CancellationTokenSource();
+        _savedHintCts = cts;
+        IsSettingsSaved = true;
         try
         {
-            IsSettingsSaved = true;
-            await Task.Delay(SavedHintDuration);
+            await Task.Delay(SavedHintDuration, cts.Token);
             IsSettingsSaved = false;
         }
-        catch (Exception)
+        catch (OperationCanceledException)
         {
-            // 提示熄灭失败不影响设置保存结果，静默降级。
+            // 新的修改接管了提示的计时
         }
     }
 

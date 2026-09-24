@@ -1,24 +1,13 @@
 using CommunityToolkit.Mvvm.Input;
+using LivePhotoConvert.Desktop.Infrastructure;
 
 namespace LivePhotoConvert.Desktop.ViewModels.Dialogs;
 
 /// <summary>
-/// 空间瘦身就地覆盖破坏性操作二次阻断弹窗 (SEC-02: .livephoto_backup)
+/// 开启就地瘦身（直接替换原文件）前的确认；返回 true 表示允许开启。
 /// </summary>
-public sealed partial class BackupConfirmDialogViewModel : ViewModelBase
+public sealed partial class BackupConfirmDialogViewModel : DialogViewModel<bool>
 {
-    public Action? OnConfirmed { get; init; }
-    public Action? OnCancelled { get; init; }
-
     [RelayCommand]
-    private void Confirm()
-    {
-        OnConfirmed?.Invoke();
-    }
-
-    [RelayCommand]
-    private void Cancel()
-    {
-        OnCancelled?.Invoke();
-    }
+    private void Confirm() => Close(true);
 }

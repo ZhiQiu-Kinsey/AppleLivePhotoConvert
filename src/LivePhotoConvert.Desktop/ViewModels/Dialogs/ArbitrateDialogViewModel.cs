@@ -1,22 +1,45 @@
 using CommunityToolkit.Mvvm.Input;
-using LivePhotoConvert.Desktop.Models;
 using LivePhotoConvert.Desktop.Infrastructure;
+using LivePhotoConvert.Desktop.Models;
 
 namespace LivePhotoConvert.Desktop.ViewModels.Dialogs;
 
+public enum ArbitrationVerdict
+{
+    /// <summary>未做决定就关闭。</summary>
+    Dismiss,
+
+    /// <summary>确认是同一组实况，加入强制放行名单。</summary>
+    Accept,
+
+    /// <summary>确认不是同一组实况。</summary>
+    Reject
+}
+
 /// <summary>
-/// 异常实况时差超标同屏双帧裁决弹窗
+/// 图片与视频时间差超出阈值时由用户裁决是否仍视为同一组实况。
 /// </summary>
-public sealed partial class ArbitrateDialogViewModel(ILocalizer localizer) : ViewModelBase
+public sealed partial class ArbitrateDialogViewModel(ILocalizer localizer) : DialogViewModel<ArbitrationVerdict>
 {
     public required PhotoCardItemViewModel TargetCard { get; init; }
 
-    // 读取图片/视频文件时间戳，计算时差结论。
     public string PhotoTimeText => FormatTime(SafeFileTime(TargetCard.PhotoPath));
+
     public string VideoTimeText => FormatTime(SafeFileTime(TargetCard.VideoPath));
+
     public double TimeDiffSeconds => (SafeFileTime(TargetCard.PhotoPath) - SafeFileTime(TargetCard.VideoPath)).Duration().TotalSeconds;
+
     public string TimeDiffText => localizer.Format("ArbitrateTimeDiffFormat", TimeDiffSeconds);
+
     public string VerdictConclusion => localizer.Format("ArbitrateVerdictFormat", TimeDiffSeconds);
+
+    public override object? CancelResult => ArbitrationVerdict.Dismiss;
+
+    [RelayCommand]
+    private void ConfirmWhitelist() => Close(ArbitrationVerdict.Accept);
+
+    [RelayCommand]
+    private void RejectSplit() => Close(ArbitrationVerdict.Reject);
 
     private static string FormatTime(DateTime dt) => dt == DateTime.MinValue ? "—" : dt.ToString("HH:mm:ss.fff");
 
@@ -30,28 +53,5 @@ public sealed partial class ArbitrateDialogViewModel(ILocalizer localizer) : Vie
         {
             return DateTime.MinValue;
         }
-    }
-
-    public Action<PhotoCardItemViewModel>? OnWhitelistConfirmed { get; init; }
-    public Action<PhotoCardItemViewModel>? OnRejectSplit { get; init; }
-    public Action? OnDismiss { get; init; }
-
-    [RelayCommand]
-    private void ConfirmWhitelist()
-    {
-        TargetCard.IsForceAccepted = true;
-        OnWhitelistConfirmed?.Invoke(TargetCard);
-    }
-
-    [RelayCommand]
-    private void RejectSplit()
-    {
-        OnRejectSplit?.Invoke(TargetCard);
-    }
-
-    [RelayCommand]
-    private void Close()
-    {
-        OnDismiss?.Invoke();
     }
 }

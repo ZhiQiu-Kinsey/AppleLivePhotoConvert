@@ -109,7 +109,6 @@
   <sys:String x:Key="MirrorPresetMirrorGhproxy">加速节点 (mirror.ghproxy.com)</sys:String>
   <sys:String x:Key="MirrorPresetGithub">官方直连 (github.com)</sys:String>
   <sys:String x:Key="MirrorPresetCustom">自定义镜像源 (手动输入)</sys:String>
-  <sys:String x:Key="AutoDownloadLabel">缺失时静默自动拉取</sys:String>
   <sys:String x:Key="TestPingBtn">测试连通性</sys:String>
 
   <!-- 批次报告 -->
@@ -126,7 +125,7 @@
 
   <sys:String x:Key="LowDiskDialogTitle">磁盘空间不足预警 (ENOSPC)</sys:String>
   <sys:String x:Key="LowDiskDialogDesc">目标磁盘剩余容量不足以安全完成转换</sys:String>
-  <sys:String x:Key="LowDiskDialogDismiss">我知道了</sys:String>
+  <sys:String x:Key="LowDiskDialogDismiss">返回调整</sys:String>
 
   <sys:String x:Key="BackupDialogTitle">高危防灾确认：就地覆盖原照片</sys:String>
   <sys:String x:Key="BackupDialogDesc">开启此项将永久剥离并删除相册内嵌的短视频！</sys:String>
@@ -142,7 +141,6 @@
   <sys:String x:Key="ThemeTitle">界面外观主题</sys:String>
   <sys:String x:Key="LangTitle">系统语言</sys:String>
   <sys:String x:Key="ConcurrencyTitle">并行并发转换任务数</sys:String>
-  <sys:String x:Key="SaveSettingsBtn">保存设置</sys:String>
 
   <!-- CompactToolbar Keys -->
   <sys:String x:Key="ToolbarSortTip">排序方式</sys:String>
@@ -222,10 +220,8 @@
   <!-- Settings Dialog Redesign -->
   <sys:String x:Key="CancelBtn">取消</sys:String>
   <sys:String x:Key="SettingsConcurrencyDesc">并行处理的实况照片对数（1~16），数值越高速度越快，同时占用的内存与磁盘 IO 也越多。</sys:String>
-  <sys:String x:Key="SettingsPageDesc">主题、语言与转换性能等全局偏好，保存后立即生效。</sys:String>
-  <sys:String x:Key="SettingsSavedHint">已保存</sys:String>
-  <sys:String x:Key="SettingsHeicQualityTitle">HEIC 转码质量</sys:String>
-  <sys:String x:Key="SettingsHeicQualityDesc">空间瘦身与还原模式中转码 HEIC 的画质（50~100），数值越高画质越好、体积越大。</sys:String>
+  <sys:String x:Key="SettingsPageDesc">主题、语言与转换性能等全局偏好，修改即时生效并自动保存。</sys:String>
+  <sys:String x:Key="SettingsSavedHint">已自动保存</sys:String>
   <sys:String x:Key="NotifyOnCompleteTitle">转换完成提醒</sys:String>
   <sys:String x:Key="NotifyOnCompleteDesc">批量转换或瘦身完成后播放提示音。</sys:String>
   <sys:String x:Key="AutoOpenOutputTitle">转换后打开输出目录</sys:String>
@@ -384,5 +380,17 @@
   <sys:String x:Key="PickerOutputFolderTitle">选择转换输出目录</sys:String>
   <sys:String x:Key="PickerSamplePhotoTitle">选择实况照片或图片样本</sys:String>
   <sys:String x:Key="PickerImageFilterLabel">图片与实况照片 (*.heic;*.jpg;*.jpeg;*.png)</sys:String>
+
+  <!-- Dialogs & Lifecycle -->
+  <sys:String x:Key="ConfirmDialogOk">确定</sys:String>
+  <sys:String x:Key="ConfirmDialogCancel">取消</sys:String>
+  <sys:String x:Key="ShellOpenFailedTitle">无法打开</sys:String>
+  <sys:String x:Key="ShellOpenFailedFormat">无法打开“{0}”。请确认它存在，并且系统允许访问。</sys:String>
+  <sys:String x:Key="UnexpectedErrorTitle">发生意外错误</sys:String>
+  <sys:String x:Key="UnexpectedErrorFormat">操作未能完成：{0}。详细信息已写入日志：{1}</sys:String>
+  <sys:String x:Key="ExitConfirmTitle">任务仍在运行</sys:String>
+  <sys:String x:Key="ExitConfirmDesc">退出会取消当前任务。已完成的文件会保留，未完成的文件不会写出。确定要退出吗？</sys:String>
+  <sys:String x:Key="ExitConfirmBtn">取消任务并退出</sys:String>
+  <sys:String x:Key="LowDiskDialogContinue">仍然继续</sys:String>
 
 </ResourceDictionary>

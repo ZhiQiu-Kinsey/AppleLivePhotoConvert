@@ -22,47 +22,29 @@ public class ToolsInstallFeatureTests
 {
     #region 测试脚手架
 
-    /// <summary>为单个用例提供隔离的临时配置文件，用完即删。</summary>
+    /// <summary>为单个用例提供隔离的临时配置与可控的文件选择器，用完即删。</summary>
     private sealed class TempSettings : IDisposable
     {
-        private readonly string _dir;
+        public DesktopTestHost Host { get; } = new();
 
-        public TempSettings()
-        {
-            _dir = Path.Combine(Path.GetTempPath(), $"lpc_tools_{Guid.NewGuid():N}");
-            Directory.CreateDirectory(_dir);
-            SettingsPath = Path.Combine(_dir, "settings.json");
-            Service = new SettingsService(SettingsPath);
-        }
+        public string SettingsPath => Host.SettingsPath;
 
-        public string SettingsPath { get; }
+        public SettingsStore Store => Host.Settings;
 
-        public SettingsService Service { get; }
+        public ILocalizer Localizer => Host.Localizer;
 
-        public string CreateStubFile(string fileName, string content = "stub")
-        {
-            var path = Path.Combine(_dir, fileName);
-            File.WriteAllText(path, content);
-            return path;
-        }
+        public string CreateStubFile(string fileName, string content = "stub") => Host.CreateFile(fileName, content);
 
         /// <summary>返回一个确定不存在于磁盘上的路径，用于校验「无效路径」分支。</summary>
-        public string MissingFilePath(string fileName) => Path.Combine(_dir, "missing", fileName);
+        public string MissingFilePath(string fileName) => Path.Combine(Host.Directory, "missing", fileName);
 
-        public void Dispose()
-        {
-            try
-            {
-                Directory.Delete(_dir, recursive: true);
-            }
-            catch
-            {
-                // 临时目录清理失败不影响测试结果
-            }
-        }
+        /// <summary>下一次文件选择器返回的路径（null 表示用户取消）。</summary>
+        public void PickerReturns(string? path) => Host.FilePicker.NextResult = path;
+
+        public void Dispose() => Host.Dispose();
     }
 
-    private static ToolsViewModel BuildVm(TempSettings temp) => new(temp.Service, Localizer.Current);
+    private static ToolsViewModel BuildVm(TempSettings temp) => temp.Host.Get<ToolsViewModel>();
 
     private static Func<Task> InstallActionFor(ToolsViewModel vm, ToolKind kind) => kind switch
     {
@@ -277,37 +259,19 @@ public class ToolsInstallFeatureTests
     [InlineData(ToolKind.ExifTool)]
     [InlineData(ToolKind.Ffmpeg)]
     [InlineData(ToolKind.HeifEnc)]
-    public async Task PickToolPathCommand_WithoutHostPicker_DoesNothingAndDoesNotThrow(ToolKind kind)
-    {
-        using var temp = new TempSettings();
-        var vm = BuildVm(temp);
-
-        // 宿主未注入文件选择器（RequestPickToolFile 为 null）时必须静默返回
-        Assert.Null(vm.RequestPickToolFile);
-
-        await PickActionFor(vm, kind)();
-
-        Assert.Equal(string.Empty, vm.ActionMessageText);
-        Assert.False(vm.IsActionMessageError);
-        Assert.Equal(string.Empty, SettingsFieldFor(kind)(temp.Service.Current));
-        Assert.False(File.Exists(temp.SettingsPath), "未选择文件时不应落盘写设置");
-    }
-
-    [Theory]
-    [InlineData(ToolKind.ExifTool)]
-    [InlineData(ToolKind.Ffmpeg)]
-    [InlineData(ToolKind.HeifEnc)]
     public async Task PickToolPathCommand_WhenUserCancelsPicker_ShowsNoMessage(ToolKind kind)
     {
         using var temp = new TempSettings();
         var vm = BuildVm(temp);
-        vm.RequestPickToolFile = () => Task.FromResult<string?>(null);
+        temp.PickerReturns(null);
 
         await PickActionFor(vm, kind)();
 
         Assert.Equal(string.Empty, vm.ActionMessageText);
         Assert.False(vm.HasActionMessage);
-        Assert.Equal(string.Empty, SettingsFieldFor(kind)(temp.Service.Current));
+        Assert.Equal(string.Empty, SettingsFieldFor(kind)(temp.Store.Current));
+        temp.Store.Flush();
+        Assert.False(File.Exists(temp.SettingsPath), "未选择文件时不应落盘写设置");
     }
 
     [Theory]
@@ -319,15 +283,15 @@ public class ToolsInstallFeatureTests
         using var temp = new TempSettings();
         var vm = BuildVm(temp);
         var missing = temp.MissingFilePath("engine_stub.exe");
-        vm.RequestPickToolFile = () => Task.FromResult<string?>(missing);
+        temp.PickerReturns(missing);
 
         await PickActionFor(vm, kind)();
 
         Assert.True(vm.IsActionMessageError, "文件不存在时应判定为无效引擎");
         Assert.Equal(
-            Localizer.Current.Format("ToolPathInvalidFormat", missing),
+            temp.Localizer.Format("ToolPathInvalidFormat", missing),
             vm.ActionMessageText);
-        Assert.Equal(string.Empty, SettingsFieldFor(kind)(temp.Service.Current));
+        Assert.Equal(string.Empty, SettingsFieldFor(kind)(temp.Store.Current));
     }
 
     [Theory]
@@ -342,25 +306,26 @@ public class ToolsInstallFeatureTests
         // 文件名与该引擎期望的可执行文件名一致，用于通过 MatchesExpectedExecutable 校验。
         // 真实启动探测由可替换成员 ValidateToolExecutable 承担，此处注入恒真以脱离真实引擎环境。
         var stub = temp.CreateStubFile(StubNameFor(kind));
-        vm.RequestPickToolFile = () => Task.FromResult<string?>(stub);
+        temp.PickerReturns(stub);
         vm.ValidateToolExecutable = _ => true;
 
         await PickActionFor(vm, kind)();
 
         // 路径必须落到该引擎对应的设置字段，且不得串写到其它两个字段
-        Assert.Equal(stub, SettingsFieldFor(kind)(temp.Service.Current));
+        Assert.Equal(stub, SettingsFieldFor(kind)(temp.Store.Current));
         foreach (var other in new[] { ToolKind.ExifTool, ToolKind.Ffmpeg, ToolKind.HeifEnc })
         {
             if (other != kind)
             {
-                Assert.Equal(string.Empty, SettingsFieldFor(other)(temp.Service.Current));
+                Assert.Equal(string.Empty, SettingsFieldFor(other)(temp.Store.Current));
             }
         }
 
-        Assert.True(File.Exists(temp.SettingsPath), "选择有效路径后应立即持久化");
+        temp.Store.Flush();
+        Assert.True(File.Exists(temp.SettingsPath), "选择有效路径后应写入设置");
         Assert.False(vm.IsActionMessageError);
         Assert.Equal(
-            Localizer.Current.Format("ToolPathAppliedFormat", DisplayNameFor(kind)),
+            temp.Localizer.Format("ToolPathAppliedFormat", DisplayNameFor(kind)),
             vm.ActionMessageText);
     }
 
@@ -376,15 +341,16 @@ public class ToolsInstallFeatureTests
         // 本用例随之固化为「必须拒绝且不落盘」。此处刻意不注入 ValidateToolExecutable，
         // 以真实校验链验证文件名守卫本身即可拦截。
         var textFile = temp.CreateStubFile("notes.txt", "not an executable");
-        vm.RequestPickToolFile = () => Task.FromResult<string?>(textFile);
+        temp.PickerReturns(textFile);
 
         await vm.PickExifToolPathAsync();
 
         Assert.True(vm.IsActionMessageError, "非可执行文件必须判定为无效引擎");
         Assert.Equal(
-            Localizer.Current.Format("ToolPathInvalidFormat", textFile),
+            temp.Localizer.Format("ToolPathInvalidFormat", textFile),
             vm.ActionMessageText);
-        Assert.Equal(string.Empty, temp.Service.Current.ExifToolPath);
+        Assert.Equal(string.Empty, temp.Store.Current.ExifToolPath);
+        temp.Store.Flush();
         Assert.False(File.Exists(temp.SettingsPath), "拒绝后不应持久化任何设置");
     }
 

@@ -2,6 +2,7 @@ using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Models;
 using LivePhotoConvert.Desktop.Services;
 using LivePhotoConvert.Desktop.ViewModels;
+using LivePhotoConvert.E2E.Harness;
 
 namespace LivePhotoConvert.E2E.Tier1_FeatureCoverage;
 
@@ -27,9 +28,8 @@ public class DesktopOptimizationRegressionTests
     [Fact]
     public void StripViewModel_InitialState_ShowsPlaceholdersAndDisablesExecution()
     {
-        string tempPath = Path.Combine(Path.GetTempPath(), $"settings_{Guid.NewGuid():N}.json");
-        var settingsService = new SettingsService(tempPath);
-        var stripVm = new StripViewModel(settingsService, Localizer.Current);
+        using var host = new DesktopTestHost();
+        var stripVm = host.Get<StripViewModel>();
 
         Assert.Equal("—", stripVm.TotalOriginalText);
         Assert.Equal("—", stripVm.EstimatedAfterText);
@@ -37,15 +37,14 @@ public class DesktopOptimizationRegressionTests
         Assert.Equal(string.Empty, stripVm.SavedPercentResult);
         Assert.False(stripVm.CanStartStrip);
         Assert.False(stripVm.StartStripExecutionCommand.CanExecute(null));
-        Assert.Equal(Localizer.Current["NoAlbumOrPhotoSelected"], stripVm.CurrentInputPathText);
+        Assert.Equal(host.Localizer["NoAlbumOrPhotoSelected"], stripVm.CurrentInputPathText);
     }
 
     [Fact]
     public void StripViewModel_RefreshAnalysisAsync_WhenCannotStartStrip_CompletesSafely()
     {
-        string tempPath = Path.Combine(Path.GetTempPath(), $"settings_{Guid.NewGuid():N}.json");
-        var settingsService = new SettingsService(tempPath);
-        var stripVm = new StripViewModel(settingsService, Localizer.Current);
+        using var host = new DesktopTestHost();
+        var stripVm = host.Get<StripViewModel>();
 
         var task = stripVm.RefreshAnalysisAsync();
         Assert.True(task.IsCompleted);
@@ -56,9 +55,8 @@ public class DesktopOptimizationRegressionTests
     [Fact]
     public void ConvertViewModel_PrioritizeThumbnail_SkipsAlreadyLoadedThumbnail()
     {
-        string tempPath = Path.Combine(Path.GetTempPath(), $"settings_{Guid.NewGuid():N}.json");
-        var settingsService = new SettingsService(tempPath);
-        var convertVm = new ConvertViewModel(settingsService, Localizer.Current);
+        using var host = new DesktopTestHost();
+        var convertVm = host.Get<ConvertViewModel>();
 
         var card = new PhotoCardItemViewModel
         {
@@ -117,9 +115,8 @@ public class DesktopOptimizationRegressionTests
     [Fact]
     public void ConvertViewModel_FlattenedDisplayItems_IsBulkObservableCollection()
     {
-        string tempPath = Path.Combine(Path.GetTempPath(), $"settings_{Guid.NewGuid():N}.json");
-        var settingsService = new SettingsService(tempPath);
-        var convertVm = new ConvertViewModel(settingsService, Localizer.Current);
+        using var host = new DesktopTestHost();
+        var convertVm = host.Get<ConvertViewModel>();
 
         Assert.IsType<Desktop.Collections.BulkObservableCollection<IGalleryDisplayItem>>(convertVm.FlattenedDisplayItems);
     }
@@ -219,12 +216,9 @@ public class DesktopOptimizationRegressionTests
         context.CreateInputFile("IMG_0001.heic", new byte[1000]);
         context.CreateInputFile("IMG_0001.mov", new byte[1000]);
 
-        string tempPath = Path.Combine(Path.GetTempPath(), $"settings_{Guid.NewGuid():N}.json");
-        var settingsService = new SettingsService(tempPath);
-        var convertVm = new ConvertViewModel(settingsService, Localizer.Current)
-        {
-            AlbumDirectory = context.InputDirectory
-        };
+        using var host = new DesktopTestHost();
+        var convertVm = host.Get<ConvertViewModel>();
+        convertVm.AlbumDirectory = context.InputDirectory;
 
         // 首次扫描方向 0（苹果转安卓）
         await convertVm.RefreshAlbumAsync();
@@ -250,12 +244,9 @@ public class DesktopOptimizationRegressionTests
 
         using var context2 = new Harness.E2ETestContext();
 
-        string tempPath = Path.Combine(Path.GetTempPath(), $"settings_{Guid.NewGuid():N}.json");
-        var settingsService = new SettingsService(tempPath);
-        var convertVm = new ConvertViewModel(settingsService, Localizer.Current)
-        {
-            AlbumDirectory = context1.InputDirectory
-        };
+        using var host = new DesktopTestHost();
+        var convertVm = host.Get<ConvertViewModel>();
+        convertVm.AlbumDirectory = context1.InputDirectory;
 
         await convertVm.RefreshAlbumAsync();
         Assert.Equal(1, convertVm.ReadyCount);
@@ -269,9 +260,8 @@ public class DesktopOptimizationRegressionTests
     [Fact]
     public void ConvertViewModel_OnViewportScrolled_SetsIsUserScrollingAndDefersRelayout()
     {
-        string tempPath = Path.Combine(Path.GetTempPath(), $"settings_{Guid.NewGuid():N}.json");
-        var settingsService = new SettingsService(tempPath);
-        var convertVm = new ConvertViewModel(settingsService, Localizer.Current);
+        using var host = new DesktopTestHost();
+        var convertVm = host.Get<ConvertViewModel>();
 
         Assert.False(convertVm.IsUserScrolling);
 
@@ -297,7 +287,7 @@ public class DesktopOptimizationRegressionTests
         context.CreateInputFile("IMG_9999.png", pngHeader);
         context.CreateInputFile("IMG_9999.mov", new byte[100]);
 
-        var result = await AlbumScanner.ScanDirectoryAsync(Localizer.Current, context.InputDirectory, 0, TestContext.Current.CancellationToken);
+        var result = await AlbumScanner.ScanDirectoryAsync(new Localizer(), context.InputDirectory, 0, TestContext.Current.CancellationToken);
 
         Assert.Single(result.Groups);
         var card = Assert.Single(result.Groups[0].AllCards);

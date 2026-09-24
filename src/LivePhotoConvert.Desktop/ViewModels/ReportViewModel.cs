@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LivePhotoConvert.Desktop.Infrastructure;
@@ -35,7 +34,7 @@ public sealed record BatchReportModel
     public bool WasCanceled { get; init; }
 }
 
-public sealed partial class ReportViewModel(ILocalizer localizer) : ViewModelBase
+public sealed partial class ReportViewModel(ILocalizer localizer, IShellLauncher shell, IDialogService dialogs, INavigator navigator) : ViewModelBase
 {
     [ObservableProperty]
     private string _batchTimestampText = string.Empty;
@@ -102,8 +101,6 @@ public sealed partial class ReportViewModel(ILocalizer localizer) : ViewModelBas
     private readonly List<ReportItemRecord> _allRecords = [];
     public ObservableCollection<ReportItemRecord> FilteredRecords { get; } = [];
     public ObservableCollection<ReportItemRecord> Records => FilteredRecords;
-
-    public Action? OnSwitchToConvertTab { get; init; }
 
     public void Populate(BatchReportModel model)
     {
@@ -207,29 +204,24 @@ public sealed partial class ReportViewModel(ILocalizer localizer) : ViewModelBas
     }
 
     [RelayCommand]
-    public void OpenOutputDir()
+    public async Task OpenOutputDirAsync()
     {
-        if (!string.IsNullOrWhiteSpace(OutputDirectoryText) && Directory.Exists(OutputDirectoryText))
+        if (string.IsNullOrWhiteSpace(OutputDirectoryText))
         {
-            using var _ = Process.Start(new ProcessStartInfo
-            {
-                FileName = OutputDirectoryText,
-                UseShellExecute = true
-            });
+            return;
+        }
+
+        if (!shell.OpenFolder(OutputDirectoryText))
+        {
+            await dialogs.AlertAsync(localizer["ShellOpenFailedTitle"], localizer.Format("ShellOpenFailedFormat", OutputDirectoryText), localizer["ConfirmDialogOk"]);
         }
     }
 
     [RelayCommand]
-    public void ReturnToConvert()
-    {
-        OnSwitchToConvertTab?.Invoke();
-    }
+    public void ReturnToConvert() => navigator.NavigateTo(AppPage.Convert);
 
     [RelayCommand]
-    public void ForceRetryItem(ReportItemRecord item)
-    {
-        OnSwitchToConvertTab?.Invoke();
-    }
+    public void ForceRetryItem(ReportItemRecord item) => navigator.NavigateTo(AppPage.Convert);
 
     [RelayCommand]
     public void ExportErrorLog()

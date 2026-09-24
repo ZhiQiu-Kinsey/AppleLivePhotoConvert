@@ -227,17 +227,15 @@
             <Flyout Placement="BottomEdgeAlignedRight">
               <StackPanel Spacing="2" MinWidth="180">
                 <Button Classes="nav-btn" Command="{Binding SelectAllVisibleCommand}" CommandParameter="{x:True}" HorizontalAlignment="Stretch">
-                  <Grid ColumnDefinitions="20,*,Auto">
+                  <Grid ColumnDefinitions="20,*">
                     <ic:SymbolIcon Symbol="SelectAllOn" FontSize="12" Grid.Column="0" Foreground="{DynamicResource TextTertiaryBrush}"/>
                     <TextBlock Grid.Column="1" Text="{DynamicResource SelectAll}" FontSize="12" Margin="6,0,0,0" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="2" Text="Ctrl+A" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
                   </Grid>
                 </Button>
                 <Button Classes="nav-btn" Command="{Binding SelectAllVisibleCommand}" CommandParameter="{x:False}" HorizontalAlignment="Stretch">
-                  <Grid ColumnDefinitions="20,*,Auto">
+                  <Grid ColumnDefinitions="20,*">
                     <ic:SymbolIcon Symbol="CheckboxUnchecked" FontSize="12" Grid.Column="0" Foreground="{DynamicResource TextTertiaryBrush}"/>
                     <TextBlock Grid.Column="1" Text="{DynamicResource DeselectAll}" FontSize="12" Margin="6,0,0,0" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="2" Text="Esc" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
                   </Grid>
                 </Button>
 

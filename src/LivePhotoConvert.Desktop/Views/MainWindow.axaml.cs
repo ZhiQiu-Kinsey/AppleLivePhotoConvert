@@ -1,7 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Platform.Storage;
-using LivePhotoConvert.Desktop.Infrastructure;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using LivePhotoConvert.Desktop.ViewModels;
 
 namespace LivePhotoConvert.Desktop.Views;
@@ -11,6 +11,8 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        // 隧道阶段处理 Esc：弹窗内的输入框等控件不会先吞掉按键
+        AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
     }
 
     protected override void OnDataContextChanged(EventArgs e)
@@ -22,11 +24,6 @@ public partial class MainWindow : Window
             vm.RequestCloseWindow = Close;
             vm.RequestMinimizeWindow = () => WindowState = WindowState.Minimized;
             vm.RequestMaximizeWindow = () => WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
-            vm.ConvertVm.RequestSelectFolder = PickAlbumFolderAsync;
-            vm.ConvertVm.RequestSelectOutputFolder = PickOutputFolderAsync;
-            vm.StripVm.RequestSelectFolder = PickAlbumFolderAsync;
-            vm.StripVm.RequestSelectFile = PickSamplePhotoFileAsync;
-            vm.ToolsVm.RequestPickToolFile = PickToolExecutableFileAsync;
         }
     }
 
@@ -39,89 +36,19 @@ public partial class MainWindow : Window
         }
     }
 
-    protected override void OnClosed(EventArgs e)
+    private void OnPreviewKeyDown(object? sender, KeyEventArgs e)
     {
-        if (DataContext is MainWindowViewModel vm)
+        if (e.Key == Key.Escape && DataContext is MainWindowViewModel vm && vm.TryCancelActiveDialog())
         {
-            vm.HandleAppExit();
+            e.Handled = true;
         }
-
-        base.OnClosed(e);
     }
 
-    /// <summary>调用系统原生文件夹选择器选取实况相册目录。</summary>
-    private async Task<string?> PickAlbumFolderAsync()
+    private void DialogOverlay_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (!StorageProvider.CanOpen)
+        if (ReferenceEquals(e.Source, sender) && DataContext is MainWindowViewModel vm && vm.TryCancelActiveDialog())
         {
-            return null;
+            e.Handled = true;
         }
-
-        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
-        {
-            Title = Localizer.Current["SelectAlbumFolderBtn"],
-            AllowMultiple = false
-        });
-
-        return folders.Count > 0 ? folders[0].Path.LocalPath : null;
-    }
-
-    /// <summary>调用系统原生文件夹选择器选取转换输出目录。</summary>
-    private async Task<string?> PickOutputFolderAsync()
-    {
-        if (!StorageProvider.CanOpen)
-        {
-            return null;
-        }
-
-        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
-        {
-            Title = Localizer.Current["PickerOutputFolderTitle"],
-            AllowMultiple = false
-        });
-
-        return folders.Count > 0 ? folders[0].Path.LocalPath : null;
-    }
-
-
-    /// <summary>调用系统原生文件选择器选取单张实况照片用于画质沙盒比对。</summary>
-    private async Task<string?> PickSamplePhotoFileAsync()
-    {
-        if (!StorageProvider.CanOpen)
-        {
-            return null;
-        }
-
-        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = Localizer.Current["PickerSamplePhotoTitle"],
-            AllowMultiple = false,
-            FileTypeFilter = new List<FilePickerFileType>
-            {
-                new(Localizer.Current["PickerImageFilterLabel"])
-                {
-                    Patterns = ["*.heic", "*.HEIC", "*.jpg", "*.JPG", "*.jpeg", "*.JPEG", "*.png", "*.PNG"]
-                }
-            }
-        });
-
-        return files.Count > 0 ? files[0].Path.LocalPath : null;
-    }
-
-    /// <summary>调用系统原生文件选择器选取外部引擎（ExifTool / FFmpeg / heif-enc）可执行文件。</summary>
-    private async Task<string?> PickToolExecutableFileAsync()
-    {
-        if (!StorageProvider.CanOpen)
-        {
-            return null;
-        }
-
-        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = Localizer.Current["PickerToolExecutableTitle"],
-            AllowMultiple = false
-        });
-
-        return files.Count > 0 ? files[0].Path.LocalPath : null;
     }
 }

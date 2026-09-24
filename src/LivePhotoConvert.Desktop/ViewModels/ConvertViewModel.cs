@@ -17,10 +17,18 @@ using LivePhotoConvert.Desktop.ViewModels.Dialogs;
 
 namespace LivePhotoConvert.Desktop.ViewModels;
 
-public sealed partial class ConvertViewModel : ViewModelBase
+public sealed partial class ConvertViewModel : ViewModelBase, IBackgroundWork
 {
-    private readonly SettingsService _settingsService;
+    private readonly SettingsStore _settings;
     private readonly ILocalizer _localizer;
+    private readonly IDialogService _dialogs;
+    private readonly IFilePicker _filePicker;
+    private readonly IShellLauncher _shell;
+    private readonly PlaybackHost _playback;
+    private readonly ReportViewModel _report;
+    private readonly INavigator _navigator;
+    private readonly CompletionEffects _completion;
+    private Task? _batchTask;
     private List<TimelineGroup> _groups = [];
     private List<PhotoCardItemViewModel> _allCards = [];
     private readonly HashSet<string> _collapsedGroupKeys = [];
@@ -42,13 +50,6 @@ public sealed partial class ConvertViewModel : ViewModelBase
 
     [ObservableProperty]
     private bool _isScanning;
-
-    // 弹窗请求回调
-    public Action<ViewModelBase>? OnShowModal { get; init; }
-    public Action? OnCloseModal { get; init; }
-
-    /// <summary>批次转换完成后回调真实报告明细与汇总徐章（由 MainWindowViewModel 接线到批次报告页）。</summary>
-    public Action<BatchReportModel>? OnBatchReportReady { get; set; }
 
     [ObservableProperty]
     private int _conversionDirection; // 0=苹果转安卓, 1=安卓转苹果, 2=提取独立封面与视频
@@ -251,13 +252,26 @@ public sealed partial class ConvertViewModel : ViewModelBase
         }
     }
 
-    public Func<Task<string?>>? RequestSelectFolder { get; set; }
-    public Func<Task<string?>>? RequestSelectOutputFolder { get; set; }
-
-    public ConvertViewModel(SettingsService settingsService, ILocalizer localizer)
+    public ConvertViewModel(
+        SettingsStore settings,
+        ILocalizer localizer,
+        IDialogService dialogs,
+        IFilePicker filePicker,
+        IShellLauncher shell,
+        PlaybackHost playback,
+        ReportViewModel report,
+        INavigator navigator,
+        CompletionEffects completion)
     {
-        _settingsService = settingsService;
+        _settings = settings;
         _localizer = localizer;
+        _dialogs = dialogs;
+        _filePicker = filePicker;
+        _shell = shell;
+        _playback = playback;
+        _report = report;
+        _navigator = navigator;
+        _completion = completion;
         _lruThumbnailManager = new LruThumbnailManager(_thumbnailReader);
         _layoutRefreshTimer = new Avalonia.Threading.DispatcherTimer
         {
@@ -287,14 +301,14 @@ public sealed partial class ConvertViewModel : ViewModelBase
             }
         };
 
-        PlaybackHost.Instance.OnQuickLookTriggered = OpenQuickLook;
-        PlaybackHost.Instance.OnCardFocused = EnsureThumbnailLoaded;
+        _playback.OnQuickLookTriggered = OpenQuickLook;
+        _playback.OnCardFocused = EnsureThumbnailLoaded;
 
-        var s = _settingsService.Current;
+        var s = _settings.Current;
         _namingFormat = s.NamingFormat;
         _sourceAction = s.SourceAction;
         _keepSubfolderHierarchy = s.KeepSubfolderHierarchy;
-        _autoAppendIndex = !s.OverwriteSameName;
+        _autoAppendIndex = s.ConflictPolicy == ConflictPolicy.AppendIndex;
         _heicQuality = s.HeicQuality;
         if (!string.IsNullOrWhiteSpace(s.OutputDirectory))
         {
@@ -592,12 +606,7 @@ public sealed partial class ConvertViewModel : ViewModelBase
     [RelayCommand]
     public async Task SelectAlbumFolderAsync()
     {
-        if (RequestSelectFolder is null)
-        {
-            return;
-        }
-
-        string? folder = await RequestSelectFolder();
+        string? folder = await _filePicker.PickFolderAsync(_localizer["SelectAlbumFolderBtn"], AlbumDirectory);
         if (string.IsNullOrWhiteSpace(folder))
         {
             return;
@@ -605,9 +614,7 @@ public sealed partial class ConvertViewModel : ViewModelBase
 
         _dirScanCache.Clear();
         AlbumDirectory = folder;
-        var s = _settingsService.Current;
-        s.LastScanDirectory = folder;
-        _settingsService.Save(s);
+        _settings.Update(s => s.LastScanDirectory = folder);
 
         await RefreshAlbumAsync();
     }
@@ -625,46 +632,34 @@ public sealed partial class ConvertViewModel : ViewModelBase
     [RelayCommand]
     public async Task SelectOutputFolderAsync()
     {
-        var picker = RequestSelectOutputFolder ?? RequestSelectFolder;
-        if (picker is null)
+        string? folder = await _filePicker.PickFolderAsync(_localizer["PickerOutputFolderTitle"], OutputDirectory);
+        if (!string.IsNullOrWhiteSpace(folder))
         {
-            return;
+            OutputDirectory = folder;
         }
-
-        string? folder = await picker();
-        if (string.IsNullOrWhiteSpace(folder))
-        {
-            return;
-        }
-
-        OutputDirectory = folder;
-        var s = _settingsService.Current;
-        s.OutputDirectory = folder;
-        _settingsService.Save(s);
     }
 
     [RelayCommand]
-    public void OpenOutputFolder()
+    public async Task OpenOutputFolderAsync()
     {
-        if (!string.IsNullOrWhiteSpace(OutputDirectory))
+        if (string.IsNullOrWhiteSpace(OutputDirectory))
         {
-            try
-            {
-                if (!Directory.Exists(OutputDirectory))
-                {
-                    Directory.CreateDirectory(OutputDirectory);
-                }
+            return;
+        }
 
-                using var _ = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = OutputDirectory,
-                    UseShellExecute = true
-                });
-            }
-            catch
-            {
-                // ignored
-            }
+        try
+        {
+            // 输出目录首次使用前可能尚不存在，先建好再打开
+            Directory.CreateDirectory(OutputDirectory);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            ErrorLogger.Log(ex, "创建输出目录");
+        }
+
+        if (!_shell.OpenFolder(OutputDirectory))
+        {
+            await _dialogs.AlertAsync(_localizer["ShellOpenFailedTitle"], _localizer.Format("ShellOpenFailedFormat", OutputDirectory), _localizer["ConfirmDialogOk"]);
         }
     }
 
@@ -1050,7 +1045,7 @@ public sealed partial class ConvertViewModel : ViewModelBase
                         && card.CachedFrames is null
                         && (!string.IsNullOrWhiteSpace(card.VideoPath) || card.IsMotionPhoto))
                     {
-                        PlaybackHost.Instance.Preload(card);
+                        _playback.Preload(card);
                         remainingVideoPreloads--;
                     }
                 }
@@ -1063,7 +1058,17 @@ public sealed partial class ConvertViewModel : ViewModelBase
     partial void OnNamingFormatChanged(int value)
     {
         UpdateNamingDemo();
+        _settings.Update(s => s.NamingFormat = value);
     }
+
+    partial void OnKeepSubfolderHierarchyChanged(bool value) => _settings.Update(s => s.KeepSubfolderHierarchy = value);
+
+    partial void OnAutoAppendIndexChanged(bool value) =>
+        _settings.Update(s => s.ConflictPolicy = value ? ConflictPolicy.AppendIndex : ConflictPolicy.Overwrite);
+
+    partial void OnHeicQualityChanged(int value) => _settings.Update(s => s.HeicQuality = value);
+
+    partial void OnOutputDirectoryChanged(string value) => _settings.Update(s => s.OutputDirectory = value);
 
     private void UpdateNamingDemo()
     {
@@ -1079,57 +1084,52 @@ public sealed partial class ConvertViewModel : ViewModelBase
     partial void OnSourceActionChanged(int value)
     {
         IsDeleteWarningVisible = value == 3;
+        _settings.Update(s => s.SourceAction = value);
     }
 
     [RelayCommand]
-    public void TriggerBatchConvert()
+    public async Task TriggerBatchConvertAsync()
     {
         if (IsRunning)
         {
             return;
         }
 
-        // 1. 安全矩阵预检：磁盘容量预检
         var targetCards = _groups.SelectMany(g => g.AllCards).Where(c => c.IsSelected).ToList();
         if (targetCards.Count == 0)
         {
             targetCards = _groups.SelectMany(g => g.AllCards).ToList();
         }
+
         long totalBytes = ComputeTotalBytes(targetCards);
         var (hasSpace, req, avail) = SafetyGuard.CheckDiskSpace(OutputDirectory, totalBytes);
         if (!hasSpace)
         {
-            LowDiskSpaceDialogViewModel lowDiskVm = new()
+            var proceed = await _dialogs.ShowAsync(new LowDiskSpaceDialogViewModel
             {
                 TargetDirectory = OutputDirectory,
                 RequiredSpaceText = $"{req / (1024.0 * 1024.0):F1} MB",
-                AvailableSpaceText = $"{avail / (1024.0 * 1024.0):F1} MB",
-                OnDismiss = () => OnCloseModal?.Invoke()
-            };
-            OnShowModal?.Invoke(lowDiskVm);
-            return;
+                AvailableSpaceText = $"{avail / (1024.0 * 1024.0):F1} MB"
+            });
+            if (!proceed)
+            {
+                return;
+            }
         }
 
-        // 2. 物理删除原片红屏防灾
         if (SourceAction == 3)
         {
-            DeleteConfirmDialogViewModel deleteVm = new(_localizer)
+            var confirmed = await _dialogs.ShowAsync(new DeleteConfirmDialogViewModel(_localizer)
             {
                 AffectedCount = targetCards.Count,
-                AffectedSizeText = FormatBytes(totalBytes),
-                OnConfirmed = () =>
-                {
-                    OnCloseModal?.Invoke();
-                    ExecuteBatchPipeline();
-                },
-                OnCancelled = () =>
-                {
-                    OnCloseModal?.Invoke();
-                    SourceAction = 0; // 重置为保留原片
-                }
-            };
-            OnShowModal?.Invoke(deleteVm);
-            return;
+                AffectedSizeText = FormatBytes(totalBytes)
+            });
+            if (!confirmed)
+            {
+                // 未确认删除时退回最安全的“保留原片”
+                SourceAction = 0;
+                return;
+            }
         }
 
         ExecuteBatchPipeline();
@@ -1149,7 +1149,7 @@ public sealed partial class ConvertViewModel : ViewModelBase
             cards = _groups.SelectMany(g => g.AllCards).ToList();
         }
 
-        var settings = _settingsService.Current;
+        var settings = _settings.Current;
         var plan = new BatchPlan(
             cards,
             ConversionDirection,
@@ -1172,7 +1172,7 @@ public sealed partial class ConvertViewModel : ViewModelBase
         CurrentProgressPercent = 0;
         ProgressRatioText = string.Empty;
         CurrentFileName = string.Empty;
-        _ = RunBatchAsync(plan, cts);
+        _batchTask = RunBatchAsync(plan, cts);
     }
 
     private sealed record BatchPlan(
@@ -1218,7 +1218,12 @@ public sealed partial class ConvertViewModel : ViewModelBase
             IsRunning = false;
         }
 
-        OnBatchReportReady?.Invoke(model);
+        _report.Populate(model);
+        _navigator.NavigateTo(AppPage.Report);
+        if (!model.WasCanceled)
+        {
+            _completion.RunOnTaskComplete(model.OutputDirectory);
+        }
     }
 
     private static async Task<BatchReportModel> ExecuteBatchAsync(BatchPlan plan, string modeName, ILocalizer localizer, IProgress<BatchProgress> progress, CancellationToken cancellationToken)
@@ -1286,6 +1291,19 @@ public sealed partial class ConvertViewModel : ViewModelBase
     [RelayCommand]
     public void CancelBatch() => _batchCts?.Cancel();
 
+    public bool IsBusy => IsRunning;
+
+    public async Task CancelAndWaitAsync(TimeSpan timeout)
+    {
+        if (_batchTask is not { IsCompleted: false } task)
+        {
+            return;
+        }
+
+        CancelBatch();
+        await Task.WhenAny(task, Task.Delay(timeout));
+    }
+
     /// <summary>
     /// 试播：对当前视口内可见卡片按序触发悬停微动放映（遵循 PRD 3.2，仅处理可见项，杜绝全量并发 OOM）。
     /// </summary>
@@ -1294,7 +1312,7 @@ public sealed partial class ConvertViewModel : ViewModelBase
     {
         foreach (var card in _groups.SelectMany(g => g.AllCards).Where(c => c.IsVisible))
         {
-            PlaybackHost.Instance.OnPointerEnter(card);
+            _playback.OnPointerEnter(card);
         }
     }
 
@@ -1337,17 +1355,6 @@ public sealed partial class ConvertViewModel : ViewModelBase
     private static string FormatBytes(long bytes) =>
         Converters.ByteSizeConverter.Instance.Convert(bytes, typeof(string), null, CultureInfo.InvariantCulture) as string
         ?? $"{bytes} B";
-
-    public void TriggerQuickLook()
-    {
-        var target = _groups.SelectMany(g => g.AllCards).FirstOrDefault(c => c.IsHoverPlaying)
-                  ?? _groups.SelectMany(g => g.AllCards).FirstOrDefault(c => c.IsSelected)
-                  ?? _groups.SelectMany(g => g.AllCards).FirstOrDefault();
-        if (target != null)
-        {
-            OpenQuickLook(target);
-        }
-    }
 
     private List<PhotoCardItemViewModel> GetSortedCards()
     {
@@ -1479,65 +1486,58 @@ public sealed partial class ConvertViewModel : ViewModelBase
         OnAfterStreamRebuild?.Invoke();
     }
 
-    private void OpenArbitrationDialog(PhotoCardItemViewModel card)
+    private async void OpenArbitrationDialog(PhotoCardItemViewModel card)
     {
-        ArbitrateDialogViewModel arbitrateVm = new(_localizer)
+        var verdict = await _dialogs.ShowAsync(new ArbitrateDialogViewModel(_localizer) { TargetCard = card });
+        if (verdict == ArbitrationVerdict.Accept && !card.IsForceAccepted)
         {
-            TargetCard = card,
-            OnWhitelistConfirmed = c =>
-            {
-                c.IsForceAccepted = true;
-                ReadyCount++;
-                SuspiciousCount = Math.Max(0, SuspiciousCount - 1);
-                OnCloseModal?.Invoke();
-                UpdateSelectionSummary();
-            },
-            OnRejectSplit = c =>
-            {
-                OnCloseModal?.Invoke();
-            },
-            OnDismiss = () => OnCloseModal?.Invoke()
-        };
-        OnShowModal?.Invoke(arbitrateVm);
+            card.IsForceAccepted = true;
+            ReadyCount++;
+            SuspiciousCount = Math.Max(0, SuspiciousCount - 1);
+            UpdateSelectionSummary();
+        }
     }
 
     private QuickLookDialogViewModel? _activeQuickLookVm;
+    private List<PhotoCardItemViewModel> _quickLookCards = [];
 
-    private void OpenQuickLook(PhotoCardItemViewModel card)
+    private async void OpenQuickLook(PhotoCardItemViewModel card)
     {
-        PlaybackHost.Instance.StopHoverPlayback();
+        _playback.StopHoverPlayback();
 
-        var allCards = _groups.SelectMany(g => g.AllCards).ToList();
-        int idx = allCards.IndexOf(card);
-        string indexText = allCards.Count > 0 ? $"{idx + 1} / {allCards.Count}" : string.Empty;
-
-        if (_activeQuickLookVm is not null)
+        if (_activeQuickLookVm is { IsClosed: false } open)
         {
-            _activeQuickLookVm.SetCard(card, indexText);
+            int openIndex = _quickLookCards.IndexOf(card);
+            if (openIndex >= 0)
+            {
+                open.ShowIndex(openIndex);
+            }
+
             return;
         }
 
-        var qlVm = new QuickLookDialogViewModel(_localizer, card, indexText)
+        // 打开时固定卡片序列，浏览期间重新扫描或重排不影响左右切换
+        var cards = _groups.SelectMany(g => g.AllCards).ToList();
+        int index = cards.IndexOf(card);
+        if (index < 0)
         {
-            OnClose = () =>
-            {
-                _activeQuickLookVm?.Cleanup();
-                _activeQuickLookVm = null;
-                OnCloseModal?.Invoke();
-            },
-            OnNavigate = offset =>
-            {
-                var currentCards = _groups.SelectMany(g => g.AllCards).ToList();
-                if (currentCards.Count == 0) return;
-                int curIdx = currentCards.IndexOf(_activeQuickLookVm?.Card ?? card);
-                if (curIdx < 0) curIdx = 0;
-                int nextIdx = (curIdx + offset + currentCards.Count) % currentCards.Count;
-                var nextCard = currentCards[nextIdx];
-                _activeQuickLookVm?.SetCard(nextCard, $"{nextIdx + 1} / {currentCards.Count}");
-            }
-        };
+            return;
+        }
 
-        _activeQuickLookVm = qlVm;
-        OnShowModal?.Invoke(qlVm);
+        var quickLook = new QuickLookDialogViewModel(_localizer, i => (uint)i < (uint)cards.Count ? cards[i] : null, cards.Count, index);
+        _activeQuickLookVm = quickLook;
+        _quickLookCards = cards;
+        try
+        {
+            await _dialogs.ShowAsync(quickLook);
+        }
+        finally
+        {
+            if (ReferenceEquals(_activeQuickLookVm, quickLook))
+            {
+                _activeQuickLookVm = null;
+                _quickLookCards = [];
+            }
+        }
     }
 }

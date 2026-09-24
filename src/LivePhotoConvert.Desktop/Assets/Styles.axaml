@@ -48,6 +48,20 @@
           <SolidColorBrush x:Key="DangerBorderBrush" Color="#FECACA" />
 
           <SolidColorBrush x:Key="OnAccentBrush" Color="#FFFFFF" />
+
+          <SolidColorBrush x:Key="SuccessTextBrush" Color="#065F46" />
+          <SolidColorBrush x:Key="WarningTextBrush" Color="#92400E" />
+          <SolidColorBrush x:Key="DangerTextBrush" Color="#7F1D1D" />
+
+          <!-- 弹窗遮罩与深色媒体画布（画布在两种主题下都保持深色以衬托照片） -->
+          <SolidColorBrush x:Key="OverlayBrush" Color="#990F172A" />
+          <SolidColorBrush x:Key="MediaCanvasBrush" Color="#0A0E1A" />
+          <SolidColorBrush x:Key="MediaControlBrush" Color="#80000000" />
+          <SolidColorBrush x:Key="MediaControlBorderBrush" Color="#40FFFFFF" />
+          <SolidColorBrush x:Key="MediaBadgeBrush" Color="#99000000" />
+          <SolidColorBrush x:Key="OnMediaBrush" Color="#FFFFFF" />
+          <SolidColorBrush x:Key="MediaAccentBrush" Color="#38BDF8" />
+          <SolidColorBrush x:Key="MediaWarningBrush" Color="#FBBF24" />
         </ResourceDictionary>
 
         <!-- ========== Dark ========== -->
@@ -87,6 +101,19 @@
           <SolidColorBrush x:Key="DangerBorderBrush" Color="#991B1B" />
 
           <SolidColorBrush x:Key="OnAccentBrush" Color="#FFFFFF" />
+
+          <SolidColorBrush x:Key="SuccessTextBrush" Color="#6EE7B7" />
+          <SolidColorBrush x:Key="WarningTextBrush" Color="#FCD34D" />
+          <SolidColorBrush x:Key="DangerTextBrush" Color="#FCA5A5" />
+
+          <SolidColorBrush x:Key="OverlayBrush" Color="#CC020617" />
+          <SolidColorBrush x:Key="MediaCanvasBrush" Color="#0A0E1A" />
+          <SolidColorBrush x:Key="MediaControlBrush" Color="#80000000" />
+          <SolidColorBrush x:Key="MediaControlBorderBrush" Color="#40FFFFFF" />
+          <SolidColorBrush x:Key="MediaBadgeBrush" Color="#99000000" />
+          <SolidColorBrush x:Key="OnMediaBrush" Color="#FFFFFF" />
+          <SolidColorBrush x:Key="MediaAccentBrush" Color="#38BDF8" />
+          <SolidColorBrush x:Key="MediaWarningBrush" Color="#FBBF24" />
         </ResourceDictionary>
 
       </ResourceDictionary.ThemeDictionaries>
@@ -161,7 +188,7 @@
   </Style>
 
   <Style Selector="Button.sponsor-dialog-backdrop">
-    <Setter Property="Background" Value="#990F172A" />
+    <Setter Property="Background" Value="{DynamicResource OverlayBrush}" />
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="HorizontalAlignment" Value="Stretch" />
     <Setter Property="VerticalAlignment" Value="Stretch" />
@@ -170,11 +197,11 @@
 
   <!-- 遮罩不响应按钮默认的悬停 / 按下换色，始终保持一致。 -->
   <Style Selector="Button.sponsor-dialog-backdrop:pointerover">
-    <Setter Property="Background" Value="#990F172A" />
+    <Setter Property="Background" Value="{DynamicResource OverlayBrush}" />
   </Style>
 
   <Style Selector="Button.sponsor-dialog-backdrop:pressed">
-    <Setter Property="Background" Value="#990F172A" />
+    <Setter Property="Background" Value="{DynamicResource OverlayBrush}" />
   </Style>
 
   <Style Selector="Border.sponsor-dialog">
@@ -608,6 +635,42 @@
 
   <Style Selector="Button.caption-close-btn:pressed ic|SymbolIcon">
     <Setter Property="Foreground" Value="#FFFFFF" />
+  </Style>
+
+  <!-- 弹窗卡片：遮罩由主窗口弹窗宿主统一提供，卡片只负责自身外观 -->
+  <Style Selector="Border.dialog-card">
+    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="24" />
+    <Setter Property="Padding" Value="24" />
+    <Setter Property="Margin" Value="16" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="BoxShadow" Value="0 20 40 0 #40000000" />
+  </Style>
+
+  <Style Selector="Border.dialog-icon-badge">
+    <Setter Property="Width" Value="40" />
+    <Setter Property="Height" Value="40" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <Style Selector="Border.dialog-icon-badge.warning">
+    <Setter Property="Background" Value="{DynamicResource WarningSoftBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource WarningBorderBrush}" />
+  </Style>
+
+  <Style Selector="Border.dialog-icon-badge.danger">
+    <Setter Property="Background" Value="{DynamicResource DangerSoftBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource DangerBorderBrush}" />
+  </Style>
+
+  <Style Selector="Border.dialog-icon-badge.info">
+    <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
   </Style>
 
 </Styles>
