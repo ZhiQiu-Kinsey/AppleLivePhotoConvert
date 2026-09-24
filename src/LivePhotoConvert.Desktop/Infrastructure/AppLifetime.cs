@@ -14,7 +14,8 @@ public sealed class AppLifetime(
     IDialogService dialogs,
     ILocalizer localizer,
     IPlaybackControl playback,
-    IReadOnlyList<IBackgroundWork> backgroundWork)
+    IReadOnlyList<IBackgroundWork> backgroundWork,
+    Action? flushPendingEdits = null)
 {
     public static readonly TimeSpan CancelTimeout = TimeSpan.FromSeconds(10);
 
@@ -61,6 +62,8 @@ public sealed class AppLifetime(
             // 进程树已被结束，只是未确认退出
         }
 
+        // 页面上尚在防抖中的输入先写入设置，再落盘
+        flushPendingEdits?.Invoke();
         settings.Flush();
         if (settings.Current.AutoCleanTemp)
         {

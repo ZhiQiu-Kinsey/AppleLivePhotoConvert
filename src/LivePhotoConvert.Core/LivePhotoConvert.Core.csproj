@@ -11,6 +11,12 @@
 
   <ItemGroup>
     <PackageReference Include="Magick.NET-Q8-x64" Version="14.16.0" />
+    <!-- 7z 解压（heif-enc 只发布 7z 包）；纯托管、标注 IsTrimmable，AOT 发布无警告 -->
+    <PackageReference Include="SharpCompress" Version="1.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="External/Tools/tools.json" LogicalName="LivePhotoConvert.Core.External.Tools.tools.json" />
   </ItemGroup>
 
 </Project>

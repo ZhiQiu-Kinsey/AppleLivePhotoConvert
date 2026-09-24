@@ -26,7 +26,7 @@
         <Border Grid.Column="0" CornerRadius="8" Background="{DynamicResource AccentSoftBrush}" Padding="8,6" VerticalAlignment="Center">
           <StackPanel Orientation="Horizontal" Spacing="6">
             <ic:SymbolIcon Symbol="Live" FontSize="14" Foreground="{DynamicResource AccentBrush}"/>
-            <TextBlock Text="{DynamicResource QuickLookLiveBadge}" FontSize="12" Foreground="{DynamicResource AccentBrush}" FontWeight="Bold" VerticalAlignment="Center"/>
+            <TextBlock Text="{DynamicResource QuickLookLiveBadge}" FontSize="12" Foreground="{DynamicResource AccentTextBrush}" FontWeight="Bold" VerticalAlignment="Center"/>
           </StackPanel>
         </Border>
 
@@ -104,7 +104,7 @@
                        TextWrapping="Wrap" MaxWidth="380" VerticalAlignment="Center" />
             <Button x:Name="OpenToolsButton" Classes="capsule-btn" Command="{CompiledBinding GoToToolsCommand}"
                     IsVisible="{CompiledBinding CanOpenTools}" VerticalAlignment="Center">
-              <TextBlock Text="{DynamicResource MissingToolsGoBtn}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" />
+              <TextBlock Text="{DynamicResource MissingToolsGoBtn}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}" />
             </Button>
           </StackPanel>
         </Border>
@@ -123,8 +123,8 @@
           </StackPanel>
           <StackPanel Grid.Column="2" Spacing="3">
             <TextBlock Text="{DynamicResource QuickLookPairing}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" />
-            <TextBlock Text="{DynamicResource PairStatusLocked}" IsVisible="{CompiledBinding !Card.RequiresPairReview}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" TextTrimming="CharacterEllipsis" />
-            <TextBlock Text="{DynamicResource PairStatusPending}" IsVisible="{CompiledBinding Card.RequiresPairReview}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" TextTrimming="CharacterEllipsis" />
+            <TextBlock Text="{DynamicResource PairStatusLocked}" IsVisible="{CompiledBinding !Card.RequiresPairReview}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource SuccessTextBrush}" TextTrimming="CharacterEllipsis" />
+            <TextBlock Text="{DynamicResource PairStatusPending}" IsVisible="{CompiledBinding Card.RequiresPairReview}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource WarningTextBrush}" TextTrimming="CharacterEllipsis" />
           </StackPanel>
           <StackPanel Grid.Column="3" Spacing="3">
             <TextBlock Text="{DynamicResource QuickLookSize}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" />

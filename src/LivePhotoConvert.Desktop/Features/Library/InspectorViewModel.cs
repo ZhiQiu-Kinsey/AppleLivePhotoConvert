@@ -351,7 +351,8 @@ public sealed partial class InspectorViewModel : ViewModelBase
             return;
         }
 
-        await _dialogs.ShowAsync(new StripCompareDialogViewModel(_localizer, card.PhotoPath, HeicQuality));
+        await _dialogs.ShowAsync(new StripCompareDialogViewModel(
+            _localizer, _estimator.Sampler, card.PhotoPath, new StripSampleOptions(ToolPaths.From(_settings.Current), StripConvertToHeic, HeicQuality)));
     }
 
     private bool CanStart() => !_tasks.IsRunning && ApplicableCount > 0;
@@ -551,10 +552,10 @@ public sealed partial class InspectorViewModel : ViewModelBase
         var cts = new CancellationTokenSource();
         _estimateCts = cts;
         var files = JobFactory.Applicable(ConversionAction.Strip, _library.SelectedOrAllCards).Select(c => c.PhotoPath).ToList();
-        EstimateTask = EstimateAsync(files, ToolPaths.From(_settings.Current), StripConvertToHeic, cts.Token);
+        EstimateTask = EstimateAsync(files, ToolPaths.From(_settings.Current), StripConvertToHeic, HeicQuality, cts.Token);
     }
 
-    private async Task EstimateAsync(IReadOnlyList<string> files, ToolPaths tools, bool convertToHeic, CancellationToken token)
+    private async Task EstimateAsync(IReadOnlyList<string> files, ToolPaths tools, bool convertToHeic, int heicQuality, CancellationToken token)
     {
         IsEstimating = true;
         ApplyEstimateTexts();
@@ -563,7 +564,7 @@ public sealed partial class InspectorViewModel : ViewModelBase
             await Task.Delay(EstimateDebounce, _time, token);
             var estimate = files.Count == 0
                 ? new StripEstimate(0, 0, 0)
-                : await Task.Run(() => _estimator.EstimateAsync(files, tools, convertToHeic, token), token);
+                : await Task.Run(() => _estimator.EstimateAsync(files, tools, convertToHeic, heicQuality, token), token);
             token.ThrowIfCancellationRequested();
             _estimate = estimate;
             _estimateError = null;

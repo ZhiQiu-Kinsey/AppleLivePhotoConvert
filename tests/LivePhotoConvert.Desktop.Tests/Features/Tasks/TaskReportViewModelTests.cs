@@ -223,6 +223,26 @@ public class TaskReportViewModelTests
     }
 
     [Fact]
+    public async Task StripReport_KeptOriginalFormat_ShowsLocalizedTag()
+    {
+        var outcome = ItemOutcome.Succeeded("/in/a.jpg", "/out/a.jpg") with
+        {
+            BytesSaved = 3 * 1024 * 1024,
+            Notes = [new OutcomeNote(OutcomeNoteKind.KeptOriginalFormat)]
+        };
+        using var fixture = new TaskCenterFixture(ScriptedRunner.Returning(Jobs.Report(outcome)));
+
+        var report = await fixture.Center.RunAsync(Jobs.Files(ConversionAction.Strip, "/out", "/in/a.jpg")).Within();
+
+        var item = Assert.Single(report.Items);
+        Assert.Equal("JPG", item.TargetFormat);
+        Assert.Equal(fixture.Host.Localizer.Format("StripItemSavedFormat", "3.0 MB"), item.Detail);
+        var tag = Assert.Single(item.Tags);
+        Assert.Equal(fixture.Host.Localizer["OutcomeNoteKeptOriginalFormat"], tag.Text);
+        Assert.False(tag.IsPositive);
+    }
+
+    [Fact]
     public async Task ExportCsv_WritesLocalizedHeaderEscapedRowsAndBom()
     {
         var report = new BatchReport(

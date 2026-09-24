@@ -35,8 +35,8 @@ public sealed record StripRequest
 /// <param name="HasGainMap">带 Ultra HDR 增益图时不转码 HEIC，以免丢失 HDR</param>
 public sealed record StripCandidate(string ImagePath, long ImageBytes, EmbeddedVideo? EmbeddedVideo, string? CompanionVideo, long CompanionBytes, bool HasGainMap)
 {
-    /// <summary>HEIC 质量 90 时相对 JPEG 的典型体积比例，用于预估。</summary>
-    private const double HeicSizeRatio = 0.45;
+    /// <summary>HEIC 质量 90 时相对 JPEG 的典型体积比例；没有实测压缩比时用于预估。</summary>
+    public const double DefaultHeicSizeRatio = 0.45;
 
     /// <summary>分析失败的原因（文件消失、无法读取等）；不为 <c>null</c> 时该文件不做任何处理。</summary>
     public string? AnalysisError { get; init; }
@@ -53,10 +53,17 @@ public sealed record StripCandidate(string ImagePath, long ImageBytes, EmbeddedV
 
     public bool WillConvert(bool convertToHeic) => AnalysisError is null && convertToHeic && !HasGainMap && !MediaFileTypes.IsHeic(ImagePath);
 
-    public long EstimateFinalBytes(bool convertToHeic)
+    /// <summary>剥离视频后的照片字节数（转码前）。</summary>
+    public long PhotoBytes => EmbeddedVideo?.ImageEnd ?? ImageBytes;
+
+    public long EstimateFinalBytes(bool convertToHeic) => EstimateFinalBytes(convertToHeic, DefaultHeicSizeRatio);
+
+    /// <param name="convertToHeic">是否转码 HEIC</param>
+    /// <param name="heicSizeRatio">HEIC 相对转码前照片的体积比例（例如抽样实测值）</param>
+    public long EstimateFinalBytes(bool convertToHeic, double heicSizeRatio)
     {
-        var photoBytes = EmbeddedVideo?.ImageEnd ?? ImageBytes;
-        return WillConvert(convertToHeic) ? (long)(photoBytes * HeicSizeRatio) : photoBytes;
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(heicSizeRatio);
+        return WillConvert(convertToHeic) ? (long)(PhotoBytes * heicSizeRatio) : PhotoBytes;
     }
 
     internal static StripCandidate Unavailable(string imagePath, Exception error) =>
@@ -218,9 +225,7 @@ public sealed class MotionPhotoStripper(IMetadataService metadata, IImageConvert
 
         var inPlace = request.Output is null;
         var directory = inPlace ? Path.GetDirectoryName(Path.GetFullPath(source))! : request.Output!.DirectoryFor(source);
-        var extension = convert ? ".heic" : Path.GetExtension(source);
         var timestamp = FileTimestamp.Read(source);
-        var photoChanged = candidate.EmbeddedVideo is not null || convert;
 
         string? clean = null;
         string? staged = null;
@@ -241,6 +246,23 @@ public sealed class MotionPhotoStripper(IMetadataService metadata, IImageConvert
                 photo = clean;
             }
 
+            var keptOriginalFormat = false;
+            if (convert)
+            {
+                staged = OutputCommitter.CreateStagingPath(directory, ".heic");
+                await imageConverter.ConvertToHeicAsync(photo, staged, request.HeicQuality, cancellationToken);
+                // 纹理重的照片 HEIC 可能比原格式还大：瘦身不能让文件变大，改为只剥离视频
+                if (new FileInfo(staged).Length >= new FileInfo(photo).Length)
+                {
+                    FileHelper.TryDeleteFile(staged);
+                    staged = null;
+                    convert = false;
+                    keptOriginalFormat = true;
+                }
+            }
+
+            var extension = convert ? ".heic" : Path.GetExtension(source);
+            var photoChanged = candidate.EmbeddedVideo is not null || convert;
             string final;
             if (inPlace && !photoChanged)
             {
@@ -248,13 +270,9 @@ public sealed class MotionPhotoStripper(IMetadataService metadata, IImageConvert
             }
             else
             {
-                staged = OutputCommitter.CreateStagingPath(directory, extension);
-                if (convert)
+                if (staged is null)
                 {
-                    await imageConverter.ConvertToHeicAsync(photo, staged, request.HeicQuality, cancellationToken);
-                }
-                else
-                {
+                    staged = OutputCommitter.CreateStagingPath(directory, extension);
                     File.Copy(photo, staged);
                 }
 
@@ -270,7 +288,8 @@ public sealed class MotionPhotoStripper(IMetadataService metadata, IImageConvert
             return ItemOutcome.Succeeded(source, final) with
             {
                 BytesSaved = Math.Max(0, before - new FileInfo(final).Length),
-                CleanupError = companionError
+                CleanupError = companionError,
+                Notes = keptOriginalFormat ? [new OutcomeNote(OutcomeNoteKind.KeptOriginalFormat)] : []
             };
         }
         catch

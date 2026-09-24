@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "githubMirrors": [
+    "https://gh-proxy.com/",
+    "https://ghproxy.net/"
+  ],
+  "tools": [
+    {
+      "id": "exiftool",
+      "displayName": "ExifTool",
+      "executable": "exiftool",
+      "installDirectory": "exiftool",
+      "versionArguments": [ "-ver" ],
+      "homepage": "https://exiftool.org/",
+      "packages": [
+        {
+          "id": "exiftool-npmmirror",
+          "nameKey": "ToolSourceNpmMirror",
+          "rid": "win-x64",
+          "version": "13.59",
+          "url": "https://registry.npmmirror.com/exiftool-vendored.exe/-/exiftool-vendored.exe-13.59.2.tgz",
+          "sha256": "4c135bfb89f5bf1f1bb7d7cead45dced3d89ffae17dccaf425cad69f62d11029",
+          "integrity": "sha512-U0l0CApIGO+AjpFYCiNCApQsMdlf6sqCyEl4wlKKqvwVAEVcvMRw91k7zj32OPFZE+/+XlLFsc6876MpOqBLiw==",
+          "format": "tgz",
+          "root": "package/bin",
+          "entry": "exiftool.exe"
+        },
+        {
+          "id": "exiftool-npmjs",
+          "nameKey": "ToolSourceNpmRegistry",
+          "rid": "win-x64",
+          "version": "13.59",
+          "url": "https://registry.npmjs.org/exiftool-vendored.exe/-/exiftool-vendored.exe-13.59.2.tgz",
+          "sha256": "4c135bfb89f5bf1f1bb7d7cead45dced3d89ffae17dccaf425cad69f62d11029",
+          "integrity": "sha512-U0l0CApIGO+AjpFYCiNCApQsMdlf6sqCyEl4wlKKqvwVAEVcvMRw91k7zj32OPFZE+/+XlLFsc6876MpOqBLiw==",
+          "format": "tgz",
+          "root": "package/bin",
+          "entry": "exiftool.exe"
+        },
+        {
+          "id": "exiftool-sourceforge",
+          "nameKey": "ToolSourceSourceForge",
+          "rid": "win-x64",
+          "version": "13.59",
+          "url": "https://sourceforge.net/projects/exiftool/files/exiftool-13.59_64.zip/download",
+          "sha256": "44b512b25af500724ba579d0a53c8fc5851628b692dd5e5d94ae4a15c2cba9ec",
+          "format": "zip",
+          "root": "exiftool-13.59_64",
+          "entry": "exiftool(-k).exe"
+        }
+      ]
+    },
+    {
+      "id": "ffmpeg",
+      "displayName": "FFmpeg",
+      "executable": "ffmpeg",
+      "installDirectory": "ffmpeg",
+      "versionArguments": [ "-hide_banner", "-version" ],
+      "homepage": "https://ffmpeg.org/download.html",
+      "packages": [
+        {
+          "id": "ffmpeg-npmmirror",
+          "nameKey": "ToolSourceNpmMirror",
+          "rid": "win-x64",
+          "version": "7.0",
+          "url": "https://registry.npmmirror.com/@ffmpeg-binary/win32-x64/-/win32-x64-7.0.0.tgz",
+          "sha256": "b66c126bd8ca2ec53565e056b754235e7f8681434974288efc88434d5cdabfe3",
+          "integrity": "sha512-x/7xzY9Uvb2XQnqA/Q2nhfIp4h0CDYNkeB1TMwzqVxUI4Z2VPSIdaN8rUYuWL0h9FilOEgVkBdI8FKy4Tn8/iA==",
+          "format": "tgz",
+          "root": "package",
+          "entry": "ffmpeg.exe",
+          "include": [ "ffmpeg.exe", "LICENSE" ]
+        },
+        {
+          "id": "ffmpeg-btbn",
+          "nameKey": "ToolSourceGitHub",
+          "rid": "win-x64",
+          "version": "8.1.2",
+          "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-08-31-13-27/ffmpeg-n8.1.2-50-g1a748fe2cd-win64-gpl-8.1.zip",
+          "sha256": "273abb45f3f9f76c303e35ff39f5bb6c23c163ae65f6244a32b7d4a7f6cf0616",
+          "format": "zip",
+          "root": "ffmpeg-n8.1.2-50-g1a748fe2cd-win64-gpl-8.1/bin",
+          "entry": "ffmpeg.exe",
+          "include": [ "ffmpeg.exe", "ffprobe.exe" ],
+          "githubRelease": true
+        }
+      ]
+    },
+    {
+      "id": "heif-enc",
+      "displayName": "heif-enc",
+      "executable": "heif-enc",
+      "installDirectory": "heif-enc",
+      "versionArguments": [ "-v" ],
+      "homepage": "https://github.com/pphh77/libheif-Windowsbinary/releases",
+      "packages": [
+        {
+          "id": "heif-enc-github",
+          "nameKey": "ToolSourceGitHub",
+          "rid": "win-x64",
+          "version": "1.23.4",
+          "url": "https://github.com/pphh77/libheif-Windowsbinary/releases/download/v1.23.4/libheif-1.23.4-win64.7z",
+          "sha256": "32ce2b844bfbcb34cb0c27e215a3af1d43c4991f2542c184082c7efa97592ad1",
+          "format": "7z",
+          "root": "libheif-1.23.4-win64",
+          "entry": "heif-enc.exe",
+          "githubRelease": true
+        }
+      ]
+    }
+  ]
+}

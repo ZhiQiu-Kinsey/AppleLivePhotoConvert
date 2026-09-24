@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using LivePhotoConvert.Core.External.Tools;
 
 namespace LivePhotoConvert.Core.External;
 
@@ -14,9 +15,10 @@ public static class ToolLocator
     private static readonly ConcurrentDictionary<(string Path, long Length, DateTime LastWrite), bool> ProbeCache = new();
 
     /// <summary>
-    /// 按「指定路径 → 程序目录及其 tools/子目录 → 本地应用数据目录 → PATH」顺序查找。
+    /// 按「指定路径 → 程序目录及其 tools/、tools/&lt;工具&gt;/ 子目录 → 本地应用数据目录 → PATH」顺序查找。
     /// 指定了路径时只检查该路径。
     /// </summary>
+    /// <param name="subDirectories">额外的子目录，同时在 tools/ 下按安装布局查找（例如 heif-dec 随 heif-enc 装在 tools/heif-enc/）</param>
     public static string? Find(string fileName, string? explicitPath = null, params ReadOnlySpan<string> subDirectories)
     {
         if (!string.IsNullOrWhiteSpace(explicitPath))
@@ -28,18 +30,28 @@ public static class ToolLocator
             .Where(directory => !string.IsNullOrEmpty(directory))
             .Distinct(StringComparer.OrdinalIgnoreCase);
 
+        // ToolInstaller 把每个工具装在 tools/<不含扩展名的文件名>/ 下
+        var installDirectory = Path.GetFileNameWithoutExtension(fileName);
         var candidates = new List<string>();
         foreach (var directory in baseDirectories)
         {
             candidates.Add(Path.Combine(directory!, fileName));
             candidates.Add(Path.Combine(directory!, "tools", fileName));
+            candidates.Add(Path.Combine(directory!, "tools", installDirectory, fileName));
             foreach (var subDirectory in subDirectories)
             {
                 candidates.Add(Path.Combine(directory!, subDirectory, fileName));
+                candidates.Add(Path.Combine(directory!, "tools", subDirectory, fileName));
             }
         }
 
-        candidates.Add(Path.Combine(ToolDownloader.LocalAppDataToolDirectory, fileName));
+        candidates.Add(Path.Combine(ToolDirectories.LocalAppDataToolDirectory, fileName));
+        candidates.Add(Path.Combine(ToolDirectories.LocalAppDataToolDirectory, installDirectory, fileName));
+        foreach (var subDirectory in subDirectories)
+        {
+            candidates.Add(Path.Combine(ToolDirectories.LocalAppDataToolDirectory, subDirectory, fileName));
+        }
+
         var found = candidates.FirstOrDefault(IsValidTool) ?? FindOnPath(fileName);
         return found is null ? null : Path.GetFullPath(found);
     }

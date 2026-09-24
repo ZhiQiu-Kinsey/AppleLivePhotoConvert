@@ -40,6 +40,7 @@ public static class OutcomeTexts
         OutcomeNoteKind.HdrToneMapNotSupported => "OutcomeNoteHdrToneMapNotSupported",
         OutcomeNoteKind.HdrDecoderUnavailable => "OutcomeNoteHdrDecoderUnavailable",
         OutcomeNoteKind.HdrMetadataMissing => "OutcomeNoteHdrMetadataMissing",
+        OutcomeNoteKind.KeptOriginalFormat => "OutcomeNoteKeptOriginalFormat",
         _ => "OutcomeNoteHdrConversionFailed"
     };
 

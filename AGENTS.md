@@ -16,7 +16,7 @@
 | **实况互转 · 还原** | 安卓动态照片 → 苹果实况对（`.HEIC` + `.MOV`），JPEG 封面自动转码 HEIC，注入配对 UUID |
 | **实况互转 · 解包** | 安卓动态照片 → 封面图 + 独立 `.mp4`（无损切片） |
 | **空间瘦身** | 图库检查器中的「瘦身」动作：剥离内嵌/配对视频并可选转码 HEIC（默认质量 90），可就地替换或导出，附卷帘对比预览 |
-| **依赖引擎** | 检测 / 下载 ExifTool、FFmpeg、heif-enc（内置国内加速镜像） |
+| **依赖引擎** | 按内嵌清单下载 ExifTool、FFmpeg、heif-enc（锁定版本、SHA256 校验、原子安装，内置国内加速镜像），展示版本与能力（zscale / tonemap / libx265 / 10-bit） |
 | **任务中心** | 运行中任务的进度、暂停与取消；本次会话的历史报告（成败明细、重试失败项、导出 CSV） |
 | **偏好设置 / 关于** | 主题、语言、并发数、画廊缩略图内存预算与磁盘缓存；版本、贡献者、仓库、MIT 协议与引用开源项目 |
 
@@ -24,8 +24,8 @@
 
 - 运行时：.NET 10（`net10.0`），Native AOT 发布，`TrimMode=full`
 - UI：**Avalonia 12.1.2**（`Avalonia.Desktop` / `Themes.Fluent` / `Fonts.Inter`）+ CommunityToolkit.Mvvm 8.4.0 + FluentIcons.Avalonia 2.1.339.1
-- 核心引擎：`LivePhotoConvert.Core`，零 UI 依赖，除 `Magick.NET-Q8-x64` 14.16.0（图像解码/缩略图）外无第三方包
-- 外部工具：ExifTool（元数据/XMP）、FFmpeg（转码/流复制）、heif-enc（HEIC 编码）
+- 核心引擎：`LivePhotoConvert.Core`，零 UI 依赖，第三方包仅 `Magick.NET-Q8-x64` 14.16.0（图像解码/缩略图）与 `SharpCompress` 1.0.0（依赖包 7z 解压）
+- 外部工具：ExifTool（元数据/XMP）、FFmpeg（转码/流复制/播放解码）、heif-enc（HEIC 编码）与同包的 heif-dec（HDR 增益图解码）
 - 测试：xunit.v3（`LivePhotoConvert.Core.Tests` 引擎单元测试 + `LivePhotoConvert.Desktop.Tests` 桌面 VM/服务单元测试与 Avalonia Headless 界面冒烟 + `LivePhotoConvert.E2E` 黑盒端到端）
 - **已移除**：`LivePhotoConvert.Cli`、Spectre.Console、手写 `CliParser` 及旧命令行入口。不要再引用、恢复或为新功能增加 CLI 分支；可复用能力必须放入 Core，交互入口放入 Desktop。
 
@@ -42,7 +42,7 @@ src/LivePhotoConvert.Core/          # 核心引擎（纯托管、AOT 兼容、�
   Pairing/                          # MediaPair、MediaPairMatcher（按目录 + 主干配对）、PairValidator（纯函数）
   Pipeline/                         # BatchRunner、OutputCommitter 原子落盘、SourceDisposition、TempWorkspace、BatchReport
   Services/                         # MotionPhotoMerger / Splitter / Stripper 及其请求模型
-  External/                         # ProcessRunner、FFmpeg / heif-enc / Magick 转换器、ToolLocator、ToolDownloader
+  External/                         # ProcessRunner、FFmpeg / heif-enc / Magick 转换器、HeifDecoder、VideoStreamProbe、ToolLocator；Tools/ 依赖清单（tools.json）、ToolInstaller 校验安装、ToolRegistry 能力探测
   Io/                               # BinaryFile 流式拼接切片、UniquePath、FileHelper / FileTimestamp
   Platform/                         # RecycleBin、WindowsShellThumbnailSource 等平台相关实现
 src/LivePhotoConvert.Desktop/       # Avalonia 12 桌面端
@@ -194,7 +194,7 @@ global.json                         # 固定 SDK 10.0.400（避免误用 11 prev
   - 帧管线：`-f rawvideo -pix_fmt bgra` 直出，解码尺寸 = 显示尺寸 × RenderScaling（不超过源尺寸，偶数对齐；UniformToFill 的卡片按覆盖尺寸）；`-fps_mode passthrough` 保留源时序，按 `showinfo` 报告的 PTS 由窗口刷新节拍（`TopLevel.RequestAnimationFrame`）换帧，不用固定间隔计时器；不要使用 `-hwaccel auto`，参数逐项传入。
   - HDR（HLG / PQ）源经 zscale + tonemap（mobius）映射到 BT.709 再显示；FFmpeg 缺这两个滤镜时报告 `HdrToneMapUnavailable` 并提示前往依赖页，**不得静默降级为发灰画面**。
   - 帧缓存 `FrameStore` 按字节预算：整段放得下就全缓存循环，否则环形缓冲流式解码并无缝进入下一轮，不设帧数上限；显示用 `SurfacePair` 双缓冲，界面在 `SurfaceInvalidated` 中重新赋值 `Image.Source`，正在显示的位图不会被改写或释放。
-  - 单实例：画廊整窗一个悬浮播放器（指针停留约 250ms 后开始，离开、滚动、重排、卡片被回收或页面隐藏时立即停止），QuickLook 一个播放器并独占（打开前停止悬浮）；新播放先结束上一个 FFmpeg。退出程序与替换 FFmpeg 前经 `IPlaybackControl.StopAllAsync` 结束全部播放进程。
+  - 单实例：画廊整窗一个悬浮播放器（指针停留约 250ms 后开始，离开、滚动、重排、卡片被回收或页面隐藏时立即停止），QuickLook 一个播放器并独占（打开前停止悬浮）；新播放先结束上一个 FFmpeg。退出程序前经 `IPlaybackControl.StopAllAsync` 结束全部播放进程；依赖页替换 FFmpeg 前经 `IToolUsage.ReleaseIdleProcessesAsync`（接到同一个 `StopAllAsync`）等待播放进程退出。
 
 ### 4.6 本地化（两处必须同步，缺一不可）
 

@@ -35,6 +35,9 @@ public sealed record ItemOutcome(string Source, OutcomeKind Kind)
     /// <summary>处理过程中值得告知用户的情况（如 HDR 未能保留的原因），由界面本地化展示。</summary>
     public IReadOnlyList<OutcomeNote> Notes { get; init; } = [];
 
+    /// <summary>瘦身时转码的 HEIC 不比保留原格式更小，因而保留了原格式（仍剥离了视频）。</summary>
+    public bool KeptOriginalFormat => Notes.Any(note => note.Kind == OutcomeNoteKind.KeptOriginalFormat);
+
     public static ItemOutcome Succeeded(string source, params IReadOnlyList<string> outputs) =>
         new(source, OutcomeKind.Succeeded) { Outputs = outputs };
 
@@ -70,7 +73,10 @@ public enum OutcomeNoteKind
     HdrMetadataMissing,
 
     /// <summary>增益图解码、换算、组装或校验失败，已降级为 SDR 输出。</summary>
-    HdrConversionFailed
+    HdrConversionFailed,
+
+    /// <summary>瘦身时转码的 HEIC 不比原格式小，保留了原格式，只剥离视频。</summary>
+    KeptOriginalFormat
 }
 
 /// <summary>

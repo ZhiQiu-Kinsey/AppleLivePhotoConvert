@@ -5,59 +5,159 @@
              x:Class="LivePhotoConvert.Desktop.Features.Tools.ToolsView"
              x:CompileBindings="True"
              x:DataType="vm:ToolsViewModel">
+  <UserControl.Resources>
+    <DataTemplate x:Key="CapabilityTemplate" x:DataType="vm:CapabilityBadge">
+      <Border Classes="capability-badge" Classes.supported="{Binding IsSupported}">
+        <StackPanel Orientation="Horizontal" Spacing="4">
+          <ic:SymbolIcon Symbol="CheckmarkCircle" FontSize="11" IsVisible="{Binding IsSupported}" />
+          <ic:SymbolIcon Symbol="DismissCircle" FontSize="11" IsVisible="{Binding !IsSupported}" />
+          <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+        </StackPanel>
+      </Border>
+    </DataTemplate>
+
+    <DataTemplate x:Key="ToolCardTemplate" x:DataType="vm:ToolCardViewModel">
+      <Border Classes="engine-card" Margin="6">
+        <StackPanel Spacing="10">
+          <Grid ColumnDefinitions="Auto,*,Auto">
+            <Border Classes="status-dot large" Classes.ok="{Binding IsHealthy}" Classes.warn="{Binding HasWarning}" Classes.bad="{Binding IsMissing}" Margin="0,0,8,0" />
+            <TextBlock Grid.Column="1" Text="{Binding DisplayName}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+            <Border Grid.Column="2" Classes="status-pill" Classes.success="{Binding IsHealthy}" Classes.warning="{Binding HasWarning}" Classes.danger="{Binding IsMissing}" Classes.muted="{Binding IsProbing}"
+                    ToolTip.Tip="{Binding VersionDetail}">
+              <TextBlock Text="{Binding StatusText}" FontSize="11" FontWeight="Bold" FontFamily="Consolas" TextTrimming="CharacterEllipsis" />
+            </Border>
+          </Grid>
+
+          <TextBlock Text="{Binding Description}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" TextWrapping="Wrap" />
+
+          <ItemsControl ItemsSource="{Binding Capabilities}" ItemTemplate="{StaticResource CapabilityTemplate}" IsVisible="{Binding HasCapabilities}" Margin="0,0,0,-6">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <WrapPanel />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+          </ItemsControl>
+
+          <Grid Classes="tool-hint warning" ColumnDefinitions="Auto,*" IsVisible="{Binding IsHdrUnavailable}">
+            <ic:SymbolIcon Symbol="Warning" FontSize="13" VerticalAlignment="Top" />
+            <TextBlock Grid.Column="1" Text="{DynamicResource ToolHdrUnavailable}" />
+          </Grid>
+
+          <Grid Classes="tool-hint warning" ColumnDefinitions="Auto,*" IsVisible="{Binding IsExplicitPathInvalid}">
+            <ic:SymbolIcon Symbol="Warning" FontSize="13" VerticalAlignment="Top" />
+            <TextBlock Grid.Column="1" Text="{DynamicResource ToolExplicitPathInvalid}" />
+          </Grid>
+
+          <Grid Classes="tool-hint accent" ColumnDefinitions="Auto,*" IsVisible="{Binding IsUpdateRecommended}">
+            <ic:SymbolIcon Symbol="ArrowDownload" FontSize="13" VerticalAlignment="Top" />
+            <TextBlock Grid.Column="1" Text="{Binding UpdateText}" />
+          </Grid>
+
+          <Border Classes="engine-path">
+            <TextBlock Text="{Binding PathText}" FontSize="11" FontFamily="Consolas" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding PathText}" Foreground="{DynamicResource TextSecondaryBrush}" />
+          </Border>
+
+          <StackPanel Spacing="6" IsVisible="{Binding IsInstalling}">
+            <TextBlock Text="{Binding ProgressText}" FontSize="11" Foreground="{DynamicResource AccentTextBrush}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding ProgressText}" />
+            <ProgressBar Minimum="0" Maximum="100" Value="{Binding ProgressValue}" IsIndeterminate="{Binding IsProgressIndeterminate}" Height="4" MinHeight="4" />
+          </StackPanel>
+
+          <Button Classes="engine-install-btn" HorizontalAlignment="Stretch" Command="{Binding InstallCommand}" IsEnabled="{Binding CanStartInstall}" IsVisible="{Binding ShowInstallButton}">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <ic:SymbolIcon Symbol="ArrowDownload" FontSize="13" Foreground="{DynamicResource OnAccentBrush}" />
+              <TextBlock Text="{Binding InstallButtonText}" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Button Classes="engine-install-btn" HorizontalAlignment="Stretch" IsEnabled="False" IsVisible="{Binding ShowPlatformUnsupported}">
+            <TextBlock Text="{DynamicResource ToolPlatformUnsupportedBtn}" TextWrapping="Wrap" TextAlignment="Center" />
+          </Button>
+          <Button Classes="engine-secondary-btn" HorizontalAlignment="Stretch" Command="{Binding CancelCommand}" IsVisible="{Binding IsInstalling}">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <ic:SymbolIcon Symbol="Dismiss" FontSize="13" />
+              <TextBlock Text="{DynamicResource CancelBtn}" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Button Classes="engine-secondary-btn" HorizontalAlignment="Stretch" Command="{Binding PickPathCommand}">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <ic:SymbolIcon Symbol="FolderOpen" FontSize="13" />
+              <TextBlock Text="{DynamicResource CustomPathBtn}" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
+      </Border>
+    </DataTemplate>
+  </UserControl.Resources>
+
   <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
     <StackPanel Margin="24" Spacing="16">
       <Grid ColumnDefinitions="*,Auto">
         <StackPanel Spacing="4">
           <TextBlock Text="{DynamicResource ToolsTitle}" FontWeight="Bold" FontSize="18" Foreground="{DynamicResource TextPrimaryBrush}" />
-          <TextBlock Text="{DynamicResource ToolsDesc}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" />
+          <TextBlock Text="{DynamicResource ToolsDesc}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" TextWrapping="Wrap" />
         </StackPanel>
-        <Button Grid.Column="1" Classes="primary-btn" Command="{Binding RescanToolsCommand}" Padding="14,8">
+        <Button Grid.Column="1" Classes="primary-btn" Command="{Binding RescanToolsCommand}" Padding="14,8" VerticalAlignment="Top">
           <StackPanel Orientation="Horizontal" Spacing="6"><ic:SymbolIcon Symbol="ArrowSync" FontSize="13" Foreground="{DynamicResource OnAccentBrush}" /><TextBlock Text="{DynamicResource RescanToolsBtn}" FontSize="11" FontWeight="Bold" /></StackPanel>
         </Button>
       </Grid>
 
-      <Border Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="12,9">
-        <Grid ColumnDefinitions="Auto,*,Auto">
-          <ic:SymbolIcon Symbol="ShieldCheckmark" Grid.Column="0" FontSize="16" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
-          <StackPanel Grid.Column="1" Margin="10,0,0,0" Spacing="2"><TextBlock Text="{DynamicResource ToolsTitle}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentTextBrush}" /><TextBlock Text="{DynamicResource ToolsDesc}" FontSize="10" Foreground="{DynamicResource AccentTextBrush}" Opacity="0.8" /></StackPanel>
-          <TextBlock Grid.Column="2" Text="{Binding InstallProgressText}" FontSize="10" FontFamily="Consolas" Foreground="{DynamicResource AccentTextBrush}" VerticalAlignment="Center" IsVisible="{Binding IsInstallingAny}" />
+      <Border Classes="tools-note">
+        <Grid ColumnDefinitions="Auto,*">
+          <ic:SymbolIcon Symbol="ShieldCheckmark" FontSize="16" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Top" />
+          <StackPanel Grid.Column="1" Margin="10,0,0,0" Spacing="3">
+            <TextBlock Text="{DynamicResource ToolsIntegrityNote}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="4">
+              <TextBlock Text="{DynamicResource ToolsInstallRootLabel}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" />
+              <TextBlock Grid.Column="1" Text="{Binding InstallRoot}" FontSize="11" FontFamily="Consolas" Foreground="{DynamicResource TextTertiaryBrush}" TextTrimming="LeadingCharacterEllipsis" ToolTip.Tip="{Binding InstallRoot}" />
+            </Grid>
+          </StackPanel>
         </Grid>
       </Border>
 
-      <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
-        <Border Grid.Column="0" Classes="engine-card"><StackPanel Spacing="10">
-          <Grid ColumnDefinitions="*,Auto"><TextBlock Text="ExifTool" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" /><Border Grid.Column="1" Classes="status-pill success" IsVisible="{Binding IsExifToolReady}"><TextBlock Text="{Binding ExifToolVersion}" FontSize="10" FontWeight="Bold" /></Border><Border Grid.Column="1" Classes="status-pill danger" IsVisible="{Binding !IsExifToolReady}"><TextBlock Text="{DynamicResource ToolNotInstalled}" FontSize="10" FontWeight="Bold" /></Border></Grid>
-          <TextBlock Text="{DynamicResource ExifToolDesc}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" TextWrapping="Wrap" />
-          <Border Classes="engine-path"><TextBlock Text="{Binding ExifToolPath}" FontSize="10" FontFamily="Consolas" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding ExifToolPath}" /></Border>
-          <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding !IsExifToolReady}"><Button Grid.Column="0" Classes="engine-install-btn" Command="{Binding InstallExifToolCommand}" IsEnabled="{Binding !IsInstallingAny}" IsVisible="{Binding !IsInstallingExifTool}"><TextBlock Text="{DynamicResource InstallToolBtn}" /></Button><Button Grid.Column="0" Classes="engine-install-btn" IsEnabled="False" Opacity="0.6" IsVisible="{Binding IsInstallingExifTool}"><TextBlock Text="{DynamicResource InstallingStatus}" /></Button><Button Grid.Column="1" Classes="toolbar-btn" Command="{Binding CancelInstallCommand}" Margin="8,0,0,0" IsVisible="{Binding IsInstallingExifTool}"><TextBlock Text="{DynamicResource CancelBtn}" /></Button></Grid>
-          <Button Classes="engine-path-btn" Command="{Binding PickExifToolPathCommand}"><TextBlock Text="{DynamicResource CustomPathBtn}" /></Button>
-        </StackPanel></Border>
+      <Border Classes="tools-note warning" IsVisible="{Binding IsInstallBlocked}">
+        <Grid ColumnDefinitions="Auto,*">
+          <ic:SymbolIcon Symbol="Warning" FontSize="16" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center" />
+          <TextBlock Grid.Column="1" Margin="10,0,0,0" Text="{DynamicResource ToolInstallBlockedByTask}" FontSize="11" TextWrapping="Wrap" VerticalAlignment="Center" />
+        </Grid>
+      </Border>
 
-        <Border Grid.Column="1" Classes="engine-card"><StackPanel Spacing="10">
-          <Grid ColumnDefinitions="*,Auto"><TextBlock Text="FFmpeg" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" /><Border Grid.Column="1" Classes="status-pill success" IsVisible="{Binding IsFfmpegReady}"><TextBlock Text="{Binding FfmpegVersion}" FontSize="10" FontWeight="Bold" TextTrimming="CharacterEllipsis" MaxWidth="125" /></Border><Border Grid.Column="1" Classes="status-pill danger" IsVisible="{Binding !IsFfmpegReady}"><TextBlock Text="{DynamicResource ToolNotInstalled}" FontSize="10" FontWeight="Bold" /></Border></Grid>
-          <TextBlock Text="{DynamicResource FfmpegDesc}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" TextWrapping="Wrap" />
-          <Border Classes="engine-path"><TextBlock Text="{Binding FfmpegPath}" FontSize="10" FontFamily="Consolas" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding FfmpegPath}" /></Border>
-          <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding !IsFfmpegReady}"><Button Grid.Column="0" Classes="engine-install-btn" Command="{Binding InstallFfmpegCommand}" IsEnabled="{Binding !IsInstallingAny}" IsVisible="{Binding !IsInstallingFfmpeg}"><TextBlock Text="{DynamicResource InstallToolBtn}" /></Button><Button Grid.Column="0" Classes="engine-install-btn" IsEnabled="False" Opacity="0.6" IsVisible="{Binding IsInstallingFfmpeg}"><TextBlock Text="{DynamicResource InstallingStatus}" /></Button><Button Grid.Column="1" Classes="toolbar-btn" Command="{Binding CancelInstallCommand}" Margin="8,0,0,0" IsVisible="{Binding IsInstallingFfmpeg}"><TextBlock Text="{DynamicResource CancelBtn}" /></Button></Grid>
-          <Button Classes="engine-path-btn" Command="{Binding PickFfmpegPathCommand}"><TextBlock Text="{DynamicResource CustomPathBtn}" /></Button>
-        </StackPanel></Border>
+      <ItemsControl ItemsSource="{Binding Cards}" ItemTemplate="{StaticResource ToolCardTemplate}" Margin="-6">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <UniformGrid Columns="3" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+      </ItemsControl>
 
-        <Border Grid.Column="2" Classes="engine-card"><StackPanel Spacing="10">
-          <Grid ColumnDefinitions="*,Auto"><TextBlock Text="heif-enc" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" /><Border Grid.Column="1" Classes="status-pill success" IsVisible="{Binding IsHeifEncReady}"><TextBlock Text="{Binding HeifEncVersion}" FontSize="10" FontWeight="Bold" /></Border><Border Grid.Column="1" Classes="status-pill danger" IsVisible="{Binding !IsHeifEncReady}"><TextBlock Text="{DynamicResource ToolNotInstalled}" FontSize="10" FontWeight="Bold" /></Border></Grid>
-          <TextBlock Text="{DynamicResource HeifEncDesc}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" TextWrapping="Wrap" />
-          <Border Classes="engine-path"><TextBlock Text="{Binding HeifEncPath}" FontSize="10" FontFamily="Consolas" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding HeifEncPath}" /></Border>
-          <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding !IsHeifEncReady}"><Button Grid.Column="0" Classes="engine-install-btn" Command="{Binding InstallHeifEncCommand}" IsEnabled="{Binding !IsInstallingAny}" IsVisible="{Binding !IsInstallingHeifEnc}"><TextBlock Text="{DynamicResource InstallToolBtn}" /></Button><Button Grid.Column="0" Classes="engine-install-btn" IsEnabled="False" Opacity="0.6" IsVisible="{Binding IsInstallingHeifEnc}"><TextBlock Text="{DynamicResource InstallingStatus}" /></Button><Button Grid.Column="1" Classes="toolbar-btn" Command="{Binding CancelInstallCommand}" Margin="8,0,0,0" IsVisible="{Binding IsInstallingHeifEnc}"><TextBlock Text="{DynamicResource CancelBtn}" /></Button></Grid>
-          <Button Classes="engine-path-btn" Command="{Binding PickHeifEncPathCommand}"><TextBlock Text="{DynamicResource CustomPathBtn}" /></Button>
-        </StackPanel></Border>
-      </Grid>
+      <Border Classes="tools-note" Classes.danger="{Binding IsActionMessageError}" IsVisible="{Binding HasActionMessage}">
+        <TextBlock Text="{Binding ActionMessageText}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+      </Border>
 
-      <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="14" Padding="16"><StackPanel Spacing="12">
-        <StackPanel Spacing="2"><TextBlock Text="{DynamicResource MirrorTitle}" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" /><TextBlock Text="{DynamicResource MirrorDesc}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" /></StackPanel>
-        <Grid ColumnDefinitions="240,*,Auto" ColumnSpacing="10"><ComboBox Grid.Column="0" Classes="engine-select" ItemsSource="{Binding MirrorPresets}" SelectedItem="{Binding SelectedMirrorPreset, Mode=TwoWay}"><ComboBox.ItemTemplate><DataTemplate x:DataType="vm:MirrorPreset"><TextBlock Text="{Binding Name}" FontSize="12" /></DataTemplate></ComboBox.ItemTemplate></ComboBox><TextBox Grid.Column="1" Text="{Binding CustomMirrorUrl, Mode=TwoWay}" FontSize="11" FontFamily="Consolas" Padding="10,8" /><Button Grid.Column="2" Classes="toolbar-btn" Command="{Binding TestMirrorSpeedCommand}" Padding="12,0"><TextBlock Text="{DynamicResource TestPingBtn}" FontSize="11" FontWeight="Bold" /></Button></Grid>
-        <StackPanel Orientation="Horizontal" Spacing="4"><TextBlock Text="{DynamicResource PingLatencyLabel}" FontSize="11" Foreground="{DynamicResource SuccessBrush}" FontWeight="Bold" /><TextBlock Text="{Binding PingLatencyText}" FontSize="11" Foreground="{DynamicResource SuccessBrush}" FontFamily="Consolas" /></StackPanel>
-      </StackPanel></Border>
-
-      <Border Background="{DynamicResource CanvasBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="10" Padding="12,9" IsVisible="{Binding HasActionMessage}"><TextBlock Text="{Binding ActionMessageText}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" /></Border>
+      <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="14" Padding="16">
+        <StackPanel Spacing="12">
+          <StackPanel Spacing="2">
+            <TextBlock Text="{DynamicResource MirrorTitle}" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
+            <TextBlock Text="{DynamicResource MirrorDesc}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" TextWrapping="Wrap" />
+          </StackPanel>
+          <Grid ColumnDefinitions="240,*,Auto" ColumnSpacing="10">
+            <ComboBox Grid.Column="0" Classes="engine-select" HorizontalAlignment="Stretch" ItemsSource="{Binding MirrorPresets}" SelectedItem="{Binding SelectedMirrorPreset, Mode=TwoWay}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:MirrorPreset"><TextBlock Text="{Binding Name}" FontSize="12" /></DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <TextBox Grid.Column="1" Text="{Binding CustomMirrorUrl, Mode=TwoWay}" FontSize="11" FontFamily="Consolas" Padding="10,8" />
+            <Button Grid.Column="2" Classes="engine-secondary-btn" Command="{Binding TestMirrorSpeedCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <ic:SymbolIcon Symbol="TopSpeed" FontSize="13" />
+                <TextBlock Text="{DynamicResource TestPingBtn}" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+          </Grid>
+          <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding HasPingResult}">
+            <TextBlock Classes="ping-result" Classes.ok="{Binding IsPingHealthy}" Text="{DynamicResource PingLatencyLabel}" FontWeight="Bold" />
+            <TextBlock Classes="ping-result" Classes.ok="{Binding IsPingHealthy}" Text="{Binding PingLatencyText}" FontFamily="Consolas" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
     </StackPanel>
   </ScrollViewer>
 </UserControl>
