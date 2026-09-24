@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using LivePhotoConvert.Core.Io;
 
 namespace LivePhotoConvert.Core.External.Tools;
@@ -383,7 +382,6 @@ public sealed class ToolInstaller : IToolInstaller
             ToolInstallStage.Extracting => ToolFailureKind.InvalidArchive,
             ToolInstallStage.Probing => ToolFailureKind.ProbeFailed,
             ToolInstallStage.Committing => ToolFailureKind.CommitFailed,
-            _ when exception is Win32Exception => ToolFailureKind.ProbeFailed,
             _ => ToolFailureKind.Network
         }
     };

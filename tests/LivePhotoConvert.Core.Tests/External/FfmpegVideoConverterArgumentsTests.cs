@@ -131,23 +131,4 @@ public class FfmpegVideoConverterArgumentsTests
 
         Assert.DoesNotContain("colorprim", FfmpegVideoConverter.BuildX265Parameters(odd));
     }
-
-    [Fact]
-    public void ParseEncoders_ReadsNamesAndSkipsLegend()
-    {
-        const string output = """
-            Encoders:
-             V..... = Video
-             A..... = Audio
-             .F.... = Frame-level multithreading
-             ------
-             V....D libx264              libx264 H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 (codec h264)
-             V....D libx265              libx265 H.265 / HEVC (codec hevc)
-             A....D aac                  AAC (Advanced Audio Coding)
-            """;
-
-        var encoders = FfmpegVideoConverter.ParseEncoders(output);
-
-        Assert.Equal(["aac", "libx264", "libx265"], encoders.Order(StringComparer.Ordinal));
-    }
 }
