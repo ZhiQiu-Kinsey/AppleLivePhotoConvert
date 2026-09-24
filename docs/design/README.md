@@ -1,58 +1,19 @@
-# LivePhotoConvert 重构设计总览
+# 设计文档索引
 
-本目录是 v4 重构的设计与开发文档。每个阶段一份文档，实现者（人或 AI 子代理）必须先读 `AGENTS.md`，再读本文件与对应阶段文档，再动手。
+本目录记录 4.0 版本各阶段的设计要点、已知问题清单与工作包划分，是理解现有实现取舍的参考资料。日常开发的约束以仓库根目录的 [AGENTS.md](../../AGENTS.md) 为准；两者不一致时以 AGENTS.md 和代码为准。
 
-## 1. 目标
+| 阶段 | 文档 | 内容 | 状态 |
+| :--- | :--- | :--- | :--- |
+| 0 | —（见 [CHANGELOG 4.0.0](../../CHANGELOG.md)） | Core 按 Media / Metadata / Pairing / Pipeline / Services 重写：暂存后原子落盘、源文件保护、托管 XMP 解析、ExifTool 会话池、配对校验纯函数化 | 已完成 |
+| 1 | [phase1-desktop-shell.md](phase1-desktop-shell.md) | 桌面基础设施与外壳：依赖注入、本地化单一数据源、弹窗服务、设置存储、任务中心、图库 + 检查器工作台 | 已完成 |
+| 2 | [phase2-gallery.md](phase2-gallery.md) | 画廊：统一媒体扫描、等高排版引擎、缩略图分档与磁盘缓存、字节预算与钉住、DPI 感知、sRGB 与方向 | 已完成 |
+| 3 | [phase3-playback-hdr.md](phase3-playback-hdr.md) | 实况播放：统一播放器（subfile 直读、rawvideo BGRA、按 PTS 换帧、帧字节预算）、HDR 色调映射预览、HDR 转码保真 | 已完成 |
+| 3 | [phase3-gainmap-spike.md](phase3-gainmap-spike.md) | 调研：iPhone HEIC 增益图换算为 Ultra HDR（ISO 21496-1 / hdrgm）的公式、映射与写出顺序 | 已完成（已实现为合成时的「保留 HDR」） |
+| 4 | [phase4-strip-tools.md](phase4-strip-tools.md) | 瘦身对比（真实编码产物、1:1 放大镜、抽样预估）与依赖引擎（锁定清单、校验安装、能力探测） | 已完成 |
+| 5 | [phase5-polish.md](phase5-polish.md) | 体验收尾：快捷键、拖放、无障碍对比度、任务报告口径、文档与截图、4.0.0 版本 | 已完成 |
 
-- **数据安全第一**：任何路径都不能丢失、截断或覆盖用户原片。
-- **画质不降级**：画廊与预览按实际显示像素 × 屏幕缩放解码；HDR 内容保真显示与转换。
-- **结构清晰**：Core 纯引擎、Desktop 只做交互；ViewModel 小而专一；无全局单例；本地化单一数据源。
-- **可验证**：每个阶段都有单元测试、真实工具集成测试与 Avalonia Headless 界面冒烟测试；CI 在 Windows 上构建、测试并做 Native AOT 发布检查。
+## 阅读建议
 
-## 2. 阶段路线（每阶段一个 PR，分支逐级叠加；互不依赖的工作包在独立工作树并行开发，完成后合入对应阶段分支）
-
-| 阶段 | 分支 | 内容 | 状态 |
-|---|---|---|---|
-| 0 | `claude/exciting-knuth-n0b189` | Core 重构与数据安全（Media / Metadata / Pairing / Pipeline / Services） | 已完成，PR 待合并 |
-| 1 | `…-phase1` | 桌面基础设施与外壳：DI、本地化单一数据源、弹窗服务、设置、任务中心、图库工作台（方案 A） | 已完成，PR 待合并 |
-| 2 | `…-phase2` | 画廊：统一媒体扫描、等高排版引擎、缩略图分档与字节预算、DPI 感知、sRGB 与方向 | 进行中（WP2.1、WP2.2 并行） |
-| 3 | `…-phase3` | 播放：统一 iOS/安卓播放器（subfile、rawvideo BGRA、PTS、帧预算/环形缓冲）、HDR 色调映射、HDR 转码保真 | 进行中（WP3.1 Core 转码并行） |
-| 4 | `…-phase4` | 瘦身对比（真实编码 + 1:1 放大镜）、依赖清单/校验/原子安装/能力探测 | 进行中（WP4.1 Core 并行） |
-| 5 | `…-phase5` | 体验收尾：快捷键、拖拽、无障碍对比度、剩余文案、文档与截图、4.0.0 版本 | 待开始 |
-
-## 3. 目标架构
-
-```
-LivePhotoConvert.Core            纯引擎，无 UI 依赖（阶段 0 已完成）
-  Media / Metadata / Pairing / Pipeline / Services / External / Io / Platform
-
-LivePhotoConvert.Desktop
-  App.axaml(.cs)                 组合根：构建 ServiceProvider，初始化主题/语言，创建主窗口
-  Program.cs                     全局异常钩子
-  Infrastructure/                与具体页面无关的桌面服务
-    Localizer                    ILocalizer：两份 XAML 字符串字典为唯一数据源
-    SettingsStore                原子写入、防抖保存、版本迁移
-    DialogService                IDialogService：await 弹窗结果；Esc 关闭
-    FilePicker / ShellLauncher   系统选择器与打开目录/链接，统一容错
-    AppLifetime                  关窗确认、取消任务、结束子进程、清理临时目录
-  Features/
-    Shell/                       主窗口、导航、弹窗宿主
-    Library/                     图库工作台：画廊 + 右侧检查器（动作与参数）
-    Tasks/                       任务中心：运行中任务 + 历史报告
-    Tools/                       依赖引擎页
-    Settings/                    偏好设置与关于
-    Dialogs/                     各类弹窗
-  Controls/ Converters/ Assets/  通用控件、转换器、样式与字符串资源
-```
-
-## 4. 实现者守则（所有阶段通用）
-
-1. **只改工作包列出的范围**。发现范围外的问题记录在交付说明里，不要顺手修改。
-2. **AOT**：禁止反射；JSON 用 Source Generator；新依赖必须 AOT 兼容；`dotnet publish -r linux-x64 -c Release` 必须 0 警告。
-3. **绑定**：所有视图 `x:CompileBindings="True"` + `x:DataType`；界面文案用 `DynamicResource`；零 Emoji，图标用 FluentIcons。
-4. **本地化**：新增文案只加在 `Assets/Strings.zh-CN.axaml` 与 `Assets/Strings.en-US.axaml` 两处（阶段 1 起不再有 C# 字典），键集合必须一致，测试会校验。
-5. **注释**：只写"为什么"，中文，简洁；不写历史沿革、需求编号或口语化描述。
-6. **现代 C#**：主构造函数、集合表达式、`Lock`、`field` 关键字、模式匹配；`<Nullable>enable</Nullable>` 零警告。
-7. **验证**：交付前必须 `dotnet build LivePhotoConvert.slnx` 0 警告 0 错误、`dotnet test LivePhotoConvert.slnx` 全绿（环境：`export PATH=$HOME/.dotnet:$PATH`）。
-8. **不要提交 git**：由主控审查后统一提交。
-9. **交付说明**：列出改动文件、设计取舍、验证结果、遗留问题。
+- 修改某个子系统前，先读对应阶段文档的「已知问题」与「设计要点」，了解当时排除过哪些方案。
+- 文档中的行号、类名草案与工作包编号反映的是设计当时的状态，实现可能已调整命名；以代码为准。
+- 桌面端早期的原型、PRD 与审计报告（原 `docs/desktop-design/`）描述的是 3.x 的界面与架构，已被本目录取代并从仓库移除，需要时可在 git 历史中查看。
