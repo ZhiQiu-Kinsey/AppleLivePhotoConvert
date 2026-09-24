@@ -5,6 +5,10 @@ on:
     branches: [ main ]
   pull_request:
 
+# 构建与测试只需读取代码；上传产物不依赖 GITHUB_TOKEN 的写权限
+permissions:
+  contents: read
+
 jobs:
   test-and-build:
     runs-on: windows-latest
