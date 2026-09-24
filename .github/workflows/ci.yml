@@ -66,7 +66,8 @@ jobs:
       # Microsoft.DotNet.ILCompiler / ILLink.Tasks（版本随 SDK 补丁号变化）和按宿主 RID 生成的
       # net10.0/<rid> 段（Linux 与 Windows 不同），锁定还原会随 runner 镜像升级而失败。
       - name: 缓存 NuGet 包
-        uses: actions/cache@v6
+        id: nuget-cache
+        uses: actions/cache/restore@v6
         with:
           path: ~/.nuget/packages
           key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props', 'global.json') }}
@@ -87,7 +88,7 @@ jobs:
 
       - name: 缓存 libultrahdr
         id: uhdr-cache
-        uses: actions/cache@v6
+        uses: actions/cache/restore@v6
         with:
           path: ~/.cache/libultrahdr
           # 编译产物动态链接系统 libjpeg，按 runner 镜像区分
@@ -111,6 +112,14 @@ jobs:
           cmake --build "$src/build" --target ultrahdr_app
           install -D -m 755 "$src/build/ultrahdr_app" "$HOME/.cache/libultrahdr/ultrahdr_app"
 
+      - name: 保存 libultrahdr 缓存
+        # 发布流程会检出传入的 tag，只还原不写回，缓存只由普通 CI 运行生成
+        if: ${{ inputs.ref == '' && steps.uhdr-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.cache/libultrahdr
+          key: libultrahdr-${{ steps.tools.outputs.image }}-${{ env.LIBULTRAHDR_COMMIT }}-xmp
+
       # 先取完整输出再筛选：runner 的 bash 带 pipefail，head / grep -q 提前关闭管道会让上游以 SIGPIPE 失败
       - name: 登记并检查外部工具
         run: |
@@ -132,6 +141,14 @@ jobs:
 
       - name: 编译解决方案（警告视为错误）
         run: dotnet build LivePhotoConvert.slnx -c Release -p:TreatWarningsAsErrors=true
+
+      - name: 保存 NuGet 包缓存
+        # 发布流程会检出传入的 tag，只还原不写回，缓存只由普通 CI 运行生成
+        if: ${{ inputs.ref == '' && steps.nuget-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props', 'global.json') }}
 
       # -m:1 让三个测试工程依次运行：覆盖率插桩叠加三个测试进程并行时，
       # 桌面端性能用例（1 万张卡片切换动作 < 1s）会因 CPU 争用超时；串行总耗时几乎不变。
@@ -206,7 +223,8 @@ jobs:
           global-json-file: global.json
 
       - name: 缓存 NuGet 包
-        uses: actions/cache@v6
+        id: nuget-cache
+        uses: actions/cache/restore@v6
         with:
           path: ~/.nuget/packages
           key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props', 'global.json') }}
@@ -214,6 +232,14 @@ jobs:
 
       - name: 编译解决方案（警告视为错误）
         run: dotnet build LivePhotoConvert.slnx -c Release -p:TreatWarningsAsErrors=true
+
+      - name: 保存 NuGet 包缓存
+        # 发布流程会检出传入的 tag，只还原不写回，缓存只由普通 CI 运行生成
+        if: ${{ inputs.ref == '' && steps.nuget-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props', 'global.json') }}
 
       # 含 Avalonia Headless 界面冒烟测试：Skia 离屏渲染，不需要显示器。
       # Windows runner 未安装外部工具，真实工具集成用例按设计跳过（由 Linux 任务覆盖）；
@@ -263,7 +289,8 @@ jobs:
 
       # AOT 另存一份缓存（多出 ILCompiler 运行时包）；首次未命中时回退到构建任务的缓存
       - name: 缓存 NuGet 包
-        uses: actions/cache@v6
+        id: nuget-cache
+        uses: actions/cache/restore@v6
         with:
           path: ~/.nuget/packages
           key: nuget-aot-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props', 'global.json') }}
@@ -273,6 +300,14 @@ jobs:
 
       - name: Native AOT 发布（裁剪与 AOT 警告视为错误）
         run: dotnet publish src/LivePhotoConvert.Desktop/LivePhotoConvert.Desktop.csproj -r win-x64 -c Release -o dist/aot -p:TreatWarningsAsErrors=true
+
+      - name: 保存 NuGet 包缓存
+        # 发布流程会检出传入的 tag，只还原不写回，缓存只由普通 CI 运行生成
+        if: ${{ inputs.ref == '' && steps.nuget-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-aot-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props', 'global.json') }}
 
       - name: 移除调试符号
         shell: pwsh
