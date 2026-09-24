@@ -24,15 +24,22 @@ public sealed class MagickImageConverter : IImageConverter
     public Task ConvertToHeicAsync(string sourcePath, string destinationPath, int quality, CancellationToken cancellationToken = default) =>
         SupportsHeicEncoding
             ? ConvertAsync(sourcePath, destinationPath, MagickFormat.Heic, quality, cancellationToken)
-            : throw new InvalidOperationException("当前环境没有可用的 HEIC 编码器，请在「依赖引擎」页面安装 heif-enc。");
+            : throw new ToolNotFoundException(HeifEncImageConverter.ExecutableName);
 
     private static Task ConvertAsync(string sourcePath, string destinationPath, MagickFormat format, int quality, CancellationToken cancellationToken) =>
         Task.Run(() =>
         {
             cancellationToken.ThrowIfCancellationRequested();
-            using var image = new MagickImage(sourcePath);
-            image.AutoOrient();
-            image.Quality = (uint)Math.Clamp(quality, 1, 100);
-            image.Write(destinationPath, format);
+            try
+            {
+                using var image = new MagickImage(sourcePath);
+                image.AutoOrient();
+                image.Quality = (uint)Math.Clamp(quality, 1, 100);
+                image.Write(destinationPath, format);
+            }
+            catch (MagickException ex)
+            {
+                throw new ImageConversionException($"{format} 转换失败：{ex.Message}", ex);
+            }
         }, cancellationToken);
 }

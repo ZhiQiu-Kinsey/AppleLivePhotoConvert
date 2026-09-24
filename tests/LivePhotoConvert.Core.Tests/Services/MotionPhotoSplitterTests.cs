@@ -120,6 +120,23 @@ public class MotionPhotoSplitterTests
         Assert.Contains("MVIMG_0001_1.jpg", temp.FileNames());
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MissingOrEmptySource_FailsWithReasonAndOtherItemsContinue(bool empty)
+    {
+        using var temp = new TempDirectory();
+        var bad = empty ? temp.CreateFile("MVIMG_0002.jpg") : temp.Combine("MVIMG_0002.jpg");
+        var good = temp.CreateFile("MVIMG_0001.jpg", SyntheticMedia.MotionPhoto());
+
+        var report = await SplitAsync(temp, [bad, good], action: SourceFileAction.Delete);
+
+        Assert.Equal(1, report.Succeeded);
+        var failed = Assert.Single(report.Items, item => item.Kind == OutcomeKind.Failed);
+        Assert.Equal([new OutcomeCause(OutcomeReason.SourceMissingOrEmpty, "MVIMG_0002.jpg")], failed.Causes);
+        Assert.Equal(empty, File.Exists(bad));
+    }
+
     [Fact]
     public async Task FailedItem_IsNeverCleaned()
     {

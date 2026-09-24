@@ -4,15 +4,14 @@ using Microsoft.VisualBasic.FileIO;
 namespace LivePhotoConvert.Core.Platform;
 
 /// <summary>
-/// 跨平台与 Windows 安全回收站文件删除服务（基于 .NET BCL 原生 FileSystem 实现）
+/// Windows 回收站。
 /// </summary>
 public static class RecycleBin
 {
     /// <summary>
-    /// 将指定文件安全移入系统回收站（如果文件不存在则直接忽略）
+    /// 将文件移入回收站；文件不存在时忽略。
     /// </summary>
-    /// <param name="filePath">目标文件路径</param>
-    /// <exception cref="IOException">移入回收站操作失败或未成功移走</exception>
+    /// <exception cref="IOException">该位置没有回收站、用户取消或移入失败；此时文件保持原样</exception>
     [SupportedOSPlatform("windows")]
     public static void Send(string filePath)
     {
@@ -24,14 +23,15 @@ public static class RecycleBin
             return;
         }
 
+        // Shell 在静默模式下遇到没有回收站的位置会直接永久删除，必须事先拒绝
+        if (!HasRecycleBin(fullPath))
+        {
+            throw new IOException($"该位置没有回收站，已保留文件：{fullPath}");
+        }
+
         try
         {
-            // 使用 .NET BCL 官方标准回收站操作（无需手动声明 Win32 结构体，支持长路径与撤销操作）
-            FileSystem.DeleteFile(
-                fullPath,
-                UIOption.OnlyErrorDialogs,
-                RecycleOption.SendToRecycleBin,
-                UICancelOption.ThrowException);
+            FileSystem.DeleteFile(fullPath, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin, UICancelOption.ThrowException);
         }
         catch (OperationCanceledException)
         {
@@ -42,11 +42,30 @@ public static class RecycleBin
             throw new IOException($"移入回收站失败：{ex.Message}", ex);
         }
 
-        // 兜底校验
         if (File.Exists(fullPath))
         {
             throw new IOException($"移入回收站后文件仍然存在：{fullPath}");
         }
     }
-}
 
+    /// <summary>
+    /// 只有本机固定磁盘有回收站：U 盘、存储卡、光盘与网络位置（含 UNC 路径）都没有。
+    /// </summary>
+    internal static bool HasRecycleBin(string fullPath)
+    {
+        var root = Path.GetPathRoot(fullPath);
+        if (string.IsNullOrEmpty(root) || root.StartsWith(@"\\", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        try
+        {
+            return new DriveInfo(root).DriveType == DriveType.Fixed;
+        }
+        catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+}

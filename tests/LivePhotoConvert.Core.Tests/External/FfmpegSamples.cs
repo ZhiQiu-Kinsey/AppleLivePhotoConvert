@@ -1,4 +1,5 @@
 using LivePhotoConvert.Core.External;
+using LivePhotoConvert.Core.External.Tools;
 
 namespace LivePhotoConvert.Core.Tests.External;
 
@@ -14,7 +15,7 @@ internal static class FfmpegSamples
     public static async Task<string> RequireLibx265Async(string ffmpeg)
     {
         var listed = await ProcessRunner.RunAsync(ffmpeg, ["-nostdin", "-hide_banner", "-encoders"], Token);
-        if (!FfmpegVideoConverter.ParseEncoders(listed.StandardOutput).Contains("libx265"))
+        if (!ToolOutputParser.ParseEncoderNames(listed.StandardOutput).Contains("libx265"))
         {
             Assert.Skip("本机 FFmpeg 不带 libx265，跳过 HDR 集成测试。");
         }

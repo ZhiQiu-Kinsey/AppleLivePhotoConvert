@@ -28,6 +28,7 @@ public class BatchRunnerTests
     [InlineData("tool")]
     [InlineData("encode")]
     [InlineData("hdr")]
+    [InlineData("image")]
     [InlineData("verify")]
     [InlineData("other")]
     public async Task RunAsync_ItemException_IsMappedToReasonAndKeepsMessageAsDetail(string kind)
@@ -37,6 +38,7 @@ public class BatchRunnerTests
             "tool" => (new ToolNotFoundException("ffmpeg"), new OutcomeCause(OutcomeReason.ToolMissing, "ffmpeg")),
             "encode" => (new VideoConversionException(VideoConversionError.EncodeFailed, "重新编码失败"), OutcomeReason.VideoConversionFailed),
             "hdr" => (new VideoConversionException(VideoConversionError.HdrEncoderUnavailable, "缺少 libx265"), OutcomeReason.HdrEncoderUnavailable),
+            "image" => (new ImageConversionException("HEIC 编码失败"), OutcomeReason.ImageConversionFailed),
             "verify" => (new OutcomeException(OutcomeReason.VerificationFailed, "校验失败"), OutcomeReason.VerificationFailed),
             _ => ((Exception)new IOException("磁盘已满"), (OutcomeCause)OutcomeReason.Unexpected)
         };

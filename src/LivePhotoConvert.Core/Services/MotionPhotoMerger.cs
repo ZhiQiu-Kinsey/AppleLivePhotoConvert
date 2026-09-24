@@ -152,9 +152,9 @@ public sealed class MotionPhotoMerger(
         TempWorkspace workspace,
         CancellationToken cancellationToken)
     {
-        if ((MissingOrEmpty(pair.PhotoPath) ?? MissingOrEmpty(pair.VideoPath)) is { } missing)
+        if (OutcomeCause.MissingOrEmptySource(pair.PhotoPath, pair.VideoPath) is { } missing)
         {
-            return ItemOutcome.Failed(pair.PhotoPath, new OutcomeCause(OutcomeReason.SourceMissingOrEmpty, Path.GetFileName(missing)));
+            return ItemOutcome.Failed(pair.PhotoPath, missing);
         }
 
         var videoTags = tags[pair.VideoPath];
@@ -388,11 +388,5 @@ public sealed class MotionPhotoMerger(
 
         var timestamp = FileTimestamp.Read(pair.PhotoPath);
         return (timestamp.CreationTimeUtc < timestamp.LastWriteTimeUtc ? timestamp.CreationTimeUtc : timestamp.LastWriteTimeUtc).ToLocalTime();
-    }
-
-    private static string? MissingOrEmpty(string path)
-    {
-        var info = new FileInfo(path);
-        return info.Exists && info.Length > 0 ? null : path;
     }
 }

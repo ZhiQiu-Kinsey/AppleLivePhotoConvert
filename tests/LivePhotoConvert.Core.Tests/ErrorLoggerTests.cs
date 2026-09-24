@@ -2,25 +2,42 @@ using LivePhotoConvert.Core.Services;
 
 namespace LivePhotoConvert.Core.Tests;
 
-/// <summary>
-/// 错误日志静默记录器 (ErrorLogger) 的单元测试
-/// </summary>
 public class ErrorLoggerTests
 {
-    /// <summary>
-    /// 测试 Log 是否能将异常类型、异常消息、内部异常和上下文说明正确格式化并追加写入到本地日志文件
-    /// </summary>
     [Fact]
-    public void Log_Should_Write_Exception_Details_To_Log_File()
+    public void Log_WritesContextAndEveryInnerException()
     {
-        var ex = new InvalidOperationException("测试异常消息", new ArgumentException("内部参数错误"));
-        var logPath = ErrorLogger.Log(ex, "单元测试上下文");
+        using var temp = new TempDirectory();
+        var path = temp.Combine("error.log");
+        var ex = new InvalidOperationException("外层消息", new AggregateException(new ArgumentException("第一层"), new IOException("第二层")));
 
-        Assert.True(File.Exists(logPath));
-        var content = File.ReadAllText(logPath);
-        Assert.Contains("测试异常消息", content);
-        Assert.Contains("内部参数错误", content);
+        Assert.Equal(path, ErrorLogger.Log(ex, "单元测试上下文", path));
+
+        var content = File.ReadAllText(path);
         Assert.Contains("单元测试上下文", content);
+        Assert.Contains("外层消息", content);
+        Assert.Contains("第一层", content);
+        Assert.Contains("第二层", content);
+    }
+
+    [Fact]
+    public void Log_OversizedFile_RotatesToBackup()
+    {
+        using var temp = new TempDirectory();
+        var path = temp.CreateFile("error.log", new byte[5 * 1024 * 1024 + 1]);
+
+        ErrorLogger.Log(new InvalidOperationException("新记录"), null, path);
+
+        Assert.True(File.Exists(path + ".bak"));
+        Assert.Contains("新记录", File.ReadAllText(path));
+        Assert.True(new FileInfo(path).Length < 5 * 1024 * 1024);
+    }
+
+    [Fact]
+    public void LogFilePath_IsWritableLocation()
+    {
+        var directory = Path.GetDirectoryName(ErrorLogger.LogFilePath);
+
+        Assert.True(Directory.Exists(directory));
     }
 }
-

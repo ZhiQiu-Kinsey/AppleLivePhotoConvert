@@ -7,13 +7,6 @@ using SharpCompress.Readers;
 
 namespace LivePhotoConvert.Core.External.Tools;
 
-/// <summary>
-/// 把下载包中选中的条目解到目标目录。
-/// </summary>
-/// <remarks>
-/// 每个条目（包括不会解出的条目）都先做路径检查，任何一个不安全就整包拒绝：
-/// 被篡改的包即使恶意条目不在选中范围内也不应被信任。
-/// </remarks>
 /// <summary>强制使用系统 tar 但它不可用或解不了该包（Windows 10 的 tar.exe 不含 liblzma）。</summary>
 internal sealed class SystemTarUnsupportedException(string message) : Exception(message);
 
@@ -26,6 +19,13 @@ internal enum SevenZipBackend
     SystemTar
 }
 
+/// <summary>
+/// 把下载包中选中的条目解到目标目录。
+/// </summary>
+/// <remarks>
+/// 每个条目（包括不会解出的条目）都先做路径检查，任何一个不安全就整包拒绝：
+/// 被篡改的包即使恶意条目不在选中范围内也不应被信任。
+/// </remarks>
 internal static class ToolArchiveExtractor
 {
     private const int BufferSize = 81920;

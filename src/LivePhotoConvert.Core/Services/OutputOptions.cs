@@ -21,10 +21,15 @@ public sealed record OutputOptions(string Directory)
         }
 
         var relative = Path.GetRelativePath(PreserveHierarchyFrom, Path.GetDirectoryName(Path.GetFullPath(sourcePath))!);
-        return relative == "." || relative.StartsWith("..", StringComparison.Ordinal) || Path.IsPathRooted(relative)
+        return relative == "." || IsOutside(relative) || Path.IsPathRooted(relative)
             ? Directory
             : Path.Combine(Directory, relative);
     }
+
+    /// <summary>只看首段是否为 <c>..</c>：名为 <c>..abc</c> 的子目录仍在根目录之内。</summary>
+    private static bool IsOutside(string relative) =>
+        relative == ".." || relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal)
+                         || relative.StartsWith(".." + Path.AltDirectorySeparatorChar, StringComparison.Ordinal);
 }
 
 public static class ConversionDefaults

@@ -34,12 +34,8 @@ public class UltraHdrMergeIntegrationTests
         using var temp = new TempDirectory();
         var (photo, video) = CreatePair(temp, SamplePath);
 
-        var stopwatch = Stopwatch.StartNew();
         var outcome = await MergeAsync(exiftool, decoder, photo, video, temp.Combine("hdr"), preserveHdr: true);
-        var hdrElapsed = stopwatch.Elapsed;
-        stopwatch.Restart();
         var sdr = await MergeAsync(exiftool, decoder, photo, video, temp.Combine("sdr"), preserveHdr: false);
-        var sdrElapsed = stopwatch.Elapsed;
 
         Assert.Equal([new OutcomeNote(OutcomeNoteKind.UltraHdrWritten)], outcome.Notes);
         var output = Assert.Single(outcome.Outputs);
@@ -65,7 +61,7 @@ public class UltraHdrMergeIntegrationTests
         var hdrSize = new FileInfo(output).Length - layout.Video.Length;
         var sdrSize = new FileInfo(sdrOutput).Length - layout.Video.Length;
         TestContext.Current.TestOutputHelper?.WriteLine(
-            $"封面：SDR {sdrSize} 字节，Ultra HDR {hdrSize} 字节（主图 {ultraHdr.GainMapOffset}，增益图 {ultraHdr.GainMapLength}，{(hdrSize - sdrSize) * 100.0 / sdrSize:+0.0;-0.0}%）；耗时 SDR {sdrElapsed.TotalMilliseconds:F0} ms，HDR {hdrElapsed.TotalMilliseconds:F0} ms");
+            $"封面：SDR {sdrSize} 字节，Ultra HDR {hdrSize} 字节（主图 {ultraHdr.GainMapOffset}，增益图 {ultraHdr.GainMapLength}，{(hdrSize - sdrSize) * 100.0 / sdrSize:+0.0;-0.0}%）");
     }
 
     [Fact]

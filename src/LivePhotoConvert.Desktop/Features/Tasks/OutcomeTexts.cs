@@ -28,6 +28,7 @@ public static class OutcomeTexts
         OutcomeReason.SourceMissingOrEmpty => "OutcomeReasonSourceMissingFormat",
         OutcomeReason.SourceUnreadable => "OutcomeReasonSourceUnreadableFormat",
         OutcomeReason.VideoConversionFailed => "OutcomeReasonVideoConversionFailed",
+        OutcomeReason.ImageConversionFailed => "OutcomeReasonImageConversionFailed",
         OutcomeReason.HdrEncoderUnavailable => "OutcomeReasonHdrEncoderUnavailable",
         OutcomeReason.ToolMissing => "ToolMissingFormat",
         OutcomeReason.VerificationFailed => "OutcomeReasonVerificationFailed",
