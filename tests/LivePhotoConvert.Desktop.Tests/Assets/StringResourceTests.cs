@@ -225,6 +225,31 @@ public class StringResourceTests
         Assert.True(unparsable.Count == 0, "格式串无法解析: " + string.Join("; ", unparsable));
     }
 
+    /// <summary>带占位符的文案必须以 Format 结尾：代码据此区分取值与格式化，漏写会让占位符原样显示。</summary>
+    [Fact]
+    public void KeysWithPlaceholders_EndWithFormat()
+    {
+        var placeholder = new Regex(@"\{\d+[^{}]*\}");
+        var offenders = DesktopSources.LoadStrings("zh-CN")
+            .Where(e => placeholder.IsMatch(e.Value.Replace("{{", string.Empty).Replace("}}", string.Empty)) && !e.Key.EndsWith("Format", StringComparison.Ordinal))
+            .Select(e => e.Key)
+            .Order()
+            .ToList();
+
+        Assert.True(offenders.Count == 0, "含占位符但键名不以 Format 结尾: " + string.Join(", ", offenders));
+    }
+
+    [Fact]
+    public void EnglishDictionary_ContainsNoChinese()
+    {
+        var offenders = DesktopSources.LoadEntries("en-US")
+            .Where(e => UiTexts.ContainsChinese(e.Value))
+            .Select(e => $"{e.Key}: {e.Value}")
+            .ToList();
+
+        Assert.True(offenders.Count == 0, "英文字典含中文:\n" + string.Join('\n', offenders));
+    }
+
     /// <summary>零 Emoji：图标只用 FluentIcons 矢量图标。箭头（←→）属于按键说明，不算 Emoji。</summary>
     [Fact]
     public void DesktopSourcesAndStrings_ContainNoEmoji()

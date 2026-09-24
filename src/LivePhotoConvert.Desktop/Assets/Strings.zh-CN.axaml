@@ -94,29 +94,29 @@
   <sys:String x:Key="TestPingBtn">测试连通性</sys:String>
 
   <!-- 防灾弹窗 -->
-  <sys:String x:Key="DeleteDialogTitle">高危警报：即将彻底删除原照片！</sys:String>
-  <sys:String x:Key="DeleteDialogDesc">此操作不可撤销！原照片将直接从磁盘永久粉碎</sys:String>
+  <sys:String x:Key="DeleteDialogTitle">即将永久删除原照片</sys:String>
+  <sys:String x:Key="DeleteDialogDesc">此操作不可撤销，原照片将从磁盘永久删除。</sys:String>
   <sys:String x:Key="DeleteDialogInputLabel">请输入大写确认词 DELETE 以解除安全锁定：</sys:String>
   <sys:String x:Key="DeleteDialogCancel">取消，保留原片</sys:String>
   <sys:String x:Key="DeleteDialogConfirm">确认永久删除原片</sys:String>
 
-  <sys:String x:Key="LowDiskDialogTitle">磁盘空间不足预警 (ENOSPC)</sys:String>
+  <sys:String x:Key="LowDiskDialogTitle">输出磁盘空间不足</sys:String>
   <sys:String x:Key="LowDiskDialogDesc">目标磁盘剩余容量不足以安全完成转换</sys:String>
   <sys:String x:Key="LowDiskDialogDismiss">返回调整</sys:String>
 
-  <sys:String x:Key="BackupDialogTitle">高危防灾确认：就地覆盖原照片</sys:String>
-  <sys:String x:Key="BackupDialogDesc">开启此项将永久剥离并删除相册内嵌的短视频！</sys:String>
+  <sys:String x:Key="BackupDialogTitle">确认就地覆盖原照片</sys:String>
+  <sys:String x:Key="BackupDialogDesc">开启后，瘦身会直接替换相册中的原照片。</sys:String>
   <sys:String x:Key="BackupDialogCancel">取消，推荐安全导出</sys:String>
   <sys:String x:Key="BackupDialogConfirm">我已知晓风险，开启就地覆盖</sys:String>
 
-  <sys:String x:Key="ArbitrateDialogTitle">异常实况同屏裁决与核验 (时差超标)</sys:String>
-  <sys:String x:Key="ArbitrateDialogDesc">双屏同帧比对静态原图与视频首帧，确保属于同一快门瞬间</sys:String>
-  <sys:String x:Key="ArbitrateReject">并非同一实况 (作为独立图影拆分)</sys:String>
-  <sys:String x:Key="ArbitrateConfirm">确认属于同一实况 (强制配对入白名单)</sys:String>
+  <sys:String x:Key="ArbitrateDialogTitle">人工确认实况配对（拍摄时间差超出阈值）</sys:String>
+  <sys:String x:Key="ArbitrateDialogDesc">照片与视频的拍摄时间相差较大，请确认它们是否属于同一张实况照片。</sys:String>
+  <sys:String x:Key="ArbitrateReject">不是同一张实况</sys:String>
+  <sys:String x:Key="ArbitrateConfirm">确认是同一张实况</sys:String>
 
   <sys:String x:Key="SettingsPageTitle">全局偏好设置</sys:String>
   <sys:String x:Key="ThemeTitle">界面外观主题</sys:String>
-  <sys:String x:Key="LangTitle">系统语言</sys:String>
+  <sys:String x:Key="LangTitle">界面语言</sys:String>
   <sys:String x:Key="ConcurrencyTitle">并行并发转换任务数</sys:String>
 
   <!-- CompactToolbar Keys -->
@@ -196,20 +196,20 @@
   <sys:String x:Key="QuickLookNextTip">下一张</sys:String>
 
   <!-- Dialog Secondary Keys -->
-  <sys:String x:Key="DeleteAffectedFormat">本次受影响源文件：{0} 组原始照片 ({1})</sys:String>
+  <sys:String x:Key="DeleteAffectedFormat">本次受影响的原片：{0} 项（{1}）</sys:String>
   <sys:String x:Key="DeleteIrreversibleDesc">删除后无法从回收站或废纸篓中找回。</sys:String>
   <sys:String x:Key="DeleteInputPlaceholder">键入 DELETE</sys:String>
-  <sys:String x:Key="LowDiskRequiredLabel">预计所需空间 (含防损冗余 1.2倍 + 500MB)：</sys:String>
+  <sys:String x:Key="LowDiskRequiredLabel">预计所需空间（源文件的 1.2 倍 + 500 MB 余量）：</sys:String>
   <sys:String x:Key="LowDiskAvailableLabel">目标驱动器当前剩余可用：</sys:String>
   <sys:String x:Key="LowDiskSolutionDesc">请释放目标驱动器空间或更改输出目录至其他磁盘分区。</sys:String>
   <sys:String x:Key="BackupRiskTitle">操作影响与不可逆风险：</sys:String>
-  <sys:String x:Key="BackupRiskPoint1">1. 相册内的 Motion Photo 视频流将被彻底清除，仅保留纯静态 HEIC/JPEG 封面；</sys:String>
-  <sys:String x:Key="BackupRiskPoint2">2. 安全保障：底层将自动创建 .livephoto_backup 暂存原片，校验完整后方才清理，断电零损坏。</sys:String>
-  <sys:String x:Key="ArbitratePhotoTitle">静态照片 (HEIC)</sys:String>
-  <sys:String x:Key="ArbitratePhotoDesc">静态高分辨率底片</sys:String>
-  <sys:String x:Key="ArbitrateVideoTitle">视频首帧 (MOV)</sys:String>
-  <sys:String x:Key="ArbitrateVideoDesc">实况视频第 0 毫秒首帧</sys:String>
-  <sys:String x:Key="ArbitrateConclusionLabel">时差分析结论：</sys:String>
+  <sys:String x:Key="BackupRiskPoint1">1. 内嵌视频将被永久移除，配对的实况视频移入回收站，只保留静态照片；</sys:String>
+  <sys:String x:Key="BackupRiskPoint2">2. 新文件校验通过后才替换原片，替换中途出错时原片保持不变。</sys:String>
+  <sys:String x:Key="ArbitratePhotoTitle">照片</sys:String>
+  <sys:String x:Key="ArbitratePhotoDesc">照片文件</sys:String>
+  <sys:String x:Key="ArbitrateVideoTitle">实况视频</sys:String>
+  <sys:String x:Key="ArbitrateVideoDesc">视频文件</sys:String>
+  <sys:String x:Key="ArbitrateConclusionLabel">时间差：</sys:String>
 
   <!-- Settings Dialog Options -->
   <sys:String x:Key="ThemeLightOption">浅色模式</sys:String>
@@ -333,11 +333,10 @@
   <sys:String x:Key="PrimaryBtnAppleFormat">还原 {0} 组苹果实况</sys:String>
   <sys:String x:Key="PrimaryBtnExtractFormat">解包 {0} 张动态照片</sys:String>
   <sys:String x:Key="FilterBannerSuspiciousFormat">仅待人工裁决 ({0}项)</sys:String>
-  <sys:String x:Key="FilterBannerSelected">仅已选中项目</sys:String>
+  <sys:String x:Key="FilterBannerSelected">仅已选中项</sys:String>
   <sys:String x:Key="SelectedBadgeFormat">已选 {0} 项</sys:String>
   <sys:String x:Key="StripSavedPctFormat">释放比例: {0:F1}%</sys:String>
-  <sys:String x:Key="ArbitrateTimeDiffFormat">两者拍摄时间相差 {0:F2} 秒（安全门限 3.0s）</sys:String>
-  <sys:String x:Key="ArbitrateVerdictFormat">实测时差 {0:F2} 秒。请核对双帧画面、机型与地理位置是否属于同一快门瞬间。</sys:String>
+  <sys:String x:Key="ArbitrateVerdictFormat">两者拍摄时间相差 {0:F2} 秒。确认属于同一次拍摄后再配对，否则保持分开。</sys:String>
   <sys:String x:Key="NoMergePairs">未发现可合成的真实实况配对</sys:String>
   <sys:String x:Key="NoSplitCandidates">未发现可拆分的真实动态照片</sys:String>
 
