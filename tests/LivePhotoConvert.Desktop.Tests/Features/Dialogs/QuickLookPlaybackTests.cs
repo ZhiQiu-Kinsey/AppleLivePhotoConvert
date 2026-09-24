@@ -177,6 +177,12 @@ public sealed class QuickLookPlaybackTests : IDisposable
 
         public long ResidentBytes => inner.ResidentBytes;
 
+        public long BudgetBytes
+        {
+            get => inner.BudgetBytes;
+            set => inner.BudgetBytes = value;
+        }
+
         public void Acquire(PhotoCardItemViewModel card) => DispatcherTimer.RunOnce(() => inner.Acquire(card), Delay);
 
         public void Release(PhotoCardItemViewModel card) => DispatcherTimer.RunOnce(() => inner.Release(card), Delay);

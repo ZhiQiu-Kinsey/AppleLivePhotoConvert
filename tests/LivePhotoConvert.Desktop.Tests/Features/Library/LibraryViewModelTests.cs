@@ -124,23 +124,34 @@ public class LibraryViewModelTests
         await fixture.ScanAsync();
         Assert.Equal(1, events);
         Assert.Equal(3, library.AllCards.Count);
+        Assert.Equal(0, library.Selection.SelectedCount);
+        Assert.Same(library.AllCards, library.SelectedOrAllCards);
+
+        library.SelectAllVisible(true);
+        Assert.Equal(2, events);
         Assert.Equal(3, library.Selection.SelectedCount);
 
         library.SelectAllVisible(false);
-        Assert.Equal(2, events);
+        Assert.Equal(3, events);
         Assert.Equal(0, library.Selection.SelectedCount);
         Assert.Same(library.AllCards, library.SelectedOrAllCards);
 
         var second = library.AllCards[1];
         second.ToggleSelectCommand.Execute(null);
-        Assert.Equal(3, events);
+        Assert.Equal(4, events);
         Assert.Equal([second], library.SelectedOrAllCards);
         Assert.Same(second, library.FocusedCard);
 
-        library.SelectAllVisible(true);
-        Assert.Equal(4, events);
-        Assert.Equal(3, library.SelectedOrAllCards.Count);
-        Assert.Same(second, library.FocusedCard);
+        var third = library.AllCards[2];
+        library.ClickCard(third, toggle: false, range: false);
+        Assert.Equal(5, events);
+        Assert.Equal([third], library.SelectedOrAllCards);
+        Assert.Same(third, library.FocusedCard);
+        Assert.Same(third, library.PreviewTarget);
+
+        library.ClearSelection();
+        Assert.Equal(6, events);
+        Assert.Equal(0, library.Selection.SelectedCount);
     }
 
     [Fact]
@@ -264,9 +275,14 @@ public class LibraryViewModelTests
         Assert.False(library.HasPhotos);
     }
 
-    /// <summary>人工裁决通过：卡片不再待裁决（徽章切换）、被选中，就绪与待裁决计数随之更新。</summary>
-    [Fact]
-    public async Task Arbitration_UpdatesCountsBadgeAndSelection()
+    /// <summary>
+    /// 人工裁决通过：卡片不再待裁决（徽章切换），就绪与待裁决计数随之更新。未选中任何卡片时动作范围本就是全部就绪卡片，
+    /// 裁决后的卡片随之计入；已有选择时并入选择。
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Arbitration_UpdatesCountsBadgeAndSelection(bool withSelection)
     {
         using var fixture = new InspectorFixture();
         fixture.AddApplePair("IMG_0001");
@@ -274,9 +290,15 @@ public class LibraryViewModelTests
         var library = fixture.Library;
         await fixture.ScanAsync();
         var card = library.AllCards.Single(c => c.FileName == "IMG_0002");
+        var other = library.AllCards.Single(c => c.FileName == "IMG_0001");
+        if (withSelection)
+        {
+            library.ClickCard(other, toggle: false, range: false);
+        }
+
         Assert.True(card.RequiresPairReview);
         Assert.False(card.IsSelected);
-        Assert.Equal((1, 1, 1), (library.Selection.ReadyCount, library.Selection.SuspiciousCount, library.Selection.SelectedCount));
+        Assert.Equal((1, 1, withSelection ? 1 : 0), (library.Selection.ReadyCount, library.Selection.SuspiciousCount, library.Selection.SelectedCount));
         Assert.Equal(1, fixture.Inspector.ApplicableCount);
         var events = 0;
         var badgeChanges = 0;
@@ -291,11 +313,11 @@ public class LibraryViewModelTests
 
         Assert.False(card.RequiresPairReview);
         Assert.True(card.IsForceAccepted);
-        Assert.True(card.IsSelected);
+        Assert.Equal(withSelection, card.IsSelected);
         Assert.Equal(1, badgeChanges);
         Assert.Equal(1, events);
         Assert.Same(card, library.FocusedCard);
-        Assert.Equal((2, 0, 2), (library.Selection.ReadyCount, library.Selection.SuspiciousCount, library.Selection.SelectedCount));
+        Assert.Equal((2, 0, withSelection ? 2 : 0), (library.Selection.ReadyCount, library.Selection.SuspiciousCount, library.Selection.SelectedCount));
         Assert.Equal(2, fixture.Inspector.ApplicableCount);
     }
 

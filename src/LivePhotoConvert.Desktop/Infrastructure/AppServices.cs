@@ -129,7 +129,10 @@ public static class AppServices
             sp.GetRequiredService<ILocalizer>(),
             sp.GetRequiredService<ThemeService>(),
             sp.GetRequiredService<IShellLauncher>(),
-            sp.GetRequiredService<IDialogService>()));
+            sp.GetRequiredService<IDialogService>(),
+            sp.GetRequiredService<IThumbnailPipeline>(),
+            sp.GetRequiredService<ThumbnailDiskCache>(),
+            sp.GetRequiredService<INavigator>()));
         services.AddSingleton(sp => new ShellViewModel(
             sp.GetRequiredService<INavigator>(),
             sp.GetRequiredService<IDialogService>(),

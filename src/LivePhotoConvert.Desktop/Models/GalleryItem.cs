@@ -76,7 +76,6 @@ public sealed partial class PhotoCardItemViewModel : ObservableObject, IGalleryD
     {
         _item = item;
         _localizer = localizer;
-        _isSelected = !item.RequiresPairReview;
     }
 
     /// <summary>扫描结果；后台补全（如 HEIC 升级为动态照片）时整体替换。</summary>
@@ -174,6 +173,7 @@ public sealed partial class PhotoCardItemViewModel : ObservableObject, IGalleryD
     /// <summary>卡片很窄：再隐藏分辨率。</summary>
     public bool IsTiny => DisplayWidth < GalleryMetrics.TinyCardWidth;
 
+    /// <summary>默认不选中：未选中任何卡片时动作按全部就绪的卡片统计。</summary>
     [ObservableProperty]
     private bool _isSelected;
 

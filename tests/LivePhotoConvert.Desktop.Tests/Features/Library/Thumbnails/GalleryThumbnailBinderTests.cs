@@ -80,6 +80,8 @@ public class GalleryThumbnailBinderTests
 
         public long ResidentBytes => 0;
 
+        public long BudgetBytes { get; set; }
+
         public int Count(PhotoCardItemViewModel card) => _counts.GetValueOrDefault(card);
 
         public int ZeroCrossings(PhotoCardItemViewModel card) => _zeroCrossings.GetValueOrDefault(card);

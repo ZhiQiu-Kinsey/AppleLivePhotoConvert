@@ -36,6 +36,9 @@ public interface IThumbnailPipeline
     Task<Bitmap?> LoadPreviewAsync(PhotoCardItemViewModel card, int heightPx, CancellationToken cancellationToken);
 
     long ResidentBytes { get; }
+
+    /// <summary>位图字节预算；调小时立即按 LRU 驱逐未钉住的位图，直到回到预算内或只剩钉住的位图。</summary>
+    long BudgetBytes { get; set; }
 }
 
 /// <summary>缩略图的缓存查询与生成；默认包装 <see cref="ThumbnailGenerator"/>，测试替换为可控实现。</summary>

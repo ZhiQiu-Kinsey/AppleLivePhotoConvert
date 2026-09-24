@@ -32,6 +32,7 @@ public class LibraryScannerTests
         Assert.Equal(CaptureTimeSource.Exif, item.CaptureTimeSource);
         Assert.Equal(new MediaPair(photo, video), Assert.Single(item.PairCandidates));
         Assert.Equal(2, result.TotalFiles);
+        Assert.Equal(0, result.IgnoredFiles);
         Assert.Equal(0, result.InaccessibleEntries);
     }
 
@@ -115,10 +116,11 @@ public class LibraryScannerTests
         Assert.True(result.Items[0].HasGainMap);
         Assert.Equal((320, 640), (result.Items[2].Header?.Width, result.Items[2].Header?.Height));
         Assert.Equal(5, result.TotalFiles);
+        Assert.Equal(1, result.IgnoredFiles);
     }
 
     [Fact]
-    public async Task StagingBackupAndHiddenFiles_AreIgnored()
+    public async Task StagingBackupAndHiddenFiles_AreIgnoredAndCounted()
     {
         using var temp = new TempDirectory();
         var kept = temp.CreateFile("IMG_0004.jpg", SyntheticImages.Jpeg(640, 480));
@@ -131,11 +133,21 @@ public class LibraryScannerTests
             temp.CreateFile("._IMG_0004.jpg", SyntheticImages.Jpeg(640, 480));
             temp.CreateFile(".thumbnails/IMG_0007.jpg", SyntheticImages.Jpeg(640, 480));
         }
+        else
+        {
+            var thumbs = temp.CreateFile("Thumbs.db", [1, 2, 3]);
+            File.SetAttributes(thumbs, FileAttributes.Hidden | FileAttributes.System);
+            var inHidden = temp.CreateFile("hidden/IMG_0007.jpg", SyntheticImages.Jpeg(640, 480));
+            var hiddenDirectory = new DirectoryInfo(Path.GetDirectoryName(inHidden)!);
+            hiddenDirectory.Attributes |= FileAttributes.Hidden;
+        }
 
         var result = await ScanAsync(temp.Root);
 
         Assert.Equal(kept, Assert.Single(result.Items).Photo.Path);
-        Assert.Equal(1, result.TotalFiles);
+        // 隐藏目录不进入，其中的文件不计数；隐藏文件本身计为已忽略
+        Assert.Equal(4, result.IgnoredFiles);
+        Assert.Equal(5, result.TotalFiles);
     }
 
     [Fact]
