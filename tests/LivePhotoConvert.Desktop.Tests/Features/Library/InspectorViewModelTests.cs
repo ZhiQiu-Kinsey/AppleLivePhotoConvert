@@ -1,3 +1,4 @@
+using LivePhotoConvert.Core.External;
 using LivePhotoConvert.Core.Pipeline;
 using LivePhotoConvert.Core.Services;
 using LivePhotoConvert.Desktop.Features.Dialogs;
@@ -5,6 +6,7 @@ using LivePhotoConvert.Desktop.Features.Library;
 using LivePhotoConvert.Desktop.Features.Tasks;
 using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Tests.Features.Tasks;
+using LivePhotoConvert.Desktop.Tests.Harness;
 
 namespace LivePhotoConvert.Desktop.Tests.Features.Library;
 
@@ -482,5 +484,31 @@ public class InspectorViewModelTests
         await open.Within();
         Assert.Null(dialog.OriginalCompareBitmap);
         Assert.Null(dialog.StrippedCompareBitmap);
+    }
+}
+
+/// <summary>切换界面语言会改写进程级区域，单独放入不并行的集合。</summary>
+[Collection(ProcessStateCollection.Name)]
+public class InspectorEstimateLocalizationTests
+{
+    [Fact]
+    public async Task Estimate_MissingTool_ShowsLocalizedMessageInsteadOfCoreText()
+    {
+        using var culture = new CultureScope();
+        using var fixture = new InspectorFixture(s => s.Action = ConversionAction.Strip);
+        fixture.Host.Localizer.SetLanguage("en-US");
+        fixture.AddMotionPhoto("MVIMG_0001");
+        var inspector = fixture.Inspector;
+        await fixture.ScanAsync();
+        fixture.Estimator.Gate = new TaskCompletionSource<StripEstimate>(TaskCreationOptions.RunContinuationsAsynchronously);
+        fixture.Estimator.Gate.SetException(new ToolNotFoundException("exiftool.exe"));
+
+        fixture.Library.SelectAllVisible(true);
+        fixture.Time.Advance(InspectorViewModel.EstimateDebounce);
+        await inspector.EstimateTask.Within();
+
+        var localizer = fixture.Host.Localizer;
+        Assert.Equal(localizer.Format("EstimateFailedFormat", localizer.Format("ToolMissingFormat", "exiftool.exe")), inspector.EstimateStatusText);
+        Assert.DoesNotMatch(@"\p{IsCJKUnifiedIdeographs}", inspector.EstimateStatusText);
     }
 }

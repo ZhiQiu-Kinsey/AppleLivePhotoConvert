@@ -147,12 +147,12 @@ public class ConversionRunnerTests : IDisposable
     }
 
     [Fact]
-    public void ExternalToolEngines_ExplicitMissingTool_ThrowsFileNotFound()
+    public void ExternalToolEngines_ExplicitMissingTool_ThrowsToolNotFound()
     {
         var missing = new ToolPaths(Path.Combine(_context.RootDirectory, "no-exiftool"), Path.Combine(_context.RootDirectory, "no-ffmpeg"), null);
 
-        Assert.Throws<FileNotFoundException>(() => ExternalToolEngines.Instance.CreateMetadata(missing, 1));
-        Assert.Throws<FileNotFoundException>(() => ExternalToolEngines.Instance.CreateVideoConverter(missing));
+        Assert.Throws<ToolNotFoundException>(() => ExternalToolEngines.Instance.CreateMetadata(missing, 1));
+        Assert.Throws<ToolNotFoundException>(() => ExternalToolEngines.Instance.CreateVideoConverter(missing));
     }
 
     [Fact]
