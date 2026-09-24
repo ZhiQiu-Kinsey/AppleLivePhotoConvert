@@ -74,7 +74,7 @@ public sealed class ToolRegistryOptions
 /// 探测使用内部超时而不是调用方的取消令牌，调用方取消只是不再等待，不会让其他等待者拿到半截结果。
 /// </remarks>
 /// <param name="explicitPathProvider">读取设置中为工具指定的路径（空白表示自动发现）；每次探测时调用以取得最新值</param>
-public sealed class ToolRegistry(Func<ToolId, string?>? explicitPathProvider = null, ToolManifest? manifest = null, ToolRegistryOptions? options = null)
+public sealed class ToolRegistry(Func<ToolId, string?>? explicitPathProvider = null, ToolManifest? manifest = null, ToolRegistryOptions? options = null) : IToolRegistry
 {
     private readonly ToolManifest _manifest = manifest ?? ToolManifest.Embedded;
     private readonly ToolRegistryOptions _options = options ?? new ToolRegistryOptions();

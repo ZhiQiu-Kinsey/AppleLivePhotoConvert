@@ -41,7 +41,7 @@ src/LivePhotoConvert.Core/          # 核心引擎（纯托管、AOT 兼容、�
   Pairing/                          # MediaPair、MediaPairMatcher（按目录 + 主干配对）、PairValidator（纯函数）
   Pipeline/                         # BatchRunner、OutputCommitter 原子落盘、SourceDisposition、TempWorkspace、BatchReport
   Services/                         # MotionPhotoMerger / Splitter / Stripper 及其请求模型
-  External/                         # ProcessRunner、FFmpeg / heif-enc / Magick 转换器、ToolLocator、ToolDownloader
+  External/                         # ProcessRunner、FFmpeg / heif-enc / Magick 转换器、ToolLocator；Tools/ 依赖清单（tools.json）、ToolInstaller 校验安装、ToolRegistry 能力探测
   Io/                               # BinaryFile 流式拼接切片、UniquePath、FileHelper / FileTimestamp
   Platform/                         # RecycleBin 等平台相关实现
 src/LivePhotoConvert.Desktop/       # Avalonia 12 桌面端

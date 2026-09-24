@@ -124,11 +124,10 @@
 
   <!-- ToolsView Keys -->
   <sys:String x:Key="ExifToolDesc">注入 XMP 动态照片标签与 QuickTime UTC 时区元数据。</sys:String>
-  <sys:String x:Key="FfmpegDesc">视频无损流复制与格式解封装。</sys:String>
+  <sys:String x:Key="FfmpegDesc">视频流复制、转码与 HDR 色调映射。</sys:String>
   <sys:String x:Key="HeifEncDesc">高画质 HEIC/HEIF 图像编码器。</sys:String>
   <sys:String x:Key="CustomPathBtn">自定义指定路径...</sys:String>
   <sys:String x:Key="InstallToolBtn">一键安装</sys:String>
-  <sys:String x:Key="InstallingStatus">正在下载...</sys:String>
   <sys:String x:Key="InstallStartingFormat">正在安装 {0}，请保持网络畅通...</sys:String>
   <sys:String x:Key="InstallCompletedFormat">{0} 安装完成</sys:String>
   <sys:String x:Key="InstallFailedFormat">{0} 安装失败：{1}</sys:String>
@@ -136,6 +135,42 @@
   <sys:String x:Key="ToolPathInvalidFormat">所选文件不是可用的引擎可执行文件：{0}</sys:String>
   <sys:String x:Key="ToolPathAppliedFormat">已指定 {0} 的可执行文件路径</sys:String>
   <sys:String x:Key="PickerToolExecutableTitle">选择引擎可执行文件</sys:String>
+  <sys:String x:Key="ToolsIntegrityNote">一键安装使用锁定版本：下载后先校验 SHA256，再解压、试运行，最后整体替换；任何一步失败都会保留原有版本。</sys:String>
+  <sys:String x:Key="ToolsInstallRootLabel">安装位置：</sys:String>
+  <sys:String x:Key="ToolProbing">检测中</sys:String>
+  <sys:String x:Key="ToolVersionUnknown">版本未知</sys:String>
+  <sys:String x:Key="ToolUpdateAvailableFormat">有推荐版本 {0}，建议升级</sys:String>
+  <sys:String x:Key="ToolUpgradeBtnFormat">升级到 {0}</sys:String>
+  <sys:String x:Key="ToolHdrUnavailable">HDR 预览/转码不可用：当前 FFmpeg 缺少 HDR 色调映射或 10-bit HEVC 编码。</sys:String>
+  <sys:String x:Key="ToolExplicitPathInvalid">自定义路径无效，已回退到自动检测。</sys:String>
+  <sys:String x:Key="ToolCapabilityHdrTonemap">HDR 色调映射 (zscale+tonemap)</sys:String>
+  <sys:String x:Key="ToolCapabilityHevc10Bit">HEVC 10-bit</sys:String>
+  <sys:String x:Key="ToolPlatformUnsupportedBtn">当前平台请用系统包管理器安装</sys:String>
+  <sys:String x:Key="ToolPlatformUnsupported">当前平台没有内置下载包，请用系统包管理器安装，或手动指定路径。</sys:String>
+  <sys:String x:Key="ToolInstallBlockedByTask">有任务正在运行并占用这些工具，请等任务结束后再安装或升级。</sys:String>
+  <sys:String x:Key="ToolStagePreparing">正在准备...</sys:String>
+  <sys:String x:Key="ToolStageDownloadingFormat">正在从 {0} 下载：{1}</sys:String>
+  <sys:String x:Key="ToolStageVerifying">正在校验完整性...</sys:String>
+  <sys:String x:Key="ToolStageExtracting">正在解压...</sys:String>
+  <sys:String x:Key="ToolStageProbing">正在试运行验证...</sys:String>
+  <sys:String x:Key="ToolStageCommitting">正在替换旧版本...</sys:String>
+  <sys:String x:Key="ToolStageSourceFailedFormat">{0} 失败（{1}），正在尝试下一个源...</sys:String>
+  <sys:String x:Key="ToolSourceFailureFormat">{0}：{1}</sys:String>
+  <sys:String x:Key="ToolSourceViaFormat">{0}（经 {1}）</sys:String>
+  <sys:String x:Key="ToolSourceNpmMirror">npmmirror 国内镜像</sys:String>
+  <sys:String x:Key="ToolSourceNpmRegistry">npm 官方仓库</sys:String>
+  <sys:String x:Key="ToolSourceSourceForge">SourceForge</sys:String>
+  <sys:String x:Key="ToolSourceGitHub">GitHub Releases</sys:String>
+  <sys:String x:Key="ToolFailureUnverified">缺少可信校验值，已拒绝</sys:String>
+  <sys:String x:Key="ToolFailureNetwork">网络连接失败</sys:String>
+  <sys:String x:Key="ToolFailureStalled">下载长时间无响应</sys:String>
+  <sys:String x:Key="ToolFailureIntegrity">校验失败，文件可能被篡改或不完整</sys:String>
+  <sys:String x:Key="ToolFailureUnsafeArchive">安装包含有不安全的路径，已拒绝</sys:String>
+  <sys:String x:Key="ToolFailureInvalidArchive">安装包损坏或结构不符</sys:String>
+  <sys:String x:Key="ToolFailureProbe">试运行失败，可能被安全软件拦截</sys:String>
+  <sys:String x:Key="ToolFailureCommit">无法替换旧版本，文件可能正被占用</sys:String>
+  <sys:String x:Key="PingInvalidAddress">地址无效</sys:String>
+  <sys:String x:Key="PingTimedOut">超时</sys:String>
 
   <!-- CurtainCompare Keys -->
   <sys:String x:Key="CurtainAfterTitle">瘦身后静态 HEIC</sys:String>
@@ -308,7 +343,6 @@
   <sys:String x:Key="PingFailedFormat">连接失败 ({0})</sys:String>
   <sys:String x:Key="ToolNotDetectedFormat">未检测到 {0}</sys:String>
   <sys:String x:Key="ToolMissingFormat">未找到 {0}，请在「依赖引擎」页面下载或指定路径。</sys:String>
-  <sys:String x:Key="ToolReady">已就绪</sys:String>
   <sys:String x:Key="ReportTimestampFormat">批次完成时间：{0:yyyy-MM-dd HH:mm:ss}</sys:String>
   <sys:String x:Key="ReportSummaryFormat">成功 {0} 项 · 异常 {1} 项</sys:String>
   <sys:String x:Key="ReportStatusSuccess">成功</sys:String>

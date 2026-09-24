@@ -124,11 +124,10 @@
 
   <!-- ToolsView Keys -->
   <sys:String x:Key="ExifToolDesc">Injects XMP Motion Photo tags and QuickTime UTC timezone metadata.</sys:String>
-  <sys:String x:Key="FfmpegDesc">Lossless video stream copy and demuxing.</sys:String>
+  <sys:String x:Key="FfmpegDesc">Video stream copy, transcoding and HDR tone mapping.</sys:String>
   <sys:String x:Key="HeifEncDesc">High-quality HEIC/HEIF image encoder.</sys:String>
   <sys:String x:Key="CustomPathBtn">Specify Custom Path...</sys:String>
   <sys:String x:Key="InstallToolBtn">Install Now</sys:String>
-  <sys:String x:Key="InstallingStatus">Downloading...</sys:String>
   <sys:String x:Key="InstallStartingFormat">Installing {0}, please keep the network connected...</sys:String>
   <sys:String x:Key="InstallCompletedFormat">{0} installed</sys:String>
   <sys:String x:Key="InstallFailedFormat">{0} install failed: {1}</sys:String>
@@ -136,6 +135,42 @@
   <sys:String x:Key="ToolPathInvalidFormat">The selected file is not a usable engine executable: {0}</sys:String>
   <sys:String x:Key="ToolPathAppliedFormat">Executable path for {0} has been set</sys:String>
   <sys:String x:Key="PickerToolExecutableTitle">Select engine executable</sys:String>
+  <sys:String x:Key="ToolsIntegrityNote">One-click install uses pinned versions: each download is verified by SHA256, extracted, test-run and then swapped in as a whole. If any step fails, the existing version is kept.</sys:String>
+  <sys:String x:Key="ToolsInstallRootLabel">Install location:</sys:String>
+  <sys:String x:Key="ToolProbing">Detecting</sys:String>
+  <sys:String x:Key="ToolVersionUnknown">Unknown version</sys:String>
+  <sys:String x:Key="ToolUpdateAvailableFormat">Recommended version {0} is available</sys:String>
+  <sys:String x:Key="ToolUpgradeBtnFormat">Upgrade to {0}</sys:String>
+  <sys:String x:Key="ToolHdrUnavailable">HDR preview/transcoding unavailable: this FFmpeg lacks HDR tone mapping or 10-bit HEVC encoding.</sys:String>
+  <sys:String x:Key="ToolExplicitPathInvalid">The custom path is invalid; fell back to automatic detection.</sys:String>
+  <sys:String x:Key="ToolCapabilityHdrTonemap">HDR tone mapping (zscale+tonemap)</sys:String>
+  <sys:String x:Key="ToolCapabilityHevc10Bit">HEVC 10-bit</sys:String>
+  <sys:String x:Key="ToolPlatformUnsupportedBtn">Install with your system package manager</sys:String>
+  <sys:String x:Key="ToolPlatformUnsupported">No bundled package for this platform. Install it with your system package manager or specify its path.</sys:String>
+  <sys:String x:Key="ToolInstallBlockedByTask">A running task is using these tools. Install or upgrade after it finishes.</sys:String>
+  <sys:String x:Key="ToolStagePreparing">Preparing...</sys:String>
+  <sys:String x:Key="ToolStageDownloadingFormat">Downloading from {0}: {1}</sys:String>
+  <sys:String x:Key="ToolStageVerifying">Verifying integrity...</sys:String>
+  <sys:String x:Key="ToolStageExtracting">Extracting...</sys:String>
+  <sys:String x:Key="ToolStageProbing">Test-running...</sys:String>
+  <sys:String x:Key="ToolStageCommitting">Replacing the old version...</sys:String>
+  <sys:String x:Key="ToolStageSourceFailedFormat">{0} failed ({1}), trying the next source...</sys:String>
+  <sys:String x:Key="ToolSourceFailureFormat">{0}: {1}</sys:String>
+  <sys:String x:Key="ToolSourceViaFormat">{0} (via {1})</sys:String>
+  <sys:String x:Key="ToolSourceNpmMirror">npmmirror (China mirror)</sys:String>
+  <sys:String x:Key="ToolSourceNpmRegistry">npm registry</sys:String>
+  <sys:String x:Key="ToolSourceSourceForge">SourceForge</sys:String>
+  <sys:String x:Key="ToolSourceGitHub">GitHub Releases</sys:String>
+  <sys:String x:Key="ToolFailureUnverified">no trusted checksum, rejected</sys:String>
+  <sys:String x:Key="ToolFailureNetwork">network error</sys:String>
+  <sys:String x:Key="ToolFailureStalled">download stalled</sys:String>
+  <sys:String x:Key="ToolFailureIntegrity">checksum mismatch, the file may be tampered with or incomplete</sys:String>
+  <sys:String x:Key="ToolFailureUnsafeArchive">package contains unsafe paths, rejected</sys:String>
+  <sys:String x:Key="ToolFailureInvalidArchive">package is corrupt or has an unexpected layout</sys:String>
+  <sys:String x:Key="ToolFailureProbe">test run failed, possibly blocked by security software</sys:String>
+  <sys:String x:Key="ToolFailureCommit">could not replace the old version, it may be in use</sys:String>
+  <sys:String x:Key="PingInvalidAddress">invalid address</sys:String>
+  <sys:String x:Key="PingTimedOut">timed out</sys:String>
 
   <!-- CurtainCompare Keys -->
   <sys:String x:Key="CurtainAfterTitle">Optimized Static HEIC</sys:String>
@@ -308,7 +343,6 @@
   <sys:String x:Key="PingFailedFormat">Connection failed ({0})</sys:String>
   <sys:String x:Key="ToolNotDetectedFormat">{0} not detected</sys:String>
   <sys:String x:Key="ToolMissingFormat">{0} was not found. Download it or set its path on the Engines page.</sys:String>
-  <sys:String x:Key="ToolReady">Ready</sys:String>
   <sys:String x:Key="ReportTimestampFormat">Batch completed: {0:yyyy-MM-dd HH:mm:ss}</sys:String>
   <sys:String x:Key="ReportSummaryFormat">Succeeded {0} · Issues {1}</sys:String>
   <sys:String x:Key="ReportStatusSuccess">Success</sys:String>

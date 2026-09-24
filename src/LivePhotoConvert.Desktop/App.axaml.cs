@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
+using LivePhotoConvert.Core.External.Tools;
 using LivePhotoConvert.Core.Services;
 using LivePhotoConvert.Desktop.Features.Dialogs;
 using LivePhotoConvert.Desktop.Features.Shell;
@@ -42,9 +43,23 @@ public class App : Application
             desktop.Exit += (_, _) => services.Dispose();
 
             _ = Task.Run(SafetyGuard.CleanOrphanTempDirectories);
+            _ = Task.Run(() => RecoverToolInstalls(services.GetRequiredService<IToolInstaller>()));
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>上次在替换工具目录中途退出时，把备份目录改回来，否则该工具在下次安装前一直显示缺失。</summary>
+    private static void RecoverToolInstalls(IToolInstaller installer)
+    {
+        try
+        {
+            installer.RecoverInterruptedInstalls();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            ErrorLogger.Log(ex, "恢复中断的工具安装");
+        }
     }
 
     private async void OnUiThreadUnhandledException(object? sender, DispatcherUnhandledExceptionEventArgs e)

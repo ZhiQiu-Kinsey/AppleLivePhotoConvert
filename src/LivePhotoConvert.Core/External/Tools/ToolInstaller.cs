@@ -29,7 +29,7 @@ public sealed class ToolInstallerOptions
 /// 所有中间产物都放在安装根目录下的 <c>.staging-*</c> 目录（与最终目录同卷，保证改名是原子的），
 /// 任何失败或取消都会整体删除；旧版本在新版本就位前只被改名为 <c>.backup-*</c>，替换失败即改回。
 /// </remarks>
-public sealed class ToolInstaller
+public sealed class ToolInstaller : IToolInstaller
 {
     private const string StagingPrefix = ".staging-";
     private const string BackupPrefix = ".backup-";

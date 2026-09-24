@@ -3,15 +3,13 @@ using LivePhotoConvert.Core.External.Tools;
 
 namespace LivePhotoConvert.Core.Tests.External;
 
-/// <summary>
-/// 旧下载入口的兼容层与工具定位。
-/// </summary>
-public class ToolDownloaderTests
+/// <summary>工具目录选择与工具定位。</summary>
+public class ToolLocatorTests
 {
     [Fact]
     public void GetWritableToolDirectory_ReturnsExistingDirectory()
     {
-        var directory = ToolDownloader.GetWritableToolDirectory();
+        var directory = ToolDirectories.GetWritableToolDirectory();
 
         Assert.False(string.IsNullOrWhiteSpace(directory));
         Assert.True(Directory.Exists(directory));
@@ -20,30 +18,10 @@ public class ToolDownloaderTests
     [Fact]
     public void LocalAppDataToolDirectory_IsUnderLivePhotoConvert()
     {
-        var directory = ToolDownloader.LocalAppDataToolDirectory;
+        var directory = ToolDirectories.LocalAppDataToolDirectory;
 
         Assert.Contains("LivePhotoConvert", directory);
         Assert.EndsWith("tools", directory);
-    }
-
-    [Theory]
-    [InlineData(ToolId.ExifTool)]
-    [InlineData(ToolId.Ffmpeg)]
-    [InlineData(ToolId.HeifEnc)]
-    public void ExternalToolMetadata_SourcesComeFromManifest(ToolId id)
-    {
-        var info = id switch
-        {
-            ToolId.ExifTool => ExternalToolMetadata.ExifTool,
-            ToolId.Ffmpeg => ExternalToolMetadata.FFmpeg,
-            _ => ExternalToolMetadata.HeifEnc
-        };
-
-        Assert.Equal(id, info.Id);
-        Assert.Equal(
-            ToolManifest.Embedded.Get(id).PackagesFor("win-x64").Select(package => package.Url),
-            info.Sources.Select(source => source.Url));
-        Assert.All(info.Sources, source => Assert.StartsWith("https://", source.Url, StringComparison.Ordinal));
     }
 
     [Fact]

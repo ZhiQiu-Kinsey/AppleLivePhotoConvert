@@ -129,4 +129,19 @@ public class AppServicesTests
         Assert.True(await lifetime.PrepareShutdownAsync().WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
         Assert.Null(host.Get<IDialogService>().Current);
     }
+
+    [Fact]
+    public async Task AppLifetime_Shutdown_SavesMirrorStillInDebounce()
+    {
+        using var host = new DesktopTestHost();
+        host.Settings.Update(s => s.AutoCleanTemp = false);
+        var tools = host.Get<ToolsViewModel>();
+        tools.CustomMirrorUrl = "https://mirror.example/";
+        Assert.NotEqual("https://mirror.example/", host.Settings.Current.CustomMirrorUrl);
+
+        Assert.True(await host.Get<AppLifetime>().PrepareShutdownAsync().WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+
+        Assert.Equal("https://mirror.example/", host.Settings.Current.CustomMirrorUrl);
+        Assert.Contains("https://mirror.example/", File.ReadAllText(host.SettingsPath));
+    }
 }
