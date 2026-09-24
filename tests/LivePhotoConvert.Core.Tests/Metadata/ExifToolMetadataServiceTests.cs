@@ -60,6 +60,26 @@ public class ExifToolMetadataServiceTests
     }
 
     [Fact]
+    public async Task ReadXmpAsync_NonJpegContentWithJpgExtension_ReadsThroughExifTool()
+    {
+        var exiftool = ExternalTools.RequireExifTool();
+        using var temp = new TempDirectory();
+        var png = temp.Combine("disguised.png");
+        using (var image = new MagickImage(MagickColors.Red, 8, 8))
+        {
+            image.Write(png, MagickFormat.Png);
+        }
+
+        await RunAsync(exiftool, "-q", "-overwrite_original", "-XMP-dc:Subject=keep-me", png);
+        var disguised = temp.Combine("disguised.jpg");
+        File.Move(png, disguised);
+
+        await using var service = ExifToolMetadataService.Create(exiftool);
+
+        Assert.Contains("keep-me", await service.ReadXmpAsync(disguised, Token));
+    }
+
+    [Fact]
     public async Task WriteApplePhotoIdentifierAsync_CreatesAppleMakerNotes()
     {
         var exiftool = ExternalTools.RequireExifTool();

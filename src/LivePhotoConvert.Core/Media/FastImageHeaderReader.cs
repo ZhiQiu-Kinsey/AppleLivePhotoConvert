@@ -50,8 +50,14 @@ public readonly record struct ImageHeader(int Width, int Height, int Orientation
 /// </remarks>
 public static class FastImageHeaderReader
 {
-    /// <summary>JPEG 段与 HEIC 顶层 box 的扫描上限，防止畸形文件拖慢扫描。</summary>
+    /// <summary>HEIC 顶层 box 的扫描上限，防止畸形文件拖慢扫描。</summary>
     private const int MaxScanBytes = 512 * 1024;
+
+    /// <summary>
+    /// JPEG 帧头（SOF）之前的扫描上限。人像模式等照片把深度图放在扩展 XMP 里，SOF 前可能有数 MB 的 APP 段；
+    /// 各段按长度直接跳过，上限只防畸形文件逐字节找标记。
+    /// </summary>
+    private const int MaxJpegHeaderBytes = 16 * 1024 * 1024;
 
     /// <summary>JPEG APP1 首次读取量：IFD0 与 ExifIFD 通常位于段首几 KB，MakerNote 与内嵌缩略图在后部，不必读满 64KB。</summary>
     private const int InitialExifWindow = 16 * 1024;
@@ -194,7 +200,7 @@ public static class FastImageHeaderReader
         var exif = ExifFields.Default;
         var exifParsed = false;
         int width = 0, height = 0;
-        while (stream.Position < MaxScanBytes)
+        while (stream.Position < MaxJpegHeaderBytes)
         {
             var b = stream.ReadByte();
             if (b < 0)
