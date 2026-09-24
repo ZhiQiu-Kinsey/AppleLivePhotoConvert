@@ -173,21 +173,8 @@ public sealed partial class SettingsViewModel : ViewModelBase
         BuildCredits = MaterializeCredits(AboutInfo.BuildCredits);
     }
 
-    private AboutCredit[] MaterializeCredits(AboutInfo.CreditEntry[] entries)
-    {
-        var result = new AboutCredit[entries.Length];
-        for (int i = 0; i < entries.Length; i++)
-        {
-            var entry = entries[i];
-            result[i] = new AboutCredit(
-                entry.Name,
-                _localizer[entry.DescriptionKey],
-                entry.Url,
-                entry.Badge);
-        }
-
-        return result;
-    }
+    private AboutCredit[] MaterializeCredits(AboutInfo.CreditEntry[] entries) =>
+        [.. entries.Select(entry => new AboutCredit(entry.Name, _localizer[entry.DescriptionKey], entry.Url, entry.Badge))];
 
     private static string ResolveAppVersion()
     {
