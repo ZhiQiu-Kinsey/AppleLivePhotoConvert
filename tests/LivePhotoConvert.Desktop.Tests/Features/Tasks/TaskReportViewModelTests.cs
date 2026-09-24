@@ -1,3 +1,4 @@
+using System.Collections.Specialized;
 using System.Text;
 using LivePhotoConvert.Core.Pairing;
 using LivePhotoConvert.Core.Pipeline;
@@ -59,6 +60,20 @@ public class TaskReportViewModelTests
         report.SetFilterCommand.Execute("0");
         Assert.True(report.IsAllFilterSelected);
         Assert.Equal(6, report.FilteredItems.Count);
+    }
+
+    [Fact]
+    public async Task SetFilter_ReplacesItemsWithSingleResetNotification()
+    {
+        using var fixture = new TaskCenterFixture(ScriptedRunner.Returning(MixedReport));
+        var report = await fixture.Center.RunAsync(SplitJob()).Within();
+        var changes = new List<NotifyCollectionChangedAction>();
+        report.FilteredItems.CollectionChanged += (_, e) => changes.Add(e.Action);
+
+        report.SetFilterCommand.Execute(TaskReportViewModel.FilterProblems);
+
+        Assert.Equal(4, report.FilteredItems.Count);
+        Assert.Equal([NotifyCollectionChangedAction.Reset], changes);
     }
 
     [Fact]

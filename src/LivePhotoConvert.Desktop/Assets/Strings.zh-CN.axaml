@@ -274,6 +274,7 @@
   <sys:String x:Key="ReportAvgSpeedFormat">{0:F2} 秒/项</sys:String>
   <sys:String x:Key="SplitTargetApple">Apple Live Photo</sys:String>
   <sys:String x:Key="SplitTargetExtract">独立封面与视频</sys:String>
+  <sys:String x:Key="MergeTargetMotionPhoto">动态照片</sys:String>
   <sys:String x:Key="MergeSuccessDesc">已成功合成为动态照片</sys:String>
   <sys:String x:Key="SplitSuccessDescFormat">已成功拆分为 {0}</sys:String>
 
@@ -302,6 +303,8 @@
   <sys:String x:Key="ReportKpiProblems">异常</sys:String>
   <sys:String x:Key="ReportKpiProblemsSubFormat">失败 {0} · 清理失败 {1}</sys:String>
   <sys:String x:Key="ReportKpiDuration">批次总耗时</sys:String>
+  <sys:String x:Key="ReportDurationSecondsFormat">{0:F1} 秒</sys:String>
+  <sys:String x:Key="ReportDurationUnderOneSecond">不到 1 秒</sys:String>
   <sys:String x:Key="ReportDistTitle">处理结果分布指标</sys:String>
   <sys:String x:Key="ReportLegendSuccess">成功:</sys:String>
   <sys:String x:Key="ReportLegendSkipped">跳过:</sys:String>

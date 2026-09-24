@@ -274,6 +274,7 @@
   <sys:String x:Key="ReportAvgSpeedFormat">{0:F2}s / item</sys:String>
   <sys:String x:Key="SplitTargetApple">Apple Live Photo</sys:String>
   <sys:String x:Key="SplitTargetExtract">Cover &amp; Video</sys:String>
+  <sys:String x:Key="MergeTargetMotionPhoto">Motion Photo</sys:String>
   <sys:String x:Key="MergeSuccessDesc">Successfully merged into a motion photo</sys:String>
   <sys:String x:Key="SplitSuccessDescFormat">Successfully split into {0}</sys:String>
 
@@ -302,6 +303,8 @@
   <sys:String x:Key="ReportKpiProblems">Issues</sys:String>
   <sys:String x:Key="ReportKpiProblemsSubFormat">Failed {0} · Cleanup {1}</sys:String>
   <sys:String x:Key="ReportKpiDuration">Total Batch Time</sys:String>
+  <sys:String x:Key="ReportDurationSecondsFormat">{0:F1}s</sys:String>
+  <sys:String x:Key="ReportDurationUnderOneSecond">&lt; 1s</sys:String>
   <sys:String x:Key="ReportDistTitle">Result Distribution</sys:String>
   <sys:String x:Key="ReportLegendSuccess">Success:</sys:String>
   <sys:String x:Key="ReportLegendSkipped">Skipped:</sys:String>
