@@ -1,0 +1,31 @@
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '/data/IMG_0001.MOV':
+  Metadata:
+    major_brand     : qt  
+    minor_version   : 0
+    compatible_brands: qt  
+    creation_time   : 2024-05-01T08:00:00.000000Z
+    com.apple.quicktime.content.identifier: 5B0C9A5E-7F1D-4C1B-9E2A-1C9A7E0B2D3F
+    com.apple.quicktime.make: Apple
+    com.apple.quicktime.model: iPhone 15 Pro
+    com.apple.quicktime.software: 17.4.1
+    com.apple.quicktime.creationdate: 2024-05-01T16:00:00+0800
+  Duration: 00:00:02.87, start: 0.000000, bitrate: 9243 kb/s
+  Stream #0:0[0x1](und): Video: hevc (Main 10) (hvc1 / 0x31637668), yuv420p10le(tv, bt2020nc/bt2020/arib-std-b67), 1920x1440, 8905 kb/s, 29.98 fps, 30 tbr, 600 tbn (default)
+      Metadata:
+        creation_time   : 2024-05-01T08:00:00.000000Z
+        handler_name    : Core Media Video
+        vendor_id       : [0][0][0][0]
+        encoder         : HEVC
+      Side data:
+        DOVI configuration record: version: 1.0, profile: 8, level: 4, rpu flag: 1, el flag: 0, bl flag: 1, compatibility id: 4, compression: 0
+        displaymatrix: rotation of -90.00 degrees
+  Stream #0:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, mono, fltp, 95 kb/s (default)
+      Metadata:
+        creation_time   : 2024-05-01T08:00:00.000000Z
+        handler_name    : Core Media Audio
+        vendor_id       : [0][0][0][0]
+  Stream #0:2[0x3](und): Data: none (mebx / 0x7862656D), 0 kb/s (default)
+      Metadata:
+        creation_time   : 2024-05-01T08:00:00.000000Z
+        handler_name    : Core Media Metadata
+At least one output file must be specified

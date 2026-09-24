@@ -154,7 +154,9 @@ public sealed class MotionPhotoMerger(IMetadataService metadata, IImageConverter
         if (!MediaFileTypes.IsMp4(pair.VideoPath) || videoTags.IsMirrored)
         {
             convertedVideo = workspace.NewFile(".mp4");
-            await videoConverter.ConvertToMp4Async(pair.VideoPath, convertedVideo, forceTranscode: videoTags.IsMirrored, cancellationToken);
+            // 安卓相册普遍忽略镜像矩阵，前置镜像视频必须把方向烧录进像素
+            var options = videoTags.IsMirrored ? new VideoConversionOptions { BakeOrientation = true } : null;
+            await videoConverter.ConvertToMp4Async(pair.VideoPath, convertedVideo, options, cancellationToken);
         }
 
         var video = convertedVideo ?? pair.VideoPath;

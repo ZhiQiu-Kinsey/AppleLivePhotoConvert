@@ -67,7 +67,9 @@ public class MotionPhotoMergerTests
 
         await CreateMerger().MergeAsync(Request(temp, [photo, video]), cancellationToken: Token);
 
-        Assert.Equal((video, true), Assert.Single(_videos.Mp4Conversions));
+        var (source, options) = Assert.Single(_videos.Mp4Conversions);
+        Assert.Equal(video, source);
+        Assert.True(options.BakeOrientation);
     }
 
     [Fact]

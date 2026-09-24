@@ -1,0 +1,21 @@
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '/data/20240501_120000.mp4':
+  Metadata:
+    major_brand     : mp42
+    minor_version   : 0
+    compatible_brands: isommp42
+    creation_time   : 2024-05-01T04:00:00.000000Z
+    com.android.version: 14
+  Duration: 00:00:03.03, start: 0.000000, bitrate: 42123 kb/s
+    Stream #0:0(eng): Video: hevc (Main 10) (hvc1 / 0x31637668), yuv420p10le(tv, bt2020nc/bt2020/smpte2084), 3840x2160, 41876 kb/s, SAR 1:1 DAR 16:9, 29.97 fps, 30 tbr, 90k tbn, 90k tbc (default)
+    Metadata:
+      rotate          : 90
+      creation_time   : 2024-05-01T04:00:00.000000Z
+      handler_name    : VideoHandle
+    Side data:
+      Mastering Display Metadata, has_primaries:1 has_luminance:1 r(0.6800,0.3200) g(0.2650,0.6900) b(0.1500 0.0600) wp(0.3127, 0.3290) min_luminance=0.005000, max_luminance=1000.000000
+      Content Light Level Metadata, MaxCLL=1000, MaxFALL=180
+    Stream #0:1(eng): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 256 kb/s (default)
+    Metadata:
+      creation_time   : 2024-05-01T04:00:00.000000Z
+      handler_name    : SoundHandle
+At least one output file must be specified

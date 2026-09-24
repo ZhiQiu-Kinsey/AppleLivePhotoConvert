@@ -135,7 +135,7 @@ public sealed class MotionPhotoSplitter(IMetadataService metadata, IImageConvert
             }
 
             await BinaryFile.CopySegmentAsync(path, embeddedVideo, video.Offset, video.Length, cancellationToken);
-            await videoConverter!.RemuxToMovAsync(embeddedVideo, stagedVideo, cancellationToken);
+            await videoConverter!.RemuxToMovAsync(embeddedVideo, stagedVideo, cancellationToken: cancellationToken);
 
             var contentIdentifier = Guid.NewGuid().ToString().ToUpperInvariant();
             await metadata.WriteApplePhotoIdentifierAsync(stagedPhoto, contentIdentifier, cancellationToken);
