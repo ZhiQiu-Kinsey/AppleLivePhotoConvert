@@ -3,7 +3,7 @@ using Avalonia;
 namespace LivePhotoConvert.Desktop.Features.Library.Thumbnails;
 
 /// <summary>
-/// 画廊的几何常量：排版、视口估算、缩略图分档与 XAML 模板共用一份，避免各处估算互相偏离。
+/// 画廊的几何常量：排版、缩略图分档与 XAML 模板共用一份，避免各处取值互相偏离。
 /// </summary>
 public static class GalleryMetrics
 {
@@ -26,7 +26,7 @@ public static class GalleryMetrics
     /// <summary>列表项（行、组标题）之间的纵向间距。</summary>
     public const double RowSpacing = 12;
 
-    /// <summary>组标题固定高度，使滚动估算不依赖字体度量。</summary>
+    /// <summary>组标题固定高度，不随字体度量变化。</summary>
     public const double GroupHeaderHeight = 40;
 
     /// <summary>卡片在预览区之外占用的宽度（左右外边距）。</summary>
@@ -45,12 +45,6 @@ public static class GalleryMetrics
     };
 
     public static double MaxRowHeight(string? scaleMode) => TargetRowHeight(scaleMode) * MaxRowHeightFactor;
-
-    /// <summary>一行卡片在列表中占用的总高度（含行距）。</summary>
-    public static double RowExtent(double previewHeight) => previewHeight + CardVerticalChrome + RowSpacing;
-
-    /// <summary>组标题在列表中占用的总高度（含行距）。</summary>
-    public const double GroupHeaderExtent = GroupHeaderHeight + RowSpacing;
 
     /// <summary>列表项右侧留给悬浮滚动条的宽度：滚动条展开时不遮挡组标题右端的计数与行尾卡片。</summary>
     public const double ScrollBarGutter = 14;

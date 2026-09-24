@@ -40,7 +40,7 @@ public sealed record StripSample(
 /// <summary>对单张样张真实执行一次瘦身；测试可替换。</summary>
 public interface IStripSampler
 {
-    /// <exception cref="FileNotFoundException">找不到 ExifTool 或 HEIC 编码器</exception>
+    /// <exception cref="ToolNotFoundException">找不到 ExifTool 或 HEIC 编码器</exception>
     /// <exception cref="OutcomeException">样张分析或处理失败，原因码见 <see cref="OutcomeException.Cause"/></exception>
     /// <exception cref="InvalidOperationException">样张处理失败且无法归类</exception>
     Task<StripSample> SampleAsync(string photoPath, StripSampleOptions options, CancellationToken cancellationToken);

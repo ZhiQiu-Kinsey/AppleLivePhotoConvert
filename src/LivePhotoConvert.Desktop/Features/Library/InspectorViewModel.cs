@@ -13,7 +13,7 @@ using LivePhotoConvert.Desktop.Services;
 
 namespace LivePhotoConvert.Desktop.Features.Library;
 
-/// <summary>输出盘剩余空间检查；测试可替换。</summary>
+/// <summary>输出盘剩余空间检查；会访问磁盘，调用方应在后台线程调用。测试可替换。</summary>
 public interface IDiskSpaceGuard
 {
     (bool HasEnoughSpace, long RequiredBytes, long AvailableBytes) Check(string targetDirectory, long totalSourceBytes);
@@ -110,7 +110,6 @@ public sealed partial class InspectorViewModel : ViewModelBase
         };
         localizer.LanguageChanged += (_, _) => RefreshTexts();
 
-        RefreshApplicable();
         RefreshTexts();
         ScheduleEstimate();
     }
@@ -285,7 +284,6 @@ public sealed partial class InspectorViewModel : ViewModelBase
     {
         _settings.Update(s => s.Action = value);
         _library.SetActionFilter(value);
-        RefreshApplicable();
         RefreshTexts();
         ScheduleEstimate();
     }
@@ -459,7 +457,8 @@ public sealed partial class InspectorViewModel : ViewModelBase
 
         var totalBytes = JobFactory.SourceBytes(cards);
         var target = JobFactory.ResolveTargetDirectory(action, settings, _library.AlbumDirectory);
-        var (hasSpace, requiredBytes, availableBytes) = _diskSpace.Check(target, totalBytes);
+        // 查询剩余空间可能访问网络盘，同样放到线程池
+        var (hasSpace, requiredBytes, availableBytes) = await Task.Run(() => _diskSpace.Check(target, totalBytes));
         if (!hasSpace)
         {
             var proceed = await _dialogs.ShowAsync(new LowDiskSpaceDialogViewModel
@@ -512,15 +511,18 @@ public sealed partial class InspectorViewModel : ViewModelBase
             return;
         }
 
-        try
+        // 输出目录首次使用前可能尚不存在，先建好再打开；目录可能在网络盘上，不占用界面线程
+        await Task.Run(() =>
         {
-            // 输出目录首次使用前可能尚不存在，先建好再打开
-            Directory.CreateDirectory(folder);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
-        {
-            ErrorLogger.Log(ex, "创建输出目录");
-        }
+            try
+            {
+                Directory.CreateDirectory(folder);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+            {
+                ErrorLogger.Log(ex, "创建输出目录");
+            }
+        });
 
         if (!_shell.OpenFolder(folder))
         {
@@ -558,6 +560,7 @@ public sealed partial class InspectorViewModel : ViewModelBase
             : _localizer["ApplicableScopeAll"];
     }
 
+    /// <summary>刷新全部界面文案，适用项统计也随之重算。</summary>
     private void RefreshTexts()
     {
         foreach (var option in NamingFormatOptions.Concat(SourceActionOptions))

@@ -443,8 +443,8 @@
   <sys:String x:Key="PrimaryBtnStripFormat">Slim down {0} items</sys:String>
   <sys:String x:Key="PrimaryBtnNone">No photos for this action</sys:String>
   <sys:String x:Key="MissingToolsTitle">Required tools are missing</sys:String>
-  <sys:String x:Key="MissingToolsFormat">This action needs {0}, which was not found. Install it or set its path on the Tools page first.</sys:String>
-  <sys:String x:Key="MissingToolsGoBtn">Open Tools</sys:String>
+  <sys:String x:Key="MissingToolsFormat">This action needs {0}, which was not found. Install it or set its path on the Engines page first.</sys:String>
+  <sys:String x:Key="MissingToolsGoBtn">Open Engines</sys:String>
   <sys:String x:Key="ToolNameHeicEncoder">HEIC encoder (heif-enc)</sys:String>
   <sys:String x:Key="LibraryScanning">Scanning…</sys:String>
   <sys:String x:Key="CardMotionPhotoLabel">Motion Photo</sys:String>

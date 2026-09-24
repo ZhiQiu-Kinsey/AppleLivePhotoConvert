@@ -30,19 +30,6 @@ public sealed class GalleryScrollTests : IDisposable
         var list = session.Descendants<ListBox>().Single(l => l.Name == "GalleryListBox");
         var view = session.Descendants<LibraryView>().Single();
 
-        // 实测容器事件时 DataContext 的状态：准备时已指向条目；回收时记录是否仍指向旧条目
-        int preparedWithItem = 0, preparedOther = 0, clearingWithRow = 0, clearingOther = 0;
-        list.ContainerPrepared += (_, e) =>
-        {
-            if (ReferenceEquals(e.Container.DataContext, list.ItemsView[e.Index])) preparedWithItem++;
-            else preparedOther++;
-        };
-        list.ContainerClearing += (_, e) =>
-        {
-            if (e.Container.DataContext is PhotoGridRowViewModel) clearingWithRow++;
-            else clearingOther++;
-        };
-
         library.AlbumDirectory = _album.InputDirectory;
         await library.RefreshAlbumAsync();
         await session.WaitUntilAsync(() => library.AllCards.Count == PairCount);
@@ -97,18 +84,12 @@ public sealed class GalleryScrollTests : IDisposable
         {
             scroll.Offset = new Vector(0, y);
             session.Pump();
-            await session.WaitUntilAsync(() => AttachedCards(list).All(c => c.DisplayImage is not null), timeoutSeconds: 20);
+            await session.WaitUntilAsync(() => AttachedCards(list) is { Count: > 0 } cards && cards.All(c => c.DisplayImage is not null), timeoutSeconds: 20);
             CheckInvariants($"慢速滚动 {y:F0}");
         }
 
         Assert.True(pipeline.ResidentBytes <= pipeline.BudgetBytes);
         Assert.True(library.AllCards.Count(c => c.Thumbnail is not null) < PairCount, "预算应迫使部分离屏位图被驱逐");
-        Assert.Equal(0, preparedOther);
-        Assert.True(preparedWithItem > 0);
-        TestContext.Current.TestOutputHelper?.WriteLine(
-            $"ContainerPrepared: DataContext 已是条目 {preparedWithItem} 次，其它 {preparedOther} 次；" +
-            $"ContainerClearing: DataContext 仍是行 {clearingWithRow} 次，其它 {clearingOther} 次；" +
-            $"驻留 {pipeline.ResidentBytes / 1024 / 1024}MB / 预算 {BudgetMb}MB");
         session.Log.AssertNoBindingErrors();
     }
 
@@ -134,9 +115,5 @@ public sealed class GalleryScrollTests : IDisposable
         await session.WaitUntilAsync(() => AttachedCards(list) is { Count: > 0 } cards && cards.All(c => c.Thumbnail is { PixelSize.Height: 360 or 416 }));
     }
 
-    private static List<PhotoCardItemViewModel> AttachedCards(ListBox list) =>
-        [.. list.GetRealizedContainers()
-            .Select(list.ItemFromContainer)
-            .OfType<PhotoGridRowViewModel>()
-            .SelectMany(r => r.Cards)];
+    private static List<PhotoCardItemViewModel> AttachedCards(ListBox list) => SyntheticGallery.Attached(list);
 }

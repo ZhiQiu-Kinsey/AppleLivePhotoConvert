@@ -1,8 +1,8 @@
 using Avalonia;
 using Avalonia.Threading;
-using LivePhotoConvert.Core.Services;
 using LivePhotoConvert.Desktop.Controls;
 using LivePhotoConvert.Desktop.Features.Playback;
+using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Models;
 
 namespace LivePhotoConvert.Desktop.Features.Library;
@@ -105,7 +105,7 @@ public sealed class GalleryHoverPlayback : IDisposable
         _disposed = true;
         _service.StoppingAll -= OnStoppingAll;
         _player.SurfaceInvalidated -= OnSurfaceInvalidated;
-        Observe(_service.ReleaseAsync(_player));
+        _service.ReleaseAsync(_player).LogFaults("悬浮播放");
     }
 
     private void StartPending()
@@ -122,7 +122,7 @@ public sealed class GalleryHoverPlayback : IDisposable
         }
 
         _playing = true;
-        Observe(_player.PlayAsync(video, target, _scaling(), PlaybackBudget.Hover));
+        _player.PlayAsync(video, target, _scaling(), PlaybackBudget.Hover).LogFaults("悬浮播放");
     }
 
     /// <summary>
@@ -151,8 +151,4 @@ public sealed class GalleryHoverPlayback : IDisposable
     private void OnControlInvalidated(object? sender, EventArgs e) => Stop();
 
     private void OnStoppingAll(object? sender, EventArgs e) => Stop();
-
-    private static void Observe(Task task) =>
-        task.ContinueWith(t => ErrorLogger.Log(t.Exception!.GetBaseException(), "悬浮播放"), CancellationToken.None,
-            TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
 }

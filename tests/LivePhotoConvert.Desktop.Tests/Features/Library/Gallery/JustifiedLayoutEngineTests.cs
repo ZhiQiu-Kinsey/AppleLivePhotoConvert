@@ -128,7 +128,6 @@ public class JustifiedLayoutEngineTests
             best = watch.Elapsed < best ? watch.Elapsed : best;
         }
 
-        TestContext.Current.TestOutputHelper?.WriteLine($"1 万项排版最佳耗时 {best.TotalMilliseconds:F2} ms");
         Assert.True(best < TimeSpan.FromMilliseconds(20), $"1 万项排版耗时 {best.TotalMilliseconds:F1} ms");
     }
 

@@ -46,7 +46,6 @@ public class ThumbnailPipelineTests
         Assert.Equal(234, GalleryMetrics.MaxRowHeight("Small"), precision: 6);
         Assert.Equal(GalleryMetrics.MediumRowHeight, GalleryMetrics.TargetRowHeight("Unknown"));
         Assert.Equal(86, GalleryMetrics.CardVerticalChrome);
-        Assert.Equal(250 + 86 + 12, GalleryMetrics.RowExtent(250));
     }
 
     [AvaloniaFact]
