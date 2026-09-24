@@ -86,9 +86,13 @@ public sealed partial class LibraryCatalog : ObservableObject
     [NotifyPropertyChangedFor(nameof(StatusText), nameof(HasStatus))]
     private string _errorDetail = string.Empty;
 
-    /// <summary>枚举到的文件总数。</summary>
+    /// <summary>遇到的文件总数（含被忽略的文件）。</summary>
     [ObservableProperty]
     private int _totalFiles;
+
+    /// <summary>不参与图库的文件数：非媒体、隐藏或系统文件、暂存与备份。</summary>
+    [ObservableProperty]
+    private int _ignoredFiles;
 
     /// <summary>因权限等原因跳过的子目录数。</summary>
     [ObservableProperty]
@@ -137,7 +141,7 @@ public sealed partial class LibraryCatalog : ObservableObject
         if (string.IsNullOrWhiteSpace(directory))
         {
             IsScanning = false;
-            Replace([], 0, 0, LibraryScanError.None, string.Empty);
+            Replace([], null, LibraryScanError.None, string.Empty);
             return;
         }
 
@@ -154,7 +158,7 @@ public sealed partial class LibraryCatalog : ObservableObject
                 return;
             }
 
-            Replace(cards, result.TotalFiles, result.InaccessibleEntries, LibraryScanError.None, string.Empty);
+            Replace(cards, result, LibraryScanError.None, string.Empty);
             EnrichmentTask = EnrichAsync([.. result.Items], epoch, cts.Token);
         }
         catch (OperationCanceledException) when (cts.IsCancellationRequested)
@@ -176,7 +180,7 @@ public sealed partial class LibraryCatalog : ObservableObject
                     ErrorLogger.Log(ex, "扫描相册");
                 }
 
-                Replace([], 0, 0, error, error == LibraryScanError.Failed ? ErrorMessages.Describe(_localizer, ex) : directory);
+                Replace([], null, error, error == LibraryScanError.Failed ? ErrorMessages.Describe(_localizer, ex) : directory);
             }
         }
         finally
@@ -188,12 +192,13 @@ public sealed partial class LibraryCatalog : ObservableObject
         }
     }
 
-    private void Replace(List<PhotoCardItemViewModel> cards, int totalFiles, int inaccessible, LibraryScanError error, string detail)
+    private void Replace(List<PhotoCardItemViewModel> cards, LibraryScanResult? result, LibraryScanError error, string detail)
     {
         Cards = cards;
         _byPath = cards.ToDictionary(card => card.PhotoPath, StringComparer.Ordinal);
-        TotalFiles = totalFiles;
-        InaccessibleEntries = inaccessible;
+        TotalFiles = result?.TotalFiles ?? 0;
+        IgnoredFiles = result?.IgnoredFiles ?? 0;
+        InaccessibleEntries = result?.InaccessibleEntries ?? 0;
         Error = error;
         ErrorDetail = detail;
         OnPropertyChanged(nameof(Cards));

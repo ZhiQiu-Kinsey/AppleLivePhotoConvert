@@ -18,7 +18,7 @@
 | **空间瘦身** | 图库检查器中的「瘦身」动作：剥离内嵌/配对视频并可选转码 HEIC（默认质量 90），可就地替换或导出，附卷帘对比预览 |
 | **依赖引擎** | 检测 / 下载 ExifTool、FFmpeg、heif-enc（内置国内加速镜像） |
 | **任务中心** | 运行中任务的进度、暂停与取消；本次会话的历史报告（成败明细、重试失败项、导出 CSV） |
-| **偏好设置 / 关于** | 主题、语言、并发数；版本、贡献者、仓库、MIT 协议与引用开源项目 |
+| **偏好设置 / 关于** | 主题、语言、并发数、画廊缩略图内存预算与磁盘缓存；版本、贡献者、仓库、MIT 协议与引用开源项目 |
 
 **技术栈（当前真实状态，勿参考历史文档中的过期信息）**
 
@@ -36,14 +36,15 @@
 ```
 src/LivePhotoConvert.Core/          # 核心引擎（纯托管、AOT 兼容、无 UI 依赖）
   Abstractions/                     # IImageConverter / IVideoConverter
-  Media/                            # MediaFileTypes 嗅探、MotionPhotoLayout 视频定位、MotionPhotoXmp 解析与编辑、FastImageHeaderReader
+  Media/                            # MediaFileTypes 嗅探、MotionPhotoLayout 视频定位、MotionPhotoXmp 解析与编辑、FastImageHeaderReader、LibraryScanner/LibraryItem 图库统一扫描
+    Thumbnails/                     # ThumbnailTiers 分档、ThumbnailKey、ThumbnailDiskCache（原子写、上限、LRU）、ThumbnailGenerator、ThumbnailDecodeLimits
   Metadata/                         # IMetadataService、ExifTool 会话池与批量 JSON 读取、CaptureTime、AppleMakerNote
   Pairing/                          # MediaPair、MediaPairMatcher（按目录 + 主干配对）、PairValidator（纯函数）
   Pipeline/                         # BatchRunner、OutputCommitter 原子落盘、SourceDisposition、TempWorkspace、BatchReport
   Services/                         # MotionPhotoMerger / Splitter / Stripper 及其请求模型
   External/                         # ProcessRunner、FFmpeg / heif-enc / Magick 转换器、ToolLocator、ToolDownloader
   Io/                               # BinaryFile 流式拼接切片、UniquePath、FileHelper / FileTimestamp
-  Platform/                         # RecycleBin 等平台相关实现
+  Platform/                         # RecycleBin、WindowsShellThumbnailSource 等平台相关实现
 src/LivePhotoConvert.Desktop/       # Avalonia 12 桌面端
   App.axaml(.cs) / Program.cs       # 组合根（主题与语言先于页面 VM 生效）/ 全局异常钩子
   Assets/                           # Styles.axaml、Strings.zh-CN.axaml、Strings.en-US.axaml
@@ -52,14 +53,16 @@ src/LivePhotoConvert.Desktop/       # Avalonia 12 桌面端
   Converters/                       # ByteSizeConverter 等 XAML 值转换器
   Features/                         # 按功能组织的视图 + VM
     Shell/                          # ShellWindow（导航、弹窗宿主、Esc）、ShellViewModel
-    Library/                        # 图库工作台：LibraryView/VM（画廊）、InspectorView/VM（动作与参数）、JobFactory、StripEstimator
+    Library/                        # 图库工作台：LibraryView/VM（画廊门面）、InspectorView/VM（动作与参数）、JobFactory、StripEstimator
+      Gallery/                      # LibraryCatalog（扫描与补全）、JustifiedLayoutEngine、GalleryOrdering、GalleryLayoutViewModel、GallerySelection
+      Thumbnails/                   # ThumbnailPipeline（字节预算、钉住、分档）、ByteBudget、GalleryThumbnailBinder、GalleryMetrics、LegacyThumbnailCache
     Tasks/                          # 任务中心：TaskCenter、ConversionRunner、TasksView/VM、TaskReportView/VM、CsvWriter
     Tools/                          # 依赖引擎页
-    Settings/                       # 偏好设置与关于
+    Settings/                       # 偏好设置（含画廊：缩略图内存预算、磁盘缓存上限与清理）与关于
     Dialogs/                        # 各弹窗（DialogViewModel<TResult> + 视图）
   Infrastructure/                   # 与具体页面无关的桌面服务：AppServices（DI 组合根）、Localizer、SettingsStore/DesktopSettings、DialogService、FilePicker、ShellLauncher、Navigator、ThemeService、AppLifetime
-  Models/                           # GalleryItem（卡片/行/分组头）、TimelineGroup（等高排版）、AboutCredit、AboutInfo
-  Services/                         # AlbumScanner / ThumbnailReader / PlaybackHost / SafetyGuard 等
+  Models/                           # GalleryItem（卡片/行/分组头）、AboutCredit、AboutInfo
+  Services/                         # PlaybackHost / LivePhotoStreamPlayer / MotionPhotoVideoCache（播放，阶段 3 替换）、SafetyGuard、CompletionEffects
 tests/
   LivePhotoConvert.Core.Tests/      # 引擎单元测试：Media / Metadata / Pairing / Pipeline / Services / Io，Support/ 为内存替身与合成媒体
   LivePhotoConvert.Desktop.Tests/   # 桌面单元测试与 Headless 界面冒烟：目录与产品一致（Features/*、Infrastructure、Services…），Harness/ 为测试宿主
@@ -144,12 +147,40 @@ global.json                         # 固定 SDK 10.0.400（避免误用 11 prev
 - 路径中间可能为空的绑定写成 `Current?.Title`（值类型再加 `TargetNullValue`），否则会产生绑定错误日志。
 - **界面改动补 Headless 冒烟测试**（`tests/LivePhotoConvert.Desktop.Tests`，`[AvaloniaFact]` + `Harness/ShellSession`）：新页面/弹窗/参数区要能在真实外壳中实例化，绑定错误日志为空，中英文切换后不残留另一语言或资源键名；截图输出到测试输出目录的 `screenshots/`（CI 作为产物上传）供人工审查。
 
-### 4.5 响应式相册与预览内存安全
+### 4.5 画廊：排版、缩略图与内存安全
 
-- 「等高自适应」由 `LibraryViewModel` / `TimelineGroup.BuildRows` 依据可用视口宽度、原图比例与目标行高动态分行；完整行需铺满，末行保持自然宽度，禁止退化为固定列数或拉伸图片。
-- 卡片尺寸必须使用实际解码宽高与方向信息；窗口、侧栏或分组状态变化后必须触发重排，不得仅保存显示模式而不更新布局。
-- 原始 `Bitmap` 是非托管像素内存，**严禁无界缓存**。当前预算：960px 缩略图最多 24 张；悬浮预览最多 1 组、60 帧、720p；QuickLook 最多 90 帧、1080p；首屏仅预热 1 段视频。调整数值必须补内存压力验证。
-- 缩略图解码或 Skia 像素分配失败必须降级为占位图，不得让异常穿透 UI 线程导致进程退出。
+**排版与选择**
+
+- 等高排版由纯函数 `JustifiedLayoutEngine.Compute` 完成：完整行铺满，行高不超过目标 × 1.3，末行取 min(目标, 自然高)；`GalleryLayoutViewModel` 负责排序分组、窗口缩放 120ms 防抖与行对象复用。禁止退化为固定列数或拉伸图片。
+- 卡片比例取扫描得到的转正后宽高（`LibraryItem.Header`），缩略图到达不改变比例、不触发重排。几何常量只来自 `GalleryMetrics`（目标行高 180/250/320、系数 1.3、信息栏、边距、组标题 40），排版、滚动估算、分档与 XAML 共用一份。重排前后按锚点（视口顶部条目的键）恢复滚动位置。
+- 选择由 `GallerySelection` 推导：单击只选这一张（再点取消），Ctrl 切换，Shift 按显示顺序范围选择，勾选角标按复选框切换；一次操作只触发一次 `SelectionChanged`。未选中时动作按全部就绪卡片统计。
+
+**缩略图分档与画质**
+
+- 磁盘档位（`ThumbnailTiers`）：高度 256/384/512/768/1024/1536/2048，长边上限 4096，取不小于需求像素的最小档。需求像素 = 最大行高 × `TopLevel.RenderScaling`；方形裁切（UniformToFill）下竖图按铺满方框所需的高度（行高 ÷ 宽高比）取档。内存位图用 `Bitmap.DecodeToHeight(min(档位, 需求像素), HighQuality)`，显示缩放比接近 1，小图按原高解码不放大。
+- 缩放模式、裁切模式或 `ScalingChanged` 变化时调用 `Configure`：尺寸需求变化的已附加卡片重新入队，新图到达前保留旧图。
+- 生成（`ThumbnailGenerator`）来源顺序：磁盘缓存 → Windows Shell（`THUMBNAILONLY`，小于 0.9 × 档位丢弃）→ EXIF 内嵌图（转正后不低于档位才用）→ 完整解码。规范化：先取 ICC → `AutoOrient` → 只缩小 → 转 sRGB → `Strip` → JPEG q92 4:4:4（平台缩略图再编码 q95）。缩略图不带 profile，显示端一律按 sRGB 解释。
+- 解码峰值：JPEG 以 `JpegReadDefines.Size`（按存储方向）做 DCT 缩放、最多 2 并发；HEIC/AVIF 只能整图解码，全局 1 并发；其它 2 并发。`ThumbnailDecodeLimits.Shared` 进程内共享，画廊与预览合计不超限。
+
+**磁盘缓存**
+
+- `ThumbnailDiskCache`：键 = SHA256(版本 | 规范化路径 | 长度 | 修改时间 | 档位)，按前 2 位分子目录；同目录临时文件 + `File.Move(overwrite)` 原子写入；命中时节流刷新修改时间作为访问时间；超过上限（设置 128MB～16GB，默认 1GB）按访问时间从旧到新删到 80%。
+- 设置页的占用统计与清理在后台执行；清理只删文件，已加载的位图继续显示，之后需要的档位按需重新生成。
+
+**内存预算与钉住（`ThumbnailPipeline` + `ByteBudget`）**
+
+- 原始 `Bitmap` 是非托管像素内存，**严禁无界缓存**。位图按字节（宽 × 高 × 4）计入预算（设置 64～1024MB，默认 192MB，修改即时生效并立即驱逐），超出时按 LRU 只驱逐未钉住的位图。
+- 钉住：列表的 `ContainerPrepared` / `ContainerClearing` 经 `GalleryThumbnailBinder` 映射为行内卡片的 `Acquire` / `Release`（引用计数；虚拟化回收的容器不一定离开可视树，不能依赖 `OnDetachedFromVisualTree`）。已实例化的卡片与 QuickLook 当前卡片被钉住，永不驱逐，钉住字节可以超出预算；画廊页面隐藏时释放全部钉住，切回时从已实例化容器重新钉住。不变式：`ResidentBytes ≤ 预算 + 钉住字节`，已实例化卡片不回退占位图。
+- 驱逐先让卡片放开位图（绑定切回占位），再延迟约 150ms 释放像素，避免已提交的渲染帧引用已释放的位图。
+- 请求队列按代次（滚动静止或重排后 `NextGeneration`）新者优先、同代后附加者优先；`Release` 即出队；旧代次对无引用卡片的结果与重扫（`Reset`）前的结果一律丢弃。
+- 解码或 Skia 像素分配失败降级为占位图，同一配置下不重试，异常不得穿透 UI 线程。
+- **UI 线程零 I/O**：缓存查询、stat 与解码都在 worker 上，卡片的文件信息全部来自扫描结果。
+- QuickLook 占位图经 `Acquire` 钉住；高清图经 `LoadPreviewAsync` 按画布显示像素（Uniform 后的高度 × 缩放比，不超过 2048）加载，由调用方持有并释放。
+- 调整预算、档位或并发必须补内存压力验证（`GalleryStressTests`、`GalleryScrollTests`，以及 Xvfb + AOT 产物的实测峰值）。
+
+**播放（阶段 3 整体替换，以下为现状）**
+
+- 悬浮预览最多 1 组、60 帧、720p；QuickLook 最多 90 帧、1080p；首屏仅预热 1 段视频。
 - 悬浮与 QuickLook 解码保留源时序：FFmpeg 使用 `-fps_mode passthrough`、BMP/BGR24 帧管线和 Lanczos 缩放；不要使用 `-hwaccel auto`，进程参数用 `ProcessStartInfo.ArgumentList` 逐项传入。
 
 ### 4.6 本地化（两处必须同步，缺一不可）

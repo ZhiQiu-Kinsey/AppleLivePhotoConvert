@@ -62,6 +62,13 @@ public sealed partial class LibraryViewModel : ViewModelBase
         Catalog.CardUpgraded += (_, _) => PostScopeRefresh();
         Catalog.PropertyChanged += OnCatalogPropertyChanged;
         _playback.CardFocused += (_, card) => FocusedCard = card;
+        _dialogs.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(IDialogService.Current))
+            {
+                OnPropertyChanged(nameof(HasActiveDialog));
+            }
+        };
         _localizer.LanguageChanged += (_, _) => Dispatcher.UIThread.Post(RefreshTexts);
 
         // 记住的相册目录冷启动即扫描；目录已不存在时由目录状态提示
@@ -152,6 +159,23 @@ public sealed partial class LibraryViewModel : ViewModelBase
     [RelayCommand]
     public void SelectAllVisible(object? select) => Selection.SetSelected(Layout.DisplayedCards, CommandParameters.ToBool(select, true));
 
+    /// <summary>单击卡片（Ctrl 切换、Shift 按显示顺序范围选择），并把它设为检查器的对比对象。</summary>
+    public void ClickCard(PhotoCardItemViewModel card, bool toggle, bool range)
+    {
+        Selection.Click(card, Layout.DisplayedCards, toggle, range);
+        FocusedCard = card;
+    }
+
+    /// <summary>取消范围内全部选择。</summary>
+    public void ClearSelection() => Selection.Clear();
+
+    /// <summary>空格预览的对象：最近单击且仍选中的卡片，否则为最近悬停的卡片。</summary>
+    public PhotoCardItemViewModel? PreviewTarget =>
+        Selection.Anchor is { IsSelected: true } anchor && Layout.DisplayedCards.Contains(anchor) ? anchor : FocusedCard;
+
+    /// <summary>有弹窗时画廊不处理快捷键，按键留给弹窗。</summary>
+    public bool HasActiveDialog => _dialogs.Current is not null;
+
     [RelayCommand]
     public void ToggleAllCollapse() => Layout.ToggleAllCollapse();
 
@@ -179,7 +203,10 @@ public sealed partial class LibraryViewModel : ViewModelBase
     [RelayCommand]
     public Task RefreshAlbumAsync() => Catalog.ScanAsync(AlbumDirectory);
 
-    /// <summary>人工裁决：确认后卡片视为就绪并被选中，计数与徽章随卡片状态更新。</summary>
+    /// <summary>
+    /// 人工裁决：确认后卡片视为就绪，计数与徽章随卡片状态更新。已有选择时并入选择；
+    /// 未选中任何卡片时动作本就按全部就绪卡片统计，不因此把范围收窄到这一张。
+    /// </summary>
     [RelayCommand]
     private async Task ArbitrateAsync(PhotoCardItemViewModel? card)
     {
@@ -189,7 +216,14 @@ public sealed partial class LibraryViewModel : ViewModelBase
             return;
         }
 
-        Selection.Batch(() => (card.IsForceAccepted, card.IsSelected) = (true, true));
+        Selection.Batch(() =>
+        {
+            card.IsForceAccepted = true;
+            if (Selection.SelectedCount > 0)
+            {
+                card.IsSelected = true;
+            }
+        });
         FocusedCard = card;
         // 「仅待裁决」视图中已裁决的卡片随之移出
         ApplyDisplayFilter();
@@ -281,7 +315,8 @@ public sealed partial class LibraryViewModel : ViewModelBase
 
     private void ApplyScope()
     {
-        Selection.SetScope([.. Catalog.Cards.Where(c => JobFactory.IsApplicable(ActionFilter, c))], Catalog.TotalFiles);
+        Selection.SetScope([.. Catalog.Cards.Where(c => JobFactory.IsApplicable(ActionFilter, c))],
+            new ScanCounts(Catalog.TotalFiles, Catalog.Cards.Count, Catalog.IgnoredFiles));
         OnPropertyChanged(nameof(HasPhotos));
         OnPropertyChanged(nameof(AllCards));
         OnPropertyChanged(nameof(FilterBannerDesc));

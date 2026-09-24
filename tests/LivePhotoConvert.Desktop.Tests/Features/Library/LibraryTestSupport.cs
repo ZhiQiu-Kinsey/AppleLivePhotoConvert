@@ -201,10 +201,10 @@ internal static class Cards
         };
     }
 
-    public static PhotoCardItemViewModel ApplePair(string name, bool forced = false, bool selected = true) =>
+    public static PhotoCardItemViewModel ApplePair(string name, bool forced = false, bool selected = false) =>
         new(ApplePairItem(name), Localizer) { IsForceAccepted = forced, IsSelected = selected };
 
-    public static PhotoCardItemViewModel MotionPhoto(string name, bool selected = true) =>
+    public static PhotoCardItemViewModel MotionPhoto(string name, bool selected = false) =>
         new(new LibraryItem(LibraryItemKind.MotionPhoto, File($"/album/{name}.jpg", 9000))
         {
             Embedded = new EmbeddedVideo(6000, 3000, 6000),

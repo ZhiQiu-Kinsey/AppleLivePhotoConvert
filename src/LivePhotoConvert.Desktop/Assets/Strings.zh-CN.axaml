@@ -275,10 +275,12 @@
   <sys:String x:Key="EmptyStateNoDirSubtitle">选择包含实况照片（HEIC/JPG + MOV）或安卓动态照片的文件夹，再在右侧选择要执行的动作。</sys:String>
   <sys:String x:Key="EmptyStateEmptyTitle">当前目录未扫描到实况照片</sys:String>
   <sys:String x:Key="EmptyStateEmptySubtitle">请确认所选文件夹包含有效的实况成对文件或安卓动态照片</sys:String>
-  <sys:String x:Key="FunnelTotalFormat">{0:N0} 项已扫描</sys:String>
+  <sys:String x:Key="FunnelTotalFormat">已扫描 {0:N0} 个文件</sys:String>
   <sys:String x:Key="FunnelReadyFormat">{0:N0} 组就绪</sys:String>
   <sys:String x:Key="FunnelSuspiciousFormat">{0:N0} 组待裁决</sys:String>
-  <sys:String x:Key="FunnelFilteredFormat">{0:N0} 项已过滤</sys:String>
+  <sys:String x:Key="FunnelItemsFormat">{0:N0} 个条目</sys:String>
+  <sys:String x:Key="FunnelIgnoredFormat">忽略 {0:N0} 个</sys:String>
+  <sys:String x:Key="FunnelTooltipFormat">扫描到 {0:N0} 个文件，得到 {1:N0} 个图库条目（实况对的照片与视频合为一个条目）；{2:N0} 个非媒体、隐藏或系统文件以及转换暂存与备份文件已忽略。</sys:String>
   <sys:String x:Key="PrimaryBtnMergeFormat">合成 {0} 组安卓动态照片</sys:String>
   <sys:String x:Key="PrimaryBtnAppleFormat">还原 {0} 组苹果实况</sys:String>
   <sys:String x:Key="PrimaryBtnExtractFormat">解包 {0} 张动态照片</sys:String>
@@ -379,7 +381,7 @@
   <sys:String x:Key="ActionStripDesc">去掉内嵌视频或配对视频，只保留静态照片，可选转码 HEIC。</sys:String>
   <sys:String x:Key="ApplicableFormat">适用 {0} 项 · {1}</sys:String>
   <sys:String x:Key="ApplicableScopeSelectedFormat">统计范围：已选中的 {0} 项</sys:String>
-  <sys:String x:Key="ApplicableScopeAll">未选中照片，统计全部照片</sys:String>
+  <sys:String x:Key="ApplicableScopeAll">未选中照片，统计全部就绪照片</sys:String>
   <sys:String x:Key="InspectorOutputTitle">输出</sys:String>
   <sys:String x:Key="KeepSubfoldersDesc">按相册中的子目录结构写出，避免平铺后重名。</sys:String>
   <sys:String x:Key="StripConvertHeicTitle">同时转码为 HEIC</sys:String>
@@ -411,5 +413,14 @@
   <sys:String x:Key="SettingsAppearanceTitle">外观与语言</sys:String>
   <sys:String x:Key="SettingsBehaviorTitle">任务与性能</sys:String>
   <sys:String x:Key="ReportGoLibraryBtn">前往图库</sys:String>
+  <sys:String x:Key="SettingsGalleryTitle">画廊</sys:String>
+  <sys:String x:Key="ThumbnailBudgetTitle">缩略图内存预算</sys:String>
+  <sys:String x:Key="ThumbnailBudgetDesc">缩略图位图占用内存的上限（64~1024 MB），超出后先释放最久未看的离屏缩略图；正在显示的卡片不受此限。调大可减少回滚时的重新加载。</sys:String>
+  <sys:String x:Key="ThumbnailDiskCacheTitle">缩略图磁盘缓存上限</sys:String>
+  <sys:String x:Key="ThumbnailDiskCacheDesc">缓存文件的总大小上限（128 MB~16 GB），超出后按最近使用时间清理。</sys:String>
+  <sys:String x:Key="ThumbnailCacheUsageTitle">磁盘缓存占用</sys:String>
+  <sys:String x:Key="ThumbnailCacheUsageFormat">当前占用 {0}</sys:String>
+  <sys:String x:Key="ThumbnailCacheMeasuring">正在统计…</sys:String>
+  <sys:String x:Key="ClearThumbnailCacheBtn">清理缓存</sys:String>
 
 </ResourceDictionary>

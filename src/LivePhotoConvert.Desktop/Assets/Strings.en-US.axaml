@@ -275,10 +275,12 @@
   <sys:String x:Key="EmptyStateNoDirSubtitle">Choose a folder with Live Photos (HEIC/JPG + MOV) or Android motion photos, then pick an action on the right.</sys:String>
   <sys:String x:Key="EmptyStateEmptyTitle">No live photos found in directory</sys:String>
   <sys:String x:Key="EmptyStateEmptySubtitle">Please ensure the folder contains valid Live Photo pairs or Motion Photos</sys:String>
-  <sys:String x:Key="FunnelTotalFormat">Scanned: {0:N0}</sys:String>
+  <sys:String x:Key="FunnelTotalFormat">{0:N0} files scanned</sys:String>
   <sys:String x:Key="FunnelReadyFormat">Ready: {0:N0}</sys:String>
   <sys:String x:Key="FunnelSuspiciousFormat">Suspicious: {0:N0}</sys:String>
-  <sys:String x:Key="FunnelFilteredFormat">Filtered: {0:N0}</sys:String>
+  <sys:String x:Key="FunnelItemsFormat">{0:N0} items</sys:String>
+  <sys:String x:Key="FunnelIgnoredFormat">{0:N0} ignored</sys:String>
+  <sys:String x:Key="FunnelTooltipFormat">Scanned {0:N0} files into {1:N0} library items (a Live Photo pair counts as one item). {2:N0} non-media, hidden or system files and conversion staging or backup files were ignored.</sys:String>
   <sys:String x:Key="PrimaryBtnMergeFormat">Merge {0} into Android motion photos</sys:String>
   <sys:String x:Key="PrimaryBtnAppleFormat">Restore {0} as Apple Live Photos</sys:String>
   <sys:String x:Key="PrimaryBtnExtractFormat">Extract {0} motion photos</sys:String>
@@ -379,7 +381,7 @@
   <sys:String x:Key="ActionStripDesc">Remove embedded or paired videos and keep only the still photo, optionally as HEIC.</sys:String>
   <sys:String x:Key="ApplicableFormat">{0} applicable · {1}</sys:String>
   <sys:String x:Key="ApplicableScopeSelectedFormat">Counted from {0} selected items</sys:String>
-  <sys:String x:Key="ApplicableScopeAll">Nothing selected, counting all photos</sys:String>
+  <sys:String x:Key="ApplicableScopeAll">Nothing selected, counting all ready photos</sys:String>
   <sys:String x:Key="InspectorOutputTitle">Output</sys:String>
   <sys:String x:Key="KeepSubfoldersDesc">Recreate the album subfolders in the output to avoid name clashes.</sys:String>
   <sys:String x:Key="StripConvertHeicTitle">Also convert to HEIC</sys:String>
@@ -411,5 +413,14 @@
   <sys:String x:Key="SettingsAppearanceTitle">Appearance &amp; language</sys:String>
   <sys:String x:Key="SettingsBehaviorTitle">Tasks &amp; performance</sys:String>
   <sys:String x:Key="ReportGoLibraryBtn">Go to Library</sys:String>
+  <sys:String x:Key="SettingsGalleryTitle">Gallery</sys:String>
+  <sys:String x:Key="ThumbnailBudgetTitle">Thumbnail memory budget</sys:String>
+  <sys:String x:Key="ThumbnailBudgetDesc">Memory limit for thumbnail bitmaps (64-1024 MB). When exceeded, the least recently seen off-screen thumbnails are released first; cards on screen are never released. A larger budget means fewer reloads when scrolling back.</sys:String>
+  <sys:String x:Key="ThumbnailDiskCacheTitle">Thumbnail disk cache limit</sys:String>
+  <sys:String x:Key="ThumbnailDiskCacheDesc">Maximum total size of cached thumbnail files (128 MB-16 GB); the least recently used are removed when exceeded.</sys:String>
+  <sys:String x:Key="ThumbnailCacheUsageTitle">Disk cache usage</sys:String>
+  <sys:String x:Key="ThumbnailCacheUsageFormat">Currently using {0}</sys:String>
+  <sys:String x:Key="ThumbnailCacheMeasuring">Measuring…</sys:String>
+  <sys:String x:Key="ClearThumbnailCacheBtn">Clear cache</sys:String>
 
 </ResourceDictionary>
