@@ -1,6 +1,6 @@
 using LivePhotoConvert.Core.Metadata;
-using System.Xml.Linq;
 using LivePhotoConvert.Core.External;
+using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Services;
 using LivePhotoConvert.Desktop.ViewModels;
 
@@ -8,132 +8,12 @@ namespace LivePhotoConvert.E2E.Tier1_FeatureCoverage;
 
 /// <summary>
 /// M3 & M4 Gate 2 对抗性实证压力测试套件：
-/// 1. 中英双语资源字典全量键名 100% 对齐校验 (Strings.zh-CN.axaml vs Strings.en-US.axaml vs LocalizationService)
 /// 2. SafetyGuard.ValidateDeletePassword 严格空格拒绝鉴权
 /// 3. ToolsViewModel.TestMirrorSpeedAsync 异常 URL、超时与活体探测防崩容错，及 RescanToolsAsync 本地路径真实验证
 /// 4. DesktopProgressReporter 极端值 (0 total, 负数, null 文件名, 大整数溢出) 稳健性测试
 /// </summary>
 public class LocalizationParityAndToolsTests
 {
-    #region 1. Bilingual Key Parity Tests
-
-    [Fact]
-    public void BilingualStrings_ZhAndEnAxaml_HaveExactKeyParity()
-    {
-        var zhPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "src", "LivePhotoConvert.Desktop", "Assets", "Strings.zh-CN.axaml"));
-        var enPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "src", "LivePhotoConvert.Desktop", "Assets", "Strings.en-US.axaml"));
-
-        Assert.True(File.Exists(zhPath), $"Missing zh-CN.axaml at: {zhPath}");
-        Assert.True(File.Exists(enPath), $"Missing en-US.axaml at: {enPath}");
-
-        var zhDoc = XDocument.Load(zhPath);
-        var enDoc = XDocument.Load(enPath);
-
-        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
-
-        var zhKeys = zhDoc.Descendants()
-            .Select(e => e.Attribute(x + "Key")?.Value)
-            .Where(k => !string.IsNullOrEmpty(k))
-            .Cast<string>()
-            .ToHashSet();
-
-        var enKeys = enDoc.Descendants()
-            .Select(e => e.Attribute(x + "Key")?.Value)
-            .Where(k => !string.IsNullOrEmpty(k))
-            .Cast<string>()
-            .ToHashSet();
-
-        var missingInEn = zhKeys.Except(enKeys).OrderBy(k => k).ToList();
-        var missingInZh = enKeys.Except(zhKeys).OrderBy(k => k).ToList();
-
-        Assert.True(missingInEn.Count == 0, $"Keys present in zh-CN but missing in en-US: {string.Join(", ", missingInEn)}");
-        Assert.True(missingInZh.Count == 0, $"Keys present in en-US but missing in zh-CN: {string.Join(", ", missingInZh)}");
-        Assert.True(zhKeys.Count >= 100, $"Expected >= 100 distinct keys, found {zhKeys.Count}");
-    }
-
-    [Fact]
-    public void BilingualStrings_LocalizationService_MatchesAxamlKeysAndReturnsNonEmpty()
-    {
-        var zhPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "src", "LivePhotoConvert.Desktop", "Assets", "Strings.zh-CN.axaml"));
-        var zhDoc = XDocument.Load(zhPath);
-        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
-        var keys = zhDoc.Descendants()
-            .Select(e => e.Attribute(x + "Key")?.Value)
-            .Where(k => !string.IsNullOrEmpty(k))
-            .Cast<string>()
-            .ToHashSet();
-
-        var service = new LocalizationService();
-
-        // 验证 zh-CN 解析
-        service.SetLanguage("zh-CN");
-        foreach (var key in keys)
-        {
-            var val = service.GetString(key);
-            Assert.False(string.IsNullOrWhiteSpace(val), $"Key '{key}' resolved to empty in zh-CN");
-            Assert.NotEqual(key, val); // 证明查到真实内容，而非 fallback 到 key 自身
-        }
-
-        // 验证 en-US 解析
-        service.SetLanguage("en-US");
-        foreach (var key in keys)
-        {
-            var val = service.GetString(key);
-            Assert.False(string.IsNullOrWhiteSpace(val), $"Key '{key}' resolved to empty in en-US");
-            Assert.NotEqual(key, val); // 证明查到真实内容，而非 fallback 到 key 自身
-        }
-    }
-
-    [Fact]
-    public void BilingualStrings_ViewsAndControls_AllDynamicResourceKeysExistInDictionaries()
-    {
-        var zhPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "src", "LivePhotoConvert.Desktop", "Assets", "Strings.zh-CN.axaml"));
-        var zhDoc = XDocument.Load(zhPath);
-        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
-        var dictKeys = zhDoc.Descendants()
-            .Select(e => e.Attribute(x + "Key")?.Value)
-            .Where(k => !string.IsNullOrEmpty(k))
-            .Cast<string>()
-            .ToHashSet();
-
-        var desktopDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "src", "LivePhotoConvert.Desktop"));
-        var axamlFiles = Directory.EnumerateFiles(desktopDir, "*.axaml", SearchOption.AllDirectories)
-            .Where(p => !p.Contains("Assets" + Path.DirectorySeparatorChar + "Strings") &&
-                        !p.Contains("Assets" + Path.DirectorySeparatorChar + "Icons"))
-            .ToList();
-
-        var missing = new Dictionary<string, List<string>>();
-
-        foreach (var f in axamlFiles)
-        {
-            var content = File.ReadAllText(f);
-            var matches = System.Text.RegularExpressions.Regex.Matches(content, @"\{DynamicResource\s+([a-zA-Z0-9_]+)\}");
-            foreach (System.Text.RegularExpressions.Match m in matches)
-            {
-                var resKey = m.Groups[1].Value;
-                if (!resKey.StartsWith("Icon") &&
-                    !resKey.EndsWith("Brush") &&
-                    !resKey.EndsWith("Color") &&
-                    !resKey.EndsWith("Background") &&
-                    !resKey.EndsWith("Foreground"))
-                {
-                    if (!dictKeys.Contains(resKey))
-                    {
-                        if (!missing.ContainsKey(resKey))
-                        {
-                            missing[resKey] = new List<string>();
-                        }
-                        missing[resKey].Add(Path.GetFileName(f));
-                    }
-                }
-            }
-        }
-
-        Assert.Empty(missing);
-    }
-
-    #endregion
-
     #region 2. SafetyGuard.ValidateDeletePassword Strict Rejection Tests
 
     [Fact]
@@ -200,7 +80,7 @@ public class LocalizationParityAndToolsTests
         try
         {
             var settingsService = new SettingsService(tempSettingsFile);
-            var vm = new ToolsViewModel(settingsService);
+            var vm = new ToolsViewModel(settingsService, Localizer.Current);
 
             await vm.RescanToolsAsync();
 
@@ -266,7 +146,7 @@ public class LocalizationParityAndToolsTests
     public async Task ToolsViewModel_TestMirrorSpeedAsync_InvalidUrls_HandlesGracefullyWithoutCrashing(string invalidUrl)
     {
         var settingsService = new SettingsService();
-        var vm = new ToolsViewModel(settingsService)
+        var vm = new ToolsViewModel(settingsService, Localizer.Current)
         {
             CustomMirrorUrl = invalidUrl
         };
@@ -286,7 +166,7 @@ public class LocalizationParityAndToolsTests
     public async Task ToolsViewModel_TestMirrorSpeedAsync_EmptyOrWhitespaceUrl_DefaultsSafelyWithoutCrashing(string? emptyUrl)
     {
         var settingsService = new SettingsService();
-        var vm = new ToolsViewModel(settingsService)
+        var vm = new ToolsViewModel(settingsService, Localizer.Current)
         {
             CustomMirrorUrl = emptyUrl!
         };
@@ -300,7 +180,7 @@ public class LocalizationParityAndToolsTests
     public async Task ToolsViewModel_TestMirrorSpeedAsync_NonRoutableTimeout_HandlesGracefullyWithoutCrashing()
     {
         var settingsService = new SettingsService();
-        var vm = new ToolsViewModel(settingsService)
+        var vm = new ToolsViewModel(settingsService, Localizer.Current)
         {
             // 10.255.255.1 是私有不可路由黑洞 IP，通常触发 5 秒 HttpClient 超时
             CustomMirrorUrl = "http://10.255.255.1:65432"

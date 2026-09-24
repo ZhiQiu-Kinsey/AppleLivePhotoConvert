@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Services;
 
 namespace LivePhotoConvert.Desktop.ViewModels.Dialogs;
@@ -7,7 +8,7 @@ namespace LivePhotoConvert.Desktop.ViewModels.Dialogs;
 /// <summary>
 /// 物理删除原片高危防灾弹窗（SEC-01：强制键入大写 DELETE 文本密码解锁）
 /// </summary>
-public sealed partial class DeleteConfirmDialogViewModel : ViewModelBase
+public sealed partial class DeleteConfirmDialogViewModel(ILocalizer localizer) : ViewModelBase
 {
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanConfirm))]
@@ -17,7 +18,7 @@ public sealed partial class DeleteConfirmDialogViewModel : ViewModelBase
     public string AffectedSizeText { get; init; } = string.Empty;
 
     /// <summary>受影响源文件汇总。</summary>
-    public string AffectedSummaryText => LocalizationService.Instance.GetFormat("DeleteAffectedFormat", AffectedCount, AffectedSizeText);
+    public string AffectedSummaryText => localizer.Format("DeleteAffectedFormat", AffectedCount, AffectedSizeText);
 
     public bool CanConfirm => SafetyGuard.ValidateDeletePassword(PasswordInput);
 

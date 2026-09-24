@@ -9,6 +9,7 @@ using LivePhotoConvert.Core.External;
 using LivePhotoConvert.Core.Metadata;
 using LivePhotoConvert.Core.Pipeline;
 using LivePhotoConvert.Core.Services;
+using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Models;
 using LivePhotoConvert.Desktop.Services;
 using LivePhotoConvert.Desktop.ViewModels.Dialogs;
@@ -21,6 +22,7 @@ namespace LivePhotoConvert.Desktop.ViewModels;
 public sealed partial class StripViewModel : ViewModelBase
 {
     private readonly SettingsService _settingsService;
+    private readonly ILocalizer _localizer;
     private CancellationTokenSource? _stripCts;
     private readonly ManualResetEventSlim _pauseGate = new(true);
     // 在 UI 线程（StartAnalysisAsync）写入、后台工作线程（StartStripExecution 汇报回调）读取，
@@ -44,10 +46,10 @@ public sealed partial class StripViewModel : ViewModelBase
     public bool IsStage3 => CurrentStage == 3;
     public string StageStatusText => CurrentStage switch
     {
-        1 => LocalizationService.Instance.GetString("StageStatusReady"),
-        2 => LocalizationService.Instance.GetString("StageStatusRunning"),
-        3 => LocalizationService.Instance.GetString("StageStatusDone"),
-        _ => LocalizationService.Instance.GetString("StageStatusIdle")
+        1 => _localizer["StageStatusReady"],
+        2 => _localizer["StageStatusRunning"],
+        3 => _localizer["StageStatusDone"],
+        _ => _localizer["StageStatusIdle"]
     };
 
     // -- Phase 1: 前后覆盖对比与预估 --
@@ -79,7 +81,7 @@ public sealed partial class StripViewModel : ViewModelBase
     public Thickness DividerMargin => new(DividerX, ImageRenderRect.Top, 0, 0);
     public double DividerHeight => Math.Max(1, ImageRenderRect.Height);
     public Thickness ThumbMargin => new(Math.Max(0, DividerX - 17), ImageRenderRect.Top + Math.Max(0, (ImageRenderRect.Height - 34) / 2.0), 0, 0);
-    public string CurtainPercentageText => LocalizationService.Instance.GetFormat("CurtainPositionFormat", CurtainPosition, 100 - CurtainPosition);
+    public string CurtainPercentageText => _localizer.Format("CurtainPositionFormat", CurtainPosition, 100 - CurtainPosition);
 
     public Avalonia.Media.RectangleGeometry OverlayClipGeometry =>
         new(new Rect(ImageRenderRect.Left, ImageRenderRect.Top, Math.Max(0, DividerX - ImageRenderRect.Left), Math.Max(1, ImageRenderRect.Height)));
@@ -111,7 +113,7 @@ public sealed partial class StripViewModel : ViewModelBase
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanStartStrip))]
-    private string _currentInputPathText = LocalizationService.Instance.GetString("NoAlbumOrPhotoSelected");
+    private string _currentInputPathText = string.Empty;
 
     public bool CanStartStrip =>
         !string.IsNullOrWhiteSpace(CurrentInputPathText) &&
@@ -187,9 +189,10 @@ public sealed partial class StripViewModel : ViewModelBase
     [ObservableProperty]
     private string _beforeCountText = string.Empty;
 
-    public StripViewModel(SettingsService settingsService)
+    public StripViewModel(SettingsService settingsService, ILocalizer localizer)
     {
         _settingsService = settingsService;
+        _localizer = localizer;
         var s = _settingsService.Current;
         _inPlaceStrip = s.InPlaceStrip;
         if (!string.IsNullOrWhiteSpace(s.StripOutputDirectory))
@@ -205,17 +208,17 @@ public sealed partial class StripViewModel : ViewModelBase
         }
 
         ApplyLocalizedTexts();
-        LocalizationService.Instance.LanguageChanged += _ =>
+        _localizer.LanguageChanged += (_, _) =>
             Avalonia.Threading.Dispatcher.UIThread.Post(ApplyLocalizedTexts);
     }
 
     private void ApplyLocalizedTexts()
     {
-        CelebrationHeader = LocalizationService.Instance.GetString("CelebrationTitle");
-        CelebrationDesc = LocalizationService.Instance.GetString("CelebrationDesc");
+        CelebrationHeader = _localizer["CelebrationTitle"];
+        CelebrationDesc = _localizer["CelebrationDesc"];
         if (!CanStartStrip)
         {
-            CurrentInputPathText = LocalizationService.Instance.GetString("NoAlbumOrPhotoSelected");
+            CurrentInputPathText = _localizer["NoAlbumOrPhotoSelected"];
         }
         OnPropertyChanged(nameof(CurtainPercentageText));
         OnPropertyChanged(nameof(StageStatusText));
@@ -439,8 +442,8 @@ public sealed partial class StripViewModel : ViewModelBase
             EstimatedSavedText = $"{saved / 1024.0 / 1024:F1} MB (-{pct:F1}%)";
             BeforeTotalResult = TotalOriginalText;
             AfterTotalResult = EstimatedAfterText;
-            SavedPercentResult = LocalizationService.Instance.GetFormat("StripSavedPctFormat", pct);
-            BeforeCountText = LocalizationService.Instance.GetFormat("BeforeCountFormat", candidates.Count);
+            SavedPercentResult = _localizer.Format("StripSavedPctFormat", pct);
+            BeforeCountText = _localizer.Format("BeforeCountFormat", candidates.Count);
             BeforeSizeText = TotalOriginalText;
             AfterSizeText = EstimatedAfterText;
         }
@@ -517,7 +520,7 @@ public sealed partial class StripViewModel : ViewModelBase
         if (files.Count == 0)
         {
             CurrentStage = 1;
-            ErrorText = LocalizationService.Instance.GetString("NoAlbumOrPhotoSelected");
+            ErrorText = _localizer["NoAlbumOrPhotoSelected"];
             cts.Dispose();
             _stripCts = null;
             return;
@@ -542,10 +545,10 @@ public sealed partial class StripViewModel : ViewModelBase
             var released = value.Total > 0 ? Interlocked.Read(ref _estimatedSavedBytesTotal) * value.Completed / value.Total : 0;
             var pct = value.Total > 0 ? value.Completed * 100.0 / value.Total : 0;
             StripProgressPercent = pct;
-            StripProgressStatusText = LocalizationService.Instance.GetFormat("StripProgressFormat", pct, value.Completed, value.Total);
+            StripProgressStatusText = _localizer.Format("StripProgressFormat", pct, value.Completed, value.Total);
             RunningFileName = value.CurrentItem;
-            InstantThroughputText = LocalizationService.Instance.GetFormat("StripThroughputFormat", rate);
-            RemainingSecondsText = LocalizationService.Instance.GetFormat("StripEtaFormat", eta);
+            InstantThroughputText = _localizer.Format("StripThroughputFormat", rate);
+            RemainingSecondsText = _localizer.Format("StripEtaFormat", eta);
             ReleasedSpaceText = $"{released / (1024.0 * 1024.0):F1} MB";
         });
         var progress = new PausableProgress(ui, _pauseGate, token);
@@ -573,16 +576,16 @@ public sealed partial class StripViewModel : ViewModelBase
 
             var original = Interlocked.Read(ref _analysisOriginalBytes);
             NetSavedResult = $"+{report.BytesSaved / (1024.0 * 1024.0):F1} MB";
-            BeforeCountText = LocalizationService.Instance.GetFormat("BeforeCountFormat", report.Items.Count);
+            BeforeCountText = _localizer.Format("BeforeCountFormat", report.Items.Count);
             if (original > 0)
             {
                 AfterTotalResult = $"{Math.Max(0, original - report.BytesSaved) / (1024.0 * 1024.0):F1} MB";
-                SavedPercentResult = LocalizationService.Instance.GetFormat("StripSavedPctFormat", report.BytesSaved * 100.0 / original);
+                SavedPercentResult = _localizer.Format("StripSavedPctFormat", report.BytesSaved * 100.0 / original);
             }
 
             if (report.Failed > 0)
             {
-                ErrorText = string.Join(Environment.NewLine, report.Items.Where(i => i.Kind == OutcomeKind.Failed).Take(5).Select(i => $"{Path.GetFileName(i.Source)}：{i.Message}"));
+                ErrorText = string.Join(Environment.NewLine, report.Items.Where(i => i.Kind == OutcomeKind.Failed).Take(5).Select(i => _localizer.Format("StripFailedItemFormat", Path.GetFileName(i.Source), i.Message)));
             }
 
             CurrentStage = 3;

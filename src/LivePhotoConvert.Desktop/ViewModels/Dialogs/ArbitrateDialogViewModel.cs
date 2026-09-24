@@ -1,13 +1,13 @@
 using CommunityToolkit.Mvvm.Input;
 using LivePhotoConvert.Desktop.Models;
-using LivePhotoConvert.Desktop.Services;
+using LivePhotoConvert.Desktop.Infrastructure;
 
 namespace LivePhotoConvert.Desktop.ViewModels.Dialogs;
 
 /// <summary>
 /// 异常实况时差超标同屏双帧裁决弹窗
 /// </summary>
-public sealed partial class ArbitrateDialogViewModel : ViewModelBase
+public sealed partial class ArbitrateDialogViewModel(ILocalizer localizer) : ViewModelBase
 {
     public required PhotoCardItemViewModel TargetCard { get; init; }
 
@@ -15,8 +15,8 @@ public sealed partial class ArbitrateDialogViewModel : ViewModelBase
     public string PhotoTimeText => FormatTime(SafeFileTime(TargetCard.PhotoPath));
     public string VideoTimeText => FormatTime(SafeFileTime(TargetCard.VideoPath));
     public double TimeDiffSeconds => (SafeFileTime(TargetCard.PhotoPath) - SafeFileTime(TargetCard.VideoPath)).Duration().TotalSeconds;
-    public string TimeDiffText => LocalizationService.Instance.GetFormat("ArbitrateTimeDiffFormat", TimeDiffSeconds);
-    public string VerdictConclusion => LocalizationService.Instance.GetFormat("ArbitrateVerdictFormat", TimeDiffSeconds);
+    public string TimeDiffText => localizer.Format("ArbitrateTimeDiffFormat", TimeDiffSeconds);
+    public string VerdictConclusion => localizer.Format("ArbitrateVerdictFormat", TimeDiffSeconds);
 
     private static string FormatTime(DateTime dt) => dt == DateTime.MinValue ? "—" : dt.ToString("HH:mm:ss.fff");
 

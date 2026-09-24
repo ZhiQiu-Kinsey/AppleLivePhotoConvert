@@ -2,7 +2,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using LivePhotoConvert.Desktop.Services;
+using LivePhotoConvert.Desktop.Infrastructure;
 
 namespace LivePhotoConvert.Desktop.ViewModels;
 
@@ -35,7 +35,7 @@ public sealed record BatchReportModel
     public bool WasCanceled { get; init; }
 }
 
-public sealed partial class ReportViewModel : ViewModelBase
+public sealed partial class ReportViewModel(ILocalizer localizer) : ViewModelBase
 {
     [ObservableProperty]
     private string _batchTimestampText = string.Empty;
@@ -44,10 +44,10 @@ public sealed partial class ReportViewModel : ViewModelBase
     private string _summaryBadgeText = string.Empty;
 
     [ObservableProperty]
-    private string _taskNameText = LocalizationService.Instance.GetString("ReportTaskName");
+    private string _taskNameText = localizer["ReportTaskName"];
 
     [ObservableProperty]
-    private string _modeNameText = LocalizationService.Instance.GetString("ReportModeMerge");
+    private string _modeNameText = localizer["ReportModeMerge"];
 
     [ObservableProperty]
     private string _outputDirectoryText = string.Empty;
@@ -108,7 +108,7 @@ public sealed partial class ReportViewModel : ViewModelBase
     public void Populate(BatchReportModel model)
     {
         SummaryBadgeText = model.SummaryBadge;
-        BatchTimestampText = LocalizationService.Instance.GetFormat("ReportTimestampFormat", DateTime.Now);
+        BatchTimestampText = localizer.Format("ReportTimestampFormat", DateTime.Now);
         OutputDirectoryText = model.OutputDirectory;
         if (!string.IsNullOrEmpty(model.ModeName))
         {
@@ -139,7 +139,7 @@ public sealed partial class ReportViewModel : ViewModelBase
         {
             TotalDurationText = $"{model.Elapsed.TotalSeconds:F1}s";
             double avg = TotalCount > 0 ? model.Elapsed.TotalSeconds / TotalCount : 0;
-            AvgSpeedText = LocalizationService.Instance.GetFormat("ReportAvgSpeedFormat", avg);
+            AvgSpeedText = localizer.Format("ReportAvgSpeedFormat", avg);
         }
         else
         {
@@ -175,7 +175,7 @@ public sealed partial class ReportViewModel : ViewModelBase
             SkippedCount = skipped,
             Elapsed = TimeSpan.Zero,
             OutputDirectory = string.Empty,
-            ModeName = "实况转换批次"
+            ModeName = localizer["ReportTaskName"]
         });
     }
 
@@ -241,7 +241,13 @@ public sealed partial class ReportViewModel : ViewModelBase
         }
         var logFile = Path.Combine(targetDir, $"LivePhotoConvert_Report_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
         using var writer = new StreamWriter(logFile, false, System.Text.Encoding.UTF8);
-        writer.WriteLine("状态,文件名,来源格式,目标格式,耗时,详细信息");
+        writer.WriteLine(string.Join(',',
+            localizer["ReportCsvStatus"],
+            localizer["ReportCsvFileName"],
+            localizer["ReportCsvSourceFormat"],
+            localizer["ReportCsvTargetFormat"],
+            localizer["ReportCsvDuration"],
+            localizer["ReportCsvDetail"]));
         foreach (var record in _allRecords)
         {
             writer.WriteLine($"\"{record.StatusText}\",\"{record.FileName}\",\"{record.SourceFormat}\",\"{record.TargetFormat}\",\"{record.DurationText}\",\"{record.DetailReason}\"");

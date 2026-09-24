@@ -48,6 +48,7 @@ src/LivePhotoConvert.Desktop/       # Avalonia 12 桌面端
   Assets/                           # Styles.axaml、Strings.zh-CN.axaml、Strings.en-US.axaml
   Controls/                         # CompactToolbar / CurtainCompareControl / PhotoCardControl
   Converters/                       # ByteSizeConverter 等 XAML 值转换器
+  Infrastructure/                   # 与具体页面无关的桌面服务：ILocalizer / Localizer 等
   Models/                           # DesktopSettings、GalleryItem、AboutCredit、AboutInfo
   Services/                         # AlbumScanner / ThumbnailReader / PlaybackHost / SettingsService 等
   ViewModels/                       # Main / Convert / Strip / Tools / Report + Dialogs/
@@ -134,15 +135,17 @@ global.json                         # 固定 SDK 10.0.400（避免误用 11 prev
 - 缩略图解码或 Skia 像素分配失败必须降级为占位图，不得让异常穿透 UI 线程导致进程退出。
 - 悬浮与 QuickLook 解码保留源时序：FFmpeg 使用 `-fps_mode passthrough`、BMP/BGR24 帧管线和 Lanczos 缩放；不要使用 `-hwaccel auto`，进程参数用 `ProcessStartInfo.ArgumentList` 逐项传入。
 
-### 4.6 本地化（三处必须同步，缺一不可）
+### 4.6 本地化（两处必须同步，缺一不可）
 
-新增/修改界面文案时，**必须同时更新三处**：
+两份 XAML 字符串字典是唯一数据源。新增/修改界面文案时，**必须同时更新两处**，键集合保持一致（`LocalizationResourceTests` 会校验）：
 
 1. `Assets/Strings.zh-CN.axaml`
 2. `Assets/Strings.en-US.axaml`
-3. `Services/LocalizationService.cs` 中的 `ZhStrings` 与 `EnStrings`（`SetLanguage` 会用字典覆盖 `Application.Resources`，缺失会退化成显示 key）
 
-XAML 里 `&` 需写成 `&amp;`；C# 字典里直接写 `&` 即可。
+- 视图用 `{DynamicResource Key}`；代码通过 `Infrastructure/ILocalizer` 取文案（`localizer["Key"]`、`localizer.Format("KeyFormat", ...)`），不要在 .cs 里写界面可见的中文或英文字面量。
+- 格式串以 `Format` 结尾，中英两版占位符编号必须一致；日期格式也放进资源（如 `GroupTitleMonthFormat`）。
+- XAML 里 `&`、`<`、`>` 需转义；带前导/尾随空格的值加 `xml:space="preserve"`。
+- 缺失键在 Debug 下会触发 `Debug.Fail`（测试进程会直接终止），发布版返回键名。
 
 ### 4.7 语言风格
 
@@ -177,7 +180,7 @@ dotnet publish src/LivePhotoConvert.Desktop/LivePhotoConvert.Desktop.csproj -r w
 
 1. 定位 Core（引擎）还是 Desktop（交互）；**Core 不得引入 UI/Console 依赖**。
 2. 遵循 AOT / 零分配 / 原子 / MVVM 规范，保持注释与 public API 语义。
-3. 新增界面文案同步三处本地化资源（见 4.6）。
+3. 新增界面文案同步两处本地化资源（见 4.6）。
 4. Core 改动必须补单元测试（`tests/LivePhotoConvert.Core.Tests` 按 Media / Metadata / Pairing / Pipeline / Services 分目录；真实外部工具的集成测试在工具缺失时自动跳过）；涉及 UI 流程的改动补充/更新 E2E 用例。测试必须验证产品代码，不要在测试工程里重新实现一份被测逻辑。
 5. `dotnet build` 0 警告 0 报错，`dotnet test` 全绿。
 6. 交付总结：改动内容、设计决策、验证结果。

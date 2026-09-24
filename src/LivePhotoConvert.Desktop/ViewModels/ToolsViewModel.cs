@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Services;
 
 namespace LivePhotoConvert.Desktop.ViewModels;
@@ -22,6 +23,26 @@ public sealed partial class ToolsViewModel : ViewModelBase
         Timeout = TimeSpan.FromSeconds(5)
     };
     private readonly SettingsService _settingsService;
+    private readonly ILocalizer _localizer;
+
+    // 最近一次探测结果；语言切换时据此重新生成状态文案，无需再次启动外部进程
+    private bool _hasProbed;
+    private ToolProbe _exifProbe;
+    private ToolProbe _ffmpegProbe;
+    private ToolProbe _heifProbe;
+
+    /// <summary>探测结果：路径为 null 表示未找到；版本为 null 表示找到但读不出版本号。</summary>
+    private readonly record struct ToolProbe(string? Path, string? Version);
+
+    // 镜像名称的资源键与地址；空地址表示手动输入
+    private static readonly (string NameKey, string Url)[] MirrorPresetSources =
+    [
+        ("MirrorPresetGhfast", "https://ghfast.top/"),
+        ("MirrorPresetGhproxy", "https://ghproxy.net/"),
+        ("MirrorPresetMirrorGhproxy", "https://mirror.ghproxy.com/"),
+        ("MirrorPresetGithub", "https://github.com/"),
+        ("MirrorPresetCustom", "")
+    ];
 
     /// <summary>当前进行中的安装任务取消源（同一时刻只允许一个安装，没有任务时为 null）。</summary>
     private CancellationTokenSource? _installCts;
@@ -59,21 +80,18 @@ public sealed partial class ToolsViewModel : ViewModelBase
     [ObservableProperty]
     private bool _autoDownload;
 
-    public IReadOnlyList<MirrorPreset> MirrorPresets { get; } =
-    [
-        new("极速镜像 (ghfast.top - 推荐)", "https://ghfast.top/"),
-        new("公益镜像 (ghproxy.net)", "https://ghproxy.net/"),
-        new("加速节点 (mirror.ghproxy.com)", "https://mirror.ghproxy.com/"),
-        new("官方直连 (github.com)", "https://github.com/"),
-        new("自定义镜像源 (手动输入)", "")
-    ];
+    [ObservableProperty]
+    private IReadOnlyList<MirrorPreset> _mirrorPresets;
 
     [ObservableProperty]
     private MirrorPreset? _selectedMirrorPreset;
 
+    // 仅替换显示名称时不能把预设地址写回，否则会覆盖用户手动输入的镜像地址
+    private bool _isRebuildingMirrorPresets;
+
     partial void OnSelectedMirrorPresetChanged(MirrorPreset? value)
     {
-        if (value is not null && !string.IsNullOrWhiteSpace(value.Url))
+        if (!_isRebuildingMirrorPresets && value is not null && !string.IsNullOrWhiteSpace(value.Url))
         {
             CustomMirrorUrl = value.Url;
             _settingsService.Current.CustomMirrorUrl = value.Url;
@@ -141,9 +159,11 @@ public sealed partial class ToolsViewModel : ViewModelBase
     /// </summary>
     public Func<string, bool> ValidateToolExecutable { get; set; } = Core.External.ToolLocator.IsValidTool;
 
-    public ToolsViewModel(SettingsService settingsService)
+    public ToolsViewModel(SettingsService settingsService, ILocalizer localizer)
     {
         _settingsService = settingsService;
+        _localizer = localizer;
+        _mirrorPresets = BuildMirrorPresets();
         var s = _settingsService.Current;
         _autoDownload = s.AutoDownloadDependencies;
         if (!string.IsNullOrWhiteSpace(s.CustomMirrorUrl))
@@ -157,13 +177,34 @@ public sealed partial class ToolsViewModel : ViewModelBase
             (p.Url.Equals(normalized, StringComparison.OrdinalIgnoreCase) || p.Url.Equals(_customMirrorUrl, StringComparison.OrdinalIgnoreCase)))
             ?? MirrorPresets.Last();
 
+        _localizer.LanguageChanged += (_, _) => Avalonia.Threading.Dispatcher.UIThread.Post(ApplyLocalizedTexts);
         _ = RescanToolsAsync();
+    }
+
+    private IReadOnlyList<MirrorPreset> BuildMirrorPresets() =>
+        [.. MirrorPresetSources.Select(p => new MirrorPreset(_localizer[p.NameKey], p.Url))];
+
+    private void ApplyLocalizedTexts()
+    {
+        // 名称随语言变化而顺序不变，按位置重新选中（自定义项地址为空，无法按地址匹配）
+        int selectedIndex = SelectedMirrorPreset is { } selected ? MirrorPresets.ToList().IndexOf(selected) : -1;
+        _isRebuildingMirrorPresets = true;
+        try
+        {
+            MirrorPresets = BuildMirrorPresets();
+            SelectedMirrorPreset = selectedIndex >= 0 ? MirrorPresets[selectedIndex] : MirrorPresets[^1];
+        }
+        finally
+        {
+            _isRebuildingMirrorPresets = false;
+        }
+        ApplyToolTexts();
     }
 
     [RelayCommand]
     public async Task TestMirrorSpeedAsync()
     {
-        PingLatencyText = LocalizationService.Instance.GetString("PingTesting");
+        PingLatencyText = _localizer["PingTesting"];
         IsPingHealthy = false;
 
         try
@@ -190,7 +231,7 @@ public sealed partial class ToolsViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            PingLatencyText = LocalizationService.Instance.GetFormat("PingFailedFormat", ex.Message);
+            PingLatencyText = _localizer.Format("PingFailedFormat", ex.Message);
             IsPingHealthy = false;
         }
     }
@@ -198,8 +239,7 @@ public sealed partial class ToolsViewModel : ViewModelBase
     [RelayCommand]
     public async Task RescanToolsAsync()
     {
-        string? exifPath = null, ffmpegPath = null, heifPath = null;
-        string? exifVer = null, ffmpegVer = null, heifVer = null;
+        ToolProbe exif = default, ffmpeg = default, heif = default;
 
         // 优先使用用户在设置中显式指定的路径，失效时自动回退到程序目录 / PATH 探测
         var saved = _settingsService.Current;
@@ -210,29 +250,53 @@ public sealed partial class ToolsViewModel : ViewModelBase
         // 探测版本需同步调用外部进程，放到后台线程执行，避免阻塞 UI
         await Task.Run(() =>
         {
-            exifPath = FindTool(Core.Metadata.ExifToolMetadataService.ExecutableName, explicitExif);
-            ffmpegPath = FindTool(Core.External.FfmpegVideoConverter.ExecutableName, explicitFfmpeg);
-            heifPath = FindTool(Core.External.HeifEncImageConverter.ExecutableName, explicitHeif);
-            exifVer = exifPath is not null ? ProbeVersion(exifPath, "-ver") : null;
-            ffmpegVer = ffmpegPath is not null ? ProbeVersion(ffmpegPath, "-version") : null;
-            heifVer = heifPath is not null ? ProbeVersion(heifPath, "-v") : null;
+            exif = Probe(Core.Metadata.ExifToolMetadataService.ExecutableName, explicitExif, "-ver");
+            ffmpeg = Probe(Core.External.FfmpegVideoConverter.ExecutableName, explicitFfmpeg, "-version");
+            heif = Probe(Core.External.HeifEncImageConverter.ExecutableName, explicitHeif, "-v");
         });
 
         // async 延续回到 Avalonia 调度上下文（UI 线程），避免后台线程写 ObservableProperty 引发跨线程异常
-        var loc = LocalizationService.Instance;
-        string notInstalled = loc.GetString("ToolNotInstalled");
+        _exifProbe = exif;
+        _ffmpegProbe = ffmpeg;
+        _heifProbe = heif;
+        _hasProbed = true;
+        ApplyToolTexts();
+    }
 
-        IsExifToolReady = exifPath is not null;
-        ExifToolPath = exifPath ?? loc.GetFormat("ToolNotDetectedFormat", Core.Metadata.ExifToolMetadataService.ExecutableName);
-        ExifToolVersion = exifPath is not null ? exifVer! : notInstalled;
+    private void ApplyToolTexts()
+    {
+        if (!_hasProbed)
+        {
+            return;
+        }
 
-        IsFfmpegReady = ffmpegPath is not null;
-        FfmpegPath = ffmpegPath ?? loc.GetFormat("ToolNotDetectedFormat", Core.External.FfmpegVideoConverter.ExecutableName);
-        FfmpegVersion = ffmpegPath is not null ? ffmpegVer! : notInstalled;
+        IsExifToolReady = _exifProbe.Path is not null;
+        ExifToolPath = DescribePath(_exifProbe, Core.Metadata.ExifToolMetadataService.ExecutableName);
+        ExifToolVersion = DescribeVersion(_exifProbe);
 
-        IsHeifEncReady = heifPath is not null;
-        HeifEncPath = heifPath ?? loc.GetFormat("ToolNotDetectedFormat", Core.External.HeifEncImageConverter.ExecutableName);
-        HeifEncVersion = heifPath is not null ? heifVer! : notInstalled;
+        IsFfmpegReady = _ffmpegProbe.Path is not null;
+        FfmpegPath = DescribePath(_ffmpegProbe, Core.External.FfmpegVideoConverter.ExecutableName);
+        FfmpegVersion = DescribeVersion(_ffmpegProbe);
+
+        IsHeifEncReady = _heifProbe.Path is not null;
+        HeifEncPath = DescribePath(_heifProbe, Core.External.HeifEncImageConverter.ExecutableName);
+        HeifEncVersion = DescribeVersion(_heifProbe);
+    }
+
+    private string DescribePath(ToolProbe probe, string executableName) =>
+        probe.Path ?? _localizer.Format("ToolNotDetectedFormat", executableName);
+
+    private string DescribeVersion(ToolProbe probe) => probe switch
+    {
+        { Path: null } => _localizer["ToolNotInstalled"],
+        { Version: { } version } => version,
+        _ => _localizer["ToolReady"]
+    };
+
+    private static ToolProbe Probe(string executableName, string? explicitPath, string versionArg)
+    {
+        var path = FindTool(executableName, explicitPath);
+        return new ToolProbe(path, path is null ? null : ProbeVersion(path, versionArg));
     }
 
     /// <summary>空白路径视为“未指定”，返回 null 交给自动发现逻辑。</summary>
@@ -244,7 +308,7 @@ public sealed partial class ToolsViewModel : ViewModelBase
         Core.External.ToolLocator.Find(executableName, explicitPath)
         ?? Core.External.ToolLocator.Find(executableName);
 
-    private static string ProbeVersion(string executablePath, string versionArg)
+    private static string? ProbeVersion(string executablePath, string versionArg)
     {
         try
         {
@@ -270,9 +334,9 @@ public sealed partial class ToolsViewModel : ViewModelBase
         }
         catch
         {
-            // 忽略探测异常并返回可用提示
+            // 忽略探测异常，由调用方显示"已就绪"
         }
-        return LocalizationService.Instance.GetString("ToolReady");
+        return null;
     }
 
     // ===== 单引擎一键安装（未就绪时由卡片按钮触发） =====
@@ -316,12 +380,10 @@ public sealed partial class ToolsViewModel : ViewModelBase
         {
             return;
         }
-
-        var loc = LocalizationService.Instance;
         SetInstalling(kind, true);
         InstallProgressText = string.Empty;
         IsActionMessageError = false;
-        ActionMessageText = loc.GetFormat("InstallStartingFormat", info.ToolName);
+        ActionMessageText = _localizer.Format("InstallStartingFormat", info.ToolName);
 
         using var cts = new CancellationTokenSource();
         _installCts = cts;
@@ -335,17 +397,17 @@ public sealed partial class ToolsViewModel : ViewModelBase
 
             ApplyCustomToolPath(kind, installedPath);
             IsActionMessageError = false;
-            ActionMessageText = loc.GetFormat("InstallCompletedFormat", info.ToolName);
+            ActionMessageText = _localizer.Format("InstallCompletedFormat", info.ToolName);
         }
         catch (OperationCanceledException)
         {
             IsActionMessageError = true;
-            ActionMessageText = loc.GetString("InstallCanceled");
+            ActionMessageText = _localizer["InstallCanceled"];
         }
         catch (Exception ex)
         {
             IsActionMessageError = true;
-            ActionMessageText = loc.GetFormat("InstallFailedFormat", info.ToolName, ex.Message);
+            ActionMessageText = _localizer.Format("InstallFailedFormat", info.ToolName, ex.Message);
         }
         finally
         {
@@ -387,17 +449,16 @@ public sealed partial class ToolsViewModel : ViewModelBase
         // 三重校验：文件必须存在 → 文件名必须与该引擎期望的可执行文件名匹配 → 真实启动探测必须可用。
         // 仅靠 IsValidTool 不够：它对「文件名不含引擎关键字」的任意存在文件一律返回 true，
         // 会把 notes.txt / notepad.exe 误判为有效引擎。
-        var loc = LocalizationService.Instance;
         if (!File.Exists(file) || !MatchesExpectedExecutable(kind, file) || !ValidateToolExecutable(file))
         {
             IsActionMessageError = true;
-            ActionMessageText = loc.GetFormat("ToolPathInvalidFormat", file);
+            ActionMessageText = _localizer.Format("ToolPathInvalidFormat", file);
             return;
         }
 
         ApplyCustomToolPath(kind, file);
         IsActionMessageError = false;
-        ActionMessageText = loc.GetFormat("ToolPathAppliedFormat", GetDisplayName(kind));
+        ActionMessageText = _localizer.Format("ToolPathAppliedFormat", GetDisplayName(kind));
         await RescanToolsAsync();
     }
 

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Reflection;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Models;
 using LivePhotoConvert.Desktop.Services;
 
@@ -17,6 +18,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
     private static readonly TimeSpan SavedHintDuration = TimeSpan.FromMilliseconds(2200);
 
     private readonly SettingsService _settingsService;
+    private readonly ILocalizer _localizer;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsLightTheme))]
@@ -87,9 +89,10 @@ public sealed partial class SettingsViewModel : ViewModelBase
 
     public bool IsEnglishLanguage => Language == "en";
 
-    public SettingsViewModel(SettingsService settingsService)
+    public SettingsViewModel(SettingsService settingsService, ILocalizer localizer)
     {
         _settingsService = settingsService;
+        _localizer = localizer;
         var current = _settingsService.Current;
         _theme = current.Theme;
         _language = current.Language;
@@ -100,6 +103,8 @@ public sealed partial class SettingsViewModel : ViewModelBase
         _autoCleanTemp = current.AutoCleanTemp;
 
         RefreshCredits();
+        // 语言也可能由标题栏切换，统一以本地化服务的通知为准刷新鸣谢描述
+        _localizer.LanguageChanged += (_, _) => RefreshCredits();
     }
 
     [RelayCommand]
@@ -195,12 +200,8 @@ public sealed partial class SettingsViewModel : ViewModelBase
         }
     }
 
-    /// <summary>即时预览语言，并同步重建受语言影响的鸣谢信息。</summary>
-    private void ApplyLanguage()
-    {
-        LocalizationService.Instance.SetLanguage(Language);
-        RefreshCredits();
-    }
+    /// <summary>即时预览语言；鸣谢信息随 LanguageChanged 重建。</summary>
+    private void ApplyLanguage() => _localizer.SetLanguage(Language);
 
     /// <summary>展示“已保存”提示并在固定时长后自动熄灭（失败不影响任何交互）。</summary>
     private async Task ShowSavedHintAsync()
@@ -217,9 +218,6 @@ public sealed partial class SettingsViewModel : ViewModelBase
         }
     }
 
-    /// <summary>语言变更后重建鸣谢列表，使描述文本跟随当前语言。</summary>
-    partial void OnLanguageChanged(string value) => RefreshCredits();
-
     private void RefreshCredits()
     {
         Contributors = MaterializeCredits(AboutInfo.Contributors);
@@ -227,16 +225,15 @@ public sealed partial class SettingsViewModel : ViewModelBase
         BuildCredits = MaterializeCredits(AboutInfo.BuildCredits);
     }
 
-    private static AboutCredit[] MaterializeCredits(AboutInfo.CreditEntry[] entries)
+    private AboutCredit[] MaterializeCredits(AboutInfo.CreditEntry[] entries)
     {
-        var localization = LocalizationService.Instance;
         var result = new AboutCredit[entries.Length];
         for (int i = 0; i < entries.Length; i++)
         {
             var entry = entries[i];
             result[i] = new AboutCredit(
                 entry.Name,
-                localization.GetString(entry.DescriptionKey),
+                _localizer[entry.DescriptionKey],
                 entry.Url,
                 entry.Badge);
         }

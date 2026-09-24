@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Services;
 
 namespace LivePhotoConvert.Desktop.ViewModels;
@@ -7,6 +8,7 @@ namespace LivePhotoConvert.Desktop.ViewModels;
 public sealed partial class MainWindowViewModel : ViewModelBase
 {
     private readonly SettingsService _settingsService;
+    private readonly ILocalizer _localizer;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsConvertTabSelected))]
@@ -47,37 +49,41 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isWindowMaximized;
 
-    public MainWindowViewModel()
+    public MainWindowViewModel(ILocalizer localizer)
     {
+        _localizer = localizer;
         _settingsService = new SettingsService();
 
         var s = _settingsService.Current;
         _currentTheme = s.Theme;
         _currentLanguage = s.Language;
 
-        ConvertVm = new ConvertViewModel(_settingsService)
+        // 页面 VM 在构造时就会读取文案，语言必须先于它们生效
+        _localizer.SetLanguage(_currentLanguage);
+
+        ConvertVm = new ConvertViewModel(_settingsService, _localizer)
         {
             OnShowModal = vm => ActiveDialog = vm,
             OnCloseModal = () => ActiveDialog = null
         };
 
-        StripVm = new StripViewModel(_settingsService)
+        StripVm = new StripViewModel(_settingsService, _localizer)
         {
             OnShowModal = vm => ActiveDialog = vm,
             OnCloseModal = () => ActiveDialog = null
         };
 
-        ToolsVm = new ToolsViewModel(_settingsService);
+        ToolsVm = new ToolsViewModel(_settingsService, _localizer);
 
         PlaybackHost.Instance.CustomFfmpegPathProvider = () => _settingsService.Current.FfmpegPath;
 
-        ReportVm = new ReportViewModel
+        ReportVm = new ReportViewModel(_localizer)
         {
             OnSwitchToConvertTab = () => SelectedTabIndex = 0
         };
 
         // 偏好设置作为独立页面（Tab 4）常驻，保存后回调主窗口把主题/语言应用到全局
-        SettingsVm = new SettingsViewModel(_settingsService)
+        SettingsVm = new SettingsViewModel(_settingsService, _localizer)
         {
             OnSettingsSaved = s =>
             {
@@ -98,7 +104,6 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             }
         };
 
-        LocalizationService.Instance.SetLanguage(_currentLanguage);
         if (Avalonia.Application.Current is not null)
         {
             Avalonia.Application.Current.RequestedThemeVariant = ResolveThemeVariant(_currentTheme);
@@ -145,7 +150,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         var s = _settingsService.Current;
         s.Language = lang;
         _settingsService.Save(s);
-        LocalizationService.Instance.SetLanguage(lang);
+        _localizer.SetLanguage(lang);
     }
 
     [RelayCommand]

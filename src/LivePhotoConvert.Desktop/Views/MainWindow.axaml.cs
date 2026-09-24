@@ -1,7 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
-using LivePhotoConvert.Desktop.Services;
+using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.ViewModels;
 
 namespace LivePhotoConvert.Desktop.Views;
@@ -59,7 +59,7 @@ public partial class MainWindow : Window
 
         var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            Title = LocalizationService.Instance.GetString("SelectAlbumFolderBtn"),
+            Title = Localizer.Current["SelectAlbumFolderBtn"],
             AllowMultiple = false
         });
 
@@ -76,7 +76,7 @@ public partial class MainWindow : Window
 
         var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            Title = LocalizationService.Instance.GetString("PickerOutputFolderTitle"),
+            Title = Localizer.Current["PickerOutputFolderTitle"],
             AllowMultiple = false
         });
 
@@ -94,11 +94,11 @@ public partial class MainWindow : Window
 
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = LocalizationService.Instance.GetString("PickerSamplePhotoTitle"),
+            Title = Localizer.Current["PickerSamplePhotoTitle"],
             AllowMultiple = false,
             FileTypeFilter = new List<FilePickerFileType>
             {
-                new(LocalizationService.Instance.GetString("PickerImageFilterLabel"))
+                new(Localizer.Current["PickerImageFilterLabel"])
                 {
                     Patterns = ["*.heic", "*.HEIC", "*.jpg", "*.JPG", "*.jpeg", "*.JPEG", "*.png", "*.PNG"]
                 }
@@ -118,7 +118,7 @@ public partial class MainWindow : Window
 
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = LocalizationService.Instance.GetString("PickerToolExecutableTitle"),
+            Title = Localizer.Current["PickerToolExecutableTitle"],
             AllowMultiple = false
         });
 

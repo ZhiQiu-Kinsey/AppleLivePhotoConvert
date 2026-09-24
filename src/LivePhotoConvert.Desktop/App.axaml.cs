@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.ViewModels;
 using LivePhotoConvert.Desktop.Views;
 
@@ -17,7 +18,7 @@ public class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var mainVm = new MainWindowViewModel();
+            var mainVm = new MainWindowViewModel(Localizer.Current);
             var mainWindow = new MainWindow
             {
                 DataContext = mainVm

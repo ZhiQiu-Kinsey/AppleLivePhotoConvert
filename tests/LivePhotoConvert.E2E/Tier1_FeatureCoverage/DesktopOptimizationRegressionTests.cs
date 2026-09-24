@@ -1,3 +1,4 @@
+using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Models;
 using LivePhotoConvert.Desktop.Services;
 using LivePhotoConvert.Desktop.ViewModels;
@@ -28,7 +29,7 @@ public class DesktopOptimizationRegressionTests
     {
         string tempPath = Path.Combine(Path.GetTempPath(), $"settings_{Guid.NewGuid():N}.json");
         var settingsService = new SettingsService(tempPath);
-        var stripVm = new StripViewModel(settingsService);
+        var stripVm = new StripViewModel(settingsService, Localizer.Current);
 
         Assert.Equal("—", stripVm.TotalOriginalText);
         Assert.Equal("—", stripVm.EstimatedAfterText);
@@ -36,7 +37,7 @@ public class DesktopOptimizationRegressionTests
         Assert.Equal(string.Empty, stripVm.SavedPercentResult);
         Assert.False(stripVm.CanStartStrip);
         Assert.False(stripVm.StartStripExecutionCommand.CanExecute(null));
-        Assert.Equal(LocalizationService.Instance.GetString("NoAlbumOrPhotoSelected"), stripVm.CurrentInputPathText);
+        Assert.Equal(Localizer.Current["NoAlbumOrPhotoSelected"], stripVm.CurrentInputPathText);
     }
 
     [Fact]
@@ -44,7 +45,7 @@ public class DesktopOptimizationRegressionTests
     {
         string tempPath = Path.Combine(Path.GetTempPath(), $"settings_{Guid.NewGuid():N}.json");
         var settingsService = new SettingsService(tempPath);
-        var stripVm = new StripViewModel(settingsService);
+        var stripVm = new StripViewModel(settingsService, Localizer.Current);
 
         var task = stripVm.RefreshAnalysisAsync();
         Assert.True(task.IsCompleted);
@@ -57,7 +58,7 @@ public class DesktopOptimizationRegressionTests
     {
         string tempPath = Path.Combine(Path.GetTempPath(), $"settings_{Guid.NewGuid():N}.json");
         var settingsService = new SettingsService(tempPath);
-        var convertVm = new ConvertViewModel(settingsService);
+        var convertVm = new ConvertViewModel(settingsService, Localizer.Current);
 
         var card = new PhotoCardItemViewModel
         {
@@ -118,7 +119,7 @@ public class DesktopOptimizationRegressionTests
     {
         string tempPath = Path.Combine(Path.GetTempPath(), $"settings_{Guid.NewGuid():N}.json");
         var settingsService = new SettingsService(tempPath);
-        var convertVm = new ConvertViewModel(settingsService);
+        var convertVm = new ConvertViewModel(settingsService, Localizer.Current);
 
         Assert.IsType<Desktop.Collections.BulkObservableCollection<IGalleryDisplayItem>>(convertVm.FlattenedDisplayItems);
     }
@@ -220,7 +221,7 @@ public class DesktopOptimizationRegressionTests
 
         string tempPath = Path.Combine(Path.GetTempPath(), $"settings_{Guid.NewGuid():N}.json");
         var settingsService = new SettingsService(tempPath);
-        var convertVm = new ConvertViewModel(settingsService)
+        var convertVm = new ConvertViewModel(settingsService, Localizer.Current)
         {
             AlbumDirectory = context.InputDirectory
         };
@@ -251,7 +252,7 @@ public class DesktopOptimizationRegressionTests
 
         string tempPath = Path.Combine(Path.GetTempPath(), $"settings_{Guid.NewGuid():N}.json");
         var settingsService = new SettingsService(tempPath);
-        var convertVm = new ConvertViewModel(settingsService)
+        var convertVm = new ConvertViewModel(settingsService, Localizer.Current)
         {
             AlbumDirectory = context1.InputDirectory
         };
@@ -270,7 +271,7 @@ public class DesktopOptimizationRegressionTests
     {
         string tempPath = Path.Combine(Path.GetTempPath(), $"settings_{Guid.NewGuid():N}.json");
         var settingsService = new SettingsService(tempPath);
-        var convertVm = new ConvertViewModel(settingsService);
+        var convertVm = new ConvertViewModel(settingsService, Localizer.Current);
 
         Assert.False(convertVm.IsUserScrolling);
 
@@ -296,7 +297,7 @@ public class DesktopOptimizationRegressionTests
         context.CreateInputFile("IMG_9999.png", pngHeader);
         context.CreateInputFile("IMG_9999.mov", new byte[100]);
 
-        var result = await AlbumScanner.ScanDirectoryAsync(context.InputDirectory, 0, TestContext.Current.CancellationToken);
+        var result = await AlbumScanner.ScanDirectoryAsync(Localizer.Current, context.InputDirectory, 0, TestContext.Current.CancellationToken);
 
         Assert.Single(result.Groups);
         var card = Assert.Single(result.Groups[0].AllCards);

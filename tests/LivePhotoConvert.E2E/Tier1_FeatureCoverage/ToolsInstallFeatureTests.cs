@@ -1,6 +1,8 @@
+using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Models;
 using LivePhotoConvert.Desktop.Services;
 using LivePhotoConvert.Desktop.ViewModels;
+using LivePhotoConvert.E2E.Harness;
 
 namespace LivePhotoConvert.E2E.Tier1_FeatureCoverage;
 
@@ -15,6 +17,7 @@ namespace LivePhotoConvert.E2E.Tier1_FeatureCoverage;
 /// 3. 「下载中 → 取消 / 失败」的完整异步状态机依赖网络，无法在无副作用前提下自动化，
 ///    列为遗留待手动冒烟项（见测试报告）。
 /// </summary>
+[Collection(ProcessCultureCollection.Name)]
 public class ToolsInstallFeatureTests
 {
     #region 测试脚手架
@@ -59,7 +62,7 @@ public class ToolsInstallFeatureTests
         }
     }
 
-    private static ToolsViewModel BuildVm(TempSettings temp) => new(temp.Service);
+    private static ToolsViewModel BuildVm(TempSettings temp) => new(temp.Service, Localizer.Current);
 
     private static Func<Task> InstallActionFor(ToolsViewModel vm, ToolKind kind) => kind switch
     {
@@ -322,7 +325,7 @@ public class ToolsInstallFeatureTests
 
         Assert.True(vm.IsActionMessageError, "文件不存在时应判定为无效引擎");
         Assert.Equal(
-            LocalizationService.Instance.GetFormat("ToolPathInvalidFormat", missing),
+            Localizer.Current.Format("ToolPathInvalidFormat", missing),
             vm.ActionMessageText);
         Assert.Equal(string.Empty, SettingsFieldFor(kind)(temp.Service.Current));
     }
@@ -357,7 +360,7 @@ public class ToolsInstallFeatureTests
         Assert.True(File.Exists(temp.SettingsPath), "选择有效路径后应立即持久化");
         Assert.False(vm.IsActionMessageError);
         Assert.Equal(
-            LocalizationService.Instance.GetFormat("ToolPathAppliedFormat", DisplayNameFor(kind)),
+            Localizer.Current.Format("ToolPathAppliedFormat", DisplayNameFor(kind)),
             vm.ActionMessageText);
     }
 
@@ -379,7 +382,7 @@ public class ToolsInstallFeatureTests
 
         Assert.True(vm.IsActionMessageError, "非可执行文件必须判定为无效引擎");
         Assert.Equal(
-            LocalizationService.Instance.GetFormat("ToolPathInvalidFormat", textFile),
+            Localizer.Current.Format("ToolPathInvalidFormat", textFile),
             vm.ActionMessageText);
         Assert.Equal(string.Empty, temp.Service.Current.ExifToolPath);
         Assert.False(File.Exists(temp.SettingsPath), "拒绝后不应持久化任何设置");
@@ -394,35 +397,36 @@ public class ToolsInstallFeatureTests
     [InlineData("en-US")]
     public void InstallPromptTemplates_RenderArgumentsInBothLanguages(string language)
     {
-        var loc = new LocalizationService();
+        using var _ = new CultureScope();
+        var loc = new Localizer();
         loc.SetLanguage(language);
 
-        // 若模板占位符与实参不匹配，GetFormat 会静默返回原始模板（用户看到 {0} 原文），此处提前拦截
-        var starting = loc.GetFormat("InstallStartingFormat", "ExifTool");
+        // 若模板占位符与实参不匹配，Format 会静默返回原始模板（用户看到 {0} 原文），此处提前拦截
+        var starting = loc.Format("InstallStartingFormat", "ExifTool");
         Assert.Contains("ExifTool", starting);
         Assert.DoesNotContain("{0}", starting);
 
-        var completed = loc.GetFormat("InstallCompletedFormat", "ExifTool");
+        var completed = loc.Format("InstallCompletedFormat", "ExifTool");
         Assert.Contains("ExifTool", completed);
         Assert.DoesNotContain("{0}", completed);
 
-        var failed = loc.GetFormat("InstallFailedFormat", "FFmpeg", "timeout");
+        var failed = loc.Format("InstallFailedFormat", "FFmpeg", "timeout");
         Assert.Contains("FFmpeg", failed);
         Assert.Contains("timeout", failed);
         Assert.DoesNotContain("{0}", failed);
         Assert.DoesNotContain("{1}", failed);
 
-        var invalid = loc.GetFormat("ToolPathInvalidFormat", "/tmp/x.exe");
+        var invalid = loc.Format("ToolPathInvalidFormat", "/tmp/x.exe");
         Assert.Contains("/tmp/x.exe", invalid);
         Assert.DoesNotContain("{0}", invalid);
 
-        var applied = loc.GetFormat("ToolPathAppliedFormat", "heif-enc");
+        var applied = loc.Format("ToolPathAppliedFormat", "heif-enc");
         Assert.Contains("heif-enc", applied);
         Assert.DoesNotContain("{0}", applied);
 
-        Assert.NotEqual(string.Empty, loc.GetString("InstallCanceled"));
-        Assert.NotEqual(string.Empty, loc.GetString("InstallToolBtn"));
-        Assert.NotEqual(string.Empty, loc.GetString("InstallingStatus"));
+        Assert.NotEqual(string.Empty, loc["InstallCanceled"]);
+        Assert.NotEqual(string.Empty, loc["InstallToolBtn"]);
+        Assert.NotEqual(string.Empty, loc["InstallingStatus"]);
     }
 
     #endregion

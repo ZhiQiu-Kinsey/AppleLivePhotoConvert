@@ -3,6 +3,7 @@ using System.Globalization;
 using LivePhotoConvert.Core.Media;
 using LivePhotoConvert.Core.Pairing;
 using LivePhotoConvert.Desktop.Converters;
+using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Models;
 namespace LivePhotoConvert.Desktop.Services;
 
@@ -25,10 +26,12 @@ public sealed class AlbumScanner
     /// <summary>
     /// 异步扫描指定目录中的实况照片与配对
     /// </summary>
+    /// <param name="localizer">卡片日期格式与状态文案来源</param>
     /// <param name="directory">目录路径</param>
     /// <param name="conversionDirection">转换方向（0=苹果转安卓, 1=安卓转苹果, 2=提取独立文件）</param>
     /// <param name="cancellationToken">取消令牌</param>
     public static async Task<ScanResult> ScanDirectoryAsync(
+        ILocalizer localizer,
         string directory,
         int conversionDirection = 0,
         CancellationToken cancellationToken = default)
@@ -49,9 +52,8 @@ public sealed class AlbumScanner
                 return new ScanResult([], 0, 0, 0, 0, 0);
             }
 
-            var loc = LocalizationService.Instance;
-            string dateFormat = loc.GetString("DateGroupFormat");
-            var culture = loc.CurrentCulture;
+            string dateFormat = localizer["DateGroupFormat"];
+            var culture = localizer.Culture;
 
             var cardList = new List<PhotoCardItemViewModel>();
             int suspicious = 0;
@@ -89,7 +91,7 @@ public sealed class AlbumScanner
 
                         string fileName = Path.GetFileNameWithoutExtension(file);
                         string dirName = Path.GetFileName(Path.GetDirectoryName(file) ?? string.Empty);
-                        string locSummary = string.IsNullOrWhiteSpace(dirName) ? loc.GetString("LocalAlbumFallback") : dirName;
+                        string locSummary = string.IsNullOrWhiteSpace(dirName) ? localizer["LocalAlbumFallback"] : dirName;
 
                         var (aspectRatio, resolutionText) = SniffPhotoDimensions(file);
 
@@ -108,11 +110,11 @@ public sealed class AlbumScanner
                             LocationSummary = locSummary,
                             DeviceInfo = "Motion Photo",
                             ResolutionText = resolutionText,
-                            DurationText = loc.GetString("CardDurationLive"),
+                            DurationText = localizer["CardDurationLive"],
                             PhotoSizeText = FormatBytes(pBytes),
                             VideoSizeText = FormatBytes(vBytes),
                             AspectRatio = aspectRatio,
-                            PairingStatusText = loc.GetString("PairStatusLocked"),
+                            PairingStatusText = localizer["PairStatusLocked"],
                             HasSuspiciousWarning = false,
                             WarningReason = string.Empty,
                             IsSelected = true
@@ -149,7 +151,7 @@ public sealed class AlbumScanner
                     DateTime dt = photoInfo.Exists ? photoInfo.LastWriteTime : DateTime.Now;
                     string fileName = Path.GetFileNameWithoutExtension(pair.PhotoPath);
                     string dirName = Path.GetFileName(Path.GetDirectoryName(pair.PhotoPath) ?? string.Empty);
-                    string locSummary = string.IsNullOrWhiteSpace(dirName) ? loc.GetString("LocalAlbumFallback") : dirName;
+                    string locSummary = string.IsNullOrWhiteSpace(dirName) ? localizer["LocalAlbumFallback"] : dirName;
                     string ext = photoInfo.Extension.TrimStart('.').ToUpperInvariant();
 
                     bool isSuspicious = false;
@@ -160,7 +162,7 @@ public sealed class AlbumScanner
                         if (diff.TotalSeconds > 3.0)
                         {
                             isSuspicious = true;
-                            warningReason = loc.GetFormat("TimeDiffWarningFormat", diff.TotalSeconds);
+                            warningReason = localizer.Format("TimeDiffWarningFormat", diff.TotalSeconds);
                             suspicious++;
                         }
                     }
@@ -180,11 +182,11 @@ public sealed class AlbumScanner
                         LocationSummary = locSummary,
                         DeviceInfo = ext,
                         ResolutionText = resolutionText,
-                        DurationText = loc.GetString("CardDurationLive"),
+                        DurationText = localizer["CardDurationLive"],
                         PhotoSizeText = FormatBytes(pBytes),
                         VideoSizeText = FormatBytes(vBytes),
                         AspectRatio = aspectRatio,
-                        PairingStatusText = isSuspicious ? loc.GetString("PairStatusPending") : loc.GetString("PairStatusLocked"),
+                        PairingStatusText = isSuspicious ? localizer["PairStatusPending"] : localizer["PairStatusLocked"],
                         HasSuspiciousWarning = isSuspicious,
                         WarningReason = warningReason,
                         IsSelected = !isSuspicious
@@ -212,7 +214,7 @@ public sealed class AlbumScanner
                     DateTime dt = photoInfo.Exists ? photoInfo.LastWriteTime : DateTime.Now;
                     string fileName = Path.GetFileNameWithoutExtension(pair.PhotoPath);
                     string dirName = Path.GetFileName(Path.GetDirectoryName(pair.PhotoPath) ?? string.Empty);
-                    string locSummary = string.IsNullOrWhiteSpace(dirName) ? loc.GetString("LocalAlbumFallback") : dirName;
+                    string locSummary = string.IsNullOrWhiteSpace(dirName) ? localizer["LocalAlbumFallback"] : dirName;
                     string ext = photoInfo.Extension.TrimStart('.').ToUpperInvariant();
 
                     var (aspectRatio, resolutionText) = SniffPhotoDimensions(pair.PhotoPath);
@@ -230,11 +232,11 @@ public sealed class AlbumScanner
                         LocationSummary = locSummary,
                         DeviceInfo = ext,
                         ResolutionText = resolutionText,
-                        DurationText = loc.GetString("CardDurationLive"),
+                        DurationText = localizer["CardDurationLive"],
                         PhotoSizeText = FormatBytes(pBytes),
                         VideoSizeText = FormatBytes(vBytes),
                         AspectRatio = aspectRatio,
-                        PairingStatusText = loc.GetString("PairStatusLocked"),
+                        PairingStatusText = localizer["PairStatusLocked"],
                         HasSuspiciousWarning = false,
                         WarningReason = string.Empty,
                         IsSelected = true
@@ -269,7 +271,7 @@ public sealed class AlbumScanner
 
                         string fileName = Path.GetFileNameWithoutExtension(file);
                         string dirName = Path.GetFileName(Path.GetDirectoryName(file) ?? string.Empty);
-                        string locSummary = string.IsNullOrWhiteSpace(dirName) ? loc.GetString("LocalAlbumFallback") : dirName;
+                        string locSummary = string.IsNullOrWhiteSpace(dirName) ? localizer["LocalAlbumFallback"] : dirName;
 
                         var (aspectRatio, resolutionText) = SniffPhotoDimensions(file);
 
@@ -288,11 +290,11 @@ public sealed class AlbumScanner
                             LocationSummary = locSummary,
                             DeviceInfo = "Motion Photo",
                             ResolutionText = resolutionText,
-                            DurationText = loc.GetString("CardDurationLive"),
+                            DurationText = localizer["CardDurationLive"],
                             PhotoSizeText = FormatBytes(pBytes),
                             VideoSizeText = FormatBytes(vBytes),
                             AspectRatio = aspectRatio,
-                            PairingStatusText = loc.GetString("PairStatusLocked"),
+                            PairingStatusText = localizer["PairStatusLocked"],
                             HasSuspiciousWarning = false,
                             WarningReason = string.Empty,
                             IsSelected = true

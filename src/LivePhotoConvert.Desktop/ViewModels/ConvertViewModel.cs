@@ -10,6 +10,7 @@ using LivePhotoConvert.Core.Pairing;
 using LivePhotoConvert.Core.Pipeline;
 using LivePhotoConvert.Core.Services;
 using LivePhotoConvert.Desktop.Collections;
+using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Models;
 using LivePhotoConvert.Desktop.Services;
 using LivePhotoConvert.Desktop.ViewModels.Dialogs;
@@ -19,6 +20,7 @@ namespace LivePhotoConvert.Desktop.ViewModels;
 public sealed partial class ConvertViewModel : ViewModelBase
 {
     private readonly SettingsService _settingsService;
+    private readonly ILocalizer _localizer;
     private List<TimelineGroup> _groups = [];
     private List<PhotoCardItemViewModel> _allCards = [];
     private readonly HashSet<string> _collapsedGroupKeys = [];
@@ -107,31 +109,31 @@ public sealed partial class ConvertViewModel : ViewModelBase
 
     public bool HasSelectedDirectory => !string.IsNullOrWhiteSpace(AlbumDirectory) && Directory.Exists(AlbumDirectory);
     public string AlbumDirectorySummary => string.IsNullOrWhiteSpace(AlbumDirectory)
-        ? LocalizationService.Instance.GetString("AlbumSummaryNoDir")
+        ? _localizer["AlbumSummaryNoDir"]
         : Path.GetFileName(AlbumDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
 
     public bool HasPhotos => _allCards.Count > 0;
 
-    public string EmptyStateTitle => LocalizationService.Instance.GetString(
-        !HasSelectedDirectory ? "EmptyStateNoDirTitle" : "EmptyStateEmptyTitle");
+    public string EmptyStateTitle => _localizer[
+        !HasSelectedDirectory ? "EmptyStateNoDirTitle" : "EmptyStateEmptyTitle"];
 
-    public string EmptyStateSubtitle => LocalizationService.Instance.GetString(
-        !HasSelectedDirectory ? "EmptyStateNoDirSubtitle" : "EmptyStateEmptySubtitle");
+    public string EmptyStateSubtitle => _localizer[
+        !HasSelectedDirectory ? "EmptyStateNoDirSubtitle" : "EmptyStateEmptySubtitle"];
 
-    public string SelectAlbumFolderBtnText => LocalizationService.Instance.GetString("SelectAlbumFolderBtn");
+    public string SelectAlbumFolderBtnText => _localizer["SelectAlbumFolderBtn"];
 
-    public string FunnelTotalText => LocalizationService.Instance.GetFormat("FunnelTotalFormat", TotalScannedCount);
-    public string FunnelReadyText => LocalizationService.Instance.GetFormat("FunnelReadyFormat", ReadyCount);
-    public string FunnelSuspiciousText => LocalizationService.Instance.GetFormat("FunnelSuspiciousFormat", SuspiciousCount);
-    public string FunnelFilteredText => LocalizationService.Instance.GetFormat("FunnelFilteredFormat", FilteredCount);
+    public string FunnelTotalText => _localizer.Format("FunnelTotalFormat", TotalScannedCount);
+    public string FunnelReadyText => _localizer.Format("FunnelReadyFormat", ReadyCount);
+    public string FunnelSuspiciousText => _localizer.Format("FunnelSuspiciousFormat", SuspiciousCount);
+    public string FunnelFilteredText => _localizer.Format("FunnelFilteredFormat", FilteredCount);
 
     // 筛选菜单计数：全部照片 = 就绪配对 + 待裁决配对；待裁决 = 需人工核验的配对数
-    public string FilterAllText => LocalizationService.Instance.GetFormat("FilterAllFormat", ReadyCount + SuspiciousCount);
-    public string FilterSuspiciousText => LocalizationService.Instance.GetFormat("FilterSuspiciousFormat", SuspiciousCount);
+    public string FilterAllText => _localizer.Format("FilterAllFormat", ReadyCount + SuspiciousCount);
+    public string FilterSuspiciousText => _localizer.Format("FilterSuspiciousFormat", SuspiciousCount);
 
     /// <summary>选择按钮文字：多选态显示"完成选择"，否则显示"选择"（遵循 PRD 3.2 模式切换规范）。</summary>
-    public string SelectionModeButtonText => LocalizationService.Instance.GetString(
-        IsSelectionModeActive ? "ToolbarSelectActive" : "ToolbarSelect");
+    public string SelectionModeButtonText => _localizer[
+        IsSelectionModeActive ? "ToolbarSelectActive" : "ToolbarSelect"];
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SelectionModeButtonText))]
@@ -252,9 +254,10 @@ public sealed partial class ConvertViewModel : ViewModelBase
     public Func<Task<string?>>? RequestSelectFolder { get; set; }
     public Func<Task<string?>>? RequestSelectOutputFolder { get; set; }
 
-    public ConvertViewModel(SettingsService settingsService)
+    public ConvertViewModel(SettingsService settingsService, ILocalizer localizer)
     {
         _settingsService = settingsService;
+        _localizer = localizer;
         _lruThumbnailManager = new LruThumbnailManager(_thumbnailReader);
         _layoutRefreshTimer = new Avalonia.Threading.DispatcherTimer
         {
@@ -314,10 +317,16 @@ public sealed partial class ConvertViewModel : ViewModelBase
         UpdateSelectionSummary();
         UpdateDirectionTexts();
 
-        LocalizationService.Instance.LanguageChanged += _ =>
+        _localizer.LanguageChanged += (_, _) =>
         {
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
+                if (_groups.Count > 0)
+                {
+                    // 分组标题含本地化日期格式
+                    BuildGroups();
+                    RebuildFlattenedStream();
+                }
                 UpdateSelectionSummary();
                 UpdateDirectionTexts();
                 OnPropertyChanged(nameof(EmptyStateTitle));
@@ -402,13 +411,12 @@ public sealed partial class ConvertViewModel : ViewModelBase
 
     private void UpdateDirectionTexts()
     {
-        var loc = LocalizationService.Instance;
         PrimaryButtonText = ConversionDirection switch
         {
-            0 => loc.GetFormat("PrimaryBtnMergeFormat", ReadyCount, ReadyCount + SuspiciousCount),
-            1 => loc.GetFormat("PrimaryBtnAppleFormat", ReadyCount),
-            2 => loc.GetFormat("PrimaryBtnExtractFormat", ReadyCount),
-            _ => loc.GetString("PrimaryBtnDefault")
+            0 => _localizer.Format("PrimaryBtnMergeFormat", ReadyCount, ReadyCount + SuspiciousCount),
+            1 => _localizer.Format("PrimaryBtnAppleFormat", ReadyCount),
+            2 => _localizer.Format("PrimaryBtnExtractFormat", ReadyCount),
+            _ => _localizer["PrimaryBtnDefault"]
         };
     }
 
@@ -451,11 +459,10 @@ public sealed partial class ConvertViewModel : ViewModelBase
     {
         FilterMode = mode;
         IsFilterBannerVisible = mode != "All";
-        var loc = LocalizationService.Instance;
         FilterBannerDesc = mode switch
         {
-            "SuspiciousOnly" => loc.GetFormat("FilterBannerSuspiciousFormat", SuspiciousCount),
-            "SelectedOnly" => loc.GetString("FilterBannerSelected"),
+            "SuspiciousOnly" => _localizer.Format("FilterBannerSuspiciousFormat", SuspiciousCount),
+            "SelectedOnly" => _localizer["FilterBannerSelected"],
             _ => string.Empty
         };
 
@@ -720,7 +727,7 @@ public sealed partial class ConvertViewModel : ViewModelBase
 
         try
         {
-            var res = await AlbumScanner.ScanDirectoryAsync(target, direction, token);
+            var res = await AlbumScanner.ScanDirectoryAsync(_localizer, target, direction, token);
             if (token.IsCancellationRequested)
             {
                 return;
@@ -1106,7 +1113,7 @@ public sealed partial class ConvertViewModel : ViewModelBase
         // 2. 物理删除原片红屏防灾
         if (SourceAction == 3)
         {
-            DeleteConfirmDialogViewModel deleteVm = new()
+            DeleteConfirmDialogViewModel deleteVm = new(_localizer)
             {
                 AffectedCount = targetCards.Count,
                 AffectedSizeText = FormatBytes(totalBytes),
@@ -1182,8 +1189,7 @@ public sealed partial class ConvertViewModel : ViewModelBase
 
     private async Task RunBatchAsync(BatchPlan plan, CancellationTokenSource cts)
     {
-        var loc = LocalizationService.Instance;
-        var modeName = loc.GetString(plan.Direction switch { 1 => "ReportModeApple", 2 => "ReportModeExtract", _ => "ReportModeMerge" });
+        var modeName = _localizer[plan.Direction switch { 1 => "ReportModeApple", 2 => "ReportModeExtract", _ => "ReportModeMerge" }];
         var progress = new DesktopProgressReporter(value =>
         {
             CurrentProgressPercent = value.Total > 0 ? value.Completed * 100.0 / value.Total : 0;
@@ -1194,16 +1200,16 @@ public sealed partial class ConvertViewModel : ViewModelBase
         BatchReportModel model;
         try
         {
-            model = await Task.Run(() => ExecuteBatchAsync(plan, modeName, progress, cts.Token));
+            model = await Task.Run(() => ExecuteBatchAsync(plan, modeName, _localizer, progress, cts.Token));
         }
         catch (OperationCanceledException)
         {
-            model = BatchReportMapper.ToModel(new BatchReport([], TimeSpan.Zero, Canceled: true), modeName, string.Empty, string.Empty, plan.Output.Directory);
+            model = BatchReportMapper.ToModel(_localizer, new BatchReport([], TimeSpan.Zero, Canceled: true), modeName, string.Empty, string.Empty, plan.Output.Directory);
         }
         catch (Exception ex)
         {
             ErrorLogger.Log(ex, modeName);
-            model = BatchReportMapper.FromError(ex.Message, modeName, plan.Output.Directory);
+            model = BatchReportMapper.FromError(_localizer, ex.Message, modeName, plan.Output.Directory);
         }
         finally
         {
@@ -1215,9 +1221,8 @@ public sealed partial class ConvertViewModel : ViewModelBase
         OnBatchReportReady?.Invoke(model);
     }
 
-    private static async Task<BatchReportModel> ExecuteBatchAsync(BatchPlan plan, string modeName, IProgress<BatchProgress> progress, CancellationToken cancellationToken)
+    private static async Task<BatchReportModel> ExecuteBatchAsync(BatchPlan plan, string modeName, ILocalizer localizer, IProgress<BatchProgress> progress, CancellationToken cancellationToken)
     {
-        var loc = LocalizationService.Instance;
         await using var metadata = ExifToolMetadataService.Create(plan.ExifToolPath, plan.Parallelism);
         IImageConverter imageConverter = ToolLocator.Find(HeifEncImageConverter.ExecutableName, plan.HeifEncPath) is { } heifEnc
             ? HeifEncImageConverter.Create(heifEnc)
@@ -1230,7 +1235,7 @@ public sealed partial class ConvertViewModel : ViewModelBase
                                   .ToList();
             if (cards.Count == 0)
             {
-                return BatchReportMapper.FromError(loc.GetString("NoMergePairs"), modeName, plan.Output.Directory);
+                return BatchReportMapper.FromError(localizer, localizer["NoMergePairs"], modeName, plan.Output.Directory);
             }
 
             var pairs = cards.Select(x => x.Pair).ToList();
@@ -1248,13 +1253,13 @@ public sealed partial class ConvertViewModel : ViewModelBase
                 },
                 progress,
                 cancellationToken);
-            return BatchReportMapper.ToModel(report, modeName, loc.GetString("MergeSuccessDesc"), "Motion Photo", plan.Output.Directory);
+            return BatchReportMapper.ToModel(localizer, report, modeName, localizer["MergeSuccessDesc"], "Motion Photo", plan.Output.Directory);
         }
 
         var files = plan.Cards.Where(c => c.IsMotionPhoto).Select(c => c.PhotoPath).ToList();
         if (files.Count == 0)
         {
-            return BatchReportMapper.FromError(loc.GetString("NoSplitCandidates"), modeName, plan.Output.Directory);
+            return BatchReportMapper.FromError(localizer, localizer["NoSplitCandidates"], modeName, plan.Output.Directory);
         }
 
         var target = plan.Direction == 1 ? SplitTarget.Apple : SplitTarget.Extract;
@@ -1272,8 +1277,8 @@ public sealed partial class ConvertViewModel : ViewModelBase
             },
             progress,
             cancellationToken);
-        var targetName = loc.GetString(target == SplitTarget.Apple ? "SplitTargetApple" : "SplitTargetExtract");
-        return BatchReportMapper.ToModel(splitReport, modeName, loc.GetFormat("SplitSuccessDescFormat", targetName), targetName, plan.Output.Directory);
+        var targetName = localizer[target == SplitTarget.Apple ? "SplitTargetApple" : "SplitTargetExtract"];
+        return BatchReportMapper.ToModel(localizer, splitReport, modeName, localizer.Format("SplitSuccessDescFormat", targetName), targetName, plan.Output.Directory);
     }
 
     private static string? NullIfBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
@@ -1297,9 +1302,8 @@ public sealed partial class ConvertViewModel : ViewModelBase
     {
         int selectedCount = _groups.Sum(g => g.AllCards.Count(c => c.IsSelected));
         int total = _groups.Sum(g => g.AllCards.Count);
-        var loc = LocalizationService.Instance;
-        SelectedBadgeText = loc.GetFormat("SelectedBadgeFormat", selectedCount);
-        SelectedSummaryText = loc.GetFormat(
+        SelectedBadgeText = _localizer.Format("SelectedBadgeFormat", selectedCount);
+        SelectedSummaryText = _localizer.Format(
             "SelectedSummaryFormat",
             total,
             FormatBytes(ComputeTotalBytes(_groups.SelectMany(g => g.AllCards))));
@@ -1361,8 +1365,7 @@ public sealed partial class ConvertViewModel : ViewModelBase
     private void BuildGroups()
     {
         var sortedCards = GetSortedCards();
-        bool isEn = LocalizationService.Instance.CurrentLanguage == "en-US";
-        var culture = isEn ? new CultureInfo("en-US") : new CultureInfo("zh-CN");
+        var culture = _localizer.Culture;
 
         if (GroupingMode == "None")
         {
@@ -1414,11 +1417,9 @@ public sealed partial class ConvertViewModel : ViewModelBase
 
             string title = GroupingMode switch
             {
-                "Month" => g.Key.ToString(isEn ? "MMMM yyyy" : "yyyy年M月", culture),
-                "Year" => g.Key.ToString(isEn ? "yyyy" : "yyyy年", culture),
-                _ => !string.IsNullOrWhiteSpace(firstCard.FormattedDate)
-                    ? firstCard.FormattedDate
-                    : g.Key.ToString("yyyy-MM-dd", culture)
+                "Month" => g.Key.ToString(_localizer["GroupTitleMonthFormat"], culture),
+                "Year" => g.Key.ToString(_localizer["GroupTitleYearFormat"], culture),
+                _ => g.Key.ToString(_localizer["DateGroupFormat"], culture)
             };
 
             string locSummary = GroupingMode == "Date" ? firstCard.LocationSummary : string.Empty;
@@ -1480,7 +1481,7 @@ public sealed partial class ConvertViewModel : ViewModelBase
 
     private void OpenArbitrationDialog(PhotoCardItemViewModel card)
     {
-        ArbitrateDialogViewModel arbitrateVm = new()
+        ArbitrateDialogViewModel arbitrateVm = new(_localizer)
         {
             TargetCard = card,
             OnWhitelistConfirmed = c =>
@@ -1516,7 +1517,7 @@ public sealed partial class ConvertViewModel : ViewModelBase
             return;
         }
 
-        var qlVm = new QuickLookDialogViewModel(card, indexText)
+        var qlVm = new QuickLookDialogViewModel(_localizer, card, indexText)
         {
             OnClose = () =>
             {

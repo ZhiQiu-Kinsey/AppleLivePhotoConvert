@@ -2,6 +2,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Models;
 using LivePhotoConvert.Desktop.Services;
 
@@ -10,6 +11,7 @@ namespace LivePhotoConvert.Desktop.ViewModels.Dialogs;
 public sealed partial class QuickLookDialogViewModel : ViewModelBase
 {
     private const int QuickLookPhotoMaxSize = 1600;
+    private readonly ILocalizer _localizer;
     private readonly LivePhotoStreamPlayer _streamPlayer = new();
     private readonly ThumbnailReader _thumbnailReader = new();
     private Bitmap? _ownedPhotoPreview;
@@ -32,7 +34,7 @@ public sealed partial class QuickLookDialogViewModel : ViewModelBase
     private string _playbackStatusText = string.Empty;
 
     [ObservableProperty]
-    private string _playButtonText = LocalizationService.Instance.GetString("QuickLookPause");
+    private string _playButtonText;
 
     [ObservableProperty]
     private string _navigationIndexText;
@@ -40,8 +42,10 @@ public sealed partial class QuickLookDialogViewModel : ViewModelBase
     public Action? OnClose { get; init; }
     public Action<int>? OnNavigate { get; init; }
 
-    public QuickLookDialogViewModel(PhotoCardItemViewModel initialCard, string initialIndexText = "")
+    public QuickLookDialogViewModel(ILocalizer localizer, PhotoCardItemViewModel initialCard, string initialIndexText = "")
     {
+        _localizer = localizer;
+        _playButtonText = localizer["QuickLookPause"];
         _card = initialCard;
         _navigationIndexText = initialIndexText;
         SetCard(initialCard, initialIndexText);
@@ -64,8 +68,8 @@ public sealed partial class QuickLookDialogViewModel : ViewModelBase
         {
             HasVideo = true;
             IsPlaying = true;
-            PlayButtonText = LocalizationService.Instance.GetString("QuickLookPause");
-            PlaybackStatusText = LocalizationService.Instance.GetString("QuickLookLoading");
+            PlayButtonText = _localizer["QuickLookPause"];
+            PlaybackStatusText = _localizer["QuickLookLoading"];
 
             _ = Task.Run(async () =>
             {
@@ -76,7 +80,7 @@ public sealed partial class QuickLookDialogViewModel : ViewModelBase
                     {
                         if (Card == card)
                         {
-                            PlaybackStatusText = "实况播放中";
+                            PlaybackStatusText = _localizer["QuickLookPlaying"];
                             _streamPlayer.Play(extracted, frame =>
                             {
                                 _hasPresentedVideoFrame = true;
@@ -96,8 +100,8 @@ public sealed partial class QuickLookDialogViewModel : ViewModelBase
         if (hasValidVideo)
         {
             IsPlaying = true;
-            PlayButtonText = LocalizationService.Instance.GetString("QuickLookPause");
-            PlaybackStatusText = LocalizationService.Instance.GetString("QuickLookPlaying");
+            PlayButtonText = _localizer["QuickLookPause"];
+            PlaybackStatusText = _localizer["QuickLookPlaying"];
 
             _streamPlayer.Play(videoPath!, frame =>
             {
@@ -108,8 +112,8 @@ public sealed partial class QuickLookDialogViewModel : ViewModelBase
         else
         {
             IsPlaying = false;
-            PlayButtonText = LocalizationService.Instance.GetString("QuickLookStatic");
-            PlaybackStatusText = LocalizationService.Instance.GetString("QuickLookStatic");
+            PlayButtonText = _localizer["QuickLookStatic"];
+            PlaybackStatusText = _localizer["QuickLookStatic"];
         }
     }
 
@@ -120,8 +124,8 @@ public sealed partial class QuickLookDialogViewModel : ViewModelBase
 
         _streamPlayer.TogglePlay();
         IsPlaying = _streamPlayer.IsPlaying;
-        PlayButtonText = IsPlaying ? LocalizationService.Instance.GetString("QuickLookPause") : LocalizationService.Instance.GetString("QuickLookLoop");
-        PlaybackStatusText = IsPlaying ? LocalizationService.Instance.GetString("QuickLookPlaying") : LocalizationService.Instance.GetString("QuickLookPaused");
+        PlayButtonText = IsPlaying ? _localizer["QuickLookPause"] : _localizer["QuickLookLoop"];
+        PlaybackStatusText = IsPlaying ? _localizer["QuickLookPlaying"] : _localizer["QuickLookPaused"];
     }
 
     [RelayCommand]

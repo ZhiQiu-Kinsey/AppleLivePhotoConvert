@@ -1,4 +1,5 @@
 using System.Reflection;
+using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Models;
 using LivePhotoConvert.Desktop.Services;
 using LivePhotoConvert.Desktop.ViewModels;
@@ -32,7 +33,7 @@ public class GalleryGroupingAndSortingTests
     private static ConvertViewModel CreateCleanViewModel()
     {
         string tempPath = Path.Combine(Path.GetTempPath(), $"settings_{Guid.NewGuid():N}.json");
-        return new ConvertViewModel(new SettingsService(tempPath));
+        return new ConvertViewModel(new SettingsService(tempPath), Localizer.Current);
     }
 
     [Fact]
