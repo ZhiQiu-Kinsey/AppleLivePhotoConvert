@@ -41,7 +41,16 @@ public sealed record MotionPhotoXmp
     {
         get
         {
-            var index = Items.ToList().FindIndex(item => item.IsMotionPhoto);
+            var index = -1;
+            for (var i = 0; i < Items.Count; i++)
+            {
+                if (Items[i].IsMotionPhoto)
+                {
+                    index = i;
+                    break;
+                }
+            }
+
             if (index >= 0 && Items[index].Length > 0)
             {
                 var trailing = Items.Skip(index + 1).Sum(item => item.Length + item.Padding) + Items[index].Padding;

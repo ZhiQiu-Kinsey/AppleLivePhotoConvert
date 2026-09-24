@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Text;
+using LivePhotoConvert.Core.Io;
 
 namespace LivePhotoConvert.Desktop.Features.Tasks;
 
@@ -59,10 +60,7 @@ public static class CsvWriter
         }
         finally
         {
-            if (File.Exists(temp))
-            {
-                File.Delete(temp);
-            }
+            FileHelper.TryDeleteFile(temp);
         }
     }
 }
