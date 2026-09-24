@@ -3,13 +3,12 @@ using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Avalonia.Media.Imaging;
-using LivePhotoConvert.Core.Abstractions;
-using LivePhotoConvert.Core.External;
-using LivePhotoConvert.Core.Metadata;
 using LivePhotoConvert.Core.Pairing;
 using LivePhotoConvert.Core.Pipeline;
 using LivePhotoConvert.Core.Services;
 using LivePhotoConvert.Desktop.Collections;
+using LivePhotoConvert.Desktop.Features.Library;
+using LivePhotoConvert.Desktop.Features.Tasks;
 using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Models;
 using LivePhotoConvert.Desktop.Services;
@@ -17,7 +16,7 @@ using LivePhotoConvert.Desktop.ViewModels.Dialogs;
 
 namespace LivePhotoConvert.Desktop.ViewModels;
 
-public sealed partial class ConvertViewModel : ViewModelBase, IBackgroundWork
+public sealed partial class ConvertViewModel : ViewModelBase
 {
     private readonly SettingsStore _settings;
     private readonly ILocalizer _localizer;
@@ -25,14 +24,11 @@ public sealed partial class ConvertViewModel : ViewModelBase, IBackgroundWork
     private readonly IFilePicker _filePicker;
     private readonly IShellLauncher _shell;
     private readonly PlaybackHost _playback;
-    private readonly ReportViewModel _report;
+    private readonly TaskCenter _tasks;
     private readonly INavigator _navigator;
-    private readonly CompletionEffects _completion;
-    private Task? _batchTask;
     private List<TimelineGroup> _groups = [];
     private List<PhotoCardItemViewModel> _allCards = [];
     private readonly HashSet<string> _collapsedGroupKeys = [];
-    private CancellationTokenSource? _batchCts;
     private readonly ThumbnailReader _thumbnailReader = new();
     private readonly LruThumbnailManager _lruThumbnailManager;
     private CancellationTokenSource? _thumbnailCts;
@@ -62,7 +58,6 @@ public sealed partial class ConvertViewModel : ViewModelBase, IBackgroundWork
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(TotalLiveReadyCount))]
     [NotifyPropertyChangedFor(nameof(FunnelReadyText))]
-    [NotifyPropertyChangedFor(nameof(CanStartConvert))]
     [NotifyPropertyChangedFor(nameof(FilterAllText))]
     [NotifyPropertyChangedFor(nameof(HasReadyItems))]
     private int _readyCount;
@@ -85,7 +80,6 @@ public sealed partial class ConvertViewModel : ViewModelBase, IBackgroundWork
     public bool HasScannedFiles => TotalScannedCount > 0;
 
     public int TotalLiveReadyCount => ReadyCount;
-    public bool CanStartConvert => ReadyCount > 0 && !IsRunning;
 
     [ObservableProperty]
     private string _selectedSummaryText = string.Empty;
@@ -191,23 +185,8 @@ public sealed partial class ConvertViewModel : ViewModelBase, IBackgroundWork
     [ObservableProperty]
     private string _primaryButtonText = string.Empty;
 
-    [ObservableProperty]
-    private bool _isRunning;
-
-    [ObservableProperty]
-    private string _currentFileName = string.Empty;
-
-    [ObservableProperty]
-    private double _currentProgressPercent;
-
-    [ObservableProperty]
-    private string _progressRatioText = string.Empty;
-
-    [ObservableProperty]
-    private string _writingThroughputText = string.Empty;
-
-    [ObservableProperty]
-    private string _remainingTimeText = string.Empty;
+    /// <summary>页面只显示运行中任务的简要状态，详细进度在任务页。</summary>
+    public TaskCenter Tasks => _tasks;
 
     // 分组时间线展示流
     public ObservableCollection<TimelineGroup> DisplayGroups { get; } = [];
@@ -259,9 +238,8 @@ public sealed partial class ConvertViewModel : ViewModelBase, IBackgroundWork
         IFilePicker filePicker,
         IShellLauncher shell,
         PlaybackHost playback,
-        ReportViewModel report,
-        INavigator navigator,
-        CompletionEffects completion)
+        TaskCenter tasks,
+        INavigator navigator)
     {
         _settings = settings;
         _localizer = localizer;
@@ -269,9 +247,15 @@ public sealed partial class ConvertViewModel : ViewModelBase, IBackgroundWork
         _filePicker = filePicker;
         _shell = shell;
         _playback = playback;
-        _report = report;
+        _tasks = tasks;
         _navigator = navigator;
-        _completion = completion;
+        _tasks.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(TaskCenter.IsRunning))
+            {
+                TriggerBatchConvertCommand.NotifyCanExecuteChanged();
+            }
+        };
         _lruThumbnailManager = new LruThumbnailManager(_thumbnailReader);
         _layoutRefreshTimer = new Avalonia.Threading.DispatcherTimer
         {
@@ -1087,20 +1071,17 @@ public sealed partial class ConvertViewModel : ViewModelBase, IBackgroundWork
         _settings.Update(s => s.SourceAction = value);
     }
 
-    [RelayCommand]
+    private bool CanStartTask() => !_tasks.IsRunning;
+
+    [RelayCommand(CanExecute = nameof(CanStartTask))]
     public async Task TriggerBatchConvertAsync()
     {
-        if (IsRunning)
+        if (_tasks.IsRunning)
         {
             return;
         }
 
-        var targetCards = _groups.SelectMany(g => g.AllCards).Where(c => c.IsSelected).ToList();
-        if (targetCards.Count == 0)
-        {
-            targetCards = _groups.SelectMany(g => g.AllCards).ToList();
-        }
-
+        var targetCards = GetTargetCards();
         long totalBytes = ComputeTotalBytes(targetCards);
         var (hasSpace, req, avail) = SafetyGuard.CheckDiskSpace(OutputDirectory, totalBytes);
         if (!hasSpace)
@@ -1132,176 +1113,70 @@ public sealed partial class ConvertViewModel : ViewModelBase, IBackgroundWork
             }
         }
 
-        ExecuteBatchPipeline();
-    }
-
-    private void ExecuteBatchPipeline()
-    {
-        if (IsRunning)
+        // 弹窗期间可能已从别处启动了任务
+        if (_tasks.IsRunning)
         {
             return;
         }
 
-        // 启动前固定本批次的卡片与参数，运行期间切换方向或重新扫描不影响后台任务
-        var cards = _groups.SelectMany(g => g.AllCards).Where(c => c.IsSelected).ToList();
-        if (cards.Count == 0)
+        await _tasks.RunAsync(BuildJob(targetCards));
+    }
+
+    [RelayCommand]
+    public void ViewTasks() => _navigator.NavigateTo(AppPage.Tasks);
+
+    /// <summary>选中的卡片；未选中任何卡片时为全部卡片。</summary>
+    private List<PhotoCardItemViewModel> GetTargetCards()
+    {
+        var selected = _groups.SelectMany(g => g.AllCards).Where(c => c.IsSelected).ToList();
+        return selected.Count > 0 ? selected : _groups.SelectMany(g => g.AllCards).ToList();
+    }
+
+    /// <summary>启动时固定卡片与参数，运行期间切换方向或重新扫描不影响任务。</summary>
+    internal ConversionJob BuildJob(IReadOnlyList<PhotoCardItemViewModel> cards)
+    {
+        var action = ConversionDirection switch
         {
-            cards = _groups.SelectMany(g => g.AllCards).ToList();
+            1 => ConversionAction.ToApple,
+            2 => ConversionAction.Extract,
+            _ => ConversionAction.ToAndroid
+        };
+
+        ConversionInputs inputs;
+        if (action == ConversionAction.ToAndroid)
+        {
+            var pairs = cards.Where(c => !c.IsMotionPhoto && !string.IsNullOrEmpty(c.VideoPath))
+                             .Select(c => (Card: c, Pair: c.Pair ?? new MediaPair(c.PhotoPath, c.VideoPath!)))
+                             .ToList();
+            inputs = new ConversionInputs
+            {
+                Pairs = [.. pairs.Select(x => x.Pair)],
+                ForceAccepted = [.. pairs.Where(x => x.Card.IsForceAccepted).Select(x => x.Pair)]
+            };
+        }
+        else
+        {
+            inputs = new ConversionInputs { Files = [.. cards.Where(c => c.IsMotionPhoto).Select(c => c.PhotoPath)] };
         }
 
         var settings = _settings.Current;
-        var plan = new BatchPlan(
-            cards,
-            ConversionDirection,
-            new OutputOptions(OutputDirectory)
+        var options = new ConversionOptions
+        {
+            Output = new OutputOptions(OutputDirectory)
             {
                 Conflict = AutoAppendIndex ? ConflictPolicy.AppendIndex : ConflictPolicy.Overwrite,
                 PreserveHierarchyFrom = KeepSubfolderHierarchy && !string.IsNullOrEmpty(_lastScannedDirectory) ? _lastScannedDirectory : null
             },
-            (MergeNamingFormat)NamingFormat,
-            (SourceFileAction)SourceAction,
-            HeicQuality,
-            Math.Clamp(settings.Concurrency, 1, 8),
-            NullIfBlank(settings.ExifToolPath),
-            NullIfBlank(settings.FfmpegPath),
-            NullIfBlank(settings.HeifEncPath));
+            Naming = (MergeNamingFormat)NamingFormat,
+            SourceAction = (SourceFileAction)SourceAction,
+            HeicQuality = HeicQuality
+        };
 
-        var cts = new CancellationTokenSource();
-        _batchCts = cts;
-        IsRunning = true;
-        CurrentProgressPercent = 0;
-        ProgressRatioText = string.Empty;
-        CurrentFileName = string.Empty;
-        _batchTask = RunBatchAsync(plan, cts);
-    }
-
-    private sealed record BatchPlan(
-        IReadOnlyList<PhotoCardItemViewModel> Cards,
-        int Direction,
-        OutputOptions Output,
-        MergeNamingFormat Naming,
-        SourceFileAction SourceAction,
-        int HeicQuality,
-        int Parallelism,
-        string? ExifToolPath,
-        string? FfmpegPath,
-        string? HeifEncPath);
-
-    private async Task RunBatchAsync(BatchPlan plan, CancellationTokenSource cts)
-    {
-        var modeName = _localizer[plan.Direction switch { 1 => "ReportModeApple", 2 => "ReportModeExtract", _ => "ReportModeMerge" }];
-        var progress = new DesktopProgressReporter(value =>
+        return new ConversionJob(action, options, inputs)
         {
-            CurrentProgressPercent = value.Total > 0 ? value.Completed * 100.0 / value.Total : 0;
-            ProgressRatioText = $"{CurrentProgressPercent:F0}% ({value.Completed}/{value.Total})";
-            CurrentFileName = value.CurrentItem;
-        });
-
-        BatchReportModel model;
-        try
-        {
-            model = await Task.Run(() => ExecuteBatchAsync(plan, modeName, _localizer, progress, cts.Token));
-        }
-        catch (OperationCanceledException)
-        {
-            model = BatchReportMapper.ToModel(_localizer, new BatchReport([], TimeSpan.Zero, Canceled: true), modeName, string.Empty, string.Empty, plan.Output.Directory);
-        }
-        catch (Exception ex)
-        {
-            ErrorLogger.Log(ex, modeName);
-            model = BatchReportMapper.FromError(_localizer, ex.Message, modeName, plan.Output.Directory);
-        }
-        finally
-        {
-            _batchCts = null;
-            cts.Dispose();
-            IsRunning = false;
-        }
-
-        _report.Populate(model);
-        _navigator.NavigateTo(AppPage.Report);
-        if (!model.WasCanceled)
-        {
-            _completion.RunOnTaskComplete(model.OutputDirectory);
-        }
-    }
-
-    private static async Task<BatchReportModel> ExecuteBatchAsync(BatchPlan plan, string modeName, ILocalizer localizer, IProgress<BatchProgress> progress, CancellationToken cancellationToken)
-    {
-        await using var metadata = ExifToolMetadataService.Create(plan.ExifToolPath, plan.Parallelism);
-        IImageConverter imageConverter = ToolLocator.Find(HeifEncImageConverter.ExecutableName, plan.HeifEncPath) is { } heifEnc
-            ? HeifEncImageConverter.Create(heifEnc)
-            : MagickImageConverter.Instance;
-
-        if (plan.Direction == 0)
-        {
-            var cards = plan.Cards.Where(c => !c.IsMotionPhoto && !string.IsNullOrEmpty(c.VideoPath))
-                                  .Select(c => (Card: c, Pair: c.Pair ?? new MediaPair(c.PhotoPath, c.VideoPath!)))
-                                  .ToList();
-            if (cards.Count == 0)
-            {
-                return BatchReportMapper.FromError(localizer, localizer["NoMergePairs"], modeName, plan.Output.Directory);
-            }
-
-            var pairs = cards.Select(x => x.Pair).ToList();
-            var forced = cards.Where(x => x.Card.IsForceAccepted).Select(x => x.Pair).ToList();
-            var merger = new MotionPhotoMerger(metadata, imageConverter, FfmpegVideoConverter.Create(plan.FfmpegPath));
-            var report = await merger.MergeAsync(
-                new MergeRequest
-                {
-                    Candidates = pairs,
-                    ForceAccepted = forced,
-                    Output = plan.Output,
-                    Naming = plan.Naming,
-                    SourceAction = plan.SourceAction,
-                    Parallelism = plan.Parallelism
-                },
-                progress,
-                cancellationToken);
-            return BatchReportMapper.ToModel(localizer, report, modeName, localizer["MergeSuccessDesc"], "Motion Photo", plan.Output.Directory);
-        }
-
-        var files = plan.Cards.Where(c => c.IsMotionPhoto).Select(c => c.PhotoPath).ToList();
-        if (files.Count == 0)
-        {
-            return BatchReportMapper.FromError(localizer, localizer["NoSplitCandidates"], modeName, plan.Output.Directory);
-        }
-
-        var target = plan.Direction == 1 ? SplitTarget.Apple : SplitTarget.Extract;
-        var videoConverter = target == SplitTarget.Apple ? FfmpegVideoConverter.Create(plan.FfmpegPath) : null;
-        var splitter = new MotionPhotoSplitter(metadata, imageConverter, videoConverter);
-        var splitReport = await splitter.SplitAsync(
-            new SplitRequest
-            {
-                Files = files,
-                Output = plan.Output,
-                Target = target,
-                SourceAction = plan.SourceAction,
-                HeicQuality = plan.HeicQuality,
-                Parallelism = plan.Parallelism
-            },
-            progress,
-            cancellationToken);
-        var targetName = localizer[target == SplitTarget.Apple ? "SplitTargetApple" : "SplitTargetExtract"];
-        return BatchReportMapper.ToModel(localizer, splitReport, modeName, localizer.Format("SplitSuccessDescFormat", targetName), targetName, plan.Output.Directory);
-    }
-
-    private static string? NullIfBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
-
-    [RelayCommand]
-    public void CancelBatch() => _batchCts?.Cancel();
-
-    public bool IsBusy => IsRunning;
-
-    public async Task CancelAndWaitAsync(TimeSpan timeout)
-    {
-        if (_batchTask is not { IsCompleted: false } task)
-        {
-            return;
-        }
-
-        CancelBatch();
-        await Task.WhenAny(task, Task.Delay(timeout));
+            Tools = ToolPaths.From(settings),
+            Parallelism = Math.Clamp(settings.Concurrency, 1, 8)
+        };
     }
 
     /// <summary>

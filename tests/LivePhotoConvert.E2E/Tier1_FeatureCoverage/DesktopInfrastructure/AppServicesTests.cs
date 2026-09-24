@@ -1,3 +1,4 @@
+using LivePhotoConvert.Desktop.Features.Tasks;
 using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Services;
 using LivePhotoConvert.Desktop.ViewModels;
@@ -34,7 +35,10 @@ public class AppServicesTests
         Assert.Same(host.Get<ConvertViewModel>(), shell.ConvertVm);
         Assert.Same(host.Get<StripViewModel>(), shell.StripVm);
         Assert.Same(host.Get<ToolsViewModel>(), shell.ToolsVm);
-        Assert.Same(host.Get<ReportViewModel>(), shell.ReportVm);
+        Assert.Same(host.Get<TasksViewModel>(), shell.TasksVm);
+        Assert.Same(host.Get<TaskCenter>(), shell.TasksVm.Center);
+        Assert.Same(host.Get<TaskCenter>(), host.Get<ConvertViewModel>().Tasks);
+        Assert.Same(host.Get<TaskCenter>(), host.Get<StripViewModel>().Tasks);
         Assert.Same(host.Get<SettingsViewModel>(), shell.SettingsVm);
         Assert.NotNull(host.Get<AppLifetime>());
         Assert.NotNull(host.Get<WindowPlacementTracker>());
@@ -48,11 +52,11 @@ public class AppServicesTests
         using var host = new DesktopTestHost();
         var shell = host.Get<MainWindowViewModel>();
 
-        host.Get<INavigator>().NavigateTo(AppPage.Report);
-        Assert.True(shell.IsReportTabSelected);
-        Assert.Equal((int)AppPage.Report, shell.SelectedTabIndex);
+        host.Get<INavigator>().NavigateTo(AppPage.Tasks);
+        Assert.True(shell.IsTasksTabSelected);
+        Assert.Equal(3, shell.SelectedTabIndex);
 
-        host.Get<ReportViewModel>().ReturnToConvertCommand.Execute(null);
+        host.Get<TasksViewModel>().GoToConvertCommand.Execute(null);
         Assert.True(shell.IsConvertTabSelected);
 
         shell.SelectTabCommand.Execute("4");
@@ -93,24 +97,6 @@ public class AppServicesTests
         Assert.Equal(Core.Pipeline.ConflictPolicy.Overwrite, current.ConflictPolicy);
         Assert.Equal(2, current.NamingFormat);
         Assert.False(current.KeepSubfolderHierarchy);
-    }
-
-    [Fact]
-    public async Task ShellFailure_IsReportedThroughDialog()
-    {
-        using var host = new DesktopTestHost();
-        host.Shell.Result = false;
-        var report = host.Get<ReportViewModel>();
-        report.Populate(new BatchReportModel { SummaryBadge = "x", Records = [], OutputDirectory = host.Directory });
-
-        var open = report.OpenOutputDirCommand.ExecuteAsync(null);
-
-        var alert = Assert.IsType<ConfirmDialogViewModel>(host.Get<IDialogService>().Current);
-        Assert.True(alert.IsSingleButton);
-        Assert.Contains(host.Directory, alert.Message);
-        alert.ConfirmCommand.Execute(null);
-        await open.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
-        Assert.Equal([host.Directory], host.Shell.Requests);
     }
 
     [Fact]

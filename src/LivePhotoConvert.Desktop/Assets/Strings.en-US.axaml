@@ -9,7 +9,6 @@
   <sys:String x:Key="NavConvert">Convert</sys:String>
   <sys:String x:Key="NavStrip">Strip</sys:String>
   <sys:String x:Key="NavTools">Engines</sys:String>
-  <sys:String x:Key="NavReport">Reports</sys:String>
   <sys:String x:Key="NavSettings">Preferences</sys:String>
 
   <!-- Funnel & Direction -->
@@ -72,7 +71,6 @@
   <sys:String x:Key="OpenOutputDirTip">Open in File Explorer</sys:String>
   <sys:String x:Key="KeepSubfoldersLabel">Keep subfolders</sys:String>
   <sys:String x:Key="KeepSubfoldersTip">Preserve subfolder hierarchy (prevent name collision)</sys:String>
-  <sys:String x:Key="ConvertRunningPrefix" xml:space="preserve">Packaging micro-video and metadata: </sys:String>
   <sys:String x:Key="CancelTaskBtn">Cancel Task</sys:String>
 
   <!-- Storage Strip -->
@@ -89,13 +87,8 @@
   <sys:String x:Key="StrippedSizeLabel">Estimated Stripped Size:</sys:String>
   <sys:String x:Key="SavedSizeLabel">Estimated Saved Space:</sys:String>
   <sys:String x:Key="StartStripBtn">Start Storage Optimization</sys:String>
-  <sys:String x:Key="StripRunningTitle">Stripping micro-videos and transcoding to HEIC...</sys:String>
   <sys:String x:Key="PauseBtn">Pause</sys:String>
-  <sys:String x:Key="AbortBtn">Abort Task</sys:String>
-  <sys:String x:Key="CelebrationTitle">Optimization Successfully Complete!</sys:String>
-  <sys:String x:Key="CelebrationDesc">Successfully recovered substantial disk space while preserving full photo quality.</sys:String>
   <sys:String x:Key="OpenOutputDirBtn">Open Output Folder</sys:String>
-  <sys:String x:Key="ContinueStripBtn">Optimize More Albums</sys:String>
 
   <!-- Engines -->
   <sys:String x:Key="ToolsTitle">Core Engine Management</sys:String>
@@ -112,9 +105,6 @@
   <sys:String x:Key="TestPingBtn">Test Connectivity</sys:String>
 
   <!-- Reports -->
-  <sys:String x:Key="ReportTitle">Execution Summary Report</sys:String>
-  <sys:String x:Key="ExportLogBtn">Export Error Log</sys:String>
-  <sys:String x:Key="ForceRetryBtn">Force Retry Single Item</sys:String>
 
   <!-- Dialogs -->
   <sys:String x:Key="DeleteDialogTitle">Alert: Permanent Source Deletion!</sys:String>
@@ -153,10 +143,6 @@
   <sys:String x:Key="DragRightCompare">Drag right to inspect original photo</sys:String>
   <sys:String x:Key="OutputDirModeTitle">Output Directory Mode</sys:String>
   <sys:String x:Key="BrowseBtn">Browse...</sys:String>
-  <sys:String x:Key="BeforeSizeLabel">Original Total Size</sys:String>
-  <sys:String x:Key="AfterSizeLabel">Optimized Total Size</sys:String>
-  <sys:String x:Key="AfterQualityLabel">Ultra Quality HEIC</sys:String>
-  <sys:String x:Key="NetSavedLabel">Net Space Reclaimed</sys:String>
 
   <!-- ToolsView Keys -->
   <sys:String x:Key="ExifToolDesc">Injects XMP Motion Photo tags and QuickTime UTC timezone metadata.</sys:String>
@@ -267,23 +253,16 @@
   <sys:String x:Key="UnitLivePhotos">Live Photos</sys:String>
   <sys:String x:Key="UnitQuality">Quality</sys:String>
   <sys:String x:Key="CurrentFileLabel">Current file:</sys:String>
-  <sys:String x:Key="ReleasedLabel">Released:</sys:String>
   <sys:String x:Key="PingLatencyLabel">Latency:</sys:String>
   <sys:String x:Key="SelectAlbumFolderBtn">Select Folder</sys:String>
 
   <!-- ============================================================= -->
-  <!-- Report / Strip Stage Status (ReportView / StripView runtime) -->
+  <!-- Task reports and strip page status -->
   <!-- ============================================================= -->
   <sys:String x:Key="ReportCanceledSuffix" xml:space="preserve"> (canceled)</sys:String>
-  <sys:String x:Key="ReportModeMerge">Apple Live (HEIC+MOV) ➔ Android Motion Photo</sys:String>
-  <sys:String x:Key="ReportModeApple">Android Live ➔ Apple Live Photo</sys:String>
-  <sys:String x:Key="ReportModeExtract">Motion Disassembly ➔ Extract Files</sys:String>
-  <sys:String x:Key="ReportTaskName">Live Photo Batch Convert</sys:String>
   <sys:String x:Key="ReportAvgSpeedFormat">{0:F2}s / item</sys:String>
   <sys:String x:Key="StageStatusReady">Sandbox Compare &amp; Ready</sys:String>
-  <sys:String x:Key="StageStatusRunning">Stripping in progress...</sys:String>
-  <sys:String x:Key="StageStatusDone">Optimization Complete</sys:String>
-  <sys:String x:Key="StageStatusIdle">Idle</sys:String>
+  <sys:String x:Key="StageStatusRunning">Task in progress…</sys:String>
   <sys:String x:Key="SplitTargetApple">Apple Live Photo</sys:String>
   <sys:String x:Key="SplitTargetExtract">Cover &amp; Video</sys:String>
   <sys:String x:Key="MergeSuccessDesc">Successfully merged into a Live Photo</sys:String>
@@ -297,9 +276,8 @@
   <sys:String x:Key="QuickLookPaused">Live Paused</sys:String>
 
   <!-- Report / Curtain / Dialog Supplemental Strings -->
-  <sys:String x:Key="ReportBackBtn">Back to Convert</sys:String>
-  <sys:String x:Key="ReportEmptyTitle">No batch conversion records yet</sys:String>
-  <sys:String x:Key="ReportEmptyDesc">Import photos in the Convert workspace and start a batch; results will appear here.</sys:String>
+  <sys:String x:Key="ReportEmptyTitle">No task reports yet</sys:String>
+  <sys:String x:Key="ReportEmptyDesc">Start a conversion or a space-saving run; its report stays here until the app exits.</sys:String>
   <sys:String x:Key="ReportGoConvertBtn">Go to Convert Workspace</sys:String>
   <sys:String x:Key="ReportKpiTotal">Total Processed</sys:String>
   <sys:String x:Key="ReportKpiTotalSub">Scanned &amp; paired</sys:String>
@@ -320,7 +298,6 @@
   <sys:String x:Key="ReportCsvFileName">File Name</sys:String>
   <sys:String x:Key="ReportCsvSourceFormat">Source Format</sys:String>
   <sys:String x:Key="ReportCsvTargetFormat">Target Format</sys:String>
-  <sys:String x:Key="ReportCsvDuration">Duration</sys:String>
   <sys:String x:Key="ReportCsvDetail">Details</sys:String>
   <sys:String x:Key="StripPickSample">Pick a Sample Photo</sys:String>
   <sys:String x:Key="StripRescanTip">Rescan Analysis</sys:String>
@@ -360,15 +337,10 @@
   <sys:String x:Key="GroupTitleMonthFormat">MMMM yyyy</sys:String>
   <sys:String x:Key="GroupTitleYearFormat">yyyy</sys:String>
   <sys:String x:Key="CurtainPositionFormat">Position: {0:F0}% / {1:F0}%</sys:String>
-  <sys:String x:Key="StripProgressFormat">Done {0:F0}% ({1} / {2})</sys:String>
-  <sys:String x:Key="StripFailedItemFormat">{0}: {1}</sys:String>
   <sys:String x:Key="PingTesting">Testing...</sys:String>
   <sys:String x:Key="PingFailedFormat">Connection failed ({0})</sys:String>
   <sys:String x:Key="ToolNotDetectedFormat">{0} not detected</sys:String>
   <sys:String x:Key="ToolReady">Ready</sys:String>
-  <sys:String x:Key="BeforeCountFormat">{0} Original Photos</sys:String>
-  <sys:String x:Key="StripThroughputFormat">{0:F1} items/s</sys:String>
-  <sys:String x:Key="StripEtaFormat">~{0}s left</sys:String>
   <sys:String x:Key="ReportTimestampFormat">Batch completed: {0:yyyy-MM-dd HH:mm:ss}</sys:String>
   <sys:String x:Key="ReportSummaryFormat">Succeeded {0} · Issues {1}</sys:String>
   <sys:String x:Key="ReportStatusSuccess">Success</sys:String>
@@ -392,5 +364,42 @@
   <sys:String x:Key="ExitConfirmDesc">Exiting cancels the current task. Finished files are kept; unfinished files are not written. Exit now?</sys:String>
   <sys:String x:Key="ExitConfirmBtn">Cancel Task and Exit</sys:String>
   <sys:String x:Key="LowDiskDialogContinue">Continue Anyway</sys:String>
+
+  <!-- 任务中心 -->
+  <sys:String x:Key="NavTasks">Tasks</sys:String>
+  <sys:String x:Key="TasksPageTitle">Task Center</sys:String>
+  <sys:String x:Key="TasksPageDesc">Follow the running task and review the reports from this session.</sys:String>
+  <sys:String x:Key="TaskTitleToAndroid">Apple Live Photo to Android Motion Photo</sys:String>
+  <sys:String x:Key="TaskTitleToApple">Android Motion Photo to Apple Live Photo</sys:String>
+  <sys:String x:Key="TaskTitleExtract">Extract Cover and Video</sys:String>
+  <sys:String x:Key="TaskTitleStrip">Space Saver</sys:String>
+  <sys:String x:Key="TaskRunningBadge">Running</sys:String>
+  <sys:String x:Key="TaskPausedBadge">Paused</sys:String>
+  <sys:String x:Key="TaskCancellingBadge">Cancelling…</sys:String>
+  <sys:String x:Key="ResumeBtn">Resume</sys:String>
+  <sys:String x:Key="TaskProgressRatioFormat">{0} / {1} items</sys:String>
+  <sys:String x:Key="TaskThroughputFormat">{0:F1} items/s</sys:String>
+  <sys:String x:Key="TaskRemainingFormat">About {0} left</sys:String>
+  <sys:String x:Key="TaskRemainingEstimating">Estimating time left…</sys:String>
+  <sys:String x:Key="TaskIdleTitle">No task is running</sys:String>
+  <sys:String x:Key="TaskIdleDesc">Start a conversion or a space-saving run and its progress will appear here.</sys:String>
+  <sys:String x:Key="TaskHistoryTitle">History</sys:String>
+  <sys:String x:Key="TaskHistoryTimeFormat">MM-dd HH:mm:ss</sys:String>
+  <sys:String x:Key="TaskStatusCompleted">Completed</sys:String>
+  <sys:String x:Key="TaskStatusCanceled">Canceled</sys:String>
+  <sys:String x:Key="TaskStatusFailed">Failed</sys:String>
+  <sys:String x:Key="TaskViewBtn">View Task</sys:String>
+  <sys:String x:Key="RetryFailedFormat">Retry Failed ({0})</sys:String>
+  <sys:String x:Key="ExportCsvBtn">Export CSV</sys:String>
+  <sys:String x:Key="ExportCsvTitle">Export Task Report</sys:String>
+  <sys:String x:Key="ExportCsvFilterName">CSV file</sys:String>
+  <sys:String x:Key="ExportCsvDoneFormat">Exported to {0}</sys:String>
+  <sys:String x:Key="ExportCsvFailedTitle">Export Failed</sys:String>
+  <sys:String x:Key="ExportCsvFailedFormat">Could not write "{0}": {1}</sys:String>
+  <sys:String x:Key="RevealItemTip">Show in Folder</sys:String>
+  <sys:String x:Key="ReportCsvSourcePath">Source File</sys:String>
+  <sys:String x:Key="ReportCsvOutputPath">Output File</sys:String>
+  <sys:String x:Key="StripItemSavedFormat">Freed {0}</sys:String>
+  <sys:String x:Key="ReportSavedFormat">Freed {0} in total</sys:String>
 
 </ResourceDictionary>

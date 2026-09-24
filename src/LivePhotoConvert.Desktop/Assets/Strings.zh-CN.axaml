@@ -9,7 +9,6 @@
   <sys:String x:Key="NavConvert">实况互转</sys:String>
   <sys:String x:Key="NavStrip">空间瘦身</sys:String>
   <sys:String x:Key="NavTools">依赖引擎</sys:String>
-  <sys:String x:Key="NavReport">批次报告</sys:String>
   <sys:String x:Key="NavSettings">偏好设置</sys:String>
 
   <!-- 漏斗与方向 -->
@@ -72,7 +71,6 @@
   <sys:String x:Key="OpenOutputDirTip">在文件资源管理器中打开</sys:String>
   <sys:String x:Key="KeepSubfoldersLabel">保持原相册子目录层级</sys:String>
   <sys:String x:Key="KeepSubfoldersTip">保持原相册子目录层级 (防止平铺重名)</sys:String>
-  <sys:String x:Key="ConvertRunningPrefix">正在流式封装微视频并写入相册元数据：</sys:String>
   <sys:String x:Key="CancelTaskBtn">取消任务</sys:String>
 
   <!-- 空间瘦身 -->
@@ -89,13 +87,8 @@
   <sys:String x:Key="StrippedSizeLabel">瘦身后预计体积:</sys:String>
   <sys:String x:Key="SavedSizeLabel">预计释放磁盘空间:</sys:String>
   <sys:String x:Key="StartStripBtn">开始执行相册瘦身</sys:String>
-  <sys:String x:Key="StripRunningTitle">正在流式剥离微视频并转码 HEIC...</sys:String>
   <sys:String x:Key="PauseBtn">暂停</sys:String>
-  <sys:String x:Key="AbortBtn">中止任务</sys:String>
-  <sys:String x:Key="CelebrationTitle">空间瘦身圆满完成！</sys:String>
-  <sys:String x:Key="CelebrationDesc">已为您的电脑成功抢救回巨量存储空间，所有照片画质清晰如初。</sys:String>
   <sys:String x:Key="OpenOutputDirBtn">打开输出文件夹查看</sys:String>
-  <sys:String x:Key="ContinueStripBtn">继续瘦身其他相册</sys:String>
 
   <!-- 依赖引擎 -->
   <sys:String x:Key="ToolsTitle">核心依赖引擎管理</sys:String>
@@ -112,9 +105,6 @@
   <sys:String x:Key="TestPingBtn">测试连通性</sys:String>
 
   <!-- 批次报告 -->
-  <sys:String x:Key="ReportTitle">执行汇总报告</sys:String>
-  <sys:String x:Key="ExportLogBtn">导出错误日志</sys:String>
-  <sys:String x:Key="ForceRetryBtn">单项强制补转</sys:String>
 
   <!-- 防灾弹窗 -->
   <sys:String x:Key="DeleteDialogTitle">高危警报：即将彻底删除原照片！</sys:String>
@@ -153,10 +143,6 @@
   <sys:String x:Key="DragRightCompare">拖向右侧比对原始照片细节</sys:String>
   <sys:String x:Key="OutputDirModeTitle">输出目录模式</sys:String>
   <sys:String x:Key="BrowseBtn">浏览...</sys:String>
-  <sys:String x:Key="BeforeSizeLabel">瘦身前总体积</sys:String>
-  <sys:String x:Key="AfterSizeLabel">瘦身后总体积</sys:String>
-  <sys:String x:Key="AfterQualityLabel">超高画质 HEIC</sys:String>
-  <sys:String x:Key="NetSavedLabel">净节省释放空间</sys:String>
 
   <!-- ToolsView Keys -->
   <sys:String x:Key="ExifToolDesc">注入 XMP 动态照片标签与 QuickTime UTC 时区元数据。</sys:String>
@@ -267,23 +253,16 @@
   <sys:String x:Key="UnitLivePhotos">张实况</sys:String>
   <sys:String x:Key="UnitQuality">质量</sys:String>
   <sys:String x:Key="CurrentFileLabel">当前文件:</sys:String>
-  <sys:String x:Key="ReleasedLabel">已释放:</sys:String>
   <sys:String x:Key="PingLatencyLabel">当前响应延迟:</sys:String>
   <sys:String x:Key="SelectAlbumFolderBtn">选择目录</sys:String>
 
   <!-- ============================================================= -->
-  <!-- 批次报告 / 空间瘦身 阶段状态（ReportView / StripView 运行时） -->
+  <!-- 任务报告与瘦身页状态 -->
   <!-- ============================================================= -->
   <sys:String x:Key="ReportCanceledSuffix">（已取消）</sys:String>
-  <sys:String x:Key="ReportModeMerge">苹果实况 (HEIC+MOV) ➔ 安卓动态照片</sys:String>
-  <sys:String x:Key="ReportModeApple">安卓实况 ➔ 苹果实况</sys:String>
-  <sys:String x:Key="ReportModeExtract">实况解构 ➔ 提取单文件</sys:String>
-  <sys:String x:Key="ReportTaskName">实况照片批次互转</sys:String>
   <sys:String x:Key="ReportAvgSpeedFormat">{0:F2} 秒/项</sys:String>
   <sys:String x:Key="StageStatusReady">沙盒对比与就绪</sys:String>
-  <sys:String x:Key="StageStatusRunning">正在深度瘦身中...</sys:String>
-  <sys:String x:Key="StageStatusDone">瘦身处理完成</sys:String>
-  <sys:String x:Key="StageStatusIdle">待机</sys:String>
+  <sys:String x:Key="StageStatusRunning">任务执行中…</sys:String>
   <sys:String x:Key="SplitTargetApple">Apple Live Photo</sys:String>
   <sys:String x:Key="SplitTargetExtract">独立封面与视频</sys:String>
   <sys:String x:Key="MergeSuccessDesc">已成功合成为动态照片</sys:String>
@@ -297,9 +276,8 @@
   <sys:String x:Key="QuickLookPaused">实况已暂停</sys:String>
 
   <!-- 报告 / 对比 / 弹窗补充文案 -->
-  <sys:String x:Key="ReportBackBtn">返回转换</sys:String>
-  <sys:String x:Key="ReportEmptyTitle">暂无批次转换记录</sys:String>
-  <sys:String x:Key="ReportEmptyDesc">在实况互转工作台中导入照片并启动批次后，处理结果将在此全面呈现。</sys:String>
+  <sys:String x:Key="ReportEmptyTitle">暂无任务报告</sys:String>
+  <sys:String x:Key="ReportEmptyDesc">在实况互转或空间瘦身页面启动任务后，报告会保存在这里，直到程序退出。</sys:String>
   <sys:String x:Key="ReportGoConvertBtn">前往实况互转工作台</sys:String>
   <sys:String x:Key="ReportKpiTotal">处理总量</sys:String>
   <sys:String x:Key="ReportKpiTotalSub">已完成扫描配对</sys:String>
@@ -320,7 +298,6 @@
   <sys:String x:Key="ReportCsvFileName">文件名</sys:String>
   <sys:String x:Key="ReportCsvSourceFormat">来源格式</sys:String>
   <sys:String x:Key="ReportCsvTargetFormat">目标格式</sys:String>
-  <sys:String x:Key="ReportCsvDuration">耗时</sys:String>
   <sys:String x:Key="ReportCsvDetail">详细信息</sys:String>
   <sys:String x:Key="StripPickSample">选取单张对比</sys:String>
   <sys:String x:Key="StripRescanTip">重新扫描分析</sys:String>
@@ -360,15 +337,10 @@
   <sys:String x:Key="GroupTitleMonthFormat">yyyy年M月</sys:String>
   <sys:String x:Key="GroupTitleYearFormat">yyyy年</sys:String>
   <sys:String x:Key="CurtainPositionFormat">对比位置: {0:F0}% / {1:F0}%</sys:String>
-  <sys:String x:Key="StripProgressFormat">已完成 {0:F0}% ({1} / {2} 张)</sys:String>
-  <sys:String x:Key="StripFailedItemFormat">{0}：{1}</sys:String>
   <sys:String x:Key="PingTesting">测试中...</sys:String>
   <sys:String x:Key="PingFailedFormat">连接失败 ({0})</sys:String>
   <sys:String x:Key="ToolNotDetectedFormat">未检测到 {0}</sys:String>
   <sys:String x:Key="ToolReady">已就绪</sys:String>
-  <sys:String x:Key="BeforeCountFormat">{0} 张原片</sys:String>
-  <sys:String x:Key="StripThroughputFormat">{0:F1} 张/秒</sys:String>
-  <sys:String x:Key="StripEtaFormat">剩余约 {0} 秒</sys:String>
   <sys:String x:Key="ReportTimestampFormat">批次完成时间：{0:yyyy-MM-dd HH:mm:ss}</sys:String>
   <sys:String x:Key="ReportSummaryFormat">成功 {0} 项 · 异常 {1} 项</sys:String>
   <sys:String x:Key="ReportStatusSuccess">成功</sys:String>
@@ -392,5 +364,42 @@
   <sys:String x:Key="ExitConfirmDesc">退出会取消当前任务。已完成的文件会保留，未完成的文件不会写出。确定要退出吗？</sys:String>
   <sys:String x:Key="ExitConfirmBtn">取消任务并退出</sys:String>
   <sys:String x:Key="LowDiskDialogContinue">仍然继续</sys:String>
+
+  <!-- 任务中心 -->
+  <sys:String x:Key="NavTasks">任务</sys:String>
+  <sys:String x:Key="TasksPageTitle">任务中心</sys:String>
+  <sys:String x:Key="TasksPageDesc">查看正在运行的任务，以及本次运行期间的历史报告。</sys:String>
+  <sys:String x:Key="TaskTitleToAndroid">苹果实况合成安卓动态照片</sys:String>
+  <sys:String x:Key="TaskTitleToApple">安卓动态照片还原苹果实况</sys:String>
+  <sys:String x:Key="TaskTitleExtract">动态照片解包为封面与视频</sys:String>
+  <sys:String x:Key="TaskTitleStrip">空间瘦身</sys:String>
+  <sys:String x:Key="TaskRunningBadge">运行中</sys:String>
+  <sys:String x:Key="TaskPausedBadge">已暂停</sys:String>
+  <sys:String x:Key="TaskCancellingBadge">正在取消…</sys:String>
+  <sys:String x:Key="ResumeBtn">继续</sys:String>
+  <sys:String x:Key="TaskProgressRatioFormat">{0} / {1} 项</sys:String>
+  <sys:String x:Key="TaskThroughputFormat">{0:F1} 项/秒</sys:String>
+  <sys:String x:Key="TaskRemainingFormat">剩余约 {0}</sys:String>
+  <sys:String x:Key="TaskRemainingEstimating">剩余时间估算中…</sys:String>
+  <sys:String x:Key="TaskIdleTitle">当前没有运行中的任务</sys:String>
+  <sys:String x:Key="TaskIdleDesc">在实况互转或空间瘦身页面启动后，进度会显示在这里。</sys:String>
+  <sys:String x:Key="TaskHistoryTitle">历史报告</sys:String>
+  <sys:String x:Key="TaskHistoryTimeFormat">MM-dd HH:mm:ss</sys:String>
+  <sys:String x:Key="TaskStatusCompleted">已完成</sys:String>
+  <sys:String x:Key="TaskStatusCanceled">已取消</sys:String>
+  <sys:String x:Key="TaskStatusFailed">未能完成</sys:String>
+  <sys:String x:Key="TaskViewBtn">查看任务</sys:String>
+  <sys:String x:Key="RetryFailedFormat">重试失败项 ({0})</sys:String>
+  <sys:String x:Key="ExportCsvBtn">导出 CSV</sys:String>
+  <sys:String x:Key="ExportCsvTitle">导出任务报告</sys:String>
+  <sys:String x:Key="ExportCsvFilterName">CSV 文件</sys:String>
+  <sys:String x:Key="ExportCsvDoneFormat">已导出到 {0}</sys:String>
+  <sys:String x:Key="ExportCsvFailedTitle">导出失败</sys:String>
+  <sys:String x:Key="ExportCsvFailedFormat">无法写入 "{0}"：{1}</sys:String>
+  <sys:String x:Key="RevealItemTip">打开所在位置</sys:String>
+  <sys:String x:Key="ReportCsvSourcePath">源文件</sys:String>
+  <sys:String x:Key="ReportCsvOutputPath">输出文件</sys:String>
+  <sys:String x:Key="StripItemSavedFormat">已释放 {0}</sys:String>
+  <sys:String x:Key="ReportSavedFormat">共释放 {0}</sys:String>
 
 </ResourceDictionary>

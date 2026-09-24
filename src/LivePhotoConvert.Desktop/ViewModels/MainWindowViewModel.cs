@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using LivePhotoConvert.Desktop.Features.Tasks;
 using LivePhotoConvert.Desktop.Infrastructure;
 
 namespace LivePhotoConvert.Desktop.ViewModels;
@@ -16,7 +17,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         ConvertViewModel convertVm,
         StripViewModel stripVm,
         ToolsViewModel toolsVm,
-        ReportViewModel reportVm,
+        TasksViewModel tasksVm,
         SettingsViewModel settingsVm)
     {
         _navigator = navigator;
@@ -24,7 +25,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         ConvertVm = convertVm;
         StripVm = stripVm;
         ToolsVm = toolsVm;
-        ReportVm = reportVm;
+        TasksVm = tasksVm;
         SettingsVm = settingsVm;
 
         _navigator.PropertyChanged += OnNavigatorChanged;
@@ -34,7 +35,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     public ConvertViewModel ConvertVm { get; }
     public StripViewModel StripVm { get; }
     public ToolsViewModel ToolsVm { get; }
-    public ReportViewModel ReportVm { get; }
+    public TasksViewModel TasksVm { get; }
     public SettingsViewModel SettingsVm { get; }
 
     public int SelectedTabIndex
@@ -46,7 +47,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     public bool IsConvertTabSelected => _navigator.Current == AppPage.Convert;
     public bool IsStripTabSelected => _navigator.Current == AppPage.Strip;
     public bool IsToolsTabSelected => _navigator.Current == AppPage.Tools;
-    public bool IsReportTabSelected => _navigator.Current == AppPage.Report;
+    public bool IsTasksTabSelected => _navigator.Current == AppPage.Tasks;
     public bool IsSettingsTabSelected => _navigator.Current == AppPage.Settings;
 
     /// <summary>弹窗宿主显示的内容。</summary>
@@ -108,7 +109,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsConvertTabSelected));
         OnPropertyChanged(nameof(IsStripTabSelected));
         OnPropertyChanged(nameof(IsToolsTabSelected));
-        OnPropertyChanged(nameof(IsReportTabSelected));
+        OnPropertyChanged(nameof(IsTasksTabSelected));
         OnPropertyChanged(nameof(IsSettingsTabSelected));
     }
 

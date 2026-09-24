@@ -9,7 +9,7 @@ public enum AppPage
     Convert,
     Strip,
     Tools,
-    Report,
+    Tasks,
     Settings
 }
 

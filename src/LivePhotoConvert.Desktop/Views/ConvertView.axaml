@@ -208,31 +208,17 @@
       <!-- Card container -->
       <Border x:Name="BottomBar" Grid.Row="2" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="14,10">
         <StackPanel Spacing="8">
-          <!-- Card container -->
-          <Border Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="12"
-                  IsVisible="{Binding IsRunning}">
-            <StackPanel Spacing="6">
-              <Grid ColumnDefinitions="*,Auto">
-                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                  <ic:SymbolIcon Symbol="ArrowSync" FontSize="12" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
-                  <TextBlock Text="{DynamicResource ConvertRunningPrefix}" FontSize="11" Foreground="{DynamicResource AccentTextBrush}" VerticalAlignment="Center" />
-                  <TextBlock Text="{Binding CurrentFileName}" FontSize="11" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource AccentTextBrush}" VerticalAlignment="Center" />
-                </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                  <TextBlock Text="{Binding ProgressRatioText}" FontSize="11" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource AccentTextBrush}" VerticalAlignment="Center" />
-                  <Button Classes="danger-btn" Command="{Binding CancelBatchCommand}" Padding="8,2">
-                    <TextBlock Text="{DynamicResource CancelTaskBtn}" FontSize="10" FontWeight="Bold" />
-                  </Button>
-                </StackPanel>
-              </Grid>
-
-              <ProgressBar Value="{Binding CurrentProgressPercent}" Minimum="0" Maximum="100" Height="6" CornerRadius="3" Foreground="{DynamicResource AccentBrush}" />
-
-              <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Grid.Column="0" Text="{Binding WritingThroughputText}" FontSize="10" Foreground="{DynamicResource AccentBrush}" FontFamily="Consolas" />
-                <TextBlock Grid.Column="1" Text="{Binding RemainingTimeText}" FontSize="10" Foreground="{DynamicResource AccentBrush}" FontFamily="Consolas" />
-              </Grid>
-            </StackPanel>
+          <!-- 运行中任务的简要状态，详细进度在任务页 -->
+          <Border Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBorderBrush}" BorderThickness="1" CornerRadius="10" Padding="10,6"
+                  IsVisible="{Binding Tasks.IsRunning}">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+              <ic:SymbolIcon Grid.Column="0" Symbol="ArrowSync" FontSize="13" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" Margin="0,1,8,0"/>
+              <TextBlock Grid.Column="1" Text="{Binding Tasks.Current.Title}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+              <TextBlock Grid.Column="2" Text="{Binding Tasks.Current.PercentText}" FontSize="11" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource AccentTextBrush}" VerticalAlignment="Center" Margin="8,0" />
+              <Button Grid.Column="3" Classes="toolbar-btn" Command="{Binding ViewTasksCommand}" Height="26" Padding="10,0">
+                <TextBlock Text="{DynamicResource TaskViewBtn}" FontSize="11" />
+              </Button>
+            </Grid>
           </Border>
 
           <!-- 底部参数与输出目录状态栏 -->

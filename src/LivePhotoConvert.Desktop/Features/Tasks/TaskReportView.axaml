@@ -1,0 +1,218 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:tasks="using:LivePhotoConvert.Desktop.Features.Tasks"
+             xmlns:ic="using:FluentIcons.Avalonia"
+             x:Class="LivePhotoConvert.Desktop.Features.Tasks.TaskReportView"
+             x:CompileBindings="True"
+             x:DataType="tasks:TaskReportViewModel">
+
+  <StackPanel Spacing="14">
+
+    <!-- 摘要与操作 -->
+    <Border Classes="task-card">
+      <StackPanel Spacing="12">
+        <Grid ColumnDefinitions="Auto,*">
+          <Border Grid.Column="0" Width="36" Height="36" CornerRadius="10" Background="{DynamicResource AccentSoftBrush}" VerticalAlignment="Center">
+            <ic:SymbolIcon Symbol="DocumentBulletList" FontSize="18" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <StackPanel Grid.Column="1" Margin="10,0,0,0" Spacing="2" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="{Binding Title}" FontWeight="Black" FontSize="15" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+              <Border Classes="task-chip success" IsVisible="{Binding IsCompletedClean}">
+                <TextBlock Text="{Binding StatusText}" />
+              </Border>
+              <Border Classes="task-chip warning" IsVisible="{Binding IsCompletedWithProblems}">
+                <TextBlock Text="{Binding StatusText}" />
+              </Border>
+              <Border Classes="task-chip" IsVisible="{Binding WasCanceled}">
+                <TextBlock Text="{Binding StatusText}" />
+              </Border>
+              <Border Classes="task-chip danger" IsVisible="{Binding IsFatal}">
+                <TextBlock Text="{Binding StatusText}" />
+              </Border>
+            </StackPanel>
+            <TextBlock Text="{Binding TimestampText}" FontSize="11" FontFamily="Consolas" Foreground="{DynamicResource TextTertiaryBrush}" />
+          </StackPanel>
+        </Grid>
+
+        <WrapPanel Orientation="Horizontal">
+          <Border Classes="task-chip" Margin="0,0,8,6" IsVisible="{Binding HasOutputDirectory}">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <ic:SymbolIcon Symbol="Folder" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding OutputDirectory}" FontFamily="Consolas" FontWeight="Normal" MaxWidth="360" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+            </StackPanel>
+          </Border>
+          <Border Classes="task-chip success" Margin="0,0,8,6" IsVisible="{Binding HasSavedBytes}">
+            <TextBlock Text="{Binding SavedText}" />
+          </Border>
+        </WrapPanel>
+
+        <WrapPanel Orientation="Horizontal">
+          <Button Classes="primary-btn" Command="{Binding OpenOutputDirCommand}" Padding="14,7" Margin="0,0,8,0" IsVisible="{Binding HasOutputDirectory}">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <ic:SymbolIcon Symbol="FolderOpen" FontSize="13" Foreground="{DynamicResource OnAccentBrush}" VerticalAlignment="Center" />
+              <TextBlock Text="{DynamicResource OpenOutputDirBtn}" FontSize="11" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Button Classes="toolbar-btn" Command="{Binding RetryFailedCommand}" Padding="12,0" Margin="0,0,8,0" IsVisible="{Binding CanRetry}">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <ic:SymbolIcon Symbol="ArrowClockwise" FontSize="13" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding RetryText}" FontSize="11" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Button Classes="toolbar-btn" Command="{Binding ExportCsvCommand}" Padding="12,0" Margin="0,0,8,0" IsVisible="{Binding HasItems}">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <ic:SymbolIcon Symbol="ArrowDownload" FontSize="13" VerticalAlignment="Center" />
+              <TextBlock Text="{DynamicResource ExportCsvBtn}" FontSize="11" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <TextBlock Text="{Binding ExportStatusText}" FontSize="11" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="360"
+                     IsVisible="{Binding ExportStatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+        </WrapPanel>
+      </StackPanel>
+    </Border>
+
+    <!-- 指标卡 -->
+    <Grid ColumnDefinitions="*,*,*,*">
+      <Border Grid.Column="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="16" Padding="16" Margin="0,0,6,0">
+        <StackPanel Spacing="6">
+          <TextBlock Text="{DynamicResource ReportKpiTotal}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextTertiaryBrush}" />
+          <TextBlock Text="{Binding TotalCount}" FontSize="24" FontWeight="Black" FontFamily="Consolas" Foreground="{DynamicResource TextPrimaryBrush}" />
+          <TextBlock Text="{DynamicResource ReportKpiTotalSub}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" />
+        </StackPanel>
+      </Border>
+      <Border Grid.Column="1" Background="{DynamicResource SuccessSoftBrush}" BorderBrush="{DynamicResource SuccessBorderBrush}" BorderThickness="1" CornerRadius="16" Padding="16" Margin="3,0,3,0">
+        <StackPanel Spacing="6">
+          <TextBlock Text="{DynamicResource ReportKpiSuccess}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SuccessTextBrush}" />
+          <TextBlock Text="{Binding SuccessCount}" FontSize="24" FontWeight="Black" FontFamily="Consolas" Foreground="{DynamicResource SuccessTextBrush}" />
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <TextBlock Text="{DynamicResource ReportKpiSuccessRate}" FontSize="10" Foreground="{DynamicResource SuccessTextBrush}" />
+            <TextBlock Text="{Binding SuccessPercentText}" FontSize="10" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource SuccessTextBrush}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+      <Border Grid.Column="2" Background="{DynamicResource DangerSoftBrush}" BorderBrush="{DynamicResource DangerBorderBrush}" BorderThickness="1" CornerRadius="16" Padding="16" Margin="3,0,3,0">
+        <StackPanel Spacing="6">
+          <TextBlock Text="{DynamicResource ReportKpiFailed}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource DangerTextBrush}" />
+          <TextBlock Text="{Binding AttentionCount}" FontSize="24" FontWeight="Black" FontFamily="Consolas" Foreground="{DynamicResource DangerTextBrush}" />
+          <TextBlock Text="{DynamicResource ReportKpiFailedSub}" FontSize="10" Foreground="{DynamicResource DangerTextBrush}" />
+        </StackPanel>
+      </Border>
+      <Border Grid.Column="3" Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBorderBrush}" BorderThickness="1" CornerRadius="16" Padding="16" Margin="6,0,0,0">
+        <StackPanel Spacing="6">
+          <TextBlock Text="{DynamicResource ReportKpiDuration}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}" />
+          <TextBlock Text="{Binding DurationText}" FontSize="24" FontWeight="Black" FontFamily="Consolas" Foreground="{DynamicResource AccentTextBrush}" />
+          <TextBlock Text="{Binding AverageText}" FontSize="10" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource AccentTextBrush}" />
+        </StackPanel>
+      </Border>
+    </Grid>
+
+    <!-- 结果分布 -->
+    <Border Classes="task-card">
+      <StackPanel Spacing="10">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Grid.Column="0" Text="{DynamicResource ReportDistTitle}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" />
+          <TextBlock Grid.Column="1" Text="{Binding SummaryText}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" />
+        </Grid>
+        <ProgressBar Value="{Binding SuccessPercent}" Minimum="0" Maximum="100" Height="8" CornerRadius="4" Foreground="{DynamicResource SuccessBrush}" Background="{DynamicResource LineBrush}" />
+        <Grid ColumnDefinitions="*,*,*">
+          <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
+            <Border Width="8" Height="8" CornerRadius="4" Background="{DynamicResource SuccessBrush}" VerticalAlignment="Center" />
+            <TextBlock Text="{DynamicResource ReportLegendSuccess}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding SuccessCount}" FontSize="10" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+          </StackPanel>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+            <Border Width="8" Height="8" CornerRadius="4" Background="{DynamicResource WarningBrush}" VerticalAlignment="Center" />
+            <TextBlock Text="{DynamicResource ReportLegendSkipped}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding SkippedCount}" FontSize="10" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+          </StackPanel>
+          <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
+            <Border Width="8" Height="8" CornerRadius="4" Background="{DynamicResource DangerBrush}" VerticalAlignment="Center" />
+            <TextBlock Text="{DynamicResource ReportLegendFailed}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding ProblemCount}" FontSize="10" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+          </StackPanel>
+        </Grid>
+      </StackPanel>
+    </Border>
+
+    <!-- 明细 -->
+    <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="16" ClipToBounds="True">
+      <StackPanel>
+        <Border Background="{DynamicResource CanvasBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1" Padding="14,10">
+          <Grid ColumnDefinitions="Auto,*">
+            <Border Grid.Column="0" Classes="segmented-group">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <Button Classes="segmented-item" Classes.active="{Binding IsAllFilterSelected}" Command="{Binding SetFilterCommand}" CommandParameter="0">
+                  <TextBlock Text="{DynamicResource ReportDetailAll}" FontSize="11" />
+                </Button>
+                <Button Classes="segmented-item" Classes.active="{Binding IsProblemFilterSelected}" Command="{Binding SetFilterCommand}" CommandParameter="1">
+                  <TextBlock Text="{DynamicResource ReportDetailFailedOnly}" FontSize="11" />
+                </Button>
+                <Button Classes="segmented-item" Classes.active="{Binding IsSuccessFilterSelected}" Command="{Binding SetFilterCommand}" CommandParameter="2">
+                  <TextBlock Text="{DynamicResource ReportDetailSuccessOnly}" FontSize="11" />
+                </Button>
+              </StackPanel>
+            </Border>
+            <TextBlock Grid.Column="1" Text="{DynamicResource ReportDetailTitle}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+          </Grid>
+        </Border>
+
+        <ItemsControl ItemsSource="{Binding FilteredItems}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="tasks:TaskReportItem">
+              <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1" Padding="14,10">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                  <Panel Grid.Column="0" VerticalAlignment="Center">
+                    <Border Classes="task-chip success" MinWidth="58" IsVisible="{Binding IsSuccess}">
+                      <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center">
+                        <ic:SymbolIcon Symbol="Checkmark" FontSize="11" Foreground="{DynamicResource SuccessTextBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" />
+                      </StackPanel>
+                    </Border>
+                    <Border Classes="task-chip danger" MinWidth="58" IsVisible="{Binding IsFailed}">
+                      <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center">
+                        <ic:SymbolIcon Symbol="Dismiss" FontSize="11" Foreground="{DynamicResource DangerTextBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" />
+                      </StackPanel>
+                    </Border>
+                    <Border Classes="task-chip warning" MinWidth="58" IsVisible="{Binding IsWarning}">
+                      <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center">
+                        <ic:SymbolIcon Symbol="Warning" FontSize="11" Foreground="{DynamicResource WarningTextBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" />
+                      </StackPanel>
+                    </Border>
+                  </Panel>
+
+                  <StackPanel Grid.Column="1" Margin="12,0,8,0" Spacing="3" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <TextBlock Text="{Binding FileName}" FontWeight="Bold" FontSize="12" FontFamily="Consolas" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                      <Border Background="{DynamicResource CanvasBrush}" CornerRadius="4" Padding="6,1" VerticalAlignment="Center"
+                              IsVisible="{Binding SourceFormat, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <TextBlock Text="{Binding SourceFormat}" FontSize="9" FontFamily="Consolas" Foreground="{DynamicResource TextTertiaryBrush}" />
+                      </Border>
+                      <ic:SymbolIcon Symbol="ArrowRight" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"
+                                     IsVisible="{Binding TargetFormat, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                      <Border Background="{DynamicResource AccentSoftBrush}" CornerRadius="4" Padding="6,1" VerticalAlignment="Center"
+                              IsVisible="{Binding TargetFormat, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <TextBlock Text="{Binding TargetFormat}" FontSize="9" FontWeight="SemiBold" FontFamily="Consolas" Foreground="{DynamicResource AccentTextBrush}" />
+                      </Border>
+                    </StackPanel>
+                    <TextBlock Text="{Binding Detail}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" TextWrapping="Wrap" />
+                  </StackPanel>
+
+                  <Button Grid.Column="2" Classes="toolbar-btn" Width="32" Padding="0" VerticalAlignment="Center"
+                          ToolTip.Tip="{DynamicResource RevealItemTip}"
+                          IsVisible="{Binding CanLocate}"
+                          Command="{Binding $parent[UserControl].((tasks:TaskReportViewModel)DataContext).RevealItemCommand}"
+                          CommandParameter="{Binding}">
+                    <ic:SymbolIcon Symbol="FolderOpen" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                  </Button>
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
+  </StackPanel>
+</UserControl>

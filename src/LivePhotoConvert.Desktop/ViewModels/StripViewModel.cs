@@ -4,22 +4,20 @@ using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ImageMagick;
-using LivePhotoConvert.Core.Abstractions;
 using LivePhotoConvert.Core.External;
 using LivePhotoConvert.Core.Metadata;
-using LivePhotoConvert.Core.Pipeline;
 using LivePhotoConvert.Core.Services;
+using LivePhotoConvert.Desktop.Features.Library;
+using LivePhotoConvert.Desktop.Features.Tasks;
 using LivePhotoConvert.Desktop.Infrastructure;
-using LivePhotoConvert.Desktop.Models;
-using LivePhotoConvert.Desktop.Services;
 using LivePhotoConvert.Desktop.ViewModels.Dialogs;
 
 namespace LivePhotoConvert.Desktop.ViewModels;
 
 /// <summary>
-/// 空间瘦身优化工坊全生命周期三阶段闭环视图模型
+/// 空间瘦身页：选择输入、画质对比与空间预估；执行交给任务中心。
 /// </summary>
-public sealed partial class StripViewModel : ViewModelBase, IBackgroundWork
+public sealed partial class StripViewModel : ViewModelBase
 {
     private static readonly string[] SamplePhotoPatterns = ["*.heic", "*.HEIC", "*.jpg", "*.JPG", "*.jpeg", "*.JPEG", "*.png", "*.PNG"];
 
@@ -28,33 +26,13 @@ public sealed partial class StripViewModel : ViewModelBase, IBackgroundWork
     private readonly IDialogService _dialogs;
     private readonly IFilePicker _filePicker;
     private readonly IShellLauncher _shell;
-    private readonly CompletionEffects _completion;
-    private CancellationTokenSource? _stripCts;
-    private Task? _stripTask;
-    private readonly ManualResetEventSlim _pauseGate = new(true);
-    // 在 UI 线程（StartAnalysisAsync）写入、后台工作线程（StartStripExecution 汇报回调）读取，
-    // 使用 Interlocked 保证 64 位原子性与跨线程可见性，杜绝工作线程读到过期缓存（volatile 不可用于 long）。
-    private long _estimatedSavedBytesTotal;
-    private long _analysisOriginalBytes;
+    private readonly TaskCenter _tasks;
+    private readonly INavigator _navigator;
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsStage1))]
-    [NotifyPropertyChangedFor(nameof(IsStage2))]
-    [NotifyPropertyChangedFor(nameof(IsStage3))]
-    [NotifyPropertyChangedFor(nameof(StageStatusText))]
-    private int _currentStage = 1; // 1=待瘦身分析对比, 2=正在瘦身中, 3=成果汇报
+    /// <summary>页面只显示运行中任务的简要状态，详细进度在任务页。</summary>
+    public TaskCenter Tasks => _tasks;
 
-    // 阶段可见性用类型安全的计算属性驱动，避免 ObjectConverters.Equal 将 int 与字符串参数比较而恒为 false
-    public bool IsStage1 => CurrentStage == 1;
-    public bool IsStage2 => CurrentStage == 2;
-    public bool IsStage3 => CurrentStage == 3;
-    public string StageStatusText => CurrentStage switch
-    {
-        1 => _localizer["StageStatusReady"],
-        2 => _localizer["StageStatusRunning"],
-        3 => _localizer["StageStatusDone"],
-        _ => _localizer["StageStatusIdle"]
-    };
+    public string StageStatusText => _localizer[_tasks.IsRunning ? "StageStatusRunning" : "StageStatusReady"];
 
     // -- Phase 1: 前后覆盖对比与预估 --
     [ObservableProperty]
@@ -123,6 +101,8 @@ public sealed partial class StripViewModel : ViewModelBase, IBackgroundWork
         !string.IsNullOrWhiteSpace(CurrentInputPathText) &&
         (Directory.Exists(CurrentInputPathText) || File.Exists(CurrentInputPathText));
 
+    private bool CanStartStripTask() => CanStartStrip && !_tasks.IsRunning;
+
     partial void OnCurrentInputPathTextChanged(string value)
     {
         StartStripExecutionCommand.NotifyCanExecuteChanged();
@@ -143,52 +123,11 @@ public sealed partial class StripViewModel : ViewModelBase, IBackgroundWork
     [ObservableProperty]
     private string _safeExportDirectory;
 
-    // -- Phase 2: 实时吞吐进度 --
-    [ObservableProperty]
-    private string _runningFileName = string.Empty;
-
-    [ObservableProperty]
-    private double _stripProgressPercent;
-
-    [ObservableProperty]
-    private string _stripProgressStatusText = string.Empty;
-
-    [ObservableProperty]
-    private string _releasedSpaceText = string.Empty;
-
-    [ObservableProperty]
-    private string _instantThroughputText = string.Empty;
-
-    [ObservableProperty]
-    private string _remainingSecondsText = string.Empty;
-
-    [ObservableProperty]
-    private bool _isPaused;
-
     [ObservableProperty]
     private string _errorText = string.Empty;
 
-    // -- Phase 3: 成果庆贺大卡片 --
-    [ObservableProperty]
-    private string _celebrationHeader = string.Empty;
-
-    [ObservableProperty]
-    private string _celebrationDesc = string.Empty;
-
-    [ObservableProperty]
-    private string _beforeTotalResult = "—";
-
-    [ObservableProperty]
-    private string _afterTotalResult = "—";
-
-    [ObservableProperty]
-    private string _netSavedResult = "—";
-
     [ObservableProperty]
     private string _savedPercentResult = string.Empty;
-
-    [ObservableProperty]
-    private string _beforeCountText = string.Empty;
 
     public StripViewModel(
         SettingsStore settings,
@@ -196,14 +135,24 @@ public sealed partial class StripViewModel : ViewModelBase, IBackgroundWork
         IDialogService dialogs,
         IFilePicker filePicker,
         IShellLauncher shell,
-        CompletionEffects completion)
+        TaskCenter tasks,
+        INavigator navigator)
     {
         _settings = settings;
         _localizer = localizer;
         _dialogs = dialogs;
         _filePicker = filePicker;
         _shell = shell;
-        _completion = completion;
+        _tasks = tasks;
+        _navigator = navigator;
+        _tasks.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(TaskCenter.IsRunning))
+            {
+                StartStripExecutionCommand.NotifyCanExecuteChanged();
+                OnPropertyChanged(nameof(StageStatusText));
+            }
+        };
         var s = _settings.Current;
         _inPlaceStrip = s.InPlaceStrip;
         if (!string.IsNullOrWhiteSpace(s.StripOutputDirectory))
@@ -225,8 +174,6 @@ public sealed partial class StripViewModel : ViewModelBase, IBackgroundWork
 
     private void ApplyLocalizedTexts()
     {
-        CelebrationHeader = _localizer["CelebrationTitle"];
-        CelebrationDesc = _localizer["CelebrationDesc"];
         if (!CanStartStrip)
         {
             CurrentInputPathText = _localizer["NoAlbumOrPhotoSelected"];
@@ -434,16 +381,11 @@ public sealed partial class StripViewModel : ViewModelBase, IBackgroundWork
             var original = candidates.Sum(c => c.OriginalBytes);
             var estimatedAfter = candidates.Sum(c => c.EstimateFinalBytes(convertToHeic: true));
             var saved = Math.Max(0, original - estimatedAfter);
-            Interlocked.Exchange(ref _analysisOriginalBytes, original);
-            Interlocked.Exchange(ref _estimatedSavedBytesTotal, saved);
             TotalOriginalText = $"{original / 1024.0 / 1024:F1} MB";
             EstimatedAfterText = $"{estimatedAfter / 1024.0 / 1024:F1} MB";
             var pct = original > 0 ? saved * 100.0 / original : 0;
             EstimatedSavedText = $"{saved / 1024.0 / 1024:F1} MB (-{pct:F1}%)";
-            BeforeTotalResult = TotalOriginalText;
-            AfterTotalResult = EstimatedAfterText;
             SavedPercentResult = _localizer.Format("StripSavedPctFormat", pct);
-            BeforeCountText = _localizer.Format("BeforeCountFormat", candidates.Count);
             BeforeSizeText = TotalOriginalText;
             AfterSizeText = EstimatedAfterText;
         }
@@ -468,18 +410,6 @@ public sealed partial class StripViewModel : ViewModelBase, IBackgroundWork
     private static string? NullIfBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
 
     /// <summary>
-    /// 在条目之间阻塞工作线程实现暂停；进度本身转发给界面。
-    /// </summary>
-    private sealed class PausableProgress(IProgress<BatchProgress> inner, ManualResetEventSlim gate, CancellationToken cancellationToken) : IProgress<BatchProgress>
-    {
-        public void Report(BatchProgress value)
-        {
-            inner.Report(value);
-            gate.Wait(cancellationToken);
-        }
-    }
-
-    /// <summary>
     /// 依据当前选定目录/文件执行分析。
     /// </summary>
     [RelayCommand]
@@ -500,164 +430,44 @@ public sealed partial class StripViewModel : ViewModelBase, IBackgroundWork
         return Task.CompletedTask;
     }
 
-    [RelayCommand(CanExecute = nameof(CanStartStrip))]
-    public void StartStripExecution()
+    [RelayCommand(CanExecute = nameof(CanStartStripTask))]
+    public async Task StartStripExecutionAsync()
     {
-        CurrentStage = 2;
-        StripProgressPercent = 0;
-        IsPaused = false;
         ErrorText = string.Empty;
-        _pauseGate.Set();
-        // 释放上一次可能残留的令牌，避免重复点击启动造成句柄泄漏
-        _stripCts?.Dispose();
-        var cts = new CancellationTokenSource();
-        _stripCts = cts;
-        var token = cts.Token;
-        // 本地 stopwatch 由后台线程独占读取耗时，避免与 UI 线程 AbortStrip 的 Stop() 产生跨线程竞争
-        var stopwatch = Stopwatch.StartNew();
-
-        var files = ResolveInputFiles(CurrentInputPathText);
+        var input = CurrentInputPathText;
+        // 大目录枚举不能占用界面线程
+        var files = await Task.Run(() => ResolveInputFiles(input));
         if (files.Count == 0)
         {
-            CurrentStage = 1;
             ErrorText = _localizer["NoAlbumOrPhotoSelected"];
-            cts.Dispose();
-            _stripCts = null;
+            return;
+        }
+
+        if (_tasks.IsRunning)
+        {
             return;
         }
 
         var settings = _settings.Current;
         var inPlace = InPlaceStrip;
-        var exportDirectory = SafeExportDirectory;
-        var request = new StripRequest
+        var job = new ConversionJob(
+            ConversionAction.Strip,
+            new ConversionOptions
+            {
+                Output = inPlace ? null : new OutputOptions(SafeExportDirectory),
+                InPlaceLocation = inPlace ? input : null,
+                ConvertToHeic = true,
+                HeicQuality = settings.HeicQuality > 0 ? settings.HeicQuality : ConversionDefaults.HeicQuality
+            },
+            new ConversionInputs { Files = files })
         {
-            Files = files,
-            Output = inPlace ? null : new OutputOptions(exportDirectory),
-            ConvertToHeic = true,
-            HeicQuality = settings.HeicQuality > 0 ? settings.HeicQuality : ConversionDefaults.HeicQuality,
+            Tools = ToolPaths.From(settings),
             Parallelism = Math.Clamp(settings.Concurrency, 1, 8)
         };
-        var ui = new DesktopProgressReporter(value =>
-        {
-            var elapsed = stopwatch.Elapsed.TotalSeconds;
-            var rate = elapsed > 0.05 ? value.Completed / elapsed : 0;
-            var eta = rate > 0 ? (int)Math.Ceiling((value.Total - value.Completed) / rate) : 0;
-            var released = value.Total > 0 ? Interlocked.Read(ref _estimatedSavedBytesTotal) * value.Completed / value.Total : 0;
-            var pct = value.Total > 0 ? value.Completed * 100.0 / value.Total : 0;
-            StripProgressPercent = pct;
-            StripProgressStatusText = _localizer.Format("StripProgressFormat", pct, value.Completed, value.Total);
-            RunningFileName = value.CurrentItem;
-            InstantThroughputText = _localizer.Format("StripThroughputFormat", rate);
-            RemainingSecondsText = _localizer.Format("StripEtaFormat", eta);
-            ReleasedSpaceText = $"{released / (1024.0 * 1024.0):F1} MB";
-        });
-        var progress = new PausableProgress(ui, _pauseGate, token);
-        _stripTask = RunStripAsync(request, settings, inPlace ? CurrentInputPathText : exportDirectory, progress, stopwatch, cts);
-    }
 
-    public bool IsBusy => _stripTask is { IsCompleted: false };
-
-    public async Task CancelAndWaitAsync(TimeSpan timeout)
-    {
-        if (_stripTask is not { IsCompleted: false } task)
-        {
-            return;
-        }
-
-        AbortStrip();
-        await Task.WhenAny(task, Task.Delay(timeout));
-    }
-
-    private async Task RunStripAsync(StripRequest request, DesktopSettings settings, string resultLocation, IProgress<BatchProgress> progress, Stopwatch stopwatch, CancellationTokenSource cts)
-    {
-        try
-        {
-            var report = await Task.Run(async () =>
-            {
-                await using var metadata = ExifToolMetadataService.Create(NullIfBlank(settings.ExifToolPath), request.Parallelism);
-                IImageConverter imageConverter = ToolLocator.Find(HeifEncImageConverter.ExecutableName, NullIfBlank(settings.HeifEncPath)) is { } heifEnc
-                    ? HeifEncImageConverter.Create(heifEnc)
-                    : MagickImageConverter.Instance;
-                return await new MotionPhotoStripper(metadata, imageConverter).StripAsync(request, progress, cts.Token);
-            });
-
-            stopwatch.Stop();
-            if (report.Canceled || _stripCts != cts)
-            {
-                return;
-            }
-
-            var original = Interlocked.Read(ref _analysisOriginalBytes);
-            NetSavedResult = $"+{report.BytesSaved / (1024.0 * 1024.0):F1} MB";
-            BeforeCountText = _localizer.Format("BeforeCountFormat", report.Items.Count);
-            if (original > 0)
-            {
-                AfterTotalResult = $"{Math.Max(0, original - report.BytesSaved) / (1024.0 * 1024.0):F1} MB";
-                SavedPercentResult = _localizer.Format("StripSavedPctFormat", report.BytesSaved * 100.0 / original);
-            }
-
-            if (report.Failed > 0)
-            {
-                ErrorText = string.Join(Environment.NewLine, report.Items.Where(i => i.Kind == OutcomeKind.Failed).Take(5).Select(i => _localizer.Format("StripFailedItemFormat", Path.GetFileName(i.Source), i.Message)));
-            }
-
-            CurrentStage = 3;
-            _completion.RunOnTaskComplete(resultLocation);
-        }
-        catch (OperationCanceledException)
-        {
-            // 用户中止，界面已由 AbortStrip 复位
-        }
-        catch (Exception ex)
-        {
-            ErrorLogger.Log(ex, "空间瘦身");
-            if (_stripCts == cts)
-            {
-                CurrentStage = 1;
-                ErrorText = ex.Message;
-            }
-        }
-        finally
-        {
-            if (_stripCts == cts)
-            {
-                _stripCts = null;
-            }
-
-            cts.Dispose();
-        }
+        await _tasks.RunAsync(job);
     }
 
     [RelayCommand]
-    public void TogglePause()
-    {
-        IsPaused = !IsPaused;
-        if (IsPaused)
-        {
-            _pauseGate.Reset();
-        }
-        else
-        {
-            _pauseGate.Set();
-        }
-    }
-
-    [RelayCommand]
-    public void AbortStrip()
-    {
-        _pauseGate.Set();
-        IsPaused = false;
-        _stripCts?.Cancel();
-        // stopwatch 由后台线程独占，取消令牌即触发任务结束，无需跨线程 Stop()
-        CurrentStage = 1;
-    }
-
-    [RelayCommand]
-    public void ContinueAnother()
-    {
-        IsPaused = false;
-        _pauseGate.Set();
-        CurrentStage = 1;
-        StripProgressPercent = 0;
-    }
+    public void ViewTasks() => _navigator.NavigateTo(AppPage.Tasks);
 }

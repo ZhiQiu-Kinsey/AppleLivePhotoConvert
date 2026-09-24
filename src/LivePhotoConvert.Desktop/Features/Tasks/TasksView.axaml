@@ -1,0 +1,151 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:tasks="using:LivePhotoConvert.Desktop.Features.Tasks"
+             xmlns:ic="using:FluentIcons.Avalonia"
+             x:Class="LivePhotoConvert.Desktop.Features.Tasks.TasksView"
+             x:CompileBindings="True"
+             x:DataType="tasks:TasksViewModel">
+
+  <Grid RowDefinitions="Auto,Auto,*" Margin="24,18">
+
+    <!-- 页头 -->
+    <StackPanel Grid.Row="0" Spacing="3" Margin="0,0,0,14">
+      <TextBlock Text="{DynamicResource TasksPageTitle}" FontSize="18" FontWeight="Black" Foreground="{DynamicResource TextPrimaryBrush}" />
+      <TextBlock Text="{DynamicResource TasksPageDesc}" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <!-- 运行中任务 / 空闲状态 -->
+    <Panel Grid.Row="1" Margin="0,0,0,16">
+      <Border Classes="task-card running" IsVisible="{Binding Center.IsRunning}">
+        <StackPanel Spacing="12">
+          <Grid ColumnDefinitions="Auto,*,Auto">
+            <Border Grid.Column="0" Width="44" Height="44" CornerRadius="12" Background="{DynamicResource AccentSoftBrush}" VerticalAlignment="Center">
+              <ic:SymbolIcon Symbol="ArrowSync" FontSize="22" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+
+            <StackPanel Grid.Column="1" Margin="14,0,12,0" Spacing="4" VerticalAlignment="Center">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="{Binding Center.Current.Title}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                <Border Classes="task-chip accent" IsVisible="{Binding !Center.Current.IsPaused}">
+                  <TextBlock Text="{DynamicResource TaskRunningBadge}" />
+                </Border>
+                <Border Classes="task-chip warning" IsVisible="{Binding Center.Current.IsPaused}">
+                  <TextBlock Text="{DynamicResource TaskPausedBadge}" />
+                </Border>
+                <Border Classes="task-chip danger" IsVisible="{Binding Center.Current.IsCancelling}">
+                  <TextBlock Text="{DynamicResource TaskCancellingBadge}" />
+                </Border>
+              </StackPanel>
+              <Grid ColumnDefinitions="Auto,*">
+                <TextBlock Grid.Column="0" Text="{DynamicResource CurrentFileLabel}" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,0,4,0" />
+                <TextBlock Grid.Column="1" Text="{Binding Center.Current.CurrentFile}" FontSize="12" FontFamily="Consolas" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+              </Grid>
+            </StackPanel>
+
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+              <Button Classes="toolbar-btn" Command="{Binding TogglePauseCommand}" Padding="12,0">
+                <Panel>
+                  <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding !Center.Current.IsPaused}">
+                    <ic:SymbolIcon Symbol="Pause" FontSize="13" VerticalAlignment="Center" />
+                    <TextBlock Text="{DynamicResource PauseBtn}" FontSize="12" VerticalAlignment="Center" />
+                  </StackPanel>
+                  <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding Center.Current.IsPaused}">
+                    <ic:SymbolIcon Symbol="Play" FontSize="13" VerticalAlignment="Center" />
+                    <TextBlock Text="{DynamicResource ResumeBtn}" FontSize="12" VerticalAlignment="Center" />
+                  </StackPanel>
+                </Panel>
+              </Button>
+              <Button Classes="danger-btn" Command="{Binding CancelCommand}" Padding="12,6" IsEnabled="{Binding !Center.Current.IsCancelling}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <ic:SymbolIcon Symbol="Dismiss" FontSize="12" Foreground="{DynamicResource OnAccentBrush}" VerticalAlignment="Center" />
+                  <TextBlock Text="{DynamicResource CancelTaskBtn}" FontSize="12" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+            </StackPanel>
+          </Grid>
+
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Grid.Column="0" Text="{Binding Center.Current.PercentText}" FontSize="24" FontWeight="Black" FontFamily="Consolas" Foreground="{DynamicResource AccentTextBrush}" VerticalAlignment="Bottom" />
+            <TextBlock Grid.Column="1" Text="{Binding Center.Current.RatioText}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Bottom" Margin="0,0,0,4" />
+          </Grid>
+          <ProgressBar Value="{Binding Center.Current.Percent}" Minimum="0" Maximum="100" Height="8" CornerRadius="4"
+                       Foreground="{DynamicResource AccentBrush}" Background="{DynamicResource LineBrush}" />
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
+              <ic:SymbolIcon Symbol="TopSpeed" FontSize="13" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding Center.Current.ThroughputText}" FontSize="12" FontFamily="Consolas" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+              <ic:SymbolIcon Symbol="Timer" FontSize="13" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding Center.Current.RemainingText}" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
+            </StackPanel>
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <Border Classes="task-card" IsVisible="{Binding !Center.IsRunning}" Padding="16,14">
+        <Grid ColumnDefinitions="Auto,*">
+          <Border Grid.Column="0" Width="36" Height="36" CornerRadius="10" Background="{DynamicResource HoverBrush}" VerticalAlignment="Center">
+            <ic:SymbolIcon Symbol="CheckmarkCircle" FontSize="18" Foreground="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <StackPanel Grid.Column="1" Margin="12,0,0,0" Spacing="2" VerticalAlignment="Center">
+            <TextBlock Text="{DynamicResource TaskIdleTitle}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
+            <TextBlock Text="{DynamicResource TaskIdleDesc}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" TextWrapping="Wrap" />
+          </StackPanel>
+        </Grid>
+      </Border>
+    </Panel>
+
+    <!-- 历史与报告详情 -->
+    <Grid Grid.Row="2" ColumnDefinitions="280,16,*" IsVisible="{Binding HasHistory}">
+      <Border Grid.Column="0" Classes="task-card" Padding="10">
+        <Grid RowDefinitions="Auto,*">
+          <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="6" Margin="6,2,6,10">
+            <ic:SymbolIcon Symbol="History" FontSize="14" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
+            <TextBlock Text="{DynamicResource TaskHistoryTitle}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+          </StackPanel>
+          <ListBox Grid.Row="1" Classes="task-history" ItemsSource="{Binding History}" SelectedItem="{Binding SelectedReport}">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="tasks:TaskReportViewModel">
+                <Grid ColumnDefinitions="Auto,*">
+                  <Panel Grid.Column="0" Width="18" Margin="0,1,10,0" VerticalAlignment="Top">
+                    <ic:SymbolIcon Symbol="CheckmarkCircle" FontSize="16" Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding IsCompletedClean}" />
+                    <ic:SymbolIcon Symbol="Warning" FontSize="16" Foreground="{DynamicResource WarningBrush}" IsVisible="{Binding IsCompletedWithProblems}" />
+                    <ic:SymbolIcon Symbol="DismissCircle" FontSize="16" Foreground="{DynamicResource TextMutedBrush}" IsVisible="{Binding WasCanceled}" />
+                    <ic:SymbolIcon Symbol="ErrorCircle" FontSize="16" Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding IsFatal}" />
+                  </Panel>
+                  <StackPanel Grid.Column="1" Spacing="2">
+                    <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <TextBlock Text="{Binding TimeText}" FontSize="10" FontFamily="Consolas" Foreground="{DynamicResource TextTertiaryBrush}" />
+                      <TextBlock Text="{Binding StatusText}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" />
+                    </StackPanel>
+                    <TextBlock Text="{Binding SummaryText}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+                  </StackPanel>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Grid>
+      </Border>
+
+      <ScrollViewer Grid.Column="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" IsVisible="{Binding HasSelectedReport}">
+        <tasks:TaskReportView DataContext="{Binding SelectedReport}" />
+      </ScrollViewer>
+    </Grid>
+
+    <!-- 无历史 -->
+    <Border Grid.Row="2" Classes="task-card" Padding="40" VerticalAlignment="Top" IsVisible="{Binding !HasHistory}">
+      <StackPanel HorizontalAlignment="Center" Spacing="12">
+        <Border Width="56" Height="56" CornerRadius="28" Background="{DynamicResource HoverBrush}" HorizontalAlignment="Center">
+          <ic:SymbolIcon Symbol="DocumentBulletList" FontSize="26" Foreground="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+        <TextBlock Text="{DynamicResource ReportEmptyTitle}" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center" />
+        <TextBlock Text="{DynamicResource ReportEmptyDesc}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="420" />
+        <Button Classes="primary-btn" Command="{Binding GoToConvertCommand}" HorizontalAlignment="Center" Margin="0,8,0,0">
+          <TextBlock Text="{DynamicResource ReportGoConvertBtn}" FontSize="11" FontWeight="Bold" />
+        </Button>
+      </StackPanel>
+    </Border>
+  </Grid>
+</UserControl>

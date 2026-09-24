@@ -4,6 +4,7 @@
         xmlns:dialogs="using:LivePhotoConvert.Desktop.ViewModels.Dialogs"
         xmlns:views="using:LivePhotoConvert.Desktop.Views"
         xmlns:dialogViews="using:LivePhotoConvert.Desktop.Views.Dialogs"
+        xmlns:tasks="using:LivePhotoConvert.Desktop.Features.Tasks"
         x:Class="LivePhotoConvert.Desktop.Views.MainWindow"
         x:CompileBindings="True"
         x:DataType="vm:MainWindowViewModel"
@@ -106,11 +107,14 @@
               </Grid>
             </Button>
 
-            <!-- 批次报告 -->
-            <Button Classes="nav-btn" Classes.selected="{Binding IsReportTabSelected}" Command="{Binding SelectTabCommand}" CommandParameter="3">
+            <!-- 任务 -->
+            <Button Classes="nav-btn" Classes.selected="{Binding IsTasksTabSelected}" Command="{Binding SelectTabCommand}" CommandParameter="3">
               <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
-                <ic:SymbolIcon Symbol="DocumentBulletList" FontSize="16" Grid.Column="0" Foreground="{DynamicResource VioletBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
-                <TextBlock Grid.Column="1" Text="{DynamicResource NavReport}" FontSize="12" Margin="10,0,0,0" VerticalAlignment="Center" />
+                <ic:SymbolIcon Symbol="DocumentBulletListClock" FontSize="16" Grid.Column="0" Foreground="{DynamicResource VioletBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
+                <TextBlock Grid.Column="1" Text="{DynamicResource NavTasks}" FontSize="12" Margin="10,0,0,0" VerticalAlignment="Center" />
+                <Border Grid.Column="2" Background="{DynamicResource AccentSoftBrush}" CornerRadius="8" Padding="6,2" VerticalAlignment="Center" IsVisible="{Binding TasksVm.Center.IsRunning}">
+                  <TextBlock Text="{Binding TasksVm.Center.Current.PercentText}" FontSize="10" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource AccentTextBrush}" VerticalAlignment="Center" />
+                </Border>
               </Grid>
             </Button>
           </StackPanel>
@@ -162,8 +166,8 @@
         <Panel IsVisible="{Binding IsToolsTabSelected}">
           <views:ToolsView DataContext="{Binding ToolsVm}" />
         </Panel>
-        <Panel IsVisible="{Binding IsReportTabSelected}">
-          <views:ReportView DataContext="{Binding ReportVm}" />
+        <Panel IsVisible="{Binding IsTasksTabSelected}">
+          <tasks:TasksView DataContext="{Binding TasksVm}" />
         </Panel>
         <Panel IsVisible="{Binding IsSettingsTabSelected}">
           <views:SettingsView DataContext="{Binding SettingsVm}" />
