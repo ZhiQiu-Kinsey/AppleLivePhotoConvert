@@ -37,8 +37,6 @@ public static class GalleryMetrics
 
     public static Thickness CardMarginThickness { get; } = new(CardMargin);
 
-    public static Thickness RowSpacingMargin { get; } = new(0, 0, 0, RowSpacing);
-
     public static double TargetRowHeight(string? scaleMode) => scaleMode switch
     {
         "Small" => SmallRowHeight,
@@ -53,4 +51,22 @@ public static class GalleryMetrics
 
     /// <summary>组标题在列表中占用的总高度（含行距）。</summary>
     public const double GroupHeaderExtent = GroupHeaderHeight + RowSpacing;
+
+    /// <summary>列表项右侧留给悬浮滚动条的宽度：滚动条展开时不遮挡组标题右端的计数与行尾卡片。</summary>
+    public const double ScrollBarGutter = 14;
+
+    /// <summary>低于此宽度（含卡片边距）的卡片收起状态文字与设备信息。</summary>
+    public const double CompactCardWidth = 230;
+
+    /// <summary>低于此宽度的卡片再隐藏分辨率。</summary>
+    public const double TinyCardWidth = 160;
+
+    /// <summary>尚未测量到视口宽度时的排版宽度。</summary>
+    public const double DefaultViewportWidth = 900;
+
+    /// <summary>列表项外边距：右侧让出滚动条，底部为行距。</summary>
+    public static Thickness ItemMargin { get; } = new(0, 0, ScrollBarGutter, RowSpacing);
+
+    /// <summary>视口宽度中可供一行卡片（含卡片边距与间距）使用的宽度。</summary>
+    public static double LayoutWidth(double viewportWidth) => Math.Max(1, viewportWidth - ScrollBarGutter);
 }

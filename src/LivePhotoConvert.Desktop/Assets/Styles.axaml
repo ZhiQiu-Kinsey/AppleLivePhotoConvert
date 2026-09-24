@@ -916,4 +916,59 @@
     <Setter Property="Margin" Value="0,12" />
   </Style>
 
+  <!-- 画廊卡片：预览区左上角的实况 / 待裁决徽章 -->
+  <Style Selector="Border.card-media-badge">
+    <Setter Property="Background" Value="#80000000" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Padding" Value="8,4" />
+    <Setter Property="Margin" Value="8" />
+    <Setter Property="HorizontalAlignment" Value="Left" />
+    <Setter Property="VerticalAlignment" Value="Top" />
+  </Style>
+
+  <Style Selector="Border.card-media-badge.warning">
+    <Setter Property="Background" Value="{DynamicResource WarningBrush}" />
+  </Style>
+
+  <!-- 画廊卡片信息栏右上角的配对状态：宽卡片显示文字，窄卡片只显示图标 -->
+  <Style Selector="Border.card-status">
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Padding" Value="6,2" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="VerticalAlignment" Value="Top" />
+  </Style>
+
+  <Style Selector="Button.card-status">
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Padding" Value="6,2" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="VerticalAlignment" Value="Top" />
+  </Style>
+
+  <Style Selector="Border.card-status.locked">
+    <Setter Property="Background" Value="{DynamicResource SuccessSoftBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource SuccessBorderBrush}" />
+  </Style>
+
+  <Style Selector="Border.card-status.locked TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}" />
+  </Style>
+
+  <Style Selector="Button.card-status.pending">
+    <Setter Property="Background" Value="{DynamicResource WarningSoftBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource WarningBorderBrush}" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+
+  <Style Selector="Button.card-status.pending TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource WarningBrush}" />
+  </Style>
+
+  <Style Selector="Border.card-status TextBlock, Button.card-status TextBlock">
+    <Setter Property="FontSize" Value="10" />
+    <Setter Property="FontWeight" Value="Bold" />
+  </Style>
+
 </Styles>

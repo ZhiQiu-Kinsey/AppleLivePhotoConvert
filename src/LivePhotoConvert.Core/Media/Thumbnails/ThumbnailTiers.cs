@@ -2,13 +2,14 @@ namespace LivePhotoConvert.Core.Media.Thumbnails;
 
 /// <summary>
 /// 缩略图高度档位。需求像素按档位向上取整，使不同缩放比与行高共用少量缓存文件。
+/// 1536 与 2048 供高分屏上的大图预览与方形裁切的竖图使用，画廊常规行高用不到。
 /// </summary>
 public static class ThumbnailTiers
 {
     /// <summary>输出长边上限：限制超宽全景在最高档位下的像素量。</summary>
     public const int MaxLongEdge = 4096;
 
-    private static readonly int[] HeightTable = [256, 384, 512, 768, 1024];
+    private static readonly int[] HeightTable = [256, 384, 512, 768, 1024, 1536, 2048];
 
     /// <summary>全部档位高度（升序）。</summary>
     public static ReadOnlySpan<int> Heights => HeightTable;

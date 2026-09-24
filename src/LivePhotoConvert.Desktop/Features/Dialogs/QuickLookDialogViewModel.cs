@@ -18,8 +18,11 @@ namespace LivePhotoConvert.Desktop.Features.Dialogs;
 /// </summary>
 public sealed partial class QuickLookDialogViewModel : DialogViewModel<bool>
 {
-    /// <summary>弹窗画布最大约 820 逻辑像素，最高档位在 1.25 倍缩放下已足够。</summary>
-    private static readonly int PreviewHeightPx = ThumbnailTiers.Largest;
+    /// <summary>画布尺寸未知（视图尚未布局）时的预览高度。</summary>
+    internal const int DefaultPreviewHeightPx = 1024;
+
+    /// <summary>画布变大后新需求比已加载的预览高出这么多才重新加载，避免窗口微调时反复解码。</summary>
+    private const double ReloadThreshold = 1.1;
 
     private readonly ILocalizer _localizer;
     private readonly IThumbnailPipeline _thumbnails;
@@ -31,7 +34,9 @@ public sealed partial class QuickLookDialogViewModel : DialogViewModel<bool>
     private CancellationTokenSource? _previewCts;
     private PhotoCardItemViewModel? _acquiredCard;
     private int _previewGeneration;
+    private int _previewHeightPx;
     private bool _hasPresentedVideoFrame;
+    private (double Width, double Height, double Scaling) _viewport;
 
     [ObservableProperty]
     private PhotoCardItemViewModel _card;
@@ -94,52 +99,26 @@ public sealed partial class QuickLookDialogViewModel : DialogViewModel<bool>
 
         // 只借用卡片的静态缩略图：它已被钉住；悬浮播放的帧归播放器所有，随时可能被回收
         CurrentDisplayImage = card.Thumbnail;
-        _ = LoadHighResolutionPhotoPreviewAsync(card, generation);
+        LoadHighResolutionPhotoPreview(card, generation);
 
-        if (card.IsMotionPhoto && (string.IsNullOrWhiteSpace(card.VideoPath) || !File.Exists(card.VideoPath)))
+        if (card.IsMotionPhoto)
         {
             HasVideo = true;
             IsPlaying = true;
             PlayButtonText = _localizer["QuickLookPause"];
             PlaybackStatusText = _localizer["QuickLookLoading"];
-
-            _ = Task.Run(async () =>
-            {
-                var extracted = await MotionPhotoVideoCache.EnsureVideoExtractedAsync(card);
-                if (!string.IsNullOrEmpty(extracted) && Card == card)
-                {
-                    await Dispatcher.UIThread.InvokeAsync(() =>
-                    {
-                        if (Card == card && !IsClosed)
-                        {
-                            PlaybackStatusText = _localizer["QuickLookPlaying"];
-                            _streamPlayer.Play(extracted, frame =>
-                            {
-                                _hasPresentedVideoFrame = true;
-                                CurrentDisplayImage = frame;
-                            });
-                        }
-                    });
-                }
-            });
+            _ = PlayMotionPhotoAsync(card);
             return;
         }
 
-        string? videoPath = card.VideoPath;
-        bool hasValidVideo = !string.IsNullOrWhiteSpace(videoPath) && File.Exists(videoPath);
-        HasVideo = hasValidVideo;
-
-        if (hasValidVideo)
+        // 视频是否存在由扫描确定，界面线程不再查询磁盘
+        HasVideo = card.VideoPath is not null;
+        if (card.VideoPath is { } videoPath)
         {
             IsPlaying = true;
             PlayButtonText = _localizer["QuickLookPause"];
             PlaybackStatusText = _localizer["QuickLookPlaying"];
-
-            _streamPlayer.Play(videoPath!, frame =>
-            {
-                _hasPresentedVideoFrame = true;
-                CurrentDisplayImage = frame;
-            });
+            _streamPlayer.Play(videoPath, OnFrame);
         }
         else
         {
@@ -147,6 +126,39 @@ public sealed partial class QuickLookDialogViewModel : DialogViewModel<bool>
             PlayButtonText = _localizer["QuickLookStatic"];
             PlaybackStatusText = _localizer["QuickLookStatic"];
         }
+    }
+
+    /// <summary>
+    /// 画布的逻辑尺寸与屏幕缩放比。预览按画布实际显示的像素加载（Uniform 缩放后的高度 × 缩放比），
+    /// 高分屏上不会被固定档位限制而偏软；画布变大超过阈值时重新加载。
+    /// </summary>
+    public void SetViewport(double width, double height, double renderScaling)
+    {
+        if (!(double.IsFinite(width) && double.IsFinite(height) && double.IsFinite(renderScaling)) || width <= 0 || height <= 0 || renderScaling <= 0)
+        {
+            return;
+        }
+
+        _viewport = (width, height, renderScaling);
+        if (!IsClosed && PreviewHeightFor(Card) > _previewHeightPx * ReloadThreshold)
+        {
+            // 旧预览留到新图到达再替换，画面不会先退回缩略图
+            _previewCts?.Cancel();
+            LoadHighResolutionPhotoPreview(Card, ++_previewGeneration);
+        }
+    }
+
+    /// <summary>卡片在当前画布中显示所需的像素高度，不超过最高缩略图档位。</summary>
+    public int PreviewHeightFor(PhotoCardItemViewModel card)
+    {
+        var (width, height, scaling) = _viewport;
+        if (width <= 0)
+        {
+            return DefaultPreviewHeightPx;
+        }
+
+        var shownHeight = Math.Min(height, width / Math.Max(0.01, card.AspectRatio));
+        return (int)Math.Clamp(Math.Ceiling(shownHeight * scaling), 1, ThumbnailTiers.Largest);
     }
 
     [RelayCommand]
@@ -212,14 +224,44 @@ public sealed partial class QuickLookDialogViewModel : DialogViewModel<bool>
         }
     }
 
-    private async Task LoadHighResolutionPhotoPreviewAsync(PhotoCardItemViewModel card, int generation)
+    private void OnFrame(Bitmap frame)
+    {
+        _hasPresentedVideoFrame = true;
+        CurrentDisplayImage = frame;
+    }
+
+    /// <summary>未被等待：异常在这里记录，不能逃逸成未观察的任务异常。</summary>
+    private async Task PlayMotionPhotoAsync(PhotoCardItemViewModel card)
+    {
+        try
+        {
+            var extracted = await Task.Run(() => MotionPhotoVideoCache.EnsureVideoExtractedAsync(card));
+            if (!string.IsNullOrEmpty(extracted) && ReferenceEquals(Card, card) && !IsClosed)
+            {
+                PlaybackStatusText = _localizer["QuickLookPlaying"];
+                _streamPlayer.Play(extracted, OnFrame);
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorLogger.Log(ex, "预览动态照片");
+        }
+    }
+
+    private void LoadHighResolutionPhotoPreview(PhotoCardItemViewModel card, int generation)
+    {
+        _previewHeightPx = PreviewHeightFor(card);
+        _ = LoadHighResolutionPhotoPreviewAsync(card, _previewHeightPx, generation);
+    }
+
+    private async Task LoadHighResolutionPhotoPreviewAsync(PhotoCardItemViewModel card, int heightPx, int generation)
     {
         _previewCts = new CancellationTokenSource();
         var token = _previewCts.Token;
         Bitmap? preview;
         try
         {
-            preview = await _thumbnails.LoadPreviewAsync(card, PreviewHeightPx, token);
+            preview = await _thumbnails.LoadPreviewAsync(card, heightPx, token);
         }
         catch (OperationCanceledException)
         {
@@ -243,10 +285,22 @@ public sealed partial class QuickLookDialogViewModel : DialogViewModel<bool>
             return;
         }
 
+        var previous = _ownedPhotoPreview;
         _ownedPhotoPreview = preview;
         if (!_hasPresentedVideoFrame)
         {
             CurrentDisplayImage = preview;
+        }
+
+        DisposeLater(previous);
+    }
+
+    /// <summary>让已提交的渲染帧先放开对旧位图的引用。</summary>
+    private static void DisposeLater(Bitmap? bitmap)
+    {
+        if (bitmap is not null)
+        {
+            DispatcherTimer.RunOnce(bitmap.Dispose, TimeSpan.FromMilliseconds(160), DispatcherPriority.Background);
         }
     }
 
@@ -264,6 +318,6 @@ public sealed partial class QuickLookDialogViewModel : DialogViewModel<bool>
             CurrentDisplayImage = Card.Thumbnail;
         }
 
-        DispatcherTimer.RunOnce(oldPreview.Dispose, TimeSpan.FromMilliseconds(160), DispatcherPriority.Background);
+        DisposeLater(oldPreview);
     }
 }

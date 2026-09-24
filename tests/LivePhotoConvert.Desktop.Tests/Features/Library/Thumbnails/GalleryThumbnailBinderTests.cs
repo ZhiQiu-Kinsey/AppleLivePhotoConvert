@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using LivePhotoConvert.Desktop.Features.Library.Thumbnails;
 using LivePhotoConvert.Desktop.Models;
+using LivePhotoConvert.Desktop.Tests.Features.Library;
 
 namespace LivePhotoConvert.Desktop.Tests.Features.Library.Thumbnails;
 
@@ -17,8 +18,8 @@ public class GalleryThumbnailBinderTests
         var a = Card("a");
         var b = Card("b");
         var c = Card("c");
-        var row = new PhotoGridRowViewModel { Key = "r0", Cards = [a, b] };
-        var items = new ObservableCollection<object> { new TimelineHeaderItemViewModel { Key = "h", GroupDate = default, Title = "t", LocationSummary = "" }, row };
+        var row = Row("r0", a, b);
+        var items = new ObservableCollection<object> { new TimelineHeaderItemViewModel("h", default) { Title = "t" }, row };
         var list = new ListBox { ItemsSource = items, Width = 300, Height = 300 };
         var window = new Window { Content = list, Width = 300, Height = 300 };
         window.Show();
@@ -48,7 +49,7 @@ public class GalleryThumbnailBinderTests
     {
         var pipeline = new CountingPipeline();
         var a = Card("a");
-        var list = new ListBox { ItemsSource = new[] { new PhotoGridRowViewModel { Key = "r", Cards = [a] } } };
+        var list = new ListBox { ItemsSource = new[] { Row("r", a) } };
         var window = new Window { Content = list, Width = 300, Height = 300 };
         window.Show();
 
@@ -59,7 +60,18 @@ public class GalleryThumbnailBinderTests
         window.Close();
     }
 
-    private static PhotoCardItemViewModel Card(string name) => new() { Key = name, PhotoPath = $"/album/{name}.jpg" };
+    private static PhotoCardItemViewModel Card(string name) => Cards.Still(name);
+
+    private static PhotoGridRowViewModel Row(string key, params PhotoCardItemViewModel[] cards)
+    {
+        var row = new PhotoGridRowViewModel(key);
+        foreach (var card in cards)
+        {
+            row.Cards.Add(card);
+        }
+
+        return row;
+    }
 
     private sealed class CountingPipeline : IThumbnailPipeline
     {
@@ -87,7 +99,7 @@ public class GalleryThumbnailBinderTests
 
         public int NextGeneration() => 0;
 
-        public void Configure(double maxRowHeightDip, double renderScaling)
+        public void Configure(double maxRowHeightDip, double renderScaling, bool squareCrop)
         {
         }
 

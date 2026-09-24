@@ -1,4 +1,9 @@
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.VisualTree;
+using LivePhotoConvert.Desktop.Features.Library;
+using LivePhotoConvert.Desktop.Models;
+using LivePhotoConvert.Desktop.Services;
 
 namespace LivePhotoConvert.Desktop.Controls;
 
@@ -9,30 +14,32 @@ public partial class PhotoCardControl : UserControl
         InitializeComponent();
     }
 
-    protected override void OnPointerEntered(Avalonia.Input.PointerEventArgs e)
+    protected override void OnPointerEntered(PointerEventArgs e)
     {
         base.OnPointerEntered(e);
-        if (DataContext is Models.PhotoCardItemViewModel card)
+        if (DataContext is PhotoCardItemViewModel card)
         {
-            Services.PlaybackHost.Instance.OnPointerEnter(card);
+            PlaybackHost.Instance.OnPointerEnter(card);
         }
     }
 
-    protected override void OnPointerExited(Avalonia.Input.PointerEventArgs e)
+    protected override void OnPointerExited(PointerEventArgs e)
     {
         base.OnPointerExited(e);
-        if (DataContext is Models.PhotoCardItemViewModel card)
+        if (DataContext is PhotoCardItemViewModel card)
         {
-            Services.PlaybackHost.Instance.OnPointerLeave(card);
+            PlaybackHost.Instance.OnPointerLeave(card);
         }
     }
 
-    protected override void OnPointerPressed(Avalonia.Input.PointerPressedEventArgs e)
+    /// <summary>双击打开大图预览；命令属于画廊（与标题栏按钮相同，经所在列表的数据上下文取得）。</summary>
+    protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e);
-        if (e.ClickCount == 2 && DataContext is Models.PhotoCardItemViewModel card)
+        if (e.ClickCount == 2 && DataContext is PhotoCardItemViewModel card &&
+            this.FindAncestorOfType<ListBox>()?.DataContext is LibraryViewModel library)
         {
-            card.RequestQuickLook();
+            library.OpenQuickLookCommand.Execute(card);
             e.Handled = true;
         }
     }

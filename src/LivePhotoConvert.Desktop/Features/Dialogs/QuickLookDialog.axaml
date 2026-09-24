@@ -56,7 +56,7 @@
       </Grid>
 
       <!-- 2. 核心媒体画布区 -->
-      <Panel Grid.Row="1" MinHeight="480" Background="{DynamicResource MediaCanvasBrush}" ClipToBounds="True">
+      <Panel x:Name="MediaCanvas" Grid.Row="1" MinHeight="480" Background="{DynamicResource MediaCanvasBrush}" ClipToBounds="True">
         <!-- 实况画面渲染画布（高清封面底图 + 流式动态帧平滑推进，统一原生 Image 渲染） -->
         <Image Source="{CompiledBinding CurrentDisplayImage}"
                RenderOptions.BitmapInterpolationMode="HighQuality"
@@ -106,8 +106,8 @@
           </StackPanel>
           <StackPanel Grid.Column="2" Spacing="3">
             <TextBlock Text="{DynamicResource QuickLookPairing}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" />
-            <TextBlock Text="{DynamicResource PairStatusLocked}" IsVisible="{CompiledBinding !Card.HasSuspiciousWarning}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" TextTrimming="CharacterEllipsis" />
-            <TextBlock Text="{DynamicResource PairStatusPending}" IsVisible="{CompiledBinding Card.HasSuspiciousWarning}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" TextTrimming="CharacterEllipsis" />
+            <TextBlock Text="{DynamicResource PairStatusLocked}" IsVisible="{CompiledBinding !Card.RequiresPairReview}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" TextTrimming="CharacterEllipsis" />
+            <TextBlock Text="{DynamicResource PairStatusPending}" IsVisible="{CompiledBinding Card.RequiresPairReview}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" TextTrimming="CharacterEllipsis" />
           </StackPanel>
           <StackPanel Grid.Column="3" Spacing="3">
             <TextBlock Text="{DynamicResource QuickLookSize}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" />

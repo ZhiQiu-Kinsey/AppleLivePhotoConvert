@@ -125,7 +125,7 @@ public sealed class GalleryScrollTests : IDisposable
         await session.WaitUntilAsync(() => AttachedCards(list) is { Count: > 0 } cards && cards.All(c => c.DisplayImage is not null));
         Assert.Equal((384, 325), (pipeline.Tier, pipeline.DecodeHeightPx));
 
-        library.SetScaleModeCommand.Execute("Large");
+        library.Layout.SetScaleModeCommand.Execute("Large");
         session.Pump();
         Assert.Equal((512, 416), (pipeline.Tier, pipeline.DecodeHeightPx));
         Assert.All(AttachedCards(list), c => Assert.NotNull(c.DisplayImage));

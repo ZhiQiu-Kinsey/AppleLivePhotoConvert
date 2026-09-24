@@ -57,7 +57,11 @@ public sealed record ConversionJob(ConversionAction Action, ConversionOptions Op
 
     public int Parallelism { get; init; } = ConversionDefaults.Parallelism;
 
-    public int ItemCount => Action == ConversionAction.ToAndroid ? Inputs.Pairs.Count : Inputs.Files.Count;
+    /// <summary>处理项数。合成输入含同主干的全部候选，每组只产出一项，与合成引擎的分组一致。</summary>
+    public int ItemCount => Action == ConversionAction.ToAndroid
+        ? Inputs.Pairs.Count(p => p.IsContentIdentifierMatched)
+          + Inputs.Pairs.Where(p => !p.IsContentIdentifierMatched).Select(p => p.GroupKey).Distinct(StringComparer.OrdinalIgnoreCase).Count()
+        : Inputs.Files.Count;
 
     /// <summary>完成后打开的位置。</summary>
     public string ResultLocation => Options.Output?.Directory ?? Options.InPlaceLocation ?? string.Empty;

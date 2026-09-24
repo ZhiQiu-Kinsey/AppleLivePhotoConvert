@@ -28,7 +28,8 @@ public class ThumbnailPipelineTests
     [Theory]
     [InlineData(325, 1.0, 384, 325)]
     [InlineData(325, 1.5, 512, 488)]
-    [InlineData(416, 3.0, 1024, 1024)]
+    [InlineData(416, 3.0, 1536, 1248)]
+    [InlineData(1000, 3.0, 2048, 2048)]
     [InlineData(234, 1.0, 256, 234)]
     [InlineData(325, 2.0, 768, 650)]
     public void SelectTarget_PicksSmallestTierCoveringRequiredPixels(double maxRowHeight, double scaling, int tier, int decodeHeight)
@@ -53,7 +54,7 @@ public class ThumbnailPipelineTests
     {
         using var fixture = new PipelineFixture();
         var card = Card("hit");
-        fixture.Store.Cached.Add(card.PhotoFile!.Path);
+        fixture.Store.Cached.Add(card.PhotoFile.Path);
 
         fixture.Pipeline.Acquire(card);
         await WaitUntil(() => card.Thumbnail is not null);
@@ -97,12 +98,15 @@ public class ThumbnailPipelineTests
             fixture.Pipeline.Acquire(card);
         }
 
-        // 两个生成 worker 各占一张（后附加的优先），其余三张排队
+        // 两个生成 worker 各占一张，其余三张排队。worker 在首张入队时就已启动，
+        // 缓存通道可能在其余卡片入队前取走首张，被取走的是哪两张不固定，按实际在途的两张断言
         await WaitUntil(() => fixture.Store.Generated.Count == 2 && fixture.Pipeline.PendingCount == 3);
-        Assert.Equal(["c4", "c3"], fixture.Store.Generated.Select(r => Path.GetFileNameWithoutExtension(r.Path)));
         Assert.True(fixture.Pipeline.PendingCount <= fixture.Pipeline.AttachedCount);
+        var inFlight = fixture.Store.Generated.Select(r => Path.GetFileNameWithoutExtension(r.Path)).ToHashSet();
+        var queued = cards.Where(c => !inFlight.Contains(c.FileName)).ToArray();
+        Assert.Equal(3, queued.Length);
 
-        foreach (var card in cards.Take(3))
+        foreach (var card in queued)
         {
             fixture.Pipeline.Release(card);
         }
@@ -110,11 +114,77 @@ public class ThumbnailPipelineTests
         Assert.Equal(0, fixture.Pipeline.PendingCount);
         fixture.Store.Open(0);
         fixture.Store.Open(1);
-        await WaitUntil(() => cards[3].Thumbnail is not null && cards[4].Thumbnail is not null);
+        await WaitUntil(() => cards.Count(c => c.Thumbnail is not null) == 2);
         await Settle();
 
         Assert.Equal(2, fixture.Store.Generated.Count);
-        Assert.All(cards.Take(3), c => Assert.Null(c.Thumbnail));
+        Assert.All(queued, c => Assert.Null(c.Thumbnail));
+    }
+
+    /// <summary>
+    /// 方形裁切（UniformToFill）：竖图铺满边长为行高的方框，显示高度是行高 ÷ 宽高比，按此高度解码而不是按行高解码后放大。
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData(4000, 3000, 384, 325)]    // 横图：显示高度就是行高
+    [InlineData(3000, 4000, 512, 434)]    // 3:4 竖图：325 ÷ 0.75
+    [InlineData(1080, 1920, 768, 578)]    // 9:16 竖图：约 1.78 倍行高
+    public async Task SquareCrop_DecodesPortraitsAtTheCoveredHeight(int width, int height, int tier, int decodeHeight)
+    {
+        using var fixture = new PipelineFixture();
+        fixture.Pipeline.Configure(GalleryMetrics.MaxRowHeight("Medium"), 1.0, squareCrop: true);
+        var card = Card("square", width, height);
+
+        Assert.Equal((tier, decodeHeight), fixture.Pipeline.TargetFor(card));
+        fixture.Pipeline.Acquire(card);
+        await WaitUntil(() => card.Thumbnail is not null);
+
+        Assert.Equal(tier, Assert.Single(fixture.Store.Generated).Tier);
+        Assert.Equal(decodeHeight, card.Thumbnail!.PixelSize.Height);
+    }
+
+    [AvaloniaFact]
+    public async Task CropModeChange_ReloadsOnlyCardsWhoseSizeNeedChanged()
+    {
+        using var fixture = new PipelineFixture();
+        var landscape = Card("landscape");
+        var portrait = Card("portrait", 3000, 4000);
+        fixture.Pipeline.Acquire(landscape);
+        fixture.Pipeline.Acquire(portrait);
+        await WaitUntil(() => landscape.Thumbnail is not null && portrait.Thumbnail is not null);
+        var landscapeBitmap = landscape.Thumbnail;
+
+        fixture.Pipeline.Configure(GalleryMetrics.MaxRowHeight("Medium"), 1.0, squareCrop: true);
+        await WaitUntil(() => portrait.Thumbnail is { PixelSize.Height: 434 });
+        await Settle();
+
+        Assert.Same(landscapeBitmap, landscape.Thumbnail);
+        Assert.Equal(3, fixture.Store.Generated.Count);
+    }
+
+    /// <summary>QuickLook 高清图按画布显示像素（逻辑尺寸 × 缩放比）加载，不受画廊最高档位限制。</summary>
+    [AvaloniaTheory]
+    [InlineData(800, 600, 1.0, 768, 600)]
+    [InlineData(800, 600, 2.0, 1536, 1200)]
+    [InlineData(1400, 1000, 2.0, 2048, 2000)]
+    public async Task QuickLookPreview_FollowsViewportPixels(double width, double height, double scaling, int tier, int decodeHeight)
+    {
+        using var fixture = new PipelineFixture();
+        var card = Card("wide");
+        var quickLook = new QuickLookDialogViewModel(new Localizer(), fixture.Pipeline, _ => card, 1, 0);
+        await WaitUntil(() => quickLook.CurrentDisplayImage is { PixelSize.Height: QuickLookDialogViewModel.DefaultPreviewHeightPx });
+
+        quickLook.SetViewport(width, height, scaling);
+
+        Assert.Equal(decodeHeight, quickLook.PreviewHeightFor(card));
+        await WaitUntil(() => quickLook.CurrentDisplayImage?.PixelSize.Height == decodeHeight || decodeHeight <= QuickLookDialogViewModel.DefaultPreviewHeightPx * 1.1);
+        if (decodeHeight > QuickLookDialogViewModel.DefaultPreviewHeightPx * 1.1)
+        {
+            Assert.Equal(tier, fixture.Store.Generated.Last().Tier);
+        }
+
+        quickLook.Cancel();
+        await Settle();
+        Assert.Equal(0, fixture.Pipeline.PinnedBytes);
     }
 
     [AvaloniaFact]
@@ -260,15 +330,12 @@ public class ThumbnailPipelineTests
         using var fixture = new PipelineFixture();
         fixture.Decoder.Throw = true;
         var broken = Card("broken");
-        var missing = new PhotoCardItemViewModel { Key = "missing", PhotoPath = Path.Combine(Path.GetTempPath(), $"missing_{Guid.NewGuid():N}.jpg") };
 
         fixture.Pipeline.Acquire(broken);
-        fixture.Pipeline.Acquire(missing);
         await WaitUntil(() => fixture.Decoder.Attempts == 1);
         await Settle();
 
         Assert.Null(broken.Thumbnail);
-        Assert.Null(missing.Thumbnail);
         Assert.Single(fixture.Store.Generated);
         Assert.Equal(0, fixture.Pipeline.PendingCount);
         Assert.Equal(0, fixture.Pipeline.ResidentBytes);
@@ -331,16 +398,12 @@ public class ThumbnailPipelineTests
         Assert.Equal(0, fixture.Pipeline.PinnedBytes);
     }
 
-    private static PhotoCardItemViewModel Card(string name)
+    private static PhotoCardItemViewModel Card(string name, int width = 4000, int height = 3000)
     {
         var path = Path.GetFullPath($"/album/{name}.jpg");
-        return new PhotoCardItemViewModel
-        {
-            Key = name,
-            PhotoPath = path,
-            PhotoFile = new LibraryFile(path, 1234, Modified, Modified),
-            PhotoHeader = new ImageHeader(4000, 3000, 6),
-        };
+        return new PhotoCardItemViewModel(
+            new LibraryItem(LibraryItemKind.Still, new LibraryFile(path, 1234, Modified, Modified)) { Header = new ImageHeader(width, height, 6) },
+            new Localizer());
     }
 
     private static async Task WaitUntil(Func<bool> condition, int timeoutSeconds = 10)

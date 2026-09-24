@@ -21,8 +21,11 @@ public interface IThumbnailPipeline
     /// <summary>滚动静止或重排后调用：之后入队的请求优先，旧代次对无引用卡片的结果被丢弃。</summary>
     int NextGeneration();
 
-    /// <summary>按最大行高与屏幕缩放比选择档位；变化时已附加的卡片重新入队，新图到达前保留旧图。</summary>
-    void Configure(double maxRowHeightDip, double renderScaling);
+    /// <summary>
+    /// 按最大行高与屏幕缩放比选择档位；方形裁切时竖图按铺满方框所需的高度解码。
+    /// 变化时尺寸需求改变的卡片重新入队，新图到达前保留旧图。
+    /// </summary>
+    void Configure(double maxRowHeightDip, double renderScaling, bool squareCrop = false);
 
     /// <summary>重扫时调用：纪元加一，丢弃在途结果并释放无引用的位图。</summary>
     void Reset();
@@ -82,6 +85,9 @@ public sealed class ThumbnailPipeline : IThumbnailPipeline, IDisposable
     private long _sequence;
     private long _requestId;
     private int _attached;
+    private double _maxRowHeight = DefaultMaxRowHeight;
+    private double _renderScaling = 1.0;
+    private bool _squareCrop;
     private bool _workersStarted;
     private bool _disposeScheduled;
 
@@ -98,10 +104,10 @@ public sealed class ThumbnailPipeline : IThumbnailPipeline, IDisposable
         (Tier, DecodeHeightPx) = SelectTarget(DefaultMaxRowHeight, 1.0);
     }
 
-    /// <summary>当前磁盘缓存档位。</summary>
+    /// <summary>当前磁盘缓存档位（按行高显示的卡片）。</summary>
     public int Tier { get; private set; }
 
-    /// <summary>当前内存位图高度（像素）：不超过档位，也不超过最大行高 × 缩放比。</summary>
+    /// <summary>当前内存位图高度（像素，按行高显示的卡片）：不超过档位，也不超过最大行高 × 缩放比。</summary>
     public int DecodeHeightPx { get; private set; }
 
     public long ResidentBytes => _budget.ResidentBytes;
@@ -220,19 +226,26 @@ public sealed class ThumbnailPipeline : IThumbnailPipeline, IDisposable
 
     public int NextGeneration() => ++_generation;
 
-    public void Configure(double maxRowHeightDip, double renderScaling)
+    public void Configure(double maxRowHeightDip, double renderScaling, bool squareCrop = false)
     {
         var (tier, decodeHeight) = SelectTarget(maxRowHeightDip, renderScaling);
-        if (tier == Tier && decodeHeight == DecodeHeightPx)
+        if (tier == Tier && decodeHeight == DecodeHeightPx && squareCrop == _squareCrop)
         {
             return;
         }
 
-        Tier = tier;
-        DecodeHeightPx = decodeHeight;
+        (Tier, DecodeHeightPx) = (tier, decodeHeight);
+        (_maxRowHeight, _renderScaling, _squareCrop) = (maxRowHeightDip, renderScaling, squareCrop);
         _configVersion++;
         foreach (var (card, entry) in _entries)
         {
+            // 尺寸需求未变的位图（例如切换方形裁切时的横图）直接沿用
+            if (entry.Pending is null && entry.Bitmap is not null && entry.BitmapTarget == TargetFor(card))
+            {
+                entry.BitmapConfig = _configVersion;
+                continue;
+            }
+
             if (entry.RefCount == 0)
             {
                 continue;
@@ -241,6 +254,21 @@ public sealed class ThumbnailPipeline : IThumbnailPipeline, IDisposable
             Supersede(entry);
             Enqueue(card, entry);
         }
+    }
+
+    /// <summary>
+    /// 卡片的档位与解码高度。方形裁切（UniformToFill）下竖图要铺满边长等于行高的方框，
+    /// 显示高度是行高 ÷ 宽高比，按行高解码再放大会发虚。
+    /// </summary>
+    public (int Tier, int DecodeHeightPx) TargetFor(PhotoCardItemViewModel card)
+    {
+        if (!_squareCrop)
+        {
+            return (Tier, DecodeHeightPx);
+        }
+
+        var aspect = Math.Clamp(card.AspectRatio, 0.35, 4.0);
+        return SelectTarget(_maxRowHeight / Math.Min(1, aspect), _renderScaling);
     }
 
     public void Reset()
@@ -305,11 +333,12 @@ public sealed class ThumbnailPipeline : IThumbnailPipeline, IDisposable
 
     private void Enqueue(PhotoCardItemViewModel card, Entry entry)
     {
+        var (tier, decodeHeight) = TargetFor(card);
         var item = new WorkItem(
             card,
             PhotoSource.Of(card),
-            Tier,
-            DecodeHeightPx,
+            tier,
+            decodeHeight,
             _configVersion,
             _generation,
             entry.Sequence,
@@ -563,7 +592,7 @@ public sealed class ThumbnailPipeline : IThumbnailPipeline, IDisposable
                     break;
                 }
 
-                SetBitmap(card, entry, bitmap, item.ConfigVersion);
+                SetBitmap(card, entry, bitmap, item.ConfigVersion, (item.Tier, item.DecodeHeightPx));
                 EvictOverBudget();
                 break;
         }
@@ -583,12 +612,13 @@ public sealed class ThumbnailPipeline : IThumbnailPipeline, IDisposable
         return _budget.ResidentBytes - existing + BytesOf(bitmap) <= _budget.CapacityBytes;
     }
 
-    private void SetBitmap(PhotoCardItemViewModel card, Entry entry, Bitmap bitmap, int configVersion)
+    private void SetBitmap(PhotoCardItemViewModel card, Entry entry, Bitmap bitmap, int configVersion, (int, int) target)
     {
         var old = entry.Bitmap;
         var wasResident = _budget.Contains(card);
         entry.Bitmap = bitmap;
         entry.BitmapConfig = configVersion;
+        entry.BitmapTarget = target;
         card.Thumbnail = bitmap;
         _budget.Add(card, BytesOf(bitmap));
         if (!wasResident && entry.RefCount > 0)
@@ -764,6 +794,7 @@ public sealed class ThumbnailPipeline : IThumbnailPipeline, IDisposable
         public WorkItem? Pending;
         public Bitmap? Bitmap;
         public int BitmapConfig = -1;
+        public (int Tier, int DecodeHeightPx) BitmapTarget;
 
         /// <summary>该配置下解码失败过，避免对损坏文件反复重试；配置变化或重扫后才重试。</summary>
         public int FailedConfig = -1;

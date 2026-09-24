@@ -119,7 +119,7 @@ public sealed class ConversionWorkflowTests : IDisposable
 
         picker.NextResult = _sandbox.InputDirectory;
         session.Click(FirstVisibleButton(session, shell.Library.SelectAlbumFolderCommand));
-        await session.WaitUntilAsync(() => shell.Library is { IsScanning: false, HasScannedFiles: true }, 30);
+        await session.WaitUntilAsync(() => shell.Library is { IsScanning: false, Selection.HasScannedFiles: true }, 30);
 
         session.Click(session.Descendants<Button>()
             .Single(b => ReferenceEquals(b.Command, shell.Inspector.SetActionCommand) && (string?)b.CommandParameter == action.ToString()));

@@ -14,8 +14,6 @@
 
   <!-- Toolbar & Gallery -->
   <sys:String x:Key="ToolbarAlbumTitle">Album Live Roll</sys:String>
-  <sys:String x:Key="ToolbarSelect">Select</sys:String>
-  <sys:String x:Key="ToolbarSelectActive">Done</sys:String>
   <sys:String x:Key="ToolbarPlayTip">Continuously preview live videos in viewport</sys:String>
   <sys:String x:Key="SortDateTaken">Date Taken</sys:String>
   <sys:String x:Key="SortDateCreated">Date Created</sys:String>
@@ -398,6 +396,13 @@
   <sys:String x:Key="MissingToolsGoBtn">Open Tools</sys:String>
   <sys:String x:Key="ToolNameHeicEncoder">HEIC encoder (heif-enc)</sys:String>
   <sys:String x:Key="LibraryScanning">Scanning…</sys:String>
+  <sys:String x:Key="CardMotionPhotoLabel">Motion Photo</sys:String>
+  <sys:String x:Key="GroupSelectTip">Select all photos in this group</sys:String>
+  <sys:String x:Key="ScanErrorTitle">Cannot read the album folder</sys:String>
+  <sys:String x:Key="ScanErrorNotFoundFormat">The folder does not exist or was removed: {0}</sys:String>
+  <sys:String x:Key="ScanErrorAccessDeniedFormat">No permission to read the folder: {0}</sys:String>
+  <sys:String x:Key="ScanErrorFailedFormat">Scan failed: {0}</sys:String>
+  <sys:String x:Key="ScanSkippedInaccessibleFormat">Skipped {0} subfolder(s) without read permission</sys:String>
   <sys:String x:Key="DialogCloseTip">Close (Esc)</sys:String>
   <sys:String x:Key="CompareLoading">Rendering the comparison…</sys:String>
   <sys:String x:Key="CompareUnavailable">Cannot render a comparison for this photo.</sys:String>
