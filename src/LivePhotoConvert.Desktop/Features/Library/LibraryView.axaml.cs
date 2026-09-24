@@ -188,7 +188,7 @@ public partial class LibraryView : UserControl
                 _hover?.Stop();
             }
 
-            _vm?.OnViewportScrolled(scroll.Offset.Y, scroll.Viewport.Height);
+            _vm?.OnViewportScrolled();
         }
     }
 

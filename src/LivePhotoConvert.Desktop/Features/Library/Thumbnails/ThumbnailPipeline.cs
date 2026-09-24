@@ -3,6 +3,7 @@ using Avalonia.Threading;
 using LivePhotoConvert.Core.Media;
 using LivePhotoConvert.Core.Media.Thumbnails;
 using LivePhotoConvert.Core.Services;
+using LivePhotoConvert.Desktop.Features.Library.Gallery;
 using LivePhotoConvert.Desktop.Models;
 
 namespace LivePhotoConvert.Desktop.Features.Library.Thumbnails;
@@ -270,7 +271,7 @@ public sealed class ThumbnailPipeline : IThumbnailPipeline, IDisposable
             return (Tier, DecodeHeightPx);
         }
 
-        var aspect = Math.Clamp(card.AspectRatio, 0.35, 4.0);
+        var aspect = JustifiedLayoutEngine.SafeAspect(card.AspectRatio);
         return SelectTarget(_maxRowHeight / Math.Min(1, aspect), _renderScaling);
     }
 

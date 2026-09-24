@@ -11,7 +11,7 @@ public class ByteBudgetTests
         budget.Add("a", 100);
         budget.Add("b", 100);
         budget.Add("c", 100);
-        budget.Touch("a");
+        budget.Add("a", 100);
         budget.Add("d", 100);
         budget.Add("e", 100);
 

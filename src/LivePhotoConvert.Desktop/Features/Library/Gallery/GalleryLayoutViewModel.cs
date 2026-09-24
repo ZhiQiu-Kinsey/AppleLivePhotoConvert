@@ -34,7 +34,6 @@ public sealed partial class GalleryLayoutViewModel : ObservableObject
     private IReadOnlyList<PhotoCardItemViewModel> _cards = [];
     private IReadOnlyList<GalleryGroup> _groups = [];
     private List<PhotoCardItemViewModel> _displayedCards = [];
-    private double[] _offsets = [];
     private double _pendingWidth;
 
     /// <param name="settings">视图偏好（排序、分组、缩放、裁切）的来源与保存位置；为 null 时只在内存中生效</param>
@@ -89,9 +88,6 @@ public sealed partial class GalleryLayoutViewModel : ObservableObject
 
     /// <summary>已应用的视口宽度；防抖期间的新宽度尚未生效。</summary>
     public double ViewportWidth { get; private set; }
-
-    /// <summary>全部列表项的总高度（与列表的实际布局一致）。</summary>
-    public double ExtentHeight => _offsets.Length == 0 ? 0 : _offsets[^1];
 
     /// <summary>重排即将开始，视图据此记录滚动锚点。</summary>
     public event EventHandler? LayoutChanging;
@@ -229,36 +225,8 @@ public sealed partial class GalleryLayoutViewModel : ObservableObject
         }
     }
 
-    /// <summary>纵向偏移处的列表项对应的锚点键：行取首张卡片的键（卡片换行后仍能找到），组标题取分组键。</summary>
-    public string? AnchorKeyAt(double offsetY)
-    {
-        var index = IndexAt(offsetY);
-        return index < 0 ? null : Items[index] switch
-        {
-            PhotoGridRowViewModel { Cards.Count: > 0 } row => row.Cards[0].Key,
-            var item => item.Key
-        };
-    }
-
-    /// <summary>锚点键（卡片键或分组键）所在列表项的顶部偏移；不存在时为 <see cref="double.NaN"/>。</summary>
-    public double OffsetOf(string key) => IndexOf(key) is var index and >= 0 ? _offsets[index] : double.NaN;
-
-    /// <summary>锚点键所在列表项的序号；不存在时为 -1。</summary>
+    /// <summary>锚点键（卡片键或分组键）所在列表项的序号；不存在时为 -1。</summary>
     public int IndexOf(string key) => _indexByKey.GetValueOrDefault(key, -1);
-
-    /// <summary>纵向偏移处的列表项序号。</summary>
-    public int IndexAt(double offsetY)
-    {
-        if (Items.Count == 0)
-        {
-            return -1;
-        }
-
-        // _offsets[i] 为第 i 项顶部，末尾多一个总高度
-        var index = Array.BinarySearch(_offsets, 0, Items.Count, Math.Max(0, offsetY));
-        index = index >= 0 ? index : ~index - 1;
-        return Math.Clamp(index, 0, Items.Count - 1);
-    }
 
     private void Rebuild(bool regroup)
     {
@@ -313,7 +281,7 @@ public sealed partial class GalleryLayoutViewModel : ObservableObject
             }
         }
 
-        // 多余的行对象不再持有卡片
+        // 行数变少时丢弃多余的行对象，下次重排按需再建
         if (_rowPool.Count > rowOrdinal)
         {
             _rowPool.RemoveRange(rowOrdinal, _rowPool.Count - rowOrdinal);
@@ -382,32 +350,24 @@ public sealed partial class GalleryLayoutViewModel : ObservableObject
         }
     }
 
+    /// <summary>卡片键映射到所在行，分组键映射到组标题。</summary>
     private void IndexItems()
     {
         _indexByKey.Clear();
-        _offsets = new double[Items.Count + 1];
-        var y = 0.0;
         for (var i = 0; i < Items.Count; i++)
         {
-            _offsets[i] = y;
-            switch (Items[i])
+            if (Items[i] is PhotoGridRowViewModel row)
             {
-                case PhotoGridRowViewModel row:
-                    foreach (var card in row.Cards)
-                    {
-                        _indexByKey[card.Key] = i;
-                    }
-
-                    y += GalleryMetrics.RowExtent(row.RowHeight);
-                    break;
-                case var header:
-                    _indexByKey[header.Key] = i;
-                    y += GalleryMetrics.GroupHeaderExtent;
-                    break;
+                foreach (var card in row.Cards)
+                {
+                    _indexByKey[card.Key] = i;
+                }
+            }
+            else
+            {
+                _indexByKey[Items[i].Key] = i;
             }
         }
-
-        _offsets[Items.Count] = y;
     }
 
     private void Save(Action<GalleryPreferences> change) => _settings?.Update(s => change(s.Gallery));

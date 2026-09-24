@@ -90,14 +90,6 @@ public sealed class ByteBudget<TKey>(long capacityBytes) where TKey : notnull
         MoveToNewest(node);
     }
 
-    public void Touch(TKey key)
-    {
-        if (_entries.TryGetValue(key, out var node))
-        {
-            MoveToNewest(node);
-        }
-    }
-
     /// <summary>
     /// 按 LRU 顺序移出未钉住的条目直到驻留量不超过容量，返回被移出的键（已从预算中注销）。
     /// 全部钉住时返回空列表。

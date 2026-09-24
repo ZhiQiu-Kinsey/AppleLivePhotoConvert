@@ -133,7 +133,7 @@ public sealed partial class QuickLookDialogViewModel : DialogViewModel<bool>
         CurrentDisplayImage = card.Thumbnail;
         LoadHighResolutionPhotoPreview(card, generation);
 
-        // 视频是否存在由扫描确定，界面线程不再查询磁盘；安卓动态照片直接读取照片内的视频区段
+        // 视频是否存在取自扫描结果，界面线程不查询磁盘；安卓动态照片直接读取照片内的视频区段
         HasVideo = card.Video is not null;
         (HasPlaybackError, CanOpenTools) = (false, false);
         if (HasVideo)
@@ -179,7 +179,7 @@ public sealed partial class QuickLookDialogViewModel : DialogViewModel<bool>
 
         _playbackTarget = target;
         (HasPlaybackError, CanOpenTools) = (false, false);
-        Observe(player.PlayAsync(video, target, _viewport.Scaling, PlaybackBudget.QuickLook), "预览实况视频");
+        player.PlayAsync(video, target, _viewport.Scaling, PlaybackBudget.QuickLook).LogFaults("预览实况视频");
     }
 
     private PixelSize? PlaybackTargetFor() => _playbackArea.Width >= 1 && _playbackArea.Height >= 1
@@ -333,7 +333,7 @@ public sealed partial class QuickLookDialogViewModel : DialogViewModel<bool>
             _player = null;
             player.SurfaceInvalidated -= OnSurfaceInvalidated;
             player.StateChanged -= OnPlayerStateChanged;
-            Observe(Playback!.ReleaseAsync(player), "关闭预览");
+            Playback!.ReleaseAsync(player).LogFaults("关闭预览");
         }
 
         ReleaseOwnedPhotoPreview();
@@ -376,11 +376,6 @@ public sealed partial class QuickLookDialogViewModel : DialogViewModel<bool>
             CurrentDisplayImage = Card.Thumbnail;
         }
     }
-
-    /// <summary>未被等待：异常在这里记录，不能逃逸成未观察的任务异常。</summary>
-    private static void Observe(Task task, string context) =>
-        task.ContinueWith(t => ErrorLogger.Log(t.Exception!.GetBaseException(), context), CancellationToken.None,
-            TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
 
     private void LoadHighResolutionPhotoPreview(PhotoCardItemViewModel card, int generation)
     {
