@@ -4,7 +4,7 @@ using System.Diagnostics;
 namespace LivePhotoConvert.Core.Pipeline;
 
 /// <summary>
-/// 并行处理一批条目：单个条目的异常记为失败而不中断整批，取消时返回已完成部分的报告。
+/// 并行处理一批条目：单个条目的异常按类型归类为失败原因而不中断整批，取消时返回已完成部分的报告。
 /// </summary>
 public static class BatchRunner
 {
@@ -49,7 +49,7 @@ public static class BatchRunner
                     }
                     catch (Exception ex)
                     {
-                        outcome = ItemOutcome.Failed(source, ex.Message);
+                        outcome = ItemOutcome.Failed(source, ex);
                     }
 
                     outcomes.Enqueue(outcome);

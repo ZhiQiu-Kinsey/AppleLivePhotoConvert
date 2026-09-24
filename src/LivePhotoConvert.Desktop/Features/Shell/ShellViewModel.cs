@@ -15,6 +15,9 @@ public sealed partial class ShellViewModel : ViewModelBase
     private readonly INavigator _navigator;
     private readonly IDialogService _dialogs;
 
+    /// <summary>与 <see cref="ToolStatuses"/> 一一对应的依赖页卡片。</summary>
+    private readonly ToolCardViewModel[] _toolCards;
+
     public ShellViewModel(
         INavigator navigator,
         IDialogService dialogs,
@@ -32,6 +35,20 @@ public sealed partial class ShellViewModel : ViewModelBase
         Tools = tools;
         Settings = settings;
 
+        _toolCards = [Tools.ExifTool, Tools.Ffmpeg, Tools.HeifEnc];
+        ToolStatuses = [.. _toolCards.Select(card => new ToolStatusItem(card.DisplayName))];
+        foreach (var status in ToolStatuses)
+        {
+            status.PropertyChanged += OnToolStatusChanged;
+        }
+
+        foreach (var card in _toolCards)
+        {
+            card.PropertyChanged += OnToolCardChanged;
+        }
+
+        SyncToolStatuses();
+
         _navigator.PropertyChanged += OnNavigatorChanged;
         _dialogs.PropertyChanged += OnDialogsChanged;
     }
@@ -43,6 +60,18 @@ public sealed partial class ShellViewModel : ViewModelBase
     public SettingsViewModel Settings { get; }
 
     public AppPage CurrentPage => _navigator.Current;
+
+    /// <summary>侧栏依赖状态，顺序为 ExifTool、FFmpeg、heif-enc。</summary>
+    public IReadOnlyList<ToolStatusItem> ToolStatuses { get; }
+
+    /// <summary>导航"依赖引擎"上的状态点，取各依赖中最差的一项。</summary>
+    public ToolHealth ToolsHealth => ToolStatusItem.Worst(ToolStatuses);
+
+    public bool AreToolsReady => ToolsHealth == ToolHealth.Ready;
+
+    public bool DoToolsNeedAttention => ToolsHealth == ToolHealth.Attention;
+
+    public bool AreToolsMissing => ToolsHealth == ToolHealth.Missing;
 
     public bool IsLibrarySelected => _navigator.Current == AppPage.Library;
     public bool IsTasksSelected => _navigator.Current == AppPage.Tasks;
@@ -86,6 +115,34 @@ public sealed partial class ShellViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsTasksSelected));
         OnPropertyChanged(nameof(IsToolsSelected));
         OnPropertyChanged(nameof(IsSettingsSelected));
+    }
+
+    /// <summary>"需要注意"取依赖页卡片的警告：建议升级、指定路径无效、FFmpeg 缺 HDR 能力或版本探测失败。</summary>
+    private void SyncToolStatuses()
+    {
+        for (var i = 0; i < _toolCards.Length; i++)
+        {
+            ToolStatuses[i].Health = ToolStatusItem.Evaluate(_toolCards[i].IsReady, _toolCards[i].HasWarning);
+        }
+    }
+
+    private void OnToolCardChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(ToolCardViewModel.IsReady) or nameof(ToolCardViewModel.HasWarning))
+        {
+            SyncToolStatuses();
+        }
+    }
+
+    private void OnToolStatusChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ToolStatusItem.Health))
+        {
+            OnPropertyChanged(nameof(ToolsHealth));
+            OnPropertyChanged(nameof(AreToolsReady));
+            OnPropertyChanged(nameof(DoToolsNeedAttention));
+            OnPropertyChanged(nameof(AreToolsMissing));
+        }
     }
 
     private void OnDialogsChanged(object? sender, PropertyChangedEventArgs e)

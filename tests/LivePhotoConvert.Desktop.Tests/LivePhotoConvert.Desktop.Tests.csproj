@@ -23,6 +23,8 @@
     <Compile Include="..\LivePhotoConvert.Core.Tests\Support\Fakes.cs" Link="Support\CoreFakes.cs" />
     <Compile Include="..\LivePhotoConvert.Core.Tests\Support\SyntheticMedia.cs" Link="Support\SyntheticMedia.cs" />
     <Compile Include="..\LivePhotoConvert.Core.Tests\Support\SyntheticImages.cs" Link="Support\SyntheticImages.cs" />
+    <Compile Include="..\LivePhotoConvert.Core.Tests\Support\UltraHdrSamples.cs" Link="Support\UltraHdrSamples.cs" />
+    <Compile Include="..\LivePhotoConvert.Core.Tests\Support\TempDirectory.cs" Link="Support\TempDirectory.cs" />
   </ItemGroup>
 
   <ItemGroup>

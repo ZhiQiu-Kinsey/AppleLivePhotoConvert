@@ -77,6 +77,15 @@
             </Border>
           </StackPanel>
 
+          <!-- 合成：保留 HDR -->
+          <Grid Classes="option-row" ColumnDefinitions="*,Auto" IsVisible="{Binding IsToAndroid}">
+            <StackPanel>
+              <TextBlock Classes="option-title" Text="{DynamicResource PreserveHdrTitle}" />
+              <TextBlock Classes="option-desc" Text="{DynamicResource PreserveHdrDesc}" />
+            </StackPanel>
+            <ToggleSwitch x:Name="PreserveHdrSwitch" Grid.Column="1" Classes="row-switch" IsChecked="{Binding PreserveHdr, Mode=TwoWay}" />
+          </Grid>
+
           <!-- 瘦身：就地替换与转码 -->
           <StackPanel Spacing="12" IsVisible="{Binding IsStrip}">
             <Grid Classes="option-row" ColumnDefinitions="*,Auto">

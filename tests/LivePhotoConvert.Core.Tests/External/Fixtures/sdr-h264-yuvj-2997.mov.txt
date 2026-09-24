@@ -1,0 +1,13 @@
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'ntsc.mov':
+  Metadata:
+    major_brand     : qt  
+    minor_version   : 512
+    compatible_brands: qt  
+    encoder         : Lavf60.16.100
+  Duration: 00:00:01.00, start: 0.000000, bitrate: 344 kb/s
+  Stream #0:0[0x1]: Video: h264 (High) (avc1 / 0x31637661), yuvj420p(pc, progressive), 320x240 [SAR 1:1 DAR 4:3], 335 kb/s, 29.97 fps, 29.97 tbr, 11988 tbn (default)
+    Metadata:
+      handler_name    : VideoHandler
+      vendor_id       : FFMP
+      encoder         : Lavc60.31.102 libx264
+At least one output file must be specified

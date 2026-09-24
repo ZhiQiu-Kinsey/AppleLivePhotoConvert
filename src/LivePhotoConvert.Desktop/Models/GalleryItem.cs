@@ -61,7 +61,7 @@ public sealed partial class PhotoCardItemViewModel : ObservableObject, IGalleryD
 {
     private static readonly string[] ItemDerivedProperties =
     [
-        nameof(Kind), nameof(IsMotionPhoto), nameof(IsApplePair), nameof(Video), nameof(VideoPath),
+        nameof(Kind), nameof(IsMotionPhoto), nameof(IsApplePair), nameof(Video),
         nameof(PhotoHeader), nameof(AspectRatio), nameof(ResolutionText), nameof(DateTaken), nameof(FormattedDate),
         nameof(FormattedTime), nameof(DeviceInfo), nameof(PhotoSizeText), nameof(VideoSizeText), nameof(SizeSummary),
         nameof(RequiresPairReview), nameof(WarningReason)
@@ -104,13 +104,8 @@ public sealed partial class PhotoCardItemViewModel : ObservableObject, IGalleryD
 
     public bool IsApplePair => Item.Kind == LibraryItemKind.ApplePair;
 
-    /// <summary>视频数据位置：实况对为整段视频文件，动态照片为照片内的区段。</summary>
+    /// <summary>视频数据位置：实况对为整段视频文件，动态照片为照片内的区段（播放器直接读取，不切临时文件）。</summary>
     public VideoSource? Video => Item.VideoSource;
-
-    /// <summary>
-    /// 实况对的独立视频路径，仅供旧播放器使用（阶段 3 删除）。动态照片为 null：播放时切出的临时文件不属于图库条目。
-    /// </summary>
-    public string? VideoPath => IsApplePair ? Item.Video?.Path : null;
 
     public string FileName => Path.GetFileNameWithoutExtension(PhotoPath);
 
@@ -183,30 +178,13 @@ public sealed partial class PhotoCardItemViewModel : ObservableObject, IGalleryD
     private bool _isSelected;
 
     [ObservableProperty]
-    private bool _isHoverPlaying;
-
-    [ObservableProperty]
     private Bitmap? _thumbnail;
 
+    /// <summary>卡片预览区显示的位图；悬浮播放的视频帧叠加在其上，不经过这里。</summary>
     [ObservableProperty]
     private Bitmap? _displayImage;
 
-    public List<Bitmap>? CachedFrames { get; set; }
-
-    partial void OnThumbnailChanged(Bitmap? value)
-    {
-        if (value is null)
-        {
-            if (!IsHoverPlaying)
-            {
-                DisplayImage = null;
-            }
-        }
-        else if (DisplayImage is null || !IsHoverPlaying)
-        {
-            DisplayImage = value;
-        }
-    }
+    partial void OnThumbnailChanged(Bitmap? value) => DisplayImage = value;
 
     [RelayCommand]
     public void ToggleSelect() => IsSelected = !IsSelected;

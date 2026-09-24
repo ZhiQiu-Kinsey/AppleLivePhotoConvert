@@ -23,6 +23,9 @@ public interface IConversionEngines
 
     /// <exception cref="FileNotFoundException">找不到 FFmpeg</exception>
     IVideoConverter CreateVideoConverter(ToolPaths tools);
+
+    /// <summary>HEIC 主图与 HDR 增益图解码；找不到 heif-dec 时为 null，合成改出 SDR 封面并在报告中附注原因。</summary>
+    IAppleGainMapDecoder? CreateGainMapDecoder(ToolPaths tools);
 }
 
 public sealed class ExternalToolEngines : IConversionEngines
@@ -39,6 +42,9 @@ public sealed class ExternalToolEngines : IConversionEngines
             : MagickImageConverter.Instance;
 
     public IVideoConverter CreateVideoConverter(ToolPaths tools) => FfmpegVideoConverter.Create(tools.Ffmpeg);
+
+    // heif-dec 与 heif-enc 同属 libheif，优先在用户指定的 heif-enc 旁边找
+    public IAppleGainMapDecoder? CreateGainMapDecoder(ToolPaths tools) => HeifDecoder.TryCreate(null, tools.HeifEnc);
 }
 
 /// <summary>把任务映射到 Core 的合成、拆分与瘦身服务。</summary>
@@ -54,7 +60,8 @@ public sealed class ConversionRunner(IConversionEngines engines) : IConversionRu
         switch (job.Action)
         {
             case ConversionAction.ToAndroid:
-                var merger = new MotionPhotoMerger(metadata, images, engines.CreateVideoConverter(job.Tools));
+                var merger = new MotionPhotoMerger(metadata, images, engines.CreateVideoConverter(job.Tools),
+                    options.PreserveHdr ? engines.CreateGainMapDecoder(job.Tools) : null);
                 return await merger.MergeAsync(
                     new MergeRequest
                     {
@@ -63,7 +70,8 @@ public sealed class ConversionRunner(IConversionEngines engines) : IConversionRu
                         Output = RequireOutput(job),
                         Naming = options.Naming,
                         SourceAction = options.SourceAction,
-                        Parallelism = job.Parallelism
+                        Parallelism = job.Parallelism,
+                        PreserveHdr = options.PreserveHdr
                     },
                     progress,
                     cancellationToken);

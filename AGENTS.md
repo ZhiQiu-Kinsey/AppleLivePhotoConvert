@@ -16,7 +16,7 @@
 | **实况互转 · 还原** | 安卓动态照片 → 苹果实况对（`.HEIC` + `.MOV`），JPEG 封面自动转码 HEIC，注入配对 UUID |
 | **实况互转 · 解包** | 安卓动态照片 → 封面图 + 独立 `.mp4`（无损切片） |
 | **空间瘦身** | 图库检查器中的「瘦身」动作：剥离内嵌/配对视频并可选转码 HEIC（默认质量 90），可就地替换或导出，附卷帘对比预览 |
-| **依赖引擎** | 检测 / 下载 ExifTool、FFmpeg、heif-enc（内置国内加速镜像） |
+| **依赖引擎** | 按内嵌清单下载 ExifTool、FFmpeg、heif-enc（锁定版本、SHA256 校验、原子安装，内置国内加速镜像），展示版本与能力（zscale / tonemap / libx265 / 10-bit） |
 | **任务中心** | 运行中任务的进度、暂停与取消；本次会话的历史报告（成败明细、重试失败项、导出 CSV） |
 | **偏好设置 / 关于** | 主题、语言、并发数、画廊缩略图内存预算与磁盘缓存；版本、贡献者、仓库、MIT 协议与引用开源项目 |
 
@@ -24,8 +24,8 @@
 
 - 运行时：.NET 10（`net10.0`），Native AOT 发布，`TrimMode=full`
 - UI：**Avalonia 12.1.2**（`Avalonia.Desktop` / `Themes.Fluent` / `Fonts.Inter`）+ CommunityToolkit.Mvvm 8.4.0 + FluentIcons.Avalonia 2.1.339.1
-- 核心引擎：`LivePhotoConvert.Core`，零 UI 依赖，除 `Magick.NET-Q8-x64` 14.16.0（图像解码/缩略图）外无第三方包
-- 外部工具：ExifTool（元数据/XMP）、FFmpeg（转码/流复制）、heif-enc（HEIC 编码）
+- 核心引擎：`LivePhotoConvert.Core`，零 UI 依赖，第三方包仅 `Magick.NET-Q8-x64` 14.16.0（图像解码/缩略图）与 `SharpCompress` 1.0.0（依赖包 7z 解压）
+- 外部工具：ExifTool（元数据/XMP）、FFmpeg（转码/流复制/播放解码）、heif-enc（HEIC 编码）与同包的 heif-dec（HDR 增益图解码）
 - 测试：xunit.v3（`LivePhotoConvert.Core.Tests` 引擎单元测试 + `LivePhotoConvert.Desktop.Tests` 桌面 VM/服务单元测试与 Avalonia Headless 界面冒烟 + `LivePhotoConvert.E2E` 黑盒端到端）
 - **已移除**：`LivePhotoConvert.Cli`、Spectre.Console、手写 `CliParser` 及旧命令行入口。不要再引用、恢复或为新功能增加 CLI 分支；可复用能力必须放入 Core，交互入口放入 Desktop。
 
@@ -42,7 +42,7 @@ src/LivePhotoConvert.Core/          # 核心引擎（纯托管、AOT 兼容、�
   Pairing/                          # MediaPair、MediaPairMatcher（按目录 + 主干配对）、PairValidator（纯函数）
   Pipeline/                         # BatchRunner、OutputCommitter 原子落盘、SourceDisposition、TempWorkspace、BatchReport
   Services/                         # MotionPhotoMerger / Splitter / Stripper 及其请求模型
-  External/                         # ProcessRunner、FFmpeg / heif-enc / Magick 转换器、ToolLocator、ToolDownloader
+  External/                         # ProcessRunner、FFmpeg / heif-enc / Magick 转换器、HeifDecoder、VideoStreamProbe、ToolLocator；Tools/ 依赖清单（tools.json）、ToolInstaller 校验安装、ToolRegistry 能力探测
   Io/                               # BinaryFile 流式拼接切片、UniquePath、FileHelper / FileTimestamp
   Platform/                         # RecycleBin、WindowsShellThumbnailSource 等平台相关实现
 src/LivePhotoConvert.Desktop/       # Avalonia 12 桌面端
@@ -60,9 +60,10 @@ src/LivePhotoConvert.Desktop/       # Avalonia 12 桌面端
     Tools/                          # 依赖引擎页
     Settings/                       # 偏好设置（含画廊：缩略图内存预算、磁盘缓存上限与清理）与关于
     Dialogs/                        # 各弹窗（DialogViewModel<TResult> + 视图）
+    Playback/                       # 实况播放器：LivePhotoPlayer（RawVideoDecoder、FrameStore、SurfacePair）、PlaybackService（工厂与统一停止）
   Infrastructure/                   # 与具体页面无关的桌面服务：AppServices（DI 组合根）、Localizer、SettingsStore/DesktopSettings、DialogService、FilePicker、ShellLauncher、Navigator、ThemeService、AppLifetime
   Models/                           # GalleryItem（卡片/行/分组头）、AboutCredit、AboutInfo
-  Services/                         # PlaybackHost / LivePhotoStreamPlayer / MotionPhotoVideoCache（播放，阶段 3 替换）、SafetyGuard、CompletionEffects
+  Services/                         # SafetyGuard、CompletionEffects
 tests/
   LivePhotoConvert.Core.Tests/      # 引擎单元测试：Media / Metadata / Pairing / Pipeline / Services / Io，Support/ 为内存替身与合成媒体
   LivePhotoConvert.Desktop.Tests/   # 桌面单元测试与 Headless 界面冒烟：目录与产品一致（Features/*、Infrastructure、Services…），Harness/ 为测试宿主
@@ -83,7 +84,14 @@ global.json                         # 固定 SDK 10.0.400（避免误用 11 prev
 - **读取与编辑一律走 `MotionPhotoXmp`（托管 XDocument），不依赖 ExifTool 标签表**：ExifTool 12.x 不认识 Container 命名空间，13.x 又把组名改成 `XMP-GContainer`，按标签名读写会随版本失效。写入时在原有 XMP 上合并后整包回写（`-xmp<=`），不得丢弃封面原有的其它命名空间。
 - 定位视频一律走 `MotionPhotoLayout`：候选偏移处必须是 `ftyp`，否则视为非动态照片；只有 GainMap 没有 MotionPhoto 项的 Ultra HDR 照片不是动态照片。HEIC 动态照片无需 XMP：遍历顶层 box（支持 64 位长度与 size 0），内容以 `ftyp` 开头的 `mpvd` 即为视频。
 - `EmbeddedVideo` 区分两个位置：`Offset`/`Length` 是视频数据（切片、播放用），`ImageEnd` 是照片部分的结束位置（剥离、拆分截断用）。视频包在 `mpvd` box 或三星 SEF 数据块中时 `ImageEnd < Offset`，截断必须用 `ImageEnd`，否则会残留容器头。
-- 剥离视频时只删除 MotionPhoto 目录项，保留 GainMap 项；带增益图的照片不转码 HEIC（会丢失 HDR）。
+- 剥离视频时只删除 MotionPhoto 目录项，保留 GainMap 项；带增益图的照片不转码 HEIC（会丢失 HDR）。ExifTool 改写 XMP 后 MPF 中的主图长度会过时，截断后用 `UltraHdrJpegWriter.RefreshPrimaryLength` 修正。
+- **iPhone HDR → Ultra HDR（合成时，`MergeRequest.PreserveHdr` 默认开启）**：
+  - 元数据：`Apple:HDRHeadroom`（maker33）、`Apple:HDRGain`（maker48）、`AuxiliaryImageType`、`HDRGainMapVersion` 由批量 JSON 读取；余量 H 只能用 `AppleHdrHeadroom.Compute` 按 Apple 公式计算。
+  - 解码：主图与增益图必须由同一次 `heif-dec --with-aux`（旧版名 `heif-convert`，经 `HeifDecoder`）解码，方向才一致；主图直接作封面（不再经 Magick 转码），增益图比例偏差由 `HeifDecoder` 统一为主图的整数分之一，方向不一致则放弃。
+  - 像素：Apple 增益为 `1 + (H−1)·L(v)`（L 为 **Rec.709 反 OETF**），ISO 为 `log2(增益)` 的线性插值，必须经 `AppleGainMapConverter` 的 256 项查表重编码，不能只改 Gamma；增益图写灰度 JPEG（Q90）。
+  - 两套元数据都要写：主图段顺序 APP0 → Exif → XMP(`hdrgm:Version` + Container 目录) → ICC → ISO 21496-1(仅版本) → MPF；增益图 JPEG 段 XMP(hdrgm 参数) → ISO 21496-1(完整参数，分数按 libultrahdr 的连分数算法，与其字节一致)。参数：GainMapMin 0、GainMapMax log2 H、Gamma 1、Offset 0、HDRCapacityMin 0、HDRCapacityMax log2 H、useBaseColorSpace 1（保留 Display P3 ICC）。
+  - 目录：Container 中 GainMap 的 `Item:Length` 必须等于 MPF 中的增益图长度；写入动态照片声明后目录依次为 Primary / GainMap / MotionPhoto，与文件中的物理顺序一致。
+  - 回读校验：组装后、写 MotionPhoto XMP 后（先 `RefreshPrimaryLength`）、拼接后都要 `UltraHdrJpegWriter.Verify`/`Inspect`（MPF 主图长度 = 增益图位置、目录长度一致、两套元数据齐全、`MotionPhotoLayout.Inspect` 得到 HasGainMap）。任一步失败或源无增益图（含 iOS 18 只写 ISO `tmap` 的情况）都降级为 SDR，原因写入 `ItemOutcome.Notes`，不得让条目失败。
 - 拼接/拆分由 `BinaryFile.ConcatAsync` / `CopySegmentAsync` 流式完成，**严禁整文件读入堆内存**。
 
 ### 3.2 小米澎湃 OS `0x8897`
@@ -178,10 +186,15 @@ global.json                         # 固定 SDK 10.0.400（避免误用 11 prev
 - QuickLook 占位图经 `Acquire` 钉住；高清图经 `LoadPreviewAsync` 按画布显示像素（Uniform 后的高度 × 缩放比，不超过 2048）加载，由调用方持有并释放。
 - 调整预算、档位或并发必须补内存压力验证（`GalleryStressTests`、`GalleryScrollTests`，以及 Xvfb + AOT 产物的实测峰值）。
 
-**播放（阶段 3 整体替换，以下为现状）**
+**实况播放**
 
-- 悬浮预览最多 1 组、60 帧、720p；QuickLook 最多 90 帧、1080p；首屏仅预热 1 段视频。
-- 悬浮与 QuickLook 解码保留源时序：FFmpeg 使用 `-fps_mode passthrough`、BMP/BGR24 帧管线和 Lanczos 缩放；不要使用 `-hwaccel auto`，进程参数用 `ProcessStartInfo.ArgumentList` 逐项传入。
+- 播放帧同样是非托管像素，按字节预算：`PlaybackBudget.Hover` 96MB、`PlaybackBudget.QuickLook` 256MB（含两张显示位图）。调整数值必须补内存压力验证。
+- **实况播放只走 `Features/Playback/LivePhotoPlayer`**（界面依赖 `ILivePhotoPlayer`，由 DI 中的 `PlaybackService` 创建）：
+  - 输入：iOS 直接读 MOV；安卓动态照片用 FFmpeg `subfile` 协议按扫描得到的偏移直接读照片内的视频（`VideoSource.ToFfmpegInput()`），**不切临时文件、不把任何路径写回卡片**。
+  - 帧管线：`-f rawvideo -pix_fmt bgra` 直出，解码尺寸 = 显示尺寸 × RenderScaling（不超过源尺寸，偶数对齐；UniformToFill 的卡片按覆盖尺寸）；`-fps_mode passthrough` 保留源时序，按 `showinfo` 报告的 PTS 由窗口刷新节拍（`TopLevel.RequestAnimationFrame`）换帧，不用固定间隔计时器；不要使用 `-hwaccel auto`，参数逐项传入。
+  - HDR（HLG / PQ）源经 zscale + tonemap（mobius）映射到 BT.709 再显示；FFmpeg 缺这两个滤镜时报告 `HdrToneMapUnavailable` 并提示前往依赖页，**不得静默降级为发灰画面**。
+  - 帧缓存 `FrameStore` 按字节预算：整段放得下就全缓存循环，否则环形缓冲流式解码并无缝进入下一轮，不设帧数上限；显示用 `SurfacePair` 双缓冲，界面在 `SurfaceInvalidated` 中重新赋值 `Image.Source`，正在显示的位图不会被改写或释放。
+  - 单实例：画廊整窗一个悬浮播放器（指针停留约 250ms 后开始，离开、滚动、重排、卡片被回收或页面隐藏时立即停止），QuickLook 一个播放器并独占（打开前停止悬浮）；新播放先结束上一个 FFmpeg。退出程序前经 `IPlaybackControl.StopAllAsync` 结束全部播放进程；依赖页替换 FFmpeg 前经 `IToolUsage.ReleaseIdleProcessesAsync`（接到同一个 `StopAllAsync`）等待播放进程退出。
 
 ### 4.6 本地化（两处必须同步，缺一不可）
 
@@ -194,6 +207,7 @@ global.json                         # 固定 SDK 10.0.400（避免误用 11 prev
 - 格式串以 `Format` 结尾，中英两版占位符编号必须一致；日期格式也放进资源（如 `GroupTitleMonthFormat`）。
 - XAML 里 `&`、`<`、`>` 需转义；带前导/尾随空格的值加 `xml:space="preserve"`。
 - 缺失键在 Debug 下会触发 `Debug.Fail`（测试进程会直接终止），发布版返回键名。
+- **Core 只返回原因码与参数，界面文案由 Desktop 本地化**：跳过/失败原因用 `OutcomeReason` + 参数（`OutcomeCause`），附注用 `OutcomeNoteKind`，异常原文只放 `ItemOutcome.Detail` 供日志与详情展开；`Features/Tasks/OutcomeTexts` 把每个枚举值映射到一个字符串键，新增枚举值须同步两份 Strings（测试遍历枚举校验）。
 
 ### 4.7 语言风格
 

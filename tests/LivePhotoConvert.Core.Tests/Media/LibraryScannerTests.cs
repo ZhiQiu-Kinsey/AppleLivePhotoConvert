@@ -337,7 +337,7 @@ public class LibraryScannerTests
         Assert.Equal(item.RequiresPairReview, outcome.Kind == OutcomeKind.Skipped);
         if (item.RequiresPairReview)
         {
-            Assert.Equal(item.PairValidation?.Summary, outcome.Message);
+            Assert.Equal(item.PairValidation?.Causes, outcome.Causes);
         }
     }
 
@@ -380,7 +380,7 @@ public class LibraryScannerTests
         Assert.Null(item.PairTimeDelta);
         var outcome = Assert.Single(report.Items);
         Assert.Equal(OutcomeKind.Skipped, outcome.Kind);
-        Assert.Equal(outcome.Message, item.PairValidation?.Summary);
+        Assert.Equal(outcome.Causes, item.PairValidation?.Causes);
     }
 
     private static (string Photo, string Video) CreatePair(TempDirectory temp, PairCase @case)

@@ -121,7 +121,8 @@ public static class JobFactory
                 Output = Output(ResolveOutputDirectory(settings)),
                 Naming = (MergeNamingFormat)settings.NamingFormat,
                 SourceAction = (SourceFileAction)settings.SourceAction,
-                HeicQuality = heicQuality
+                HeicQuality = heicQuality,
+                PreserveHdr = settings.PreserveHdr
             };
 
         return new ConversionJob(action, options, inputs)

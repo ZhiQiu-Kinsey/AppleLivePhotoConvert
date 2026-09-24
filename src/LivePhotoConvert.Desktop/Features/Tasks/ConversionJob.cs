@@ -33,6 +33,9 @@ public sealed record ConversionOptions
     public int HeicQuality { get; init; } = ConversionDefaults.HeicQuality;
 
     public bool ConvertToHeic { get; init; } = true;
+
+    /// <summary>合成时保留 iPhone HDR 增益图（Ultra HDR 封面）。</summary>
+    public bool PreserveHdr { get; init; } = true;
 }
 
 /// <summary>启动时固定的输入：合成读取配对，其余动作读取文件列表。</summary>

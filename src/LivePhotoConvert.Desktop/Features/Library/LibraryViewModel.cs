@@ -6,9 +6,9 @@ using LivePhotoConvert.Core.Services;
 using LivePhotoConvert.Desktop.Features.Dialogs;
 using LivePhotoConvert.Desktop.Features.Library.Gallery;
 using LivePhotoConvert.Desktop.Features.Library.Thumbnails;
+using LivePhotoConvert.Desktop.Features.Playback;
 using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Models;
-using LivePhotoConvert.Desktop.Services;
 
 namespace LivePhotoConvert.Desktop.Features.Library;
 
@@ -24,18 +24,18 @@ public sealed partial class LibraryViewModel : ViewModelBase
     private readonly ILocalizer _localizer;
     private readonly IDialogService _dialogs;
     private readonly IFilePicker _filePicker;
-    private readonly PlaybackHost _playback;
+    private readonly INavigator _navigator;
     private readonly DispatcherTimer _scrollIdleTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
     private double _renderScaling = 1.0;
     private bool _scopeRefreshPosted;
     private QuickLookDialogViewModel? _quickLook;
     private List<PhotoCardItemViewModel> _quickLookCards = [];
 
-    public LibraryViewModel(SettingsStore settings, ILocalizer localizer, IDialogService dialogs, IFilePicker filePicker,
-        PlaybackHost playback, IThumbnailPipeline thumbnails, LibraryCatalog catalog)
+    public LibraryViewModel(SettingsStore settings, ILocalizer localizer, IDialogService dialogs, IFilePicker filePicker, INavigator navigator,
+        PlaybackService playback, IThumbnailPipeline thumbnails, LibraryCatalog catalog)
     {
-        (_settings, _localizer, _dialogs, _filePicker, _playback) = (settings, localizer, dialogs, filePicker, playback);
-        (Thumbnails, Catalog) = (thumbnails, catalog);
+        (_settings, _localizer, _dialogs, _filePicker, _navigator) = (settings, localizer, dialogs, filePicker, navigator);
+        (Playback, Thumbnails, Catalog) = (playback, thumbnails, catalog);
         Selection = new GallerySelection(localizer);
         Layout = new GalleryLayoutViewModel(localizer, settings);
         _actionFilter = Enum.IsDefined(settings.Current.Action) ? settings.Current.Action : ConversionAction.ToAndroid;
@@ -61,7 +61,6 @@ public sealed partial class LibraryViewModel : ViewModelBase
         Catalog.CardsReplaced += (_, _) => OnCardsReplaced();
         Catalog.CardUpgraded += (_, _) => PostScopeRefresh();
         Catalog.PropertyChanged += OnCatalogPropertyChanged;
-        _playback.CardFocused += (_, card) => FocusedCard = card;
         _dialogs.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(IDialogService.Current))
@@ -83,6 +82,9 @@ public sealed partial class LibraryViewModel : ViewModelBase
     public GallerySelection Selection { get; }
 
     public GalleryLayoutViewModel Layout { get; }
+
+    /// <summary>播放器来源；画廊视图与 QuickLook 各自从这里创建播放器。</summary>
+    public PlaybackService Playback { get; }
 
     /// <summary>画廊缩略图管线；视图据此把列表容器接到卡片的引用计数上。</summary>
     public IThumbnailPipeline Thumbnails { get; }
@@ -234,7 +236,6 @@ public sealed partial class LibraryViewModel : ViewModelBase
     [RelayCommand]
     private async Task OpenQuickLookAsync(PhotoCardItemViewModel? card)
     {
-        _playback.StopHoverPlayback();
         if (card is null || _quickLook is { IsClosed: false })
         {
             _quickLook?.ShowIndex(card is null ? -1 : _quickLookCards.IndexOf(card));
@@ -244,23 +245,19 @@ public sealed partial class LibraryViewModel : ViewModelBase
         List<PhotoCardItemViewModel> cards = [.. Layout.DisplayedCards];
         if (cards.IndexOf(card) is var index and >= 0)
         {
-            var quickLook = new QuickLookDialogViewModel(_localizer, Thumbnails, i => (uint)i < (uint)cards.Count ? cards[i] : null, cards.Count, index);
+            // QuickLook 独占播放：悬浮播放先停，弹窗期间也不会再启动
+            Playback.StopAll();
+            var quickLook = new QuickLookDialogViewModel(_localizer, Thumbnails, i => (uint)i < (uint)cards.Count ? cards[i] : null, cards.Count, index)
+            {
+                Playback = Playback,
+                OpenTools = () => _navigator.NavigateTo(AppPage.Tools)
+            };
             (_quickLook, _quickLookCards) = (quickLook, cards);
             await _dialogs.ShowAsync(quickLook);
             if (ReferenceEquals(_quickLook, quickLook))
             {
                 (_quickLook, _quickLookCards) = (null, []);
             }
-        }
-    }
-
-    /// <summary>试播：对画廊中显示的卡片依次触发悬浮预览。</summary>
-    [RelayCommand]
-    public void PlayAllVisible()
-    {
-        foreach (var card in Layout.DisplayedCards)
-        {
-            _playback.OnPointerEnter(card);
         }
     }
 
@@ -274,7 +271,7 @@ public sealed partial class LibraryViewModel : ViewModelBase
         }
     }
 
-    /// <summary>视口滚动：标记滚动中（静止后推进缩略图代次），在顶部时预热首屏的一段视频。</summary>
+    /// <summary>视口滚动：标记滚动中，静止后推进缩略图代次。</summary>
     public void OnViewportScrolled(double offsetY, double viewportHeight)
     {
         if (viewportHeight <= 0)
@@ -285,20 +282,6 @@ public sealed partial class LibraryViewModel : ViewModelBase
         IsUserScrolling = true;
         _scrollIdleTimer.Stop();
         _scrollIdleTimer.Start();
-        if (offsetY >= 5)
-        {
-            return;
-        }
-
-        // 首屏只预热一段视频，与单组帧缓存预算一致
-        for (var i = 0; i <= Layout.IndexAt(viewportHeight); i++)
-        {
-            if (Layout.Items[i] is PhotoGridRowViewModel row && row.Cards.FirstOrDefault(c => c.CachedFrames is null && c.Video is not null) is { } card)
-            {
-                _playback.Preload(card);
-                return;
-            }
-        }
     }
 
     private void OnCardsReplaced()

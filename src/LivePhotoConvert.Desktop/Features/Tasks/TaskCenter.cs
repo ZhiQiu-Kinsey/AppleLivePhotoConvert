@@ -147,12 +147,12 @@ public sealed partial class TaskCenter : ObservableObject, IBackgroundWork
     {
         var startedAt = _time.GetLocalNow();
         BatchReport? report = null;
-        string? error = null;
+        TaskFailure? failure = null;
         try
         {
             if (job.ItemCount == 0)
             {
-                error = EmptyInputMessage(job.Action);
+                failure = TaskFailure.FromKey(EmptyInputKey(job.Action));
             }
             else
             {
@@ -168,7 +168,7 @@ public sealed partial class TaskCenter : ObservableObject, IBackgroundWork
         catch (Exception ex)
         {
             ErrorLogger.Log(ex, TaskTexts.Title(_localizer, job.Action));
-            error = ErrorMessages.Describe(_localizer, ex);
+            failure = TaskFailure.FromException(ex);
         }
         finally
         {
@@ -181,7 +181,7 @@ public sealed partial class TaskCenter : ObservableObject, IBackgroundWork
             gate.Dispose();
         }
 
-        var result = new TaskReportViewModel(this, job, report, error, startedAt, _time.GetLocalNow(), _localizer, _shell, _dialogs, _filePicker);
+        var result = new TaskReportViewModel(this, job, report, failure, running.Total, startedAt, _time.GetLocalNow(), _localizer, _shell, _dialogs, _filePicker);
         History.Insert(0, result);
         _navigator.NavigateTo(AppPage.Tasks);
         if (!result.WasCanceled)
@@ -193,12 +193,12 @@ public sealed partial class TaskCenter : ObservableObject, IBackgroundWork
         return result;
     }
 
-    private string EmptyInputMessage(ConversionAction action) => _localizer[action switch
+    private static string EmptyInputKey(ConversionAction action) => action switch
     {
         ConversionAction.ToAndroid => "NoMergePairs",
         ConversionAction.Strip => "NoAlbumOrPhotoSelected",
         _ => "NoSplitCandidates"
-    }];
+    };
 
     private void RefreshTexts()
     {

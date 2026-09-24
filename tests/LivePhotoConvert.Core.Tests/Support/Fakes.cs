@@ -139,18 +139,31 @@ internal sealed class FakeImageConverter : IImageConverter
 
 internal sealed class FakeVideoConverter : IVideoConverter
 {
-    public ConcurrentBag<(string Source, bool ForceTranscode)> Mp4Conversions { get; } = [];
+    public ConcurrentBag<(string Source, VideoConversionOptions Options)> Mp4Conversions { get; } = [];
 
     public ConcurrentBag<string> MovRemuxes { get; } = [];
 
-    public Task ConvertToMp4Async(string sourcePath, string destinationPath, bool forceTranscode = false, CancellationToken cancellationToken = default)
+    /// <summary>不为 <c>null</c> 时每次转换都抛出该异常。</summary>
+    public Exception? Failure { get; set; }
+
+    public Task ConvertToMp4Async(string sourcePath, string destinationPath, VideoConversionOptions? options = null, CancellationToken cancellationToken = default)
     {
-        Mp4Conversions.Add((sourcePath, forceTranscode));
+        if (Failure is not null)
+        {
+            return Task.FromException(Failure);
+        }
+
+        Mp4Conversions.Add((sourcePath, options ?? VideoConversionOptions.Default));
         return File.WriteAllBytesAsync(destinationPath, SyntheticMedia.Mp4((int)new FileInfo(sourcePath).Length), cancellationToken);
     }
 
-    public Task RemuxToMovAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken = default)
+    public Task RemuxToMovAsync(string sourcePath, string destinationPath, VideoConversionOptions? options = null, CancellationToken cancellationToken = default)
     {
+        if (Failure is not null)
+        {
+            return Task.FromException(Failure);
+        }
+
         MovRemuxes.Add(sourcePath);
         return File.WriteAllBytesAsync(destinationPath, SyntheticMedia.Mov((int)new FileInfo(sourcePath).Length), cancellationToken);
     }

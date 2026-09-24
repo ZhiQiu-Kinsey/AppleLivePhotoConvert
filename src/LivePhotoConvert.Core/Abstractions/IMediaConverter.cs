@@ -11,15 +11,21 @@ public interface IImageConverter
 }
 
 /// <summary>
-/// 视频容器转换；能流复制时不重新编码。
+/// 视频容器转换；能流复制时不重新编码。HEVC 输出统一标记为 hvc1（iOS 不识别 hev1），HDR 源重新编码时保持 10-bit 与色彩元数据。
 /// </summary>
 public interface IVideoConverter
 {
     /// <param name="sourcePath">源视频</param>
     /// <param name="destinationPath">输出 MP4</param>
-    /// <param name="forceTranscode">强制重新编码（例如需要把镜像矩阵烧录进像素）</param>
+    /// <param name="options">转换选项；null 表示 <see cref="VideoConversionOptions.Default"/></param>
     /// <param name="cancellationToken">取消令牌</param>
-    Task ConvertToMp4Async(string sourcePath, string destinationPath, bool forceTranscode = false, CancellationToken cancellationToken = default);
+    /// <exception cref="VideoConversionException">转换失败</exception>
+    Task ConvertToMp4Async(string sourcePath, string destinationPath, VideoConversionOptions? options = null, CancellationToken cancellationToken = default);
 
-    Task RemuxToMovAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken = default);
+    /// <param name="sourcePath">源视频</param>
+    /// <param name="destinationPath">输出给 iOS 用的 MOV</param>
+    /// <param name="options">转换选项；null 表示 <see cref="VideoConversionOptions.Default"/></param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <exception cref="VideoConversionException">转换失败</exception>
+    Task RemuxToMovAsync(string sourcePath, string destinationPath, VideoConversionOptions? options = null, CancellationToken cancellationToken = default);
 }

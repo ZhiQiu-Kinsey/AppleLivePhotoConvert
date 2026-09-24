@@ -169,6 +169,37 @@ internal static class SyntheticMedia
         return large;
     }
 
+    /// <summary>
+    /// 带 meta / iinf 的 HEIF：每个类型一条 infe（version 2 与 3 交替，覆盖 16 位与 32 位 item_ID）。
+    /// </summary>
+    public static byte[] HeifWithItems(params string[] itemTypes)
+    {
+        var entries = new List<byte>();
+        for (var i = 0; i < itemTypes.Length; i++)
+        {
+            var version = (byte)(i % 2 == 0 ? 2 : 3);
+            List<byte> content = [version, 0, 0, 0];
+            content.AddRange(version == 2 ? [0, (byte)(i + 1)] : [0, 0, 0, (byte)(i + 1)]);
+            content.AddRange([0, 0]);
+            content.AddRange(Encoding.ASCII.GetBytes(itemTypes[i]));
+            content.Add(0);
+            entries.AddRange(Box("infe", [.. content]));
+        }
+
+        byte[] iinf = Box("iinf", [0, 0, 0, 0, 0, (byte)itemTypes.Length, .. entries]);
+        byte[] meta = Box("meta", [0, 0, 0, 0, .. Box("hdlr", new byte[25]), .. iinf]);
+        return [.. IsoFile(32, "heic").AsSpan(0, 24), .. meta, .. Box("mdat", new byte[64])];
+    }
+
+    private static byte[] Box(string type, byte[] content)
+    {
+        var box = new byte[8 + content.Length];
+        BinaryPrimitives.WriteUInt32BigEndian(box, (uint)box.Length);
+        Encoding.ASCII.GetBytes(type).CopyTo(box, 4);
+        content.CopyTo(box, 8);
+        return box;
+    }
+
     /// <summary>ftyp box（24 字节）+ 填满剩余长度的 mdat box，顶层 box 结构完整。</summary>
     private static byte[] IsoFile(int length, string brand)
     {

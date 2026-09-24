@@ -18,6 +18,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="External\Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Media\UltraHdr\Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\LivePhotoConvert.Core\LivePhotoConvert.Core.csproj" />
   </ItemGroup>
 

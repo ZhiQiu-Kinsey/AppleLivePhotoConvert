@@ -35,7 +35,7 @@ public sealed class SourceDisposition(SourceFileAction action, string archiveFol
     public SourceFileAction Action => action;
 
     /// <summary>
-    /// 处理一组源文件；返回失败说明，全部成功时返回 <c>null</c>。
+    /// 处理一组源文件；返回失败的技术细节（文件名与异常原文），全部成功时返回 <c>null</c>。
     /// </summary>
     public string? Apply(params IReadOnlyList<string> paths)
     {
@@ -56,11 +56,11 @@ public sealed class SourceDisposition(SourceFileAction action, string archiveFol
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or PlatformNotSupportedException)
             {
-                (errors ??= []).Add($"{Path.GetFileName(path)}：{ex.Message}");
+                (errors ??= []).Add($"{Path.GetFileName(path)}: {ex.Message}");
             }
         }
 
-        return errors is null ? null : string.Join("；", errors);
+        return errors is null ? null : string.Join("; ", errors);
     }
 
     private void ApplyOne(string path)

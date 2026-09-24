@@ -31,14 +31,6 @@
           </StackPanel>
         </Button>
 
-        <!-- 1. [Play] Sequentially preview visible live photos in viewport -->
-        <Button Classes="toolbar-btn"
-                Width="32" Height="32" Padding="0"
-                Command="{Binding PlayAllVisibleCommand}"
-                ToolTip.Tip="{DynamicResource ToolbarPlayTip}">
-          <ic:SymbolIcon Symbol="Play" FontSize="14" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-        </Button>
-
         <!-- Action button -->
         <Button Classes="toolbar-btn" ToolTip.Tip="{DynamicResource ToolbarSortTip}">
           <Button.Flyout>

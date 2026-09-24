@@ -1,3 +1,5 @@
+using LivePhotoConvert.Core.External;
+using LivePhotoConvert.Core.Abstractions;
 using LivePhotoConvert.Core.Media;
 using LivePhotoConvert.Core.Metadata;
 using LivePhotoConvert.Core.Pairing;
@@ -67,7 +69,9 @@ public class MotionPhotoMergerTests
 
         await CreateMerger().MergeAsync(Request(temp, [photo, video]), cancellationToken: Token);
 
-        Assert.Equal((video, true), Assert.Single(_videos.Mp4Conversions));
+        var (source, options) = Assert.Single(_videos.Mp4Conversions);
+        Assert.Equal(video, source);
+        Assert.True(options.BakeOrientation);
     }
 
     [Fact]
@@ -94,7 +98,10 @@ public class MotionPhotoMergerTests
 
         var report = await CreateMerger().MergeAsync(Request(temp, [photo, video], b => b.SourceAction = SourceFileAction.Delete), cancellationToken: Token);
 
-        Assert.Equal(OutcomeKind.Skipped, Assert.Single(report.Items).Kind);
+        var item = Assert.Single(report.Items);
+        Assert.Equal(OutcomeKind.Skipped, item.Kind);
+        Assert.Equal([(OutcomeCause)OutcomeReason.PairContentIdentifierPhotoOnly], item.Causes);
+        Assert.Null(item.Detail);
         Assert.True(File.Exists(photo) && File.Exists(video));
         Assert.Empty(temp.FileNames("out"));
     }
@@ -174,7 +181,10 @@ public class MotionPhotoMergerTests
 
         var report = await CreateMerger().MergeAsync(Request(temp, [photo, video], b => b.SourceAction = SourceFileAction.Delete), cancellationToken: Token);
 
-        Assert.Equal(OutcomeKind.Failed, Assert.Single(report.Items).Kind);
+        var item = Assert.Single(report.Items);
+        Assert.Equal(OutcomeKind.Failed, item.Kind);
+        Assert.Equal(OutcomeReason.Unexpected, item.Reason);
+        Assert.Contains("模拟 ExifTool 写入失败", item.Detail);
         Assert.True(File.Exists(photo) && File.Exists(video));
         Assert.Empty(temp.FileNames("out"));
     }
@@ -190,7 +200,9 @@ public class MotionPhotoMergerTests
 
         var report = await CreateMerger().MergeAsync(Request(temp, [photo, video], b => b.SourceAction = SourceFileAction.Delete), cancellationToken: Token);
 
-        Assert.Equal(OutcomeKind.Failed, Assert.Single(report.Items).Kind);
+        var item = Assert.Single(report.Items);
+        Assert.Equal(OutcomeKind.Failed, item.Kind);
+        Assert.Equal([new OutcomeCause(OutcomeReason.SourceMissingOrEmpty, emptyPhoto ? "IMG_0001.jpg" : "IMG_0001.mov")], item.Causes);
         Assert.True(File.Exists(photo) && File.Exists(video));
         Assert.Empty(temp.FileNames("out"));
     }
@@ -271,5 +283,55 @@ public class MotionPhotoMergerTests
             SourceAction = SourceAction,
             Parallelism = 4
         };
+    }
+
+    [Theory]
+    [InlineData(VideoConversionError.EncodeFailed, OutcomeReason.VideoConversionFailed)]
+    [InlineData(VideoConversionError.HdrEncoderUnavailable, OutcomeReason.HdrEncoderUnavailable)]
+    public async Task MergeAsync_VideoConversionFails_ReportsReasonFromError(VideoConversionError error, OutcomeReason expected)
+    {
+        using var temp = new TempDirectory();
+        var photo = temp.CreateFile("IMG_0001.jpg", SyntheticMedia.Jpeg());
+        var video = temp.CreateFile("IMG_0001.mov", SyntheticMedia.Mov());
+        _videos.Failure = new VideoConversionException(error, "FFmpeg 诊断信息");
+
+        var report = await CreateMerger().MergeAsync(Request(temp, [photo, video]), cancellationToken: Token);
+
+        var item = Assert.Single(report.Items);
+        Assert.Equal(OutcomeKind.Failed, item.Kind);
+        Assert.Equal([(OutcomeCause)expected], item.Causes);
+        Assert.Equal("FFmpeg 诊断信息", item.Detail);
+        Assert.Empty(temp.FileNames("out"));
+    }
+
+    [Fact]
+    public async Task MergeAsync_ToolMissing_ReportsToolName()
+    {
+        using var temp = new TempDirectory();
+        var photo = temp.CreateFile("IMG_0001.jpg", SyntheticMedia.Jpeg());
+        var video = temp.CreateFile("IMG_0001.mov", SyntheticMedia.Mov());
+        _videos.Failure = new ToolNotFoundException("ffmpeg");
+
+        var report = await CreateMerger().MergeAsync(Request(temp, [photo, video]), cancellationToken: Token);
+
+        Assert.Equal([new OutcomeCause(OutcomeReason.ToolMissing, "ffmpeg")], Assert.Single(report.Items).Causes);
+    }
+
+    [Fact]
+    public async Task MergeAsync_AllCandidatesOfGroupRejected_ReportsDistinctCauses()
+    {
+        using var temp = new TempDirectory();
+        var heic = temp.CreateFile("IMG_0001.heic", SyntheticMedia.Heic());
+        var jpg = temp.CreateFile("IMG_0001.jpg", SyntheticMedia.Jpeg());
+        var mov = temp.CreateFile("IMG_0001.mov", SyntheticMedia.Mov());
+        Assert.True(CaptureTime.TryParse("2024:05:01 14:03:03", out var time));
+        _metadata.Set(heic, new MediaMetadata { Path = heic, CaptureTime = time });
+        _metadata.Set(jpg, new MediaMetadata { Path = jpg, CaptureTime = time });
+
+        var report = await CreateMerger().MergeAsync(Request(temp, [heic, jpg, mov]), cancellationToken: Token);
+
+        var item = Assert.Single(report.Items);
+        Assert.Equal(OutcomeKind.Skipped, item.Kind);
+        Assert.Equal([(OutcomeCause)OutcomeReason.PairCaptureTimePhotoOnly], item.Causes);
     }
 }

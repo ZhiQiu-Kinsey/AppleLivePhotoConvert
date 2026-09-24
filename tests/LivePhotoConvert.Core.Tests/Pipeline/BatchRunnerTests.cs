@@ -1,3 +1,5 @@
+using LivePhotoConvert.Core.Abstractions;
+using LivePhotoConvert.Core.External;
 using LivePhotoConvert.Core.Pipeline;
 
 namespace LivePhotoConvert.Core.Tests.Pipeline;
@@ -16,8 +18,41 @@ public class BatchRunnerTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(2, report.Succeeded);
-        Assert.Equal("坏文件", Assert.Single(report.Items, item => item.Kind == OutcomeKind.Failed).Message);
+        var failed = Assert.Single(report.Items, item => item.Kind == OutcomeKind.Failed);
+        Assert.Equal(OutcomeReason.Unexpected, failed.Reason);
+        Assert.Equal("坏文件", failed.Detail);
         Assert.False(report.Canceled);
+    }
+
+    [Theory]
+    [InlineData("tool")]
+    [InlineData("encode")]
+    [InlineData("hdr")]
+    [InlineData("verify")]
+    [InlineData("other")]
+    public async Task RunAsync_ItemException_IsMappedToReasonAndKeepsMessageAsDetail(string kind)
+    {
+        (Exception exception, OutcomeCause expected) = kind switch
+        {
+            "tool" => (new ToolNotFoundException("ffmpeg"), new OutcomeCause(OutcomeReason.ToolMissing, "ffmpeg")),
+            "encode" => (new VideoConversionException(VideoConversionError.EncodeFailed, "重新编码失败"), OutcomeReason.VideoConversionFailed),
+            "hdr" => (new VideoConversionException(VideoConversionError.HdrEncoderUnavailable, "缺少 libx265"), OutcomeReason.HdrEncoderUnavailable),
+            "verify" => (new OutcomeException(OutcomeReason.VerificationFailed, "校验失败"), OutcomeReason.VerificationFailed),
+            _ => ((Exception)new IOException("磁盘已满"), (OutcomeCause)OutcomeReason.Unexpected)
+        };
+
+        var report = await BatchRunner.RunAsync(
+            ["a"],
+            item => item,
+            (_, _) => Task.FromException<ItemOutcome>(exception),
+            parallelism: 1,
+            progress: null,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var failed = Assert.Single(report.Items);
+        Assert.Equal(OutcomeKind.Failed, failed.Kind);
+        Assert.Equal(expected, Assert.Single(failed.Causes));
+        Assert.Equal(exception.Message, failed.Detail);
     }
 
     [Fact]
@@ -31,7 +66,7 @@ public class BatchRunnerTests
             (item, _) => Task.FromResult(ItemOutcome.Succeeded(item)),
             1,
             new SynchronousProgress(progress.Add),
-            [ItemOutcome.Skipped("x", "校验未通过")],
+            [ItemOutcome.Skipped("x", OutcomeReason.PairCaptureTimeVideoOnly)],
             TestContext.Current.CancellationToken);
 
         Assert.Equal(2, report.Items.Count);

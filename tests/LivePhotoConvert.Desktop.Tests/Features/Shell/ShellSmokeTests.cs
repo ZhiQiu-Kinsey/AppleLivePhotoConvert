@@ -128,8 +128,12 @@ public sealed class ShellSmokeTests : IDisposable
         var runner = ScriptedRunner.Returning(new BatchReport(
         [
             ItemOutcome.Succeeded(Path.Combine(_album.InputDirectory, "IMG_0001.jpg"), Path.Combine(_album.OutputDirectory, "IMG_0001.mp4")),
-            ItemOutcome.Succeeded(Path.Combine(_album.InputDirectory, "IMG_0002.jpg"), Path.Combine(_album.OutputDirectory, "IMG_0002.mp4")),
-            ItemOutcome.Failed(Path.Combine(_album.InputDirectory, "IMG_0003.jpg"), "ffmpeg exited with code 1")
+            ItemOutcome.Succeeded(Path.Combine(_album.InputDirectory, "IMG_0002.jpg"), Path.Combine(_album.OutputDirectory, "IMG_0002.mp4")) with
+            {
+                Notes = [new OutcomeNote(OutcomeNoteKind.UltraHdrWritten), new OutcomeNote(OutcomeNoteKind.HdrMetadataMissing, "headroom=1.0")]
+            },
+            ItemOutcome.Failed(Path.Combine(_album.InputDirectory, "IMG_0003.jpg"), OutcomeReason.VideoConversionFailed, "ffmpeg exited with code 1"),
+            ItemOutcome.Skipped(Path.Combine(_album.InputDirectory, "IMG_0004.jpg"), new OutcomeCause(OutcomeReason.PairCaptureTimeTooFar, 12d, 3d))
         ], TimeSpan.FromSeconds(3), Canceled: false));
         var session = new ShellSession(language, theme,
             configure: services => services.AddSingleton<IConversionRunner>(runner),

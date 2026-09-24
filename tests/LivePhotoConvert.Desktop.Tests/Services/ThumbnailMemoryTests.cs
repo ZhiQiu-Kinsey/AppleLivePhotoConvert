@@ -1,6 +1,6 @@
 using LivePhotoConvert.Desktop.Features.Library.Thumbnails;
+using LivePhotoConvert.Desktop.Features.Playback;
 using LivePhotoConvert.Desktop.Infrastructure;
-using LivePhotoConvert.Desktop.Services;
 
 namespace LivePhotoConvert.Desktop.Tests.Services;
 
@@ -12,9 +12,8 @@ public class ThumbnailMemoryTests
     {
         Assert.Equal(192L * 1024 * 1024, ThumbnailPipeline.DefaultBudgetBytes);
         Assert.Equal(ThumbnailPipeline.DefaultBudgetBytes, new GalleryPreferences().ThumbnailBudgetBytes);
-        Assert.InRange(PlaybackHost.MaxFrameCacheSets, 1, 2);
-        Assert.InRange(PlaybackHost.MaxPreviewFrames, 1, 60);
-        Assert.InRange(LivePhotoStreamPlayer.MaxFrames, 1, 90);
+        Assert.Equal(96L * 1024 * 1024, PlaybackBudget.Hover.Bytes);
+        Assert.Equal(256L * 1024 * 1024, PlaybackBudget.QuickLook.Bytes);
     }
 
     [Theory]

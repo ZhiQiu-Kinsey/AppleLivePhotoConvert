@@ -2,7 +2,9 @@ using LivePhotoConvert.Core.Pairing;
 using LivePhotoConvert.Core.Pipeline;
 using LivePhotoConvert.Core.Services;
 using LivePhotoConvert.Core.Tests.Support;
+using LivePhotoConvert.Core.Media;
 using LivePhotoConvert.Desktop.Features.Library;
+using LivePhotoConvert.Desktop.Features.Playback;
 using LivePhotoConvert.Desktop.Features.Tasks;
 using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Tests.Harness;
@@ -27,24 +29,22 @@ public class JobFactoryTests
         Assert.Equal([pair, motion], JobFactory.Applicable(ConversionAction.Strip, all));
     }
 
-    /// <summary>悬浮或预览动态照片会切出临时视频：它只交给播放器，卡片仍是动态照片，不会被当成实况对再合成。</summary>
+    /// <summary>动态照片的视频由播放器按区段直接读取，不切临时文件；卡片仍是动态照片，不会被当成实况对再合成。</summary>
     [Fact]
-    public async Task PlayingMotionPhoto_DoesNotTurnItIntoApplePair()
+    public void MotionPhotoVideo_IsReadInPlace_AndCardStaysMotionPhoto()
     {
         using var album = new TestSandbox();
         var video = SyntheticMedia.Mp4(6000);
         var bytes = SyntheticMedia.MotionPhoto(video: video);
         var path = album.CreateInputFile("MVIMG_2.jpg", bytes);
-        var motion = Cards.Of(new LivePhotoConvert.Core.Media.LibraryItem(LivePhotoConvert.Core.Media.LibraryItemKind.MotionPhoto, Cards.File(path, bytes.Length))
+        var offset = bytes.Length - video.Length;
+        var motion = Cards.Of(new LibraryItem(LibraryItemKind.MotionPhoto, Cards.File(path, bytes.Length))
         {
-            Embedded = new LivePhotoConvert.Core.Media.EmbeddedVideo(bytes.Length - video.Length, video.Length, bytes.Length - video.Length)
+            Embedded = new EmbeddedVideo(offset, video.Length, offset)
         });
 
-        var extracted = await Desktop.Services.MotionPhotoVideoCache.EnsureVideoExtractedAsync(motion, TestContext.Current.CancellationToken);
-
-        Assert.NotNull(extracted);
-        Assert.Equal(video, await File.ReadAllBytesAsync(extracted, TestContext.Current.CancellationToken));
-        Assert.Null(motion.VideoPath);
+        Assert.Equal(new VideoSource(path, offset, video.Length, IsEmbedded: true), motion.Video);
+        Assert.Equal($"subfile,,start,{offset},end,{bytes.Length},,:{Path.GetFullPath(path)}", motion.Video!.ToFfmpegInput());
         Assert.True(motion.IsMotionPhoto);
         Assert.Empty(JobFactory.Applicable(ConversionAction.ToAndroid, [motion]));
         Assert.Equal(bytes.Length, JobFactory.SourceBytes([motion]));
@@ -70,7 +70,7 @@ public class JobFactoryTests
         {
             Video = mov,
             PairCandidates = candidates,
-            PairValidation = LivePhotoConvert.Core.Pairing.PairValidationResult.Reject(["拍摄时间差 9 秒"])
+            PairValidation = LivePhotoConvert.Core.Pairing.PairValidationResult.Reject(new OutcomeCause(OutcomeReason.PairCaptureTimeTooFar, 9.0, 3.0))
         });
         card.IsForceAccepted = true;
 
@@ -178,7 +178,7 @@ public class JobFactoryTests
         var still = album.CreateInputFile("IMG_2.jpg", SyntheticMedia.Jpeg(4096));
         var engines = new FakeEngines();
 
-        var estimate = await new StripEstimator(engines).EstimateAsync([motion, still], ToolPaths.Auto, convertToHeic: true, TestContext.Current.CancellationToken);
+        var estimate = await new StripEstimator(engines).EstimateAsync([motion, still], ToolPaths.Auto, convertToHeic: true, heicQuality: 90, TestContext.Current.CancellationToken);
 
         Assert.Equal(1, estimate.Count);
         Assert.Equal(new FileInfo(motion).Length, estimate.OriginalBytes);

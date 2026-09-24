@@ -1,4 +1,5 @@
 using LivePhotoConvert.Core.Abstractions;
+using LivePhotoConvert.Core.External;
 using LivePhotoConvert.Core.Io;
 using LivePhotoConvert.Core.Media;
 using LivePhotoConvert.Core.Metadata;
@@ -40,7 +41,7 @@ public sealed class MotionPhotoSplitter(IMetadataService metadata, IImageConvert
         ArgumentNullException.ThrowIfNull(request);
         if (request.Target == SplitTarget.Apple && videoConverter is null)
         {
-            throw new InvalidOperationException("还原为 Apple 实况照片需要 FFmpeg。");
+            throw new ToolNotFoundException(FfmpegVideoConverter.ExecutableName);
         }
 
         if (request.Files.Count == 0)
@@ -65,7 +66,7 @@ public sealed class MotionPhotoSplitter(IMetadataService metadata, IImageConvert
                 var layout = await ImageInspector.InspectAsync(path, metadata, token);
                 if (layout.Video is not { } video)
                 {
-                    return ItemOutcome.Skipped(path, "不是动态照片（未找到内嵌视频）");
+                    return ItemOutcome.Skipped(path, OutcomeReason.NotMotionPhoto);
                 }
 
                 var directory = request.Output.DirectoryFor(path);
@@ -133,7 +134,7 @@ public sealed class MotionPhotoSplitter(IMetadataService metadata, IImageConvert
             }
 
             await BinaryFile.CopySegmentAsync(path, embeddedVideo, video.Offset, video.Length, cancellationToken);
-            await videoConverter!.RemuxToMovAsync(embeddedVideo, stagedVideo, cancellationToken);
+            await videoConverter!.RemuxToMovAsync(embeddedVideo, stagedVideo, cancellationToken: cancellationToken);
 
             var contentIdentifier = Guid.NewGuid().ToString().ToUpperInvariant();
             await metadata.WriteApplePhotoIdentifierAsync(stagedPhoto, contentIdentifier, cancellationToken);

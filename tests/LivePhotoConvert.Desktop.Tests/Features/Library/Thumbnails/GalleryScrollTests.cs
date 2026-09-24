@@ -131,7 +131,7 @@ public sealed class GalleryScrollTests : IDisposable
         Assert.All(AttachedCards(list), c => Assert.NotNull(c.DisplayImage));
 
         // 样例图高 360/480 像素：新档位下按原高解码，不在内存里放大
-        await session.WaitUntilAsync(() => AttachedCards(list).All(c => c.Thumbnail is { PixelSize.Height: 360 or 416 }));
+        await session.WaitUntilAsync(() => AttachedCards(list) is { Count: > 0 } cards && cards.All(c => c.Thumbnail is { PixelSize.Height: 360 or 416 }));
     }
 
     private static List<PhotoCardItemViewModel> AttachedCards(ListBox list) =>

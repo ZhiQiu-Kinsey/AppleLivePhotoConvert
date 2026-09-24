@@ -25,7 +25,8 @@ public sealed class ExifToolMetadataService : IMetadataService
         "-j", "-n", "-G1", "-a",
         "-DateTimeOriginal", "-OffsetTimeOriginal", "-CreateDate", "-CreationDate", "-MediaCreateDate",
         "-ContentIdentifier", "-Duration", "-MatrixStructure",
-        "-GPSLatitude", "-GPSLongitude", "-GPSAltitude", "-Make", "-Model", "-Software"
+        "-GPSLatitude", "-GPSLongitude", "-GPSAltitude", "-Make", "-Model", "-Software",
+        "-HDRHeadroom", "-HDRGain", "-AuxiliaryImageType", "-HDRGainMapVersion"
     ];
 
     private static readonly string[] StillImageTimeArguments = ["-ee", "-TrackDuration", "-MediaDuration", "-StillImageTime"];

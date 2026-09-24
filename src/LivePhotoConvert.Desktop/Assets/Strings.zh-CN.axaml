@@ -8,13 +8,15 @@
   <sys:String x:Key="AppSubtitle">桌面端专业实况照片工坊</sys:String>
   <sys:String x:Key="NavTools">依赖引擎</sys:String>
   <sys:String x:Key="NavSettings">偏好设置</sys:String>
+  <sys:String x:Key="ShellToolReady">已就绪</sys:String>
+  <sys:String x:Key="ShellToolAttention">可用，但需要注意，详见依赖引擎页</sys:String>
+  <sys:String x:Key="ShellToolMissing">未找到，相关功能不可用</sys:String>
 
   <!-- 漏斗与方向 -->
   <sys:String x:Key="SelectedSummaryFormat">{0} 组实况照片 · {1}</sys:String>
 
   <!-- 工具栏与相册卡片 -->
   <sys:String x:Key="ToolbarAlbumTitle">相册实况胶卷</sys:String>
-  <sys:String x:Key="ToolbarPlayTip">连续试播视口内实况短视频</sys:String>
   <sys:String x:Key="SortDateTaken">拍摄日期</sys:String>
   <sys:String x:Key="SortDateCreated">创建日期</sys:String>
   <sys:String x:Key="SortDateModified">修改日期</sys:String>
@@ -54,6 +56,8 @@
   <sys:String x:Key="DeleteWarningDesc">转换成功后源文件将被永久删除，开始前需要输入确认词。</sys:String>
   <sys:String x:Key="AutoAppendIndexTitle">遇到同名文件时追加序号</sys:String>
   <sys:String x:Key="AutoAppendIndexDesc">关闭后将直接覆盖输出目录中的同名文件。</sys:String>
+  <sys:String x:Key="PreserveHdrTitle">保留 HDR（Ultra HDR）</sys:String>
+  <sys:String x:Key="PreserveHdrDesc">iPhone HDR 照片的增益图写入 Ultra HDR 封面，支持的手机相册按 HDR 显示；需要 heif-dec（随 libheif 提供），缺少时输出普通封面并在报告中说明。</sys:String>
   <sys:String x:Key="HeicQualityTitle">HEIC 画质</sys:String>
   <sys:String x:Key="HeicQualityDesc">转码为 HEIC 时的画质，数值越高画质越好、文件越大。</sys:String>
   <sys:String x:Key="ChangeOutputDirBtn">更改</sys:String>
@@ -64,13 +68,13 @@
   <!-- 空间瘦身 -->
   <sys:String x:Key="NoAlbumOrPhotoSelected">尚未选择相册或照片</sys:String>
   <sys:String x:Key="CurtainCompareTitle">瘦身画质对比</sys:String>
-  <sys:String x:Key="CurtainCompareDesc">左右拖动分割线，比较原片与按当前 HEIC 画质重新编码后的细节。</sys:String>
+  <sys:String x:Key="CurtainCompareDesc">样张已按当前瘦身参数真实处理。拖动分割线对比原片与产物；滚轮缩放、拖动平移，按住右键或开启放大镜查看 1:1 像素。</sys:String>
   <sys:String x:Key="InPlaceStripTitle">就地覆盖原照片 (破坏性替换)</sys:String>
   <sys:String x:Key="InPlaceStripDesc">开启后直接覆盖原片，关闭则安全导出至独立目录</sys:String>
   <sys:String x:Key="SpaceEstimateTitle">空间释放预估</sys:String>
   <sys:String x:Key="OriginalSizeLabel">原相册总体积:</sys:String>
-  <sys:String x:Key="StrippedSizeLabel">瘦身后预计体积:</sys:String>
-  <sys:String x:Key="SavedSizeLabel">预计释放磁盘空间:</sys:String>
+  <sys:String x:Key="StrippedSizeLabel">瘦身后体积（估算）:</sys:String>
+  <sys:String x:Key="SavedSizeLabel">可释放空间（估算）:</sys:String>
   <sys:String x:Key="PauseBtn">暂停</sys:String>
   <sys:String x:Key="OpenOutputDirBtn">打开输出文件夹查看</sys:String>
 
@@ -122,11 +126,10 @@
 
   <!-- ToolsView Keys -->
   <sys:String x:Key="ExifToolDesc">注入 XMP 动态照片标签与 QuickTime UTC 时区元数据。</sys:String>
-  <sys:String x:Key="FfmpegDesc">视频无损流复制与格式解封装。</sys:String>
+  <sys:String x:Key="FfmpegDesc">视频流复制、转码与 HDR 色调映射。</sys:String>
   <sys:String x:Key="HeifEncDesc">高画质 HEIC/HEIF 图像编码器。</sys:String>
   <sys:String x:Key="CustomPathBtn">自定义指定路径...</sys:String>
   <sys:String x:Key="InstallToolBtn">一键安装</sys:String>
-  <sys:String x:Key="InstallingStatus">正在下载...</sys:String>
   <sys:String x:Key="InstallStartingFormat">正在安装 {0}，请保持网络畅通...</sys:String>
   <sys:String x:Key="InstallCompletedFormat">{0} 安装完成</sys:String>
   <sys:String x:Key="InstallFailedFormat">{0} 安装失败：{1}</sys:String>
@@ -134,9 +137,44 @@
   <sys:String x:Key="ToolPathInvalidFormat">所选文件不是可用的引擎可执行文件：{0}</sys:String>
   <sys:String x:Key="ToolPathAppliedFormat">已指定 {0} 的可执行文件路径</sys:String>
   <sys:String x:Key="PickerToolExecutableTitle">选择引擎可执行文件</sys:String>
+  <sys:String x:Key="ToolsIntegrityNote">一键安装使用锁定版本：下载后先校验 SHA256，再解压、试运行，最后整体替换；任何一步失败都会保留原有版本。</sys:String>
+  <sys:String x:Key="ToolsInstallRootLabel">安装位置：</sys:String>
+  <sys:String x:Key="ToolProbing">检测中</sys:String>
+  <sys:String x:Key="ToolVersionUnknown">版本未知</sys:String>
+  <sys:String x:Key="ToolUpdateAvailableFormat">有推荐版本 {0}，建议升级</sys:String>
+  <sys:String x:Key="ToolUpgradeBtnFormat">升级到 {0}</sys:String>
+  <sys:String x:Key="ToolHdrUnavailable">HDR 预览/转码不可用：当前 FFmpeg 缺少 HDR 色调映射或 10-bit HEVC 编码。</sys:String>
+  <sys:String x:Key="ToolExplicitPathInvalid">自定义路径无效，已回退到自动检测。</sys:String>
+  <sys:String x:Key="ToolCapabilityHdrTonemap">HDR 色调映射 (zscale+tonemap)</sys:String>
+  <sys:String x:Key="ToolCapabilityHevc10Bit">HEVC 10-bit</sys:String>
+  <sys:String x:Key="ToolPlatformUnsupportedBtn">当前平台请用系统包管理器安装</sys:String>
+  <sys:String x:Key="ToolPlatformUnsupported">当前平台没有内置下载包，请用系统包管理器安装，或手动指定路径。</sys:String>
+  <sys:String x:Key="ToolInstallBlockedByTask">有任务正在运行并占用这些工具，请等任务结束后再安装或升级。</sys:String>
+  <sys:String x:Key="ToolStagePreparing">正在准备...</sys:String>
+  <sys:String x:Key="ToolStageDownloadingFormat">正在从 {0} 下载：{1}</sys:String>
+  <sys:String x:Key="ToolStageVerifying">正在校验完整性...</sys:String>
+  <sys:String x:Key="ToolStageExtracting">正在解压...</sys:String>
+  <sys:String x:Key="ToolStageProbing">正在试运行验证...</sys:String>
+  <sys:String x:Key="ToolStageCommitting">正在替换旧版本...</sys:String>
+  <sys:String x:Key="ToolStageSourceFailedFormat">{0} 失败（{1}），正在尝试下一个源...</sys:String>
+  <sys:String x:Key="ToolSourceFailureFormat">{0}：{1}</sys:String>
+  <sys:String x:Key="ToolSourceViaFormat">{0}（经 {1}）</sys:String>
+  <sys:String x:Key="ToolSourceNpmMirror">npmmirror 国内镜像</sys:String>
+  <sys:String x:Key="ToolSourceNpmRegistry">npm 官方仓库</sys:String>
+  <sys:String x:Key="ToolSourceSourceForge">SourceForge</sys:String>
+  <sys:String x:Key="ToolSourceGitHub">GitHub Releases</sys:String>
+  <sys:String x:Key="ToolFailureUnverified">缺少可信校验值，已拒绝</sys:String>
+  <sys:String x:Key="ToolFailureNetwork">网络连接失败</sys:String>
+  <sys:String x:Key="ToolFailureStalled">下载长时间无响应</sys:String>
+  <sys:String x:Key="ToolFailureIntegrity">校验失败，文件可能被篡改或不完整</sys:String>
+  <sys:String x:Key="ToolFailureUnsafeArchive">安装包含有不安全的路径，已拒绝</sys:String>
+  <sys:String x:Key="ToolFailureInvalidArchive">安装包损坏或结构不符</sys:String>
+  <sys:String x:Key="ToolFailureProbe">试运行失败，可能被安全软件拦截</sys:String>
+  <sys:String x:Key="ToolFailureCommit">无法替换旧版本，文件可能正被占用</sys:String>
+  <sys:String x:Key="PingInvalidAddress">地址无效</sys:String>
+  <sys:String x:Key="PingTimedOut">超时</sys:String>
 
   <!-- CurtainCompare Keys -->
-  <sys:String x:Key="CurtainAfterTitle">瘦身后静态 HEIC</sys:String>
   <sys:String x:Key="CurtainAfterBadge">瘦身后</sys:String>
   <sys:String x:Key="CurtainBeforeBadge">原片</sys:String>
 
@@ -245,22 +283,29 @@
   <sys:String x:Key="QuickLookLoop">循环播放</sys:String>
   <sys:String x:Key="QuickLookPaused">实况已暂停</sys:String>
 
+  <!-- 实况播放失败 -->
+  <sys:String x:Key="PlaybackErrorFfmpegMissing">未找到 FFmpeg，无法播放实况视频。</sys:String>
+  <sys:String x:Key="PlaybackErrorSourceMissing">视频文件已不存在，无法播放。</sys:String>
+  <sys:String x:Key="PlaybackErrorNoVideoStream">文件中没有可播放的视频流。</sys:String>
+  <sys:String x:Key="PlaybackErrorHdrToneMap">这是 HDR 视频，当前 FFmpeg 缺少 zscale / tonemap 滤镜，无法正确显示。请在依赖引擎页更换带 libzimg 的 FFmpeg。</sys:String>
+  <sys:String x:Key="PlaybackErrorDecodeFailed">视频解码失败，无法播放。</sys:String>
+
   <!-- 报告 / 对比 / 弹窗补充文案 -->
   <sys:String x:Key="ReportEmptyTitle">暂无任务报告</sys:String>
   <sys:String x:Key="ReportEmptyDesc">在图库中启动任务后，报告会保存在这里，直到程序退出。</sys:String>
   <sys:String x:Key="ReportKpiTotal">处理总量</sys:String>
-  <sys:String x:Key="ReportKpiTotalSub">已完成扫描配对</sys:String>
+  <sys:String x:Key="ReportKpiTotalSub">本次任务的项目数</sys:String>
   <sys:String x:Key="ReportKpiSuccess">转换成功</sys:String>
   <sys:String x:Key="ReportKpiSuccessRate">成功率</sys:String>
-  <sys:String x:Key="ReportKpiFailed">异常/跳过</sys:String>
-  <sys:String x:Key="ReportKpiFailedSub">需关注或重试项</sys:String>
+  <sys:String x:Key="ReportKpiProblems">异常</sys:String>
+  <sys:String x:Key="ReportKpiProblemsSubFormat">失败 {0} · 清理失败 {1}</sys:String>
   <sys:String x:Key="ReportKpiDuration">批次总耗时</sys:String>
   <sys:String x:Key="ReportDistTitle">处理结果分布指标</sys:String>
   <sys:String x:Key="ReportLegendSuccess">成功:</sys:String>
   <sys:String x:Key="ReportLegendSkipped">跳过:</sys:String>
-  <sys:String x:Key="ReportLegendFailed">失败:</sys:String>
+  <sys:String x:Key="ReportLegendProblems">异常:</sys:String>
   <sys:String x:Key="ReportDetailAll">全部明细</sys:String>
-  <sys:String x:Key="ReportDetailFailedOnly">仅异常/失败</sys:String>
+  <sys:String x:Key="ReportDetailProblems">仅异常与跳过</sys:String>
   <sys:String x:Key="ReportDetailSuccessOnly">仅成功</sys:String>
   <sys:String x:Key="ReportDetailTitle">详细执行记录清单</sys:String>
   <sys:String x:Key="ReportCsvStatus">状态</sys:String>
@@ -308,9 +353,8 @@
   <sys:String x:Key="PingFailedFormat">连接失败 ({0})</sys:String>
   <sys:String x:Key="ToolNotDetectedFormat">未检测到 {0}</sys:String>
   <sys:String x:Key="ToolMissingFormat">未找到 {0}，请在「依赖引擎」页面下载或指定路径。</sys:String>
-  <sys:String x:Key="ToolReady">已就绪</sys:String>
   <sys:String x:Key="ReportTimestampFormat">批次完成时间：{0:yyyy-MM-dd HH:mm:ss}</sys:String>
-  <sys:String x:Key="ReportSummaryFormat">成功 {0} 项 · 异常 {1} 项</sys:String>
+  <sys:String x:Key="ReportSummaryFormat">成功 {0} 项 · 异常 {1} 项 · 跳过 {2} 项</sys:String>
   <sys:String x:Key="ReportStatusSuccess">成功</sys:String>
   <sys:String x:Key="ReportStatusFailed">失败</sys:String>
   <sys:String x:Key="ReportStatusSkipped">跳过</sys:String>
@@ -406,10 +450,22 @@
   <sys:String x:Key="ScanErrorFailedFormat">扫描失败：{0}</sys:String>
   <sys:String x:Key="ScanSkippedInaccessibleFormat">{0} 个子目录没有读取权限，已跳过</sys:String>
   <sys:String x:Key="DialogCloseTip">关闭 (Esc)</sys:String>
-  <sys:String x:Key="CompareLoading">正在生成对比图…</sys:String>
-  <sys:String x:Key="CompareUnavailable">无法为这张照片生成对比图。</sys:String>
+  <sys:String x:Key="CompareLoading">正在解码对比图…</sys:String>
   <sys:String x:Key="CompareBeforeSizeLabel">原片（含配对视频）</sys:String>
-  <sys:String x:Key="CompareAfterSizeLabel">瘦身后（按当前画质编码）</sys:String>
+  <sys:String x:Key="CompareAfterSizeLabel">瘦身后（实际产物）</sys:String>
+  <sys:String x:Key="CompareProcessing">正在按瘦身参数处理样张：剥离视频并编码…</sys:String>
+  <sys:String x:Key="CompareFailedFormat">无法生成对比：{0}</sys:String>
+  <sys:String x:Key="CompareCancelHint">关闭弹窗即可取消，临时文件会一并清理。</sys:String>
+  <sys:String x:Key="CompareParamsHeicFormat">转为 HEIC · 质量 {0}</sys:String>
+  <sys:String x:Key="CompareParamsKeep">仅剥离视频，保留原格式</sys:String>
+  <sys:String x:Key="CompareEncoderFormat">编码器 {0}</sys:String>
+  <sys:String x:Key="CompareNotConverted">未转码：已是 HEIC 或含 HDR 增益图</sys:String>
+  <sys:String x:Key="CompareKeptFormat">HEIC 不比原图小，任务将保留原格式、只剥离视频</sys:String>
+  <sys:String x:Key="CompareZoomInTip">放大</sys:String>
+  <sys:String x:Key="CompareZoomOutTip">缩小</sys:String>
+  <sys:String x:Key="CompareZoomResetTip">适配窗口</sys:String>
+  <sys:String x:Key="CompareMagnifierBtn">放大镜</sys:String>
+  <sys:String x:Key="CompareMagnifierTip">在指针处并排显示两侧 1:1 像素（也可按住右键）</sys:String>
   <sys:String x:Key="SettingsAppearanceTitle">外观与语言</sys:String>
   <sys:String x:Key="SettingsBehaviorTitle">任务与性能</sys:String>
   <sys:String x:Key="ReportGoLibraryBtn">前往图库</sys:String>
@@ -422,5 +478,38 @@
   <sys:String x:Key="ThumbnailCacheUsageFormat">当前占用 {0}</sys:String>
   <sys:String x:Key="ThumbnailCacheMeasuring">正在统计…</sys:String>
   <sys:String x:Key="ClearThumbnailCacheBtn">清理缓存</sys:String>
+
+  <!-- 任务报告：结果原因与附注（对应 Core 原因码） -->
+  <sys:String x:Key="ReportKpiTotalCanceledSub">已处理 / 计划</sys:String>
+  <sys:String x:Key="ReportDetailToggle">详情</sys:String>
+  <sys:String x:Key="ReportCsvTechnicalDetail">技术细节</sys:String>
+  <sys:String x:Key="ReportCleanupFailedDesc">输出已保存，但按所选方式处理源文件时出错</sys:String>
+  <sys:String x:Key="OutcomeReasonNotMotionPhoto">不是动态照片（未找到内嵌视频）</sys:String>
+  <sys:String x:Key="OutcomeReasonNothingToStrip">无内嵌视频，且无需转换格式</sys:String>
+  <sys:String x:Key="OutcomeReasonGainMapPreserved">带 HDR 增益图且无内嵌视频，为保留 HDR 不转码</sys:String>
+  <sys:String x:Key="OutcomeReasonPairIdMatchedFormat">ContentIdentifier 一致：{0}</sys:String>
+  <sys:String x:Key="OutcomeReasonPairIdMismatchFormat">ContentIdentifier 不匹配：照片 {0}，视频 {1}</sys:String>
+  <sys:String x:Key="OutcomeReasonPairIdPhotoOnly">仅照片含 ContentIdentifier，不像是同一张实况照片</sys:String>
+  <sys:String x:Key="OutcomeReasonPairIdVideoOnly">仅视频含 ContentIdentifier，不像是同一张实况照片</sys:String>
+  <sys:String x:Key="OutcomeReasonPairTimeCloseFormat">拍摄时间差 {0:F1} 秒</sys:String>
+  <sys:String x:Key="OutcomeReasonPairTimeTooFarFormat">拍摄时间差 {0:F0} 秒，超过 {1:F0} 秒阈值</sys:String>
+  <sys:String x:Key="OutcomeReasonPairTimePhotoOnly">仅照片含拍摄时间，不像是同一张实况照片</sys:String>
+  <sys:String x:Key="OutcomeReasonPairTimeVideoOnly">仅视频含拍摄时间，不像是同一张实况照片</sys:String>
+  <sys:String x:Key="OutcomeReasonPairDurationFormat">视频时长 {0:F1} 秒</sys:String>
+  <sys:String x:Key="OutcomeReasonPairVideoTooLongFormat">视频时长 {0:F1} 秒，超过 {1:F0} 秒，不像实况视频</sys:String>
+  <sys:String x:Key="OutcomeReasonPairNameOnly">缺少可校验的元数据，按文件名匹配</sys:String>
+  <sys:String x:Key="OutcomeReasonPairManual">人工确认配对</sys:String>
+  <sys:String x:Key="OutcomeReasonSourceMissingFormat">源文件不存在或为空：{0}</sys:String>
+  <sys:String x:Key="OutcomeReasonVideoConversionFailed">视频转换失败</sys:String>
+  <sys:String x:Key="OutcomeReasonHdrEncoderUnavailable">源视频为 HDR，但 FFmpeg 缺少 10-bit HEVC 编码器（libx265），为避免画质下降未转换</sys:String>
+  <sys:String x:Key="OutcomeReasonVerificationFailed">输出校验未通过，已放弃写出</sys:String>
+  <sys:String x:Key="OutcomeReasonUnexpected">处理出错，展开详情查看原因</sys:String>
+  <sys:String x:Key="OutcomeNoteUltraHdrWritten">Ultra HDR</sys:String>
+  <sys:String x:Key="OutcomeNoteHdrGainMapMissing">无 HDR 增益图</sys:String>
+  <sys:String x:Key="OutcomeNoteHdrToneMapNotSupported">HDR 格式暂不支持，已输出 SDR</sys:String>
+  <sys:String x:Key="OutcomeNoteHdrDecoderUnavailable">缺少 heif-dec，已输出 SDR</sys:String>
+  <sys:String x:Key="OutcomeNoteHdrMetadataMissing">HDR 元数据不足，已输出 SDR</sys:String>
+  <sys:String x:Key="OutcomeNoteHdrConversionFailed">HDR 转换失败，已输出 SDR</sys:String>
+  <sys:String x:Key="OutcomeNoteKeptOriginalFormat">保留原格式（HEIC 更大）</sys:String>
 
 </ResourceDictionary>

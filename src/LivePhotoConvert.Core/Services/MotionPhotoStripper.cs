@@ -1,7 +1,9 @@
 using System.Collections.Frozen;
 using LivePhotoConvert.Core.Abstractions;
+using LivePhotoConvert.Core.External;
 using LivePhotoConvert.Core.Io;
 using LivePhotoConvert.Core.Media;
+using LivePhotoConvert.Core.Media.UltraHdr;
 using LivePhotoConvert.Core.Metadata;
 using LivePhotoConvert.Core.Pairing;
 using LivePhotoConvert.Core.Pipeline;
@@ -33,11 +35,14 @@ public sealed record StripRequest
 /// <param name="HasGainMap">带 Ultra HDR 增益图时不转码 HEIC，以免丢失 HDR</param>
 public sealed record StripCandidate(string ImagePath, long ImageBytes, EmbeddedVideo? EmbeddedVideo, string? CompanionVideo, long CompanionBytes, bool HasGainMap)
 {
-    /// <summary>HEIC 质量 90 时相对 JPEG 的典型体积比例，用于预估。</summary>
-    private const double HeicSizeRatio = 0.45;
+    /// <summary>HEIC 质量 90 时相对 JPEG 的典型体积比例；没有实测压缩比时用于预估。</summary>
+    public const double DefaultHeicSizeRatio = 0.45;
 
     /// <summary>分析失败的原因（文件消失、无法读取等）；不为 <c>null</c> 时该文件不做任何处理。</summary>
     public string? AnalysisError { get; init; }
+
+    /// <summary>分析失败的异常，瘦身时据此归类失败原因。</summary>
+    internal Exception? AnalysisException { get; init; }
 
     public long OriginalBytes => ImageBytes + CompanionBytes;
 
@@ -48,14 +53,21 @@ public sealed record StripCandidate(string ImagePath, long ImageBytes, EmbeddedV
 
     public bool WillConvert(bool convertToHeic) => AnalysisError is null && convertToHeic && !HasGainMap && !MediaFileTypes.IsHeic(ImagePath);
 
-    public long EstimateFinalBytes(bool convertToHeic)
+    /// <summary>剥离视频后的照片字节数（转码前）。</summary>
+    public long PhotoBytes => EmbeddedVideo?.ImageEnd ?? ImageBytes;
+
+    public long EstimateFinalBytes(bool convertToHeic) => EstimateFinalBytes(convertToHeic, DefaultHeicSizeRatio);
+
+    /// <param name="convertToHeic">是否转码 HEIC</param>
+    /// <param name="heicSizeRatio">HEIC 相对转码前照片的体积比例（例如抽样实测值）</param>
+    public long EstimateFinalBytes(bool convertToHeic, double heicSizeRatio)
     {
-        var photoBytes = EmbeddedVideo?.ImageEnd ?? ImageBytes;
-        return WillConvert(convertToHeic) ? (long)(photoBytes * HeicSizeRatio) : photoBytes;
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(heicSizeRatio);
+        return WillConvert(convertToHeic) ? (long)(PhotoBytes * heicSizeRatio) : PhotoBytes;
     }
 
-    internal static StripCandidate Unavailable(string imagePath, string error) =>
-        new(imagePath, 0, null, null, 0, false) { AnalysisError = error };
+    internal static StripCandidate Unavailable(string imagePath, Exception error) =>
+        new(imagePath, 0, null, null, 0, false) { AnalysisError = error.Message, AnalysisException = error };
 }
 
 /// <summary>
@@ -128,7 +140,7 @@ public sealed class MotionPhotoStripper(IMetadataService metadata, IImageConvert
         }
         catch (Exception ex) when (!(ex is OperationCanceledException && cancellationToken.IsCancellationRequested))
         {
-            return StripCandidate.Unavailable(file, ex.Message);
+            return StripCandidate.Unavailable(file, ex);
         }
     }
 
@@ -190,25 +202,30 @@ public sealed class MotionPhotoStripper(IMetadataService metadata, IImageConvert
         var source = candidate.ImagePath;
         if (candidate.AnalysisError is { } analysisError)
         {
-            return ItemOutcome.Failed(source, analysisError);
+            return candidate.AnalysisException switch
+            {
+                // 分析只读取源文件，找不到文件即源文件已消失
+                FileNotFoundException and not ToolNotFoundException or DirectoryNotFoundException =>
+                    ItemOutcome.Failed(source, new OutcomeCause(OutcomeReason.SourceMissingOrEmpty, Path.GetFileName(source)), analysisError),
+                { } exception => ItemOutcome.Failed(source, exception),
+                null => ItemOutcome.Failed(source, OutcomeReason.Unexpected, analysisError)
+            };
         }
 
         var convert = candidate.WillConvert(request.ConvertToHeic);
         if (!candidate.HasVideo && !convert)
         {
-            return ItemOutcome.Skipped(source, candidate.HasGainMap ? "带 HDR 增益图且无内嵌视频，为保留 HDR 不转码" : "无内嵌视频，且无需转换格式");
+            return ItemOutcome.Skipped(source, candidate.HasGainMap ? OutcomeReason.GainMapPreserved : OutcomeReason.NothingToStrip);
         }
 
         if (candidate.ImageBytes == 0)
         {
-            throw new InvalidDataException("文件为空。");
+            return ItemOutcome.Failed(source, new OutcomeCause(OutcomeReason.SourceMissingOrEmpty, Path.GetFileName(source)));
         }
 
         var inPlace = request.Output is null;
         var directory = inPlace ? Path.GetDirectoryName(Path.GetFullPath(source))! : request.Output!.DirectoryFor(source);
-        var extension = convert ? ".heic" : Path.GetExtension(source);
         var timestamp = FileTimestamp.Read(source);
-        var photoChanged = candidate.EmbeddedVideo is not null || convert;
 
         string? clean = null;
         string? staged = null;
@@ -220,9 +237,32 @@ public sealed class MotionPhotoStripper(IMetadataService metadata, IImageConvert
                 clean = workspace.NewFile(Path.GetExtension(source));
                 await BinaryFile.CopySegmentAsync(source, clean, 0, embedded.ImageEnd, cancellationToken);
                 await metadata.RemoveMotionPhotoAsync(clean, cancellationToken);
+                if (candidate.HasGainMap)
+                {
+                    // 改写 XMP 后 MPF 中的主图长度会过时，增益图本身不受影响
+                    UltraHdrJpegWriter.RefreshPrimaryLength(clean);
+                }
+
                 photo = clean;
             }
 
+            var keptOriginalFormat = false;
+            if (convert)
+            {
+                staged = OutputCommitter.CreateStagingPath(directory, ".heic");
+                await imageConverter.ConvertToHeicAsync(photo, staged, request.HeicQuality, cancellationToken);
+                // 纹理重的照片 HEIC 可能比原格式还大：瘦身不能让文件变大，改为只剥离视频
+                if (new FileInfo(staged).Length >= new FileInfo(photo).Length)
+                {
+                    FileHelper.TryDeleteFile(staged);
+                    staged = null;
+                    convert = false;
+                    keptOriginalFormat = true;
+                }
+            }
+
+            var extension = convert ? ".heic" : Path.GetExtension(source);
+            var photoChanged = candidate.EmbeddedVideo is not null || convert;
             string final;
             if (inPlace && !photoChanged)
             {
@@ -230,13 +270,9 @@ public sealed class MotionPhotoStripper(IMetadataService metadata, IImageConvert
             }
             else
             {
-                staged = OutputCommitter.CreateStagingPath(directory, extension);
-                if (convert)
+                if (staged is null)
                 {
-                    await imageConverter.ConvertToHeicAsync(photo, staged, request.HeicQuality, cancellationToken);
-                }
-                else
-                {
+                    staged = OutputCommitter.CreateStagingPath(directory, extension);
                     File.Copy(photo, staged);
                 }
 
@@ -252,7 +288,8 @@ public sealed class MotionPhotoStripper(IMetadataService metadata, IImageConvert
             return ItemOutcome.Succeeded(source, final) with
             {
                 BytesSaved = Math.Max(0, before - new FileInfo(final).Length),
-                CleanupError = companionError
+                CleanupError = companionError,
+                Notes = keptOriginalFormat ? [new OutcomeNote(OutcomeNoteKind.KeptOriginalFormat)] : []
             };
         }
         catch
@@ -337,7 +374,7 @@ public sealed class MotionPhotoStripper(IMetadataService metadata, IImageConvert
         var read = stream.ReadAtLeast(header, header.Length, throwOnEndOfStream: false);
         if (MediaFileTypes.DetectPhotoExtension(header[..read], string.Empty).Length == 0)
         {
-            throw new InvalidDataException("生成的图片格式无效，已放弃替换。");
+            throw new OutcomeException(OutcomeReason.VerificationFailed, "生成的图片格式无效，已放弃替换。");
         }
     }
 }

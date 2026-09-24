@@ -63,6 +63,37 @@ public class ExifToolJsonTests
         Assert.Equal(1_500_000, Assert.Single(ExifToolJson.ParseMetadata(json)).StillImageTimeUs);
     }
 
+    [Fact]
+    public void ParseMetadata_AppleHdrTags()
+    {
+        const string json = """
+                            [{"SourceFile":"a.heic","Apple:HDRHeadroom":1.0255059,"Apple:HDRGain":0.001685693743,
+                              "QuickTime:AuxiliaryImageType":"urn:com:apple:photo:2019:aux:semanticskinmatte",
+                              "QuickTime:AuxiliaryImageType (1)":"urn:com:apple:photo:2020:aux:hdrgainmap",
+                              "XMP-HDRGainMap:HDRGainMapVersion":65536}]
+                            """;
+
+        var metadata = Assert.Single(ExifToolJson.ParseMetadata(json));
+
+        Assert.Equal(1.0255059, metadata.AppleHdrHeadroom);
+        Assert.Equal(0.001685693743, metadata.AppleHdrGain);
+        Assert.True(metadata.HasAppleGainMap);
+        Assert.Equal(65536, metadata.HdrGainMapVersion);
+    }
+
+    [Fact]
+    public void ParseMetadata_SdrHeic_HasNoGainMap()
+    {
+        const string json = """[{"SourceFile":"a.heic","Apple:HDRHeadroom":0,"QuickTime:AuxiliaryImageType":"urn:com:apple:photo:2019:aux:semanticskinmatte"}]""";
+
+        var metadata = Assert.Single(ExifToolJson.ParseMetadata(json));
+
+        Assert.Equal(0, metadata.AppleHdrHeadroom);
+        Assert.Null(metadata.AppleHdrGain);
+        Assert.False(metadata.HasAppleGainMap);
+        Assert.Null(metadata.HdrGainMapVersion);
+    }
+
     [Theory]
     [InlineData("0 1 0 1 0 0 0 0 1", true)]
     [InlineData("0 1 0 -1 0 0 0 0 1", false)]
