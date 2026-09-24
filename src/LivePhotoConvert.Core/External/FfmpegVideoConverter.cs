@@ -29,7 +29,7 @@ public sealed class FfmpegVideoConverter : IVideoConverter
     public static string ExecutableName => OperatingSystem.IsWindows() ? "ffmpeg.exe" : "ffmpeg";
 
     /// <param name="executablePath">指定的 ffmpeg 路径；null 时按默认位置查找</param>
-    /// <param name="availableEncoders">已知可用的编码器名单；null 时在首次需要重新编码 HDR 源时运行 <c>ffmpeg -encoders</c> 探测</param>
+    /// <param name="availableEncoders">已知可用的编码器名单；null 时在首次需要重新编码 HDR 源时运行 <c>ffmpeg -encoders</c> 探测（只支持 8-bit 的 libx265 视为缺失）</param>
     /// <exception cref="FileNotFoundException">找不到 FFmpeg</exception>
     public static FfmpegVideoConverter Create(string? executablePath = null, IEnumerable<string>? availableEncoders = null) =>
         new(ToolLocator.Find(ExecutableName, executablePath, "ffmpeg", "FFmpeg", "bin")
@@ -227,7 +227,18 @@ public sealed class FfmpegVideoConverter : IVideoConverter
         try
         {
             var result = await ProcessRunner.RunAsync(executablePath, ["-nostdin", "-hide_banner", "-encoders"], CancellationToken.None, TimeSpan.FromSeconds(30));
-            return ToolOutputParser.ParseEncoderNames(result.StandardOutput).ToFrozenSet(StringComparer.Ordinal);
+            var encoders = ToolOutputParser.ParseEncoderNames(result.StandardOutput).ToHashSet(StringComparer.Ordinal);
+            // 8-bit 版 x265 也注册 libx265，却无法输出 10-bit；对 HDR 保真转码等同于不可用，按缺失处理才能报 HdrEncoderUnavailable
+            if (encoders.Contains(HevcEncoder))
+            {
+                var help = await ProcessRunner.RunAsync(executablePath, ["-nostdin", "-hide_banner", "-h", "encoder=" + HevcEncoder], CancellationToken.None, TimeSpan.FromSeconds(30));
+                if (!ToolOutputParser.ParsePixelFormats(help.StandardOutput).Contains(HdrPixelFormat))
+                {
+                    encoders.Remove(HevcEncoder);
+                }
+            }
+
+            return encoders.ToFrozenSet(StringComparer.Ordinal);
         }
         catch (Exception ex) when (ex is InvalidOperationException or TimeoutException or System.ComponentModel.Win32Exception)
         {
