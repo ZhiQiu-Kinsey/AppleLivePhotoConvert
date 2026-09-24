@@ -7,7 +7,8 @@
              x:DataType="dialogs:QuickLookDialogViewModel"
              Focusable="True">
 
-  <!-- 遮罩由主窗口弹窗宿主提供 -->
+  <!-- 遮罩由主窗口弹窗宿主提供。弹窗铺满窗口（至多 1100×820）而不随内容伸缩：
+       换卡片时不跳动，画布尺寸在照片与视频到达前就已确定，解码一次即为最终尺寸 -->
   <Border Background="{DynamicResource SurfaceBrush}"
           CornerRadius="20"
           BorderBrush="{DynamicResource LineBrush}"
@@ -15,8 +16,8 @@
           MaxWidth="1100"
           MaxHeight="820"
           Margin="32"
-          HorizontalAlignment="Center"
-          VerticalAlignment="Center"
+          HorizontalAlignment="Stretch"
+          VerticalAlignment="Stretch"
           BoxShadow="0 25 60 0 #60000000"
           ClipToBounds="True">
     <Grid RowDefinitions="Auto,*,Auto,Auto">
