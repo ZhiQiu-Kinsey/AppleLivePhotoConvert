@@ -1,141 +1,186 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using LivePhotoConvert.Core.Pairing;
+using LivePhotoConvert.Core.Media;
+using LivePhotoConvert.Desktop.Converters;
+using LivePhotoConvert.Desktop.Features.Library.Thumbnails;
+using LivePhotoConvert.Desktop.Infrastructure;
 
 namespace LivePhotoConvert.Desktop.Models;
 
-/// <summary>
-/// 扁平化相册流的统一抽象项接口
-/// </summary>
+/// <summary>画廊列表中的一项（组标题或一行卡片）。</summary>
 public interface IGalleryDisplayItem
 {
     string Key { get; }
 }
 
 /// <summary>
-/// 相册时间线聚合标题项
+/// 分组标题。标题文案随语言切换重新格式化，折叠状态按分组键跨重排保留。
 /// </summary>
-public sealed partial class TimelineHeaderItemViewModel : ObservableObject, IGalleryDisplayItem
+public sealed partial class TimelineHeaderItemViewModel(string key, DateTime period) : ObservableObject, IGalleryDisplayItem
 {
-    public required string Key { get; init; }
-    public required DateTime GroupDate { get; init; }
-    public required string Title { get; init; }
-    public required string LocationSummary { get; init; }
+    public string Key { get; } = key;
+
+    /// <summary>分组所代表的时段起点（日、月或年的第一天）。</summary>
+    public DateTime Period { get; } = period;
+
+    [ObservableProperty]
+    private string _title = string.Empty;
+
+    [ObservableProperty]
+    private string _locationSummary = string.Empty;
 
     [ObservableProperty]
     private int _photoCount;
 
     [ObservableProperty]
     private bool _isCollapsed;
-
-    [ObservableProperty]
-    private bool _isVisible = true;
-
-    public Action<TimelineHeaderItemViewModel>? OnToggleCollapse { get; set; }
-    public Action<TimelineHeaderItemViewModel>? OnSelectGroup { get; set; }
-
-    [RelayCommand]
-    private void ToggleCollapse()
-    {
-        IsCollapsed = !IsCollapsed;
-        OnToggleCollapse?.Invoke(this);
-    }
-
-    [RelayCommand]
-    private void SelectGroup()
-    {
-        OnSelectGroup?.Invoke(this);
-    }
 }
 
 /// <summary>
-/// 虚拟化相册等高行项。每一行按原图比例计算宽度，行内卡片共享同一预览高度。
+/// 等高行。行对象跨重排复用：宽度变化只改高度与卡片尺寸，行组成变化时原地替换卡片。
 /// </summary>
-public sealed class PhotoGridRowViewModel : ObservableObject, IGalleryDisplayItem
+public sealed partial class PhotoGridRowViewModel(string key) : ObservableObject, IGalleryDisplayItem
 {
-    public required string Key { get; init; }
-    public ObservableCollection<PhotoCardItemViewModel> Cards { get; init; } = [];
+    public string Key { get; } = key;
 
-    /// <summary>当前行的自适应预览高度，提前计算后保持 ListBox 测量稳定。</summary>
-    public double RowHeight { get; set; } = 220;
+    public ObservableCollection<PhotoCardItemViewModel> Cards { get; } = [];
+
+    /// <summary>行内卡片预览区的统一高度。</summary>
+    [ObservableProperty]
+    private double _rowHeight;
 }
 
 /// <summary>
-/// 单张实况照片展示卡片
+/// 画廊卡片：包装一次扫描产出的 <see cref="LibraryItem"/>。文件信息全部来自扫描结果，界面线程不访问磁盘；
+/// 日期与标签等文案在读取时按当前语言格式化。
 /// </summary>
 public sealed partial class PhotoCardItemViewModel : ObservableObject, IGalleryDisplayItem
 {
-    public required string Key { get; init; }
-    public required string PhotoPath { get; init; }
-    public string? VideoPath { get; set; }
-    public MediaPair? Pair { get; init; }
+    private static readonly string[] ItemDerivedProperties =
+    [
+        nameof(Kind), nameof(IsMotionPhoto), nameof(IsApplePair), nameof(Video), nameof(VideoPath),
+        nameof(PhotoHeader), nameof(AspectRatio), nameof(ResolutionText), nameof(DateTaken), nameof(FormattedDate),
+        nameof(FormattedTime), nameof(DeviceInfo), nameof(PhotoSizeText), nameof(VideoSizeText), nameof(SizeSummary),
+        nameof(RequiresPairReview), nameof(WarningReason)
+    ];
 
-    /// <summary>是否为包含内嵌微视频的单文件安卓/Google 动态照片</summary>
-    public bool IsMotionPhoto { get; init; }
-    public long EmbeddedVideoOffset { get; init; }
-    public long EmbeddedVideoLength { get; init; }
+    private static readonly string[] LocalizedProperties =
+        [nameof(FormattedDate), nameof(FormattedTime), nameof(LocationSummary), nameof(DeviceInfo), nameof(WarningReason)];
 
-    public string FileName { get; init; } = string.Empty;
-    public string FormattedDate { get; init; } = string.Empty;
-    public string FormattedTime { get; init; } = string.Empty;
+    private readonly ILocalizer _localizer;
 
-    /// <summary>拍摄/落盘真实时间，用于分组日期与排序，杜绝 DateTime.Now 假数据。</summary>
-    public DateTime DateTaken { get; init; }
-
-    public string LocationSummary { get; init; } = string.Empty;
-    public string DeviceInfo { get; init; } = string.Empty;
-
-    // 真实像素分辨率：由后台 ThumbnailReader 解码后渐进回填
-    [ObservableProperty]
-    private string _resolutionText = string.Empty;
-
-    public string PhotoSizeText { get; init; } = string.Empty;
-    public string VideoSizeText { get; init; } = string.Empty;
-    public string SizeSummary => string.IsNullOrEmpty(VideoSizeText) ? PhotoSizeText : $"{PhotoSizeText} + {VideoSizeText}";
-    public string FormatBadgeText
+    public PhotoCardItemViewModel(LibraryItem item, ILocalizer localizer)
     {
-        get
+        _item = item;
+        _localizer = localizer;
+        _isSelected = !item.RequiresPairReview;
+    }
+
+    /// <summary>扫描结果；后台补全（如 HEIC 升级为动态照片）时整体替换。</summary>
+    [ObservableProperty]
+    private LibraryItem _item;
+
+    partial void OnItemChanged(LibraryItem value)
+    {
+        foreach (var name in ItemDerivedProperties)
         {
-            if (IsMotionPhoto)
-            {
-                return $"{Path.GetExtension(PhotoPath).TrimStart('.').ToUpperInvariant()}+MP4";
-            }
-            return string.IsNullOrEmpty(VideoPath)
-                ? Path.GetExtension(PhotoPath).TrimStart('.').ToUpperInvariant()
-                : $"{Path.GetExtension(PhotoPath).TrimStart('.').ToUpperInvariant()}+{Path.GetExtension(VideoPath).TrimStart('.').ToUpperInvariant()}";
+            OnPropertyChanged(name);
         }
     }
 
-    /// <summary>原图宽高比。扫描阶段可能未知，缩略图解码后会渐进修正。</summary>
-    [ObservableProperty]
-    private double _aspectRatio = 4.0 / 3.0;
+    public string Key => Item.Photo.Path;
 
-    // 根据卡片宽度和原图比例预留预览高度，缩略图异步到达时不再触发布局跳动。
+    public string PhotoPath => Item.Photo.Path;
+
+    public LibraryFile PhotoFile => Item.Photo;
+
+    public ImageHeader? PhotoHeader => Item.Header;
+
+    public LibraryItemKind Kind => Item.Kind;
+
+    public bool IsMotionPhoto => Item.Kind == LibraryItemKind.MotionPhoto;
+
+    public bool IsApplePair => Item.Kind == LibraryItemKind.ApplePair;
+
+    /// <summary>视频数据位置：实况对为整段视频文件，动态照片为照片内的区段。</summary>
+    public VideoSource? Video => Item.VideoSource;
+
+    /// <summary>
+    /// 实况对的独立视频路径，仅供旧播放器使用（阶段 3 删除）。动态照片为 null：播放时切出的临时文件不属于图库条目。
+    /// </summary>
+    public string? VideoPath => IsApplePair ? Item.Video?.Path : null;
+
+    public string FileName => Path.GetFileNameWithoutExtension(PhotoPath);
+
+    /// <summary>拍摄时间（当地时间），来源见 <see cref="LibraryItem.CaptureTimeSource"/>。</summary>
+    public DateTime DateTaken => Item.CaptureTimeLocal;
+
+    public string FormattedDate => DateTaken.ToString(_localizer["DateGroupFormat"], _localizer.Culture);
+
+    public string FormattedTime => DateTaken.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
+
+    public string LocationSummary
+    {
+        get
+        {
+            var directory = Path.GetFileName(Path.GetDirectoryName(PhotoPath));
+            return string.IsNullOrWhiteSpace(directory) ? _localizer["LocalAlbumFallback"] : directory;
+        }
+    }
+
+    public string DeviceInfo => IsMotionPhoto ? _localizer["CardMotionPhotoLabel"] : Extension(PhotoPath);
+
+    /// <summary>转正后的原图宽高比，由扫描确定；缩略图到达不改变它。</summary>
+    public double AspectRatio => Item.Header is { Width: > 0, Height: > 0 } header ? header.AspectRatio : 4.0 / 3.0;
+
+    public string ResolutionText => Item.Header is { Width: > 0, Height: > 0 } header ? $"{header.Width}×{header.Height}" : string.Empty;
+
+    public string PhotoSizeText => FormatBytes(Item.Embedded is { } embedded ? embedded.ImageEnd : Item.Photo.Length);
+
+    public string VideoSizeText => Item switch
+    {
+        { Embedded: { } embedded, Kind: LibraryItemKind.MotionPhoto } => FormatBytes(embedded.Length),
+        { Video: { } video, Kind: LibraryItemKind.ApplePair } => FormatBytes(video.Length),
+        _ => string.Empty
+    };
+
+    public string SizeSummary => string.IsNullOrEmpty(VideoSizeText) ? PhotoSizeText : $"{PhotoSizeText} + {VideoSizeText}";
+
+    /// <summary>配对未通过校验且尚未人工确认：合成前需要裁决。</summary>
+    public bool RequiresPairReview => Item.RequiresPairReview && !IsForceAccepted;
+
+    public string WarningReason => !RequiresPairReview
+        ? string.Empty
+        : Item.PairTimeDelta is { } delta
+            ? _localizer.Format("TimeDiffWarningFormat", delta.TotalSeconds)
+            : _localizer["CardTimeMismatch"];
+
+    /// <summary>用户人工确认了这组配对，合成时跳过校验。</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RequiresPairReview))]
+    [NotifyPropertyChangedFor(nameof(WarningReason))]
+    private bool _isForceAccepted;
+
+    // 行布局预先算好尺寸，缩略图异步到达时不改变测量
     [ObservableProperty]
     private double _previewHeight = 200;
 
-    /// <summary>等高行布局中卡片的外部宽度（包含卡片边距）。</summary>
+    /// <summary>等高行中卡片的外部宽度（含卡片边距）。</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsCompact), nameof(IsTiny))]
     private double _displayWidth = 260;
 
-    [ObservableProperty]
-    private bool _isSelected = true;
+    /// <summary>卡片较窄：状态徽章只显示图标、隐藏设备信息，让文件名保持可读。</summary>
+    public bool IsCompact => DisplayWidth < GalleryMetrics.CompactCardWidth;
+
+    /// <summary>卡片很窄：再隐藏分辨率。</summary>
+    public bool IsTiny => DisplayWidth < GalleryMetrics.TinyCardWidth;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsNaturalCrop))]
-    [NotifyPropertyChangedFor(nameof(IsSquareCrop))]
-    private string _cropMode = "Natural";
-
-    public bool IsNaturalCrop => CropMode == "Natural";
-    public bool IsSquareCrop => CropMode == "Square";
-
-    [ObservableProperty]
-    private bool _isVisible = true;
-
-    [ObservableProperty]
-    private bool _isSelectionModeActive;
+    private bool _isSelected;
 
     [ObservableProperty]
     private bool _isHoverPlaying;
@@ -163,36 +208,20 @@ public sealed partial class PhotoCardItemViewModel : ObservableObject, IGalleryD
         }
     }
 
-    public bool HasSuspiciousWarning { get; init; }
-    public string? WarningReason { get; init; }
-
-    [ObservableProperty]
-    private bool _isForceAccepted;
-
-    public Action<PhotoCardItemViewModel>? OnArbitrateRequested { get; set; }
-    public Action<PhotoCardItemViewModel>? OnQuickLookRequested { get; set; }
-    public Action<PhotoCardItemViewModel>? OnPriorityLoadRequested { get; set; }
-
-    public void RequestPriorityLoad()
-    {
-        OnPriorityLoadRequested?.Invoke(this);
-    }
-
     [RelayCommand]
-    public void ToggleSelect()
+    public void ToggleSelect() => IsSelected = !IsSelected;
+
+    /// <summary>语言切换后重新读取格式化文案。</summary>
+    public void RefreshLocalizedTexts()
     {
-        IsSelected = !IsSelected;
+        foreach (var name in LocalizedProperties)
+        {
+            OnPropertyChanged(name);
+        }
     }
 
-    [RelayCommand]
-    public void RequestArbitrate()
-    {
-        OnArbitrateRequested?.Invoke(this);
-    }
+    private static string Extension(string path) => Path.GetExtension(path).TrimStart('.').ToUpperInvariant();
 
-    [RelayCommand]
-    public void RequestQuickLook()
-    {
-        OnQuickLookRequested?.Invoke(this);
-    }
+    private static string FormatBytes(long bytes) =>
+        ByteSizeConverter.Instance.Convert(bytes, typeof(string), null, CultureInfo.InvariantCulture) as string ?? $"{bytes} B";
 }

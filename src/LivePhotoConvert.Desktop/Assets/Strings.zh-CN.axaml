@@ -17,8 +17,6 @@
 
   <!-- 工具栏与相册卡片 -->
   <sys:String x:Key="ToolbarAlbumTitle">相册实况胶卷</sys:String>
-  <sys:String x:Key="ToolbarSelect">选择</sys:String>
-  <sys:String x:Key="ToolbarSelectActive">完成选择</sys:String>
   <sys:String x:Key="ToolbarPlayTip">连续试播视口内实况短视频</sys:String>
   <sys:String x:Key="SortDateTaken">拍摄日期</sys:String>
   <sys:String x:Key="SortDateCreated">创建日期</sys:String>
@@ -401,6 +399,13 @@
   <sys:String x:Key="MissingToolsGoBtn">前往依赖引擎</sys:String>
   <sys:String x:Key="ToolNameHeicEncoder">HEIC 编码器（heif-enc）</sys:String>
   <sys:String x:Key="LibraryScanning">扫描中…</sys:String>
+  <sys:String x:Key="CardMotionPhotoLabel">动态照片</sys:String>
+  <sys:String x:Key="GroupSelectTip">选中本组全部照片</sys:String>
+  <sys:String x:Key="ScanErrorTitle">无法读取相册目录</sys:String>
+  <sys:String x:Key="ScanErrorNotFoundFormat">目录不存在或已被移除：{0}</sys:String>
+  <sys:String x:Key="ScanErrorAccessDeniedFormat">没有读取该目录的权限：{0}</sys:String>
+  <sys:String x:Key="ScanErrorFailedFormat">扫描失败：{0}</sys:String>
+  <sys:String x:Key="ScanSkippedInaccessibleFormat">{0} 个子目录没有读取权限，已跳过</sys:String>
   <sys:String x:Key="DialogCloseTip">关闭 (Esc)</sys:String>
   <sys:String x:Key="CompareLoading">正在生成对比图…</sys:String>
   <sys:String x:Key="CompareUnavailable">无法为这张照片生成对比图。</sys:String>

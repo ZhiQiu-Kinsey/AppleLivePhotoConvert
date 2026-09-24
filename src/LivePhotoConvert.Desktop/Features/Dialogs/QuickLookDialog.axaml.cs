@@ -10,12 +10,23 @@ public partial class QuickLookDialog : UserControl
     public QuickLookDialog()
     {
         InitializeComponent();
+        MediaCanvas.SizeChanged += (_, _) => ReportViewport();
     }
 
     protected override void OnLoaded(RoutedEventArgs e)
     {
         base.OnLoaded(e);
+        ReportViewport();
         Focus();
+    }
+
+    /// <summary>预览按画布实际显示的物理像素加载。</summary>
+    private void ReportViewport()
+    {
+        if (DataContext is QuickLookDialogViewModel vm && TopLevel.GetTopLevel(this) is { } top)
+        {
+            vm.SetViewport(MediaCanvas.Bounds.Width, MediaCanvas.Bounds.Height, top.RenderScaling);
+        }
     }
 
     // Esc 由主窗口统一处理，这里只负责播放与切换

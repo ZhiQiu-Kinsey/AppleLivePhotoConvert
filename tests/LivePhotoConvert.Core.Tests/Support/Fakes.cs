@@ -27,6 +27,11 @@ internal sealed class FakeMetadataService : IMetadataService
     /// <summary>对匹配的文件读取 XMP 时抛出异常，模拟 ExifTool 读取失败。</summary>
     public Func<string, bool> FailXmpReads { get; set; } = _ => false;
 
+    /// <summary>预设的 XMP（按完整路径），模拟 ExifTool 读取非 JPEG 文件的 XMP。</summary>
+    public ConcurrentDictionary<string, string> Xmp { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    public ConcurrentBag<string> XmpReads { get; } = [];
+
     /// <summary>批量读取前同步执行：可抛出异常模拟整批读取失败，或阻塞以模拟耗时的读取。</summary>
     public Action<IReadOnlyCollection<string>>? BeforeRead { get; set; }
 
@@ -50,6 +55,12 @@ internal sealed class FakeMetadataService : IMetadataService
         if (FailXmpReads(path))
         {
             throw new InvalidOperationException($"模拟 ExifTool 读取失败：{Path.GetFileName(path)}");
+        }
+
+        XmpReads.Add(path);
+        if (Xmp.TryGetValue(Path.GetFullPath(path), out var preset))
+        {
+            return Task.FromResult<string?>(preset);
         }
 
         using var stream = File.OpenRead(path);

@@ -82,7 +82,7 @@ public class DialogServiceTests
         confirm.CancelCommand.Execute(null);
         Assert.False(await CompletesSoon(confirmTask));
 
-        var arbitrate = new ArbitrateDialogViewModel(new Localizer()) { TargetCard = new PhotoCardItemViewModel { Key = "k", PhotoPath = "missing.heic" } };
+        var arbitrate = new ArbitrateDialogViewModel(new Localizer()) { TargetCard = LivePhotoConvert.Desktop.Tests.Features.Library.Cards.ApplePair("missing") };
         var arbitrateTask = service.ShowAsync(arbitrate);
         arbitrate.CancelCommand.Execute(null);
         Assert.Equal(ArbitrationVerdict.Dismiss, await CompletesSoon(arbitrateTask));

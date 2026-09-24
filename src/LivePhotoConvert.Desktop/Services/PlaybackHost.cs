@@ -34,8 +34,8 @@ public sealed class PlaybackHost
     private int _frameIndex;
     private int _hoverGeneration;
 
-    public Action<PhotoCardItemViewModel>? OnQuickLookTriggered { get; set; }
-    public Action<PhotoCardItemViewModel>? OnCardFocused { get; set; }
+    /// <summary>鼠标进入卡片（开始悬浮预览）时触发。</summary>
+    public event EventHandler<PhotoCardItemViewModel>? CardFocused;
 
     /// <summary>由宿主注入的自定义 FFmpeg 可执行文件路径解析委托。</summary>
     public Func<string?>? CustomFfmpegPathProvider { get; set; }
@@ -74,7 +74,7 @@ public sealed class PlaybackHost
         _activeFrames = null;
         _decodeCompleted = false;
         card.IsHoverPlaying = true;
-        OnCardFocused?.Invoke(card);
+        CardFocused?.Invoke(this, card);
 
         // 已缓存帧序列：直接启动循环播放
         if (card.CachedFrames is { Count: > 0 })
@@ -88,8 +88,7 @@ public sealed class PlaybackHost
             return;
         }
 
-        // 无视频路径且非安卓动态照片则不提取
-        if (string.IsNullOrWhiteSpace(card.VideoPath) && !card.IsMotionPhoto)
+        if (card.Video is null)
             return;
 
         // 短暂防抖后启动后台帧提取。首帧不会等待整个视频解码完成。
@@ -151,19 +150,13 @@ public sealed class PlaybackHost
         }
     }
 
-    public void TriggerQuickLook(PhotoCardItemViewModel card)
-    {
-        OnQuickLookTriggered?.Invoke(card);
-    }
-
     /// <summary>
     /// 视口预热：后台提前解码可见短视频，悬浮时直接命中帧缓存。
     /// 并发限制为两个，避免预热拖慢首屏缩略图加载。
     /// </summary>
     public void Preload(PhotoCardItemViewModel card)
     {
-        if (card.CachedFrames is { Count: > 0 }
-            || (string.IsNullOrWhiteSpace(card.VideoPath) && !card.IsMotionPhoto))
+        if (card.CachedFrames is { Count: > 0 } || card.Video is null)
         {
             return;
         }
@@ -240,14 +233,11 @@ public sealed class PlaybackHost
 
     private async Task ExtractFramesAsync(PhotoCardItemViewModel card, CancellationToken token, int generation, bool preload = false)
     {
-        if (card.IsMotionPhoto && (string.IsNullOrWhiteSpace(card.VideoPath) || !File.Exists(card.VideoPath)))
-        {
-            var extracted = await MotionPhotoVideoCache.EnsureVideoExtractedAsync(card, token);
-            if (string.IsNullOrEmpty(extracted))
-                return;
-        }
-
-        if (string.IsNullOrWhiteSpace(card.VideoPath) || !File.Exists(card.VideoPath))
+        // 动态照片切出的临时视频只在这里使用，不写回卡片：卡片仍是动态照片，不会被当成实况对再合成
+        var videoPath = card.IsMotionPhoto
+            ? await MotionPhotoVideoCache.EnsureVideoExtractedAsync(card, token)
+            : card.VideoPath;
+        if (string.IsNullOrWhiteSpace(videoPath) || !File.Exists(videoPath))
             return;
 
         string? ffmpegPath = ToolLocator.Find(FfmpegVideoConverter.ExecutableName, CustomFfmpegPathProvider?.Invoke());
@@ -268,7 +258,7 @@ public sealed class PlaybackHost
                 CreateNoWindow = true
             };
 
-            foreach (var argument in BuildDecodeArguments(card.VideoPath))
+            foreach (var argument in BuildDecodeArguments(videoPath))
             {
                 psi.ArgumentList.Add(argument);
             }

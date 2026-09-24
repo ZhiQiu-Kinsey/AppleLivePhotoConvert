@@ -23,11 +23,14 @@ public sealed partial class ArbitrateDialogViewModel(ILocalizer localizer) : Dia
 {
     public required PhotoCardItemViewModel TargetCard { get; init; }
 
-    public string PhotoTimeText => FormatTime(SafeFileTime(TargetCard.PhotoPath));
+    // 时间取自扫描结果，打开弹窗不访问磁盘
+    public string PhotoTimeText => FormatTime(TargetCard.PhotoFile.LastWriteTimeUtc);
 
-    public string VideoTimeText => FormatTime(SafeFileTime(TargetCard.VideoPath));
+    public string VideoTimeText => FormatTime(TargetCard.Item.Video?.LastWriteTimeUtc);
 
-    public double TimeDiffSeconds => (SafeFileTime(TargetCard.PhotoPath) - SafeFileTime(TargetCard.VideoPath)).Duration().TotalSeconds;
+    /// <summary>优先取配对校验用的拍摄时间差，缺失时退回修改时间差。</summary>
+    public double TimeDiffSeconds => TargetCard.Item.PairTimeDelta?.TotalSeconds
+        ?? (TargetCard.Item.Video is { } video ? (TargetCard.PhotoFile.LastWriteTimeUtc - video.LastWriteTimeUtc).Duration().TotalSeconds : 0);
 
     public string TimeDiffText => localizer.Format("ArbitrateTimeDiffFormat", TimeDiffSeconds);
 
@@ -41,17 +44,7 @@ public sealed partial class ArbitrateDialogViewModel(ILocalizer localizer) : Dia
     [RelayCommand]
     private void RejectSplit() => Close(ArbitrationVerdict.Reject);
 
-    private static string FormatTime(DateTime dt) => dt == DateTime.MinValue ? "—" : dt.ToString("HH:mm:ss.fff");
-
-    private static DateTime SafeFileTime(string? path)
-    {
-        try
-        {
-            return !string.IsNullOrEmpty(path) && File.Exists(path) ? File.GetLastWriteTime(path) : DateTime.MinValue;
-        }
-        catch (Exception)
-        {
-            return DateTime.MinValue;
-        }
-    }
+    private static string FormatTime(DateTime? utc) => utc is { } time && time > DateTime.MinValue
+        ? time.ToLocalTime().ToString("HH:mm:ss.fff", System.Globalization.CultureInfo.InvariantCulture)
+        : "—";
 }

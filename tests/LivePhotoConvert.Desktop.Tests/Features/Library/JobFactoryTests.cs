@@ -13,18 +13,8 @@ namespace LivePhotoConvert.Desktop.Tests.Features.Library;
 /// <summary>检查器把图库卡片与设置固定成任务；执行由任务中心承担。</summary>
 public class JobFactoryTests
 {
-    [Theory]
-    [InlineData(ConversionAction.ToAndroid, ScanModes.ApplePairs)]
-    [InlineData(ConversionAction.ToApple, ScanModes.MotionPhotos)]
-    [InlineData(ConversionAction.Extract, ScanModes.All)]
-    [InlineData(ConversionAction.Strip, ScanModes.All)]
-    public void ScanModes_MapEachActionToTheScannerModeListingItsInputs(ConversionAction action, int expected)
-    {
-        Assert.Equal(expected, ScanModes.For(action));
-    }
-
     [Fact]
-    public void Applicable_FiltersCardsPerAction()
+    public void Applicable_FiltersCardsByScannedKind()
     {
         var pair = Cards.ApplePair("IMG_1");
         var motion = Cards.MotionPhoto("MVIMG_2");
@@ -35,27 +25,60 @@ public class JobFactoryTests
         Assert.Equal([motion], JobFactory.Applicable(ConversionAction.ToApple, all));
         Assert.Equal([motion], JobFactory.Applicable(ConversionAction.Extract, all));
         Assert.Equal([pair, motion], JobFactory.Applicable(ConversionAction.Strip, all));
+    }
 
-        // 动态照片播放时会补上临时视频路径，它仍然不是苹果实况对
-        motion.VideoPath = "/tmp/cache/MVIMG_2.mp4";
-        Assert.Equal([pair], JobFactory.Applicable(ConversionAction.ToAndroid, all));
+    /// <summary>悬浮或预览动态照片会切出临时视频：它只交给播放器，卡片仍是动态照片，不会被当成实况对再合成。</summary>
+    [Fact]
+    public async Task PlayingMotionPhoto_DoesNotTurnItIntoApplePair()
+    {
+        using var album = new TestSandbox();
+        var video = SyntheticMedia.Mp4(6000);
+        var bytes = SyntheticMedia.MotionPhoto(video: video);
+        var path = album.CreateInputFile("MVIMG_2.jpg", bytes);
+        var motion = Cards.Of(new LivePhotoConvert.Core.Media.LibraryItem(LivePhotoConvert.Core.Media.LibraryItemKind.MotionPhoto, Cards.File(path, bytes.Length))
+        {
+            Embedded = new LivePhotoConvert.Core.Media.EmbeddedVideo(bytes.Length - video.Length, video.Length, bytes.Length - video.Length)
+        });
+
+        var extracted = await Desktop.Services.MotionPhotoVideoCache.EnsureVideoExtractedAsync(motion, TestContext.Current.CancellationToken);
+
+        Assert.NotNull(extracted);
+        Assert.Equal(video, await File.ReadAllBytesAsync(extracted, TestContext.Current.CancellationToken));
+        Assert.Null(motion.VideoPath);
+        Assert.True(motion.IsMotionPhoto);
+        Assert.Empty(JobFactory.Applicable(ConversionAction.ToAndroid, [motion]));
+        Assert.Equal(bytes.Length, JobFactory.SourceBytes([motion]));
     }
 
     [Fact]
-    public void SourceBytes_CountsPairVideoButNotPlaybackCacheOfMotionPhotos()
+    public void SourceBytes_ComeFromScanWithoutTouchingDisk()
     {
-        using var album = new TestSandbox();
-        var photo = album.CreateInputFile("IMG_1.heic", new byte[300]);
-        var video = album.CreateInputFile("IMG_1.mov", new byte[700]);
-        var motionPath = album.CreateInputFile("MVIMG_2.jpg", new byte[1000]);
-        var cache = album.CreateInputFile("cache.mp4", new byte[900]);
+        // 卡片指向的文件并不存在：体积来自扫描结果
+        Assert.Equal(8000, JobFactory.SourceBytes([Cards.ApplePair("IMG_1")]));
+        Assert.Equal(9000, JobFactory.SourceBytes([Cards.MotionPhoto("MVIMG_2")]));
+        Assert.Equal(17000, JobFactory.SourceBytes([Cards.ApplePair("IMG_1"), Cards.MotionPhoto("MVIMG_2")]));
+    }
 
-        var pair = new Desktop.Models.PhotoCardItemViewModel { Key = "a", PhotoPath = photo, VideoPath = video };
-        var motion = new Desktop.Models.PhotoCardItemViewModel { Key = "b", PhotoPath = motionPath, VideoPath = cache, IsMotionPhoto = true };
+    [Fact]
+    public void Build_ToAndroid_PassesAllCandidatesAndForcesTheScannedPair()
+    {
+        var photo = Cards.File("/album/IMG_5.heic");
+        var jpg = "/album/IMG_5.jpg";
+        var mov = Cards.File("/album/IMG_5.mov");
+        MediaPair[] candidates = [new(photo.Path, mov.Path), new(photo.Path, "/album/IMG_5.mp4"), new(jpg, mov.Path)];
+        var card = Cards.Of(new LivePhotoConvert.Core.Media.LibraryItem(LivePhotoConvert.Core.Media.LibraryItemKind.ApplePair, photo)
+        {
+            Video = mov,
+            PairCandidates = candidates,
+            PairValidation = LivePhotoConvert.Core.Pairing.PairValidationResult.Reject(["拍摄时间差 9 秒"])
+        });
+        card.IsForceAccepted = true;
 
-        Assert.Equal(1000, JobFactory.SourceBytes([pair]));
-        Assert.Equal(1000, JobFactory.SourceBytes([motion]));
-        Assert.Equal(0, JobFactory.SourceBytes([Cards.ApplePair("missing")]));
+        var job = JobFactory.Build(ConversionAction.ToAndroid, [card], new DesktopSettings(), "/album");
+
+        Assert.Equal(candidates, job.Inputs.Pairs);
+        Assert.Equal([candidates[0]], job.Inputs.ForceAccepted);
+        Assert.Equal(1, job.ItemCount);
     }
 
     [Theory]
