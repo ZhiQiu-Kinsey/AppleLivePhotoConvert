@@ -107,7 +107,7 @@ Download one of the following from [Releases](https://github.com/ZhiQiu-Kinsey/A
 - **Download source and verification**: the release list always comes straight from GitHub. Update packages may be downloaded through the GitHub mirror configured on the Engines page; the manifest and packages are verified by SHA256, so a mirror cannot change their contents.
 - **Uninstall** removes only the program. Settings (`%AppData%\LivePhotoConvert`), logs, the thumbnail cache and dependencies (`%LocalAppData%\LivePhotoConvert`) are kept; delete them manually if you want.
 - **Verifying downloads**: each release includes `SHA256SUMS.txt`; you can also verify build provenance with `gh attestation verify <file> -R ZhiQiu-Kinsey/AppleLivePhotoConvert`.
-- The app is not code-signed yet, so Windows SmartScreen may warn about an unknown publisher on first run; choose Run anyway. Users of the 3.x ZIP need to install 4.0.0 once manually; later versions update automatically.
+- The app is not code-signed yet, so Windows SmartScreen may warn about an unknown publisher on first run; choose Run anyway. Users of the 3.x ZIP need to install 4.0.0 once manually; later versions update automatically. Dependencies downloaded into the old ZIP folder are not moved to the installed edition; download them again on the Engines page.
 
 ## Getting started
 
@@ -152,7 +152,7 @@ On macOS keyboards the Command key acts as Ctrl.
 - **Atomic commit**: outputs are first written to staging files starting with `~lpc-` inside the target folder and renamed on the same volume only after verification; a failure or cancellation never leaves a half-written file.
 - **Sources are never overwritten**: output names within a batch are assigned centrally, so neither "append index" nor "overwrite" can overwrite a source of the same batch or an output it already wrote. Paired outputs (HEIC + MOV) are committed or rolled back together; when overwriting existing files, they are backed up first and restored on failure.
 - **In-place replacement**: slimming down in place needs a separate confirmation. A `.livephoto_backup` copy is kept during the replacement and deleted right after it succeeds; when the extension changes (JPG → HEIC) the new file is written first and the original removed afterwards, and the new file is undone if the removal fails.
-- **When sources are handled**: "Move to backup", "Move to Recycle Bin" and "Delete permanently" run only after the outputs are committed and verified. Permanent deletion requires typing `DELETE`. Moved sources go to a subfolder of their own folder (`已合成` after merging, `已拆分` after splitting).
+- **When sources are handled**: "Move to backup", "Move to Recycle Bin" and "Delete permanently" run only after the outputs are committed and verified. Permanent deletion requires typing `DELETE`. Moved sources go to a subfolder of their own folder: `Merged` after merging and `Split` after splitting (`已合成` / `已拆分` when the interface is in Chinese; the name is fixed when the task starts).
 - **Paired videos**: when slimming Apple Live Photo pairs in place, the paired MOV is moved to the Recycle Bin only if the pair passes validation, and is never deleted permanently; export mode leaves MOV files alone.
 - **Disk space**: before starting, free space on the output drive is checked (1.2 × the source size plus 500 MB); if it is short you are warned and may continue anyway.
 - **Timestamps and metadata**: outputs keep the source file timestamps, and EXIF, GPS and other metadata are carried over.
