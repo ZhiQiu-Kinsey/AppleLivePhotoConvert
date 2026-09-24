@@ -465,6 +465,7 @@ public class LibraryScannerTests
         metadata.Xmp[trailer] = MotionPhotoXmp.Apply(null, video.Length, 0);
 
         var scanned = await ScanAsync(temp.Root);
+        Assert.Equal(3, scanned.Items.Count);
         Assert.All(scanned.Items, item => Assert.Equal(LibraryItemKind.Still, item.Kind));
 
         var upgraded = await LibraryScanner.EnrichHeicAsync(scanned.Items, metadata, Token).ToListAsync(Token);

@@ -33,7 +33,7 @@ public readonly record struct ImageHeader(int Width, int Height, int Orientation
         : DateTimeDigitized is { } digitized ? new CaptureTime(digitized, null)
         : null;
 
-    public double AspectRatio => Height > 0 ? (double)Width / Height : 4.0 / 3.0;
+    public double AspectRatio => Dimensions.AspectRatio;
 
     public ImageDimensions Dimensions => new(Width, Height);
 
