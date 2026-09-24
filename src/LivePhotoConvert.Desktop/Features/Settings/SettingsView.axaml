@@ -154,6 +154,57 @@
             </StackPanel>
           </Border>
         </StackPanel>
+
+        <!-- 画廊：缩略图内存预算与磁盘缓存 -->
+        <StackPanel Spacing="6">
+          <TextBlock Text="{DynamicResource SettingsGalleryTitle}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+          <Border Classes="settings-card">
+            <StackPanel>
+              <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto">
+                <Border Classes="settings-icon-badge"><ic:SymbolIcon Symbol="DeveloperBoard" FontSize="16" Foreground="{DynamicResource AccentBrush}" /></Border>
+                <StackPanel Grid.Column="1">
+                  <TextBlock Text="{DynamicResource ThumbnailBudgetTitle}" Classes="settings-card-title" />
+                  <TextBlock Text="{DynamicResource ThumbnailBudgetDesc}" Classes="settings-card-caption" />
+                </StackPanel>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                  <NumericUpDown x:Name="ThumbnailBudgetInput" Value="{CompiledBinding ThumbnailBudgetMb, Mode=TwoWay}"
+                                 Minimum="{CompiledBinding MinThumbnailBudgetMb}" Maximum="{CompiledBinding MaxThumbnailBudgetMb}" Increment="64"
+                                 Width="124" Height="34" Padding="8,0" TextAlignment="Center" VerticalAlignment="Center" VerticalContentAlignment="Center" />
+                  <TextBlock Text="MB" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
+                </StackPanel>
+              </Grid>
+              <Border Classes="settings-divider" />
+              <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto">
+                <Border Classes="settings-icon-badge"><ic:SymbolIcon Symbol="HardDrive" FontSize="16" Foreground="{DynamicResource AccentBrush}" /></Border>
+                <StackPanel Grid.Column="1">
+                  <TextBlock Text="{DynamicResource ThumbnailDiskCacheTitle}" Classes="settings-card-title" />
+                  <TextBlock Text="{DynamicResource ThumbnailDiskCacheDesc}" Classes="settings-card-caption" />
+                </StackPanel>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                  <NumericUpDown x:Name="ThumbnailDiskCacheInput" Value="{CompiledBinding ThumbnailDiskCacheMb, Mode=TwoWay}"
+                                 Minimum="{CompiledBinding MinThumbnailDiskCacheMb}" Maximum="{CompiledBinding MaxThumbnailDiskCacheMb}" Increment="256"
+                                 Width="124" Height="34" Padding="8,0" TextAlignment="Center" VerticalAlignment="Center" VerticalContentAlignment="Center" />
+                  <TextBlock Text="MB" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
+                </StackPanel>
+              </Grid>
+              <Border Classes="settings-divider" />
+              <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto">
+                <Border Classes="settings-icon-badge"><ic:SymbolIcon Symbol="Storage" FontSize="16" Foreground="{DynamicResource AccentBrush}" /></Border>
+                <StackPanel Grid.Column="1">
+                  <TextBlock Text="{DynamicResource ThumbnailCacheUsageTitle}" Classes="settings-card-title" />
+                  <TextBlock Text="{CompiledBinding CacheUsageText}" Classes="settings-card-caption" />
+                </StackPanel>
+                <Button Grid.Column="2" Classes="engine-path-btn" VerticalAlignment="Center"
+                        Command="{CompiledBinding ClearThumbnailCacheCommand}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <ic:SymbolIcon Symbol="Delete" FontSize="13" Foreground="{DynamicResource AccentTextBrush}" VerticalAlignment="Center" />
+                    <TextBlock Text="{DynamicResource ClearThumbnailCacheBtn}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                  </StackPanel>
+                </Button>
+              </Grid>
+            </StackPanel>
+          </Border>
+        </StackPanel>
       </StackPanel>
 
       <!-- ===== 关于 ===== -->

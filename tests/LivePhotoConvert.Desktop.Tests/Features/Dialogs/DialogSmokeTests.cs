@@ -6,7 +6,9 @@ using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using LivePhotoConvert.Core.Tests.Support;
 using LivePhotoConvert.Desktop.Features.Dialogs;
+using LivePhotoConvert.Desktop.Features.Library;
 using LivePhotoConvert.Desktop.Features.Library.Thumbnails;
+using LivePhotoConvert.Desktop.Features.Tasks;
 using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Core.Media;
 using LivePhotoConvert.Core.Pairing;
@@ -216,7 +218,9 @@ public sealed class DialogSmokeTests : IDisposable
             case "StripCompare":
             {
                 var photo = SampleAlbum.WriteJpeg(Path.Combine(_sandbox.InputDirectory, "compare.jpg"), 5, 960, 720);
-                var vm = new StripCompareDialogViewModel(loc, photo, 90);
+                // 以低质量 JPEG 代替 HEIC 编码，不依赖外部工具
+                var engines = new CountingEngines(new LossyStandInEncoder());
+                var vm = new StripCompareDialogViewModel(loc, CompareSamples.Sampler(engines), photo, new StripSampleOptions(ToolPaths.Auto, true, 90));
                 await vm.LoadTask.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
                 return new DialogCase(vm, typeof(StripCompareDialog), false)
                 {

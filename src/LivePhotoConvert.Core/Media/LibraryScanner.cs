@@ -88,7 +88,7 @@ public static class LibraryScanner
         }
 
         var files = new List<LibraryFile>();
-        int totalFiles, inaccessible;
+        int totalFiles, ignoredFiles, inaccessible;
         using (var enumerator = new MediaFileEnumerator(fullRoot))
         {
             while (enumerator.MoveNext())
@@ -102,6 +102,7 @@ public static class LibraryScanner
             }
 
             totalFiles = enumerator.FilesSeen;
+            ignoredFiles = enumerator.FilesIgnored;
             inaccessible = enumerator.Errors;
         }
 
@@ -136,7 +137,7 @@ public static class LibraryScanner
 
         progress?.Report(new LibraryScanProgress(totalFiles, pending.Count, pending.Count));
         Array.Sort(items, static (a, b) => string.CompareOrdinal(a.Photo.Path, b.Photo.Path));
-        return new LibraryScanResult(items, totalFiles, inaccessible);
+        return new LibraryScanResult(items, totalFiles, inaccessible) { IgnoredFiles = ignoredFiles };
     }
 
     /// <summary>
@@ -341,22 +342,31 @@ public static class LibraryScanner
     private sealed record PendingItem(LibraryFile Photo, IReadOnlyList<MediaPair> Candidates);
 
     /// <summary>
-    /// 直接在枚举时取大小与时间（Windows 上来自目录项本身，无需逐个 FileInfo），并统计无法进入的目录。
+    /// 直接在枚举时取大小与时间（Windows 上来自目录项本身，无需逐个 FileInfo），并统计无法进入的目录与被忽略的文件。
     /// </summary>
     private sealed class MediaFileEnumerator(string root) : FileSystemEnumerator<LibraryFile>(root, Options)
     {
-        // 不用 IgnoreInaccessible：它会静默吞掉错误，改在 ContinueOnError 中计数后继续
+        private const FileAttributes HiddenOrSystem = FileAttributes.Hidden | FileAttributes.System;
+
+        // 不用 IgnoreInaccessible：它会静默吞掉错误，改在 ContinueOnError 中计数后继续。
+        // 隐藏与系统属性不放进 AttributesToSkip，否则这些文件不经过筛选、无法计入“已忽略”
         private static readonly EnumerationOptions Options = new()
         {
             RecurseSubdirectories = true,
             IgnoreInaccessible = false,
-            AttributesToSkip = FileAttributes.System | FileAttributes.ReparsePoint | FileAttributes.Hidden,
+            AttributesToSkip = FileAttributes.ReparsePoint,
             ReturnSpecialDirectories = false
         };
 
+        /// <summary>遇到的普通文件总数（不含隐藏或系统目录内的文件）。</summary>
         public int FilesSeen { get; private set; }
 
+        /// <summary>不参与图库的文件：非媒体、隐藏或系统文件、本程序的暂存与备份。</summary>
+        public int FilesIgnored { get; private set; }
+
         public int Errors { get; private set; }
+
+        protected override bool ShouldRecurseIntoEntry(ref FileSystemEntry entry) => (entry.Attributes & HiddenOrSystem) == 0;
 
         protected override bool ShouldIncludeEntry(ref FileSystemEntry entry)
         {
@@ -365,16 +375,20 @@ public static class LibraryScanner
                 return false;
             }
 
+            FilesSeen++;
             // 本程序的暂存与就地替换备份属于进行中的操作，不是用户文件
             var name = entry.FileName;
-            if (name.StartsWith(OutputCommitter.StagingPrefix, StringComparison.Ordinal) || name.EndsWith(OutputCommitter.BackupSuffix, StringComparison.OrdinalIgnoreCase))
+            var extension = Path.GetExtension(name);
+            var included = (entry.Attributes & HiddenOrSystem) == 0 &&
+                           !name.StartsWith(OutputCommitter.StagingPrefix, StringComparison.Ordinal) &&
+                           !name.EndsWith(OutputCommitter.BackupSuffix, StringComparison.OrdinalIgnoreCase) &&
+                           (PhotoExtensions.Contains(extension) || VideoExtensions.Contains(extension));
+            if (!included)
             {
-                return false;
+                FilesIgnored++;
             }
 
-            FilesSeen++;
-            var extension = Path.GetExtension(name);
-            return PhotoExtensions.Contains(extension) || VideoExtensions.Contains(extension);
+            return included;
         }
 
         protected override LibraryFile TransformEntry(ref FileSystemEntry entry) =>

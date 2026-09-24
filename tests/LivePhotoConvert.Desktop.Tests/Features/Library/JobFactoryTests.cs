@@ -178,7 +178,7 @@ public class JobFactoryTests
         var still = album.CreateInputFile("IMG_2.jpg", SyntheticMedia.Jpeg(4096));
         var engines = new FakeEngines();
 
-        var estimate = await new StripEstimator(engines).EstimateAsync([motion, still], ToolPaths.Auto, convertToHeic: true, TestContext.Current.CancellationToken);
+        var estimate = await new StripEstimator(engines).EstimateAsync([motion, still], ToolPaths.Auto, convertToHeic: true, heicQuality: 90, TestContext.Current.CancellationToken);
 
         Assert.Equal(1, estimate.Count);
         Assert.Equal(new FileInfo(motion).Length, estimate.OriginalBytes);

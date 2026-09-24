@@ -40,8 +40,7 @@ public sealed partial class QuickLookDialogViewModel : DialogViewModel<bool>
     private PixelSize? _playbackTarget;
 
     /// <summary>
-    /// 当前卡片出现过的最大画布（逐维取最大）。弹窗按内容定尺寸，照片与视频比例不同会让画布在两种形状间来回变化，
-    /// 按当前画布重启解码会形成振荡；取历史最大值后至多重启一两次。
+    /// 弹窗存续期间出现过的最大画布（逐维取最大）：画布临时变小时不重启解码，只在窗口明显变大时按新尺寸重启。
     /// </summary>
     private (double Width, double Height) _playbackArea;
     private (double Width, double Height, double Scaling) _viewport;
@@ -119,7 +118,6 @@ public sealed partial class QuickLookDialogViewModel : DialogViewModel<bool>
     {
         _player?.Stop();
         _playbackTarget = null;
-        _playbackArea = (_viewport.Width, _viewport.Height);
         int generation = ++_previewGeneration;
         ReleaseOwnedPhotoPreview();
         AttachCard(card);

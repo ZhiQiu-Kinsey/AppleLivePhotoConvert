@@ -37,6 +37,8 @@ public class ThemeContrastTests
         // 填充按钮上的白字，含悬停后的底色
         .. Cross(["OnAccentBrush"], ["AccentBrush", "AccentPressedBrush", "DangerBrush", "DangerPressedBrush", "SuccessFillBrush", "WarningFillBrush", "CaptionCloseHoverBrush", "CaptionClosePressedBrush"], BodyText),
         .. Cross(["OnMediaBrush", "OnMediaMutedBrush"], ["MediaCanvasBrush"], BodyText),
+        // 卷帘对比"瘦身后"角标
+        ("OnMediaBrush", "SuccessFillBrush", BodyText),
 
         // 图标与状态点
         .. Cross(["AccentBrush", "VioletBrush", "SuccessBrush", "WarningBrush", "DangerBrush", "TextMutedBrush"], ["CanvasBrush", "SurfaceBrush"], LargeTextOrIcon),

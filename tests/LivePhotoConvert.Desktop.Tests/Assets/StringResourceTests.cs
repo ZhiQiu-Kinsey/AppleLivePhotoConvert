@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
+using LivePhotoConvert.Core.External.Tools;
 using LivePhotoConvert.Desktop.Tests.Harness;
 
 namespace LivePhotoConvert.Desktop.Tests.Assets;
@@ -150,8 +151,24 @@ public class StringResourceTests
             }
         }
 
+        // 下载源名称键写在 Core 的工具清单里，界面按清单取文案
+        referenced.UnionWith(ToolManifest.Embedded.Tools.SelectMany(t => t.Packages).Select(p => p.NameKey));
+
         var unused = DesktopSources.LoadStrings("zh-CN").Keys.Where(k => !referenced.Contains(k)).Order().ToList();
         Assert.True(unused.Count == 0, "未被引用的字符串键: " + string.Join(", ", unused));
+    }
+
+    [Fact]
+    public void ToolManifestSourceNameKeys_ExistInBothDictionaries()
+    {
+        var keys = ToolManifest.Embedded.Tools.SelectMany(t => t.Packages).Select(p => p.NameKey).Distinct().ToList();
+        Assert.NotEmpty(keys);
+        foreach (var language in new[] { "zh-CN", "en-US" })
+        {
+            var strings = DesktopSources.LoadStrings(language);
+            var missing = keys.Where(k => !strings.ContainsKey(k)).ToList();
+            Assert.True(missing.Count == 0, $"{language} 缺少下载源名称: {string.Join(", ", missing)}");
+        }
     }
 
     [Fact]

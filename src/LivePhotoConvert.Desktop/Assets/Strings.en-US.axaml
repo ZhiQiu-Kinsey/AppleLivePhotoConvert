@@ -68,13 +68,13 @@
   <!-- Storage Strip -->
   <sys:String x:Key="NoAlbumOrPhotoSelected">No album or photo selected</sys:String>
   <sys:String x:Key="CurtainCompareTitle">Slim-down quality comparison</sys:String>
-  <sys:String x:Key="CurtainCompareDesc">Drag the divider to compare the original with a re-encode at the current HEIC quality.</sys:String>
+  <sys:String x:Key="CurtainCompareDesc">The sample was actually processed with the current slim-down settings. Drag the divider to compare; scroll to zoom, drag to pan, and hold the right button or turn on the magnifier for 1:1 pixels.</sys:String>
   <sys:String x:Key="InPlaceStripTitle">In-Place Overwrite (Destructive)</sys:String>
   <sys:String x:Key="InPlaceStripDesc">Overwrites sources in-place; disable to export safely</sys:String>
   <sys:String x:Key="SpaceEstimateTitle">Estimated Space Savings</sys:String>
   <sys:String x:Key="OriginalSizeLabel">Original Album Size:</sys:String>
-  <sys:String x:Key="StrippedSizeLabel">Estimated Stripped Size:</sys:String>
-  <sys:String x:Key="SavedSizeLabel">Estimated Saved Space:</sys:String>
+  <sys:String x:Key="StrippedSizeLabel">Size after slimming (estimated):</sys:String>
+  <sys:String x:Key="SavedSizeLabel">Space freed (estimated):</sys:String>
   <sys:String x:Key="PauseBtn">Pause</sys:String>
   <sys:String x:Key="OpenOutputDirBtn">Open Output Folder</sys:String>
 
@@ -126,11 +126,10 @@
 
   <!-- ToolsView Keys -->
   <sys:String x:Key="ExifToolDesc">Injects XMP Motion Photo tags and QuickTime UTC timezone metadata.</sys:String>
-  <sys:String x:Key="FfmpegDesc">Lossless video stream copy and demuxing.</sys:String>
+  <sys:String x:Key="FfmpegDesc">Video stream copy, transcoding and HDR tone mapping.</sys:String>
   <sys:String x:Key="HeifEncDesc">High-quality HEIC/HEIF image encoder.</sys:String>
   <sys:String x:Key="CustomPathBtn">Specify Custom Path...</sys:String>
   <sys:String x:Key="InstallToolBtn">Install Now</sys:String>
-  <sys:String x:Key="InstallingStatus">Downloading...</sys:String>
   <sys:String x:Key="InstallStartingFormat">Installing {0}, please keep the network connected...</sys:String>
   <sys:String x:Key="InstallCompletedFormat">{0} installed</sys:String>
   <sys:String x:Key="InstallFailedFormat">{0} install failed: {1}</sys:String>
@@ -138,9 +137,44 @@
   <sys:String x:Key="ToolPathInvalidFormat">The selected file is not a usable engine executable: {0}</sys:String>
   <sys:String x:Key="ToolPathAppliedFormat">Executable path for {0} has been set</sys:String>
   <sys:String x:Key="PickerToolExecutableTitle">Select engine executable</sys:String>
+  <sys:String x:Key="ToolsIntegrityNote">One-click install uses pinned versions: each download is verified by SHA256, extracted, test-run and then swapped in as a whole. If any step fails, the existing version is kept.</sys:String>
+  <sys:String x:Key="ToolsInstallRootLabel">Install location:</sys:String>
+  <sys:String x:Key="ToolProbing">Detecting</sys:String>
+  <sys:String x:Key="ToolVersionUnknown">Unknown version</sys:String>
+  <sys:String x:Key="ToolUpdateAvailableFormat">Recommended version {0} is available</sys:String>
+  <sys:String x:Key="ToolUpgradeBtnFormat">Upgrade to {0}</sys:String>
+  <sys:String x:Key="ToolHdrUnavailable">HDR preview/transcoding unavailable: this FFmpeg lacks HDR tone mapping or 10-bit HEVC encoding.</sys:String>
+  <sys:String x:Key="ToolExplicitPathInvalid">The custom path is invalid; fell back to automatic detection.</sys:String>
+  <sys:String x:Key="ToolCapabilityHdrTonemap">HDR tone mapping (zscale+tonemap)</sys:String>
+  <sys:String x:Key="ToolCapabilityHevc10Bit">HEVC 10-bit</sys:String>
+  <sys:String x:Key="ToolPlatformUnsupportedBtn">Install with your system package manager</sys:String>
+  <sys:String x:Key="ToolPlatformUnsupported">No bundled package for this platform. Install it with your system package manager or specify its path.</sys:String>
+  <sys:String x:Key="ToolInstallBlockedByTask">A running task is using these tools. Install or upgrade after it finishes.</sys:String>
+  <sys:String x:Key="ToolStagePreparing">Preparing...</sys:String>
+  <sys:String x:Key="ToolStageDownloadingFormat">Downloading from {0}: {1}</sys:String>
+  <sys:String x:Key="ToolStageVerifying">Verifying integrity...</sys:String>
+  <sys:String x:Key="ToolStageExtracting">Extracting...</sys:String>
+  <sys:String x:Key="ToolStageProbing">Test-running...</sys:String>
+  <sys:String x:Key="ToolStageCommitting">Replacing the old version...</sys:String>
+  <sys:String x:Key="ToolStageSourceFailedFormat">{0} failed ({1}), trying the next source...</sys:String>
+  <sys:String x:Key="ToolSourceFailureFormat">{0}: {1}</sys:String>
+  <sys:String x:Key="ToolSourceViaFormat">{0} (via {1})</sys:String>
+  <sys:String x:Key="ToolSourceNpmMirror">npmmirror (China mirror)</sys:String>
+  <sys:String x:Key="ToolSourceNpmRegistry">npm registry</sys:String>
+  <sys:String x:Key="ToolSourceSourceForge">SourceForge</sys:String>
+  <sys:String x:Key="ToolSourceGitHub">GitHub Releases</sys:String>
+  <sys:String x:Key="ToolFailureUnverified">no trusted checksum, rejected</sys:String>
+  <sys:String x:Key="ToolFailureNetwork">network error</sys:String>
+  <sys:String x:Key="ToolFailureStalled">download stalled</sys:String>
+  <sys:String x:Key="ToolFailureIntegrity">checksum mismatch, the file may be tampered with or incomplete</sys:String>
+  <sys:String x:Key="ToolFailureUnsafeArchive">package contains unsafe paths, rejected</sys:String>
+  <sys:String x:Key="ToolFailureInvalidArchive">package is corrupt or has an unexpected layout</sys:String>
+  <sys:String x:Key="ToolFailureProbe">test run failed, possibly blocked by security software</sys:String>
+  <sys:String x:Key="ToolFailureCommit">could not replace the old version, it may be in use</sys:String>
+  <sys:String x:Key="PingInvalidAddress">invalid address</sys:String>
+  <sys:String x:Key="PingTimedOut">timed out</sys:String>
 
   <!-- CurtainCompare Keys -->
-  <sys:String x:Key="CurtainAfterTitle">Optimized Static HEIC</sys:String>
   <sys:String x:Key="CurtainAfterBadge">Optimized</sys:String>
   <sys:String x:Key="CurtainBeforeBadge">Original</sys:String>
 
@@ -286,10 +320,12 @@
   <sys:String x:Key="EmptyStateNoDirSubtitle">Choose a folder with Live Photos (HEIC/JPG + MOV) or Android motion photos, then pick an action on the right.</sys:String>
   <sys:String x:Key="EmptyStateEmptyTitle">No live photos found in directory</sys:String>
   <sys:String x:Key="EmptyStateEmptySubtitle">Please ensure the folder contains valid Live Photo pairs or Motion Photos</sys:String>
-  <sys:String x:Key="FunnelTotalFormat">Scanned: {0:N0}</sys:String>
+  <sys:String x:Key="FunnelTotalFormat">{0:N0} files scanned</sys:String>
   <sys:String x:Key="FunnelReadyFormat">Ready: {0:N0}</sys:String>
   <sys:String x:Key="FunnelSuspiciousFormat">Suspicious: {0:N0}</sys:String>
-  <sys:String x:Key="FunnelFilteredFormat">Filtered: {0:N0}</sys:String>
+  <sys:String x:Key="FunnelItemsFormat">{0:N0} items</sys:String>
+  <sys:String x:Key="FunnelIgnoredFormat">{0:N0} ignored</sys:String>
+  <sys:String x:Key="FunnelTooltipFormat">Scanned {0:N0} files into {1:N0} library items (a Live Photo pair counts as one item). {2:N0} non-media, hidden or system files and conversion staging or backup files were ignored.</sys:String>
   <sys:String x:Key="PrimaryBtnMergeFormat">Merge {0} into Android motion photos</sys:String>
   <sys:String x:Key="PrimaryBtnAppleFormat">Restore {0} as Apple Live Photos</sys:String>
   <sys:String x:Key="PrimaryBtnExtractFormat">Extract {0} motion photos</sys:String>
@@ -317,7 +353,6 @@
   <sys:String x:Key="PingFailedFormat">Connection failed ({0})</sys:String>
   <sys:String x:Key="ToolNotDetectedFormat">{0} not detected</sys:String>
   <sys:String x:Key="ToolMissingFormat">{0} was not found. Download it or set its path on the Engines page.</sys:String>
-  <sys:String x:Key="ToolReady">Ready</sys:String>
   <sys:String x:Key="ReportTimestampFormat">Batch completed: {0:yyyy-MM-dd HH:mm:ss}</sys:String>
   <sys:String x:Key="ReportSummaryFormat">Succeeded {0} · Issues {1} · Skipped {2}</sys:String>
   <sys:String x:Key="ReportStatusSuccess">Success</sys:String>
@@ -390,7 +425,7 @@
   <sys:String x:Key="ActionStripDesc">Remove embedded or paired videos and keep only the still photo, optionally as HEIC.</sys:String>
   <sys:String x:Key="ApplicableFormat">{0} applicable · {1}</sys:String>
   <sys:String x:Key="ApplicableScopeSelectedFormat">Counted from {0} selected items</sys:String>
-  <sys:String x:Key="ApplicableScopeAll">Nothing selected, counting all photos</sys:String>
+  <sys:String x:Key="ApplicableScopeAll">Nothing selected, counting all ready photos</sys:String>
   <sys:String x:Key="InspectorOutputTitle">Output</sys:String>
   <sys:String x:Key="KeepSubfoldersDesc">Recreate the album subfolders in the output to avoid name clashes.</sys:String>
   <sys:String x:Key="StripConvertHeicTitle">Also convert to HEIC</sys:String>
@@ -415,13 +450,34 @@
   <sys:String x:Key="ScanErrorFailedFormat">Scan failed: {0}</sys:String>
   <sys:String x:Key="ScanSkippedInaccessibleFormat">Skipped {0} subfolder(s) without read permission</sys:String>
   <sys:String x:Key="DialogCloseTip">Close (Esc)</sys:String>
-  <sys:String x:Key="CompareLoading">Rendering the comparison…</sys:String>
-  <sys:String x:Key="CompareUnavailable">Cannot render a comparison for this photo.</sys:String>
+  <sys:String x:Key="CompareLoading">Decoding the comparison…</sys:String>
   <sys:String x:Key="CompareBeforeSizeLabel">Original (with paired video)</sys:String>
-  <sys:String x:Key="CompareAfterSizeLabel">Slimmed (at current quality)</sys:String>
+  <sys:String x:Key="CompareAfterSizeLabel">Slimmed (actual output)</sys:String>
+  <sys:String x:Key="CompareProcessing">Processing the sample with the slim-down settings: stripping the video and encoding…</sys:String>
+  <sys:String x:Key="CompareFailedFormat">Cannot create the comparison: {0}</sys:String>
+  <sys:String x:Key="CompareCancelHint">Close this dialog to cancel; temporary files are removed.</sys:String>
+  <sys:String x:Key="CompareParamsHeicFormat">Convert to HEIC · quality {0}</sys:String>
+  <sys:String x:Key="CompareParamsKeep">Strip video only, keep format</sys:String>
+  <sys:String x:Key="CompareEncoderFormat">Encoder {0}</sys:String>
+  <sys:String x:Key="CompareNotConverted">Not re-encoded: already HEIC or has an HDR gain map</sys:String>
+  <sys:String x:Key="CompareKeptFormat">HEIC is not smaller; the task keeps the original format and only strips the video</sys:String>
+  <sys:String x:Key="CompareZoomInTip">Zoom in</sys:String>
+  <sys:String x:Key="CompareZoomOutTip">Zoom out</sys:String>
+  <sys:String x:Key="CompareZoomResetTip">Fit to window</sys:String>
+  <sys:String x:Key="CompareMagnifierBtn">Magnifier</sys:String>
+  <sys:String x:Key="CompareMagnifierTip">Show both sides at 1:1 pixels next to the pointer (or hold the right button)</sys:String>
   <sys:String x:Key="SettingsAppearanceTitle">Appearance &amp; language</sys:String>
   <sys:String x:Key="SettingsBehaviorTitle">Tasks &amp; performance</sys:String>
   <sys:String x:Key="ReportGoLibraryBtn">Go to Library</sys:String>
+  <sys:String x:Key="SettingsGalleryTitle">Gallery</sys:String>
+  <sys:String x:Key="ThumbnailBudgetTitle">Thumbnail memory budget</sys:String>
+  <sys:String x:Key="ThumbnailBudgetDesc">Memory limit for thumbnail bitmaps (64-1024 MB). When exceeded, the least recently seen off-screen thumbnails are released first; cards on screen are never released. A larger budget means fewer reloads when scrolling back.</sys:String>
+  <sys:String x:Key="ThumbnailDiskCacheTitle">Thumbnail disk cache limit</sys:String>
+  <sys:String x:Key="ThumbnailDiskCacheDesc">Maximum total size of cached thumbnail files (128 MB-16 GB); the least recently used are removed when exceeded.</sys:String>
+  <sys:String x:Key="ThumbnailCacheUsageTitle">Disk cache usage</sys:String>
+  <sys:String x:Key="ThumbnailCacheUsageFormat">Currently using {0}</sys:String>
+  <sys:String x:Key="ThumbnailCacheMeasuring">Measuring…</sys:String>
+  <sys:String x:Key="ClearThumbnailCacheBtn">Clear cache</sys:String>
 
   <!-- Task report: outcome reasons and notes (Core reason codes) -->
   <sys:String x:Key="ReportKpiTotalCanceledSub">Processed / planned</sys:String>
@@ -454,5 +510,6 @@
   <sys:String x:Key="OutcomeNoteHdrDecoderUnavailable">heif-dec missing · SDR</sys:String>
   <sys:String x:Key="OutcomeNoteHdrMetadataMissing">HDR metadata insufficient · SDR</sys:String>
   <sys:String x:Key="OutcomeNoteHdrConversionFailed">HDR conversion failed · SDR</sys:String>
+  <sys:String x:Key="OutcomeNoteKeptOriginalFormat">Kept original format (HEIC was larger)</sys:String>
 
 </ResourceDictionary>

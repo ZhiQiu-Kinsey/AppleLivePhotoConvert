@@ -31,10 +31,8 @@
 
 ## 合流后待处理（WP5.2 范围外清单）
 
-- 写死颜色：`Controls/CurtainCompareControl`（阶段 4 已重写，合流后复查）、`Controls/PhotoCardControl.axaml` 第 40/44/60 行。
-- 小于 11px：`PhotoCardControl.axaml` 多处 10px；`Features/Tools/ToolsView.axaml` 的 status-pill 文字。
-- 对比度：`Border.status-pill.success/danger TextBlock` 改用 TextBrush；检查器 `TextBlock.danger-option` 改用 `DangerTextBrush`；卡片时间不一致徽章改用 `WarningFillBrush`；QuickLook 与瘦身对比弹窗中用 Success/Accent 色的正文改用对应 TextBrush。
-- 悬停修复规则补上 `capsule-btn`、`capsule-icon-btn`、`action-tile`、`engine-path-btn`、`engine-install-btn`、`engine-secondary-btn`。
-- `ViewStyleRulesTests` 的豁免名单（Controls/、Features/Library/、Features/Tools/）清理后移除。
-- 合入阶段 4 后在 `ShellViewModel.SyncToolStatuses` 接上"需要注意"（`Tools.*.HasWarning`），并订阅工具卡片的 PropertyChanged。
+阶段 3 与阶段 4 合流时已完成：写死颜色与小于 11px 的文字（PhotoCardControl、ToolsView；CurtainCompareControl 全部取主题 token，"瘦身后"角标改用 `SuccessFillBrush`）、状态胶囊 / 检查器危险选项 / 卡片徽章 / QuickLook 与瘦身对比弹窗正文的对比度 token、悬停修复规则补齐（`engine-path-btn` 已随阶段 4 重写删除，新增测试校验所有自定义悬停底色的按钮类都在规则内）、`ViewStyleRulesTests` 豁免名单移除、侧栏"需要注意"接入依赖页卡片。卡片信息栏改用 11px 后内边距收紧，由测试保证内容放得下固定高度。
+
+剩余：
+
 - 窄窗口下检查器占位偏大：可折叠或按宽度自动收起。

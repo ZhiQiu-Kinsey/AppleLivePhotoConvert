@@ -5,15 +5,12 @@ using LivePhotoConvert.Desktop.Tests.Harness;
 
 namespace LivePhotoConvert.Desktop.Tests.Assets;
 
-/// <summary>视图与样式只用主题 token 着色，文字不小于 11px。</summary>
+/// <summary>视图与样式只用主题 token 着色，文字不小于 11px，自定义按钮的悬停样式能够生效。</summary>
 public partial class ViewStyleRulesTests
 {
     private const double MinimumTextSize = 11;
 
     private static readonly XNamespace X = "http://schemas.microsoft.com/winfx/2006/xaml";
-
-    /// <summary>尚未按这两条规则整理的目录（相对桌面工程），整理后从这里移除。</summary>
-    private static readonly string[] PendingDirectories = ["Controls/", "Features/Library/", "Features/Tools/"];
 
     [Fact]
     public void Views_UseThemeTokensInsteadOfLiteralColors()
@@ -73,11 +70,38 @@ public partial class ViewStyleRulesTests
         Assert.True(violations.Count == 0, "小于 11px 的文字:\n" + string.Join('\n', violations));
     }
 
+    /// <summary>
+    /// Fluent 按钮模板悬停时改写内部 ContentPresenter 的底色；自定义了悬停底色的按钮类必须加入让呈现器跟随按钮画刷的规则，
+    /// 否则悬停样式不生效。
+    /// </summary>
+    [Fact]
+    public void ButtonClassesWithHoverBackground_AreInPresenterFollowRule()
+    {
+        var styles = XDocument.Load(Path.Combine(DesktopSources.Directory, "Assets", "Styles.axaml"));
+        var selectors = styles.Descendants().Where(e => e.Name.LocalName == "Style")
+            .Select(e => ((string?)e.Attribute("Selector") ?? string.Empty, e))
+            .ToList();
+        var followed = selectors
+            .Where(s => s.Item1.Contains("/template/ ContentPresenter#PART_ContentPresenter", StringComparison.Ordinal)
+                        && s.e.Elements().Any(setter => (string?)setter.Attribute("Property") == "Background"
+                                                        && ((string?)setter.Attribute("Value"))?.Contains("$parent[Button].Background", StringComparison.Ordinal) == true))
+            .SelectMany(s => s.Item1.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+            .ToHashSet(StringComparer.Ordinal);
+        var missing = selectors
+            .Where(s => HoverButton().IsMatch(s.Item1)
+                        && s.e.Elements().Any(setter => (string?)setter.Attribute("Property") == "Background"))
+            .Select(s => HoverButton().Match(s.Item1).Groups["cls"].Value)
+            .Where(cls => !followed.Contains($"Button.{cls}:pointerover /template/ ContentPresenter#PART_ContentPresenter"))
+            .Distinct()
+            .ToList();
+
+        Assert.True(missing.Count == 0, "悬停底色不会生效的按钮类:\n" + string.Join('\n', missing));
+    }
+
     private static IEnumerable<(string File, XDocument Doc)> CheckedViews() =>
         DesktopSources.Files("*.axaml")
             .Where(p => !DesktopSources.IsStringsDictionary(p))
             .Select(p => Path.GetRelativePath(DesktopSources.Directory, p).Replace('\\', '/'))
-            .Where(rel => !PendingDirectories.Any(d => rel.StartsWith(d, StringComparison.Ordinal)))
             .Order(StringComparer.Ordinal)
             .Select(rel => (rel, XDocument.Load(Path.Combine(DesktopSources.Directory, rel))));
 
@@ -112,6 +136,9 @@ public partial class ViewStyleRulesTests
 
     private static string SelectorOf(XElement setter) =>
         (string?)setter.Ancestors().FirstOrDefault(a => a.Name.LocalName == "Style")?.Attribute("Selector") ?? string.Empty;
+
+    [GeneratedRegex(@"^Button\.(?<cls>[\w-]+):pointerover$")]
+    private static partial Regex HoverButton();
 
     [GeneratedRegex(@"^#[0-9A-Fa-f]{3,8}$")]
     private static partial Regex LiteralColor();

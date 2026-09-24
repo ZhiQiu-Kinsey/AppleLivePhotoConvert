@@ -54,14 +54,17 @@
             </StackPanel>
           </Border>
 
-          <!-- 扫描与过滤统计胶囊 -->
+          <!-- 扫描统计胶囊：文件数 · 条目数 · 忽略数（实况对的照片与视频合为一个条目，不算忽略） -->
           <Border Background="{DynamicResource HoverBrush}" CornerRadius="10" Padding="8,3" VerticalAlignment="Center"
+                  ToolTip.Tip="{Binding Selection.FunnelTooltipText}"
                   IsVisible="{Binding #HeaderRow.Bounds.Width, Converter={x:Static conv:MinWidthToBoolConverter.Instance}, ConverterParameter=560}">
             <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
               <ic:SymbolIcon Symbol="DocumentSearch" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
               <TextBlock Text="{Binding Selection.FunnelTotalText}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
-              <TextBlock Text="·" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" IsVisible="{Binding Selection.HasFilteredItems}"/>
-              <TextBlock Text="{Binding Selection.FunnelFilteredText}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" IsVisible="{Binding Selection.HasFilteredItems}"/>
+              <TextBlock Text="·" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"/>
+              <TextBlock Text="{Binding Selection.FunnelItemsText}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+              <TextBlock Text="·" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" IsVisible="{Binding Selection.HasIgnoredFiles}"/>
+              <TextBlock Text="{Binding Selection.FunnelIgnoredText}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" IsVisible="{Binding Selection.HasIgnoredFiles}"/>
             </StackPanel>
           </Border>
         </StackPanel>
