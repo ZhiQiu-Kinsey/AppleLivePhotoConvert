@@ -332,6 +332,11 @@
     <Setter Property="BoxShadow" Value="0 8 24 0 #26000000" />
   </Style>
 
+  <!-- 下拉选项中的危险项（例如永久删除原片） -->
+  <Style Selector="TextBlock.danger-option">
+    <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
+  </Style>
+
   <Style Selector="ComboBox.engine-select">
     <Setter Property="MinHeight" Value="38" />
     <Setter Property="CornerRadius" Value="10" />

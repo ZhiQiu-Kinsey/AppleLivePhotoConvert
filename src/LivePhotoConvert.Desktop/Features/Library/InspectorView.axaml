@@ -1,10 +1,17 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:library="using:LivePhotoConvert.Desktop.Features.Library"
+             xmlns:infra="using:LivePhotoConvert.Desktop.Infrastructure"
              xmlns:ic="using:FluentIcons.Avalonia"
              x:Class="LivePhotoConvert.Desktop.Features.Library.InspectorView"
              x:CompileBindings="True"
              x:DataType="library:InspectorViewModel">
+
+  <UserControl.Resources>
+    <DataTemplate x:Key="LocalizedOptionTemplate" x:DataType="infra:LocalizedOption">
+      <TextBlock Text="{Binding Text}" Classes.danger-option="{Binding IsDanger}" />
+    </DataTemplate>
+  </UserControl.Resources>
 
   <Border Classes="inspector">
     <Grid RowDefinitions="Auto,*,Auto">
@@ -63,11 +70,8 @@
           <!-- 合成：命名格式 -->
           <StackPanel Spacing="6" IsVisible="{Binding IsToAndroid}">
             <TextBlock Classes="option-title" Text="{DynamicResource NamingFormatTitle}" />
-            <ComboBox Classes="engine-select" SelectedIndex="{Binding NamingFormat, Mode=TwoWay}" HorizontalAlignment="Stretch">
-              <ComboBoxItem Content="{DynamicResource NamingFormatOriginalShort}" />
-              <ComboBoxItem Content="{DynamicResource NamingFormatDateNameShort}" />
-              <ComboBoxItem Content="{DynamicResource NamingFormatCleanShort}" />
-            </ComboBox>
+            <ComboBox Classes="engine-select" ItemsSource="{Binding NamingFormatOptions}" ItemTemplate="{StaticResource LocalizedOptionTemplate}"
+                      SelectedIndex="{Binding NamingFormat, Mode=TwoWay}" HorizontalAlignment="Stretch" />
             <Border Classes="inspector-card" Padding="8,6">
               <TextBlock Text="{Binding LiveFilenameDemo}" FontSize="11" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource AccentBrush}" TextTrimming="CharacterEllipsis" />
             </Border>
@@ -107,12 +111,8 @@
           <!-- 源文件处理 -->
           <StackPanel Spacing="6" IsVisible="{Binding HasSourceAction}">
             <TextBlock Classes="option-title" Text="{DynamicResource SourceActionTitle}" />
-            <ComboBox Classes="engine-select" SelectedIndex="{Binding SourceAction, Mode=TwoWay}" HorizontalAlignment="Stretch">
-              <ComboBoxItem Content="{DynamicResource SourceActionKeepShort}" />
-              <ComboBoxItem Content="{DynamicResource SourceActionSubfolderShort}" />
-              <ComboBoxItem Content="{DynamicResource SourceActionRecycleShort}" />
-              <ComboBoxItem Content="{DynamicResource SourceActionDeleteShort}" Foreground="{DynamicResource DangerBrush}" />
-            </ComboBox>
+            <ComboBox Classes="engine-select" ItemsSource="{Binding SourceActionOptions}" ItemTemplate="{StaticResource LocalizedOptionTemplate}"
+                      SelectedIndex="{Binding SourceAction, Mode=TwoWay}" HorizontalAlignment="Stretch" />
             <Border Classes="inspector-card danger" IsVisible="{Binding IsDeleteWarningVisible}">
               <StackPanel Spacing="2">
                 <StackPanel Orientation="Horizontal" Spacing="4">
@@ -210,8 +210,8 @@
         <Border Classes="inspector-card accent" Padding="10,6" IsVisible="{Binding Tasks.IsRunning}">
           <Grid ColumnDefinitions="Auto,*,Auto,Auto">
             <ic:SymbolIcon Grid.Column="0" Symbol="ArrowSync" FontSize="13" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" Margin="0,1,8,0" />
-            <TextBlock Grid.Column="1" Text="{Binding Tasks.Current.Title}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-            <TextBlock Grid.Column="2" Text="{Binding Tasks.Current.PercentText}" FontSize="11" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource AccentTextBrush}" VerticalAlignment="Center" Margin="6,0" />
+            <TextBlock Grid.Column="1" Text="{Binding Tasks.Current?.Title}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            <TextBlock Grid.Column="2" Text="{Binding Tasks.Current?.PercentText}" FontSize="11" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource AccentTextBrush}" VerticalAlignment="Center" Margin="6,0" />
             <Button Grid.Column="3" Classes="capsule-btn" Command="{Binding ViewTasksCommand}">
               <TextBlock Text="{DynamicResource TaskViewBtn}" FontSize="11" />
             </Button>
