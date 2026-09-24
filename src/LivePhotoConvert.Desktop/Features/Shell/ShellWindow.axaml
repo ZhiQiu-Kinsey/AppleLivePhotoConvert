@@ -106,6 +106,7 @@
                 <Border Grid.Column="2" Classes="status-dot ok" IsVisible="{Binding AreToolsReady}" />
                 <Border Grid.Column="2" Classes="status-dot warn" IsVisible="{Binding DoToolsNeedAttention}" />
                 <Border Grid.Column="2" Classes="status-dot bad" IsVisible="{Binding AreToolsMissing}" />
+                <Border Grid.Column="2" Classes="status-dot probing" IsVisible="{Binding AreToolsProbing}" />
               </Grid>
             </Button>
           </StackPanel>
@@ -128,6 +129,7 @@
                           <ic:SymbolIcon Classes="tool-status ok" Symbol="CheckmarkCircle" IsVisible="{Binding IsReady}" ToolTip.Tip="{DynamicResource ShellToolReady}" />
                           <ic:SymbolIcon Classes="tool-status warn" Symbol="Warning" IsVisible="{Binding NeedsAttention}" ToolTip.Tip="{DynamicResource ShellToolAttention}" />
                           <ic:SymbolIcon Classes="tool-status bad" Symbol="DismissCircle" IsVisible="{Binding IsMissing}" ToolTip.Tip="{DynamicResource ShellToolMissing}" />
+                          <ic:SymbolIcon Classes="tool-status probing" Symbol="HourglassHalf" IsVisible="{Binding IsProbing}" ToolTip.Tip="{DynamicResource ShellToolProbing}" />
                         </Panel>
                         <TextBlock Grid.Column="1" Text="{Binding Name}" />
                       </Grid>
@@ -148,7 +150,7 @@
 
       <!-- 页面内容：各页面常驻，切换只改可见性，保留滚动位置与画廊状态 -->
       <Panel Grid.Column="1">
-        <Grid IsVisible="{Binding IsLibrarySelected}" ColumnDefinitions="*,320">
+        <Grid IsVisible="{Binding IsLibrarySelected}" ColumnDefinitions="*,Auto">
           <library:LibraryView Grid.Column="0" DataContext="{Binding Library}" />
           <library:InspectorView Grid.Column="1" DataContext="{Binding Inspector}" />
         </Grid>

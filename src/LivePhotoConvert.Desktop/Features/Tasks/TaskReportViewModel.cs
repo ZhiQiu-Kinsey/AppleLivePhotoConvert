@@ -166,10 +166,11 @@ public sealed partial class TaskReportViewModel : ViewModelBase
 
     public int PlannedCount { get; }
 
-    /// <summary>"处理总量"指标：取消时显示 已处理 / 计划。</summary>
-    public string TotalText => WasCanceled
-        ? string.Create(CultureInfo.InvariantCulture, $"{TotalCount} / {PlannedCount}")
-        : TotalCount.ToString(CultureInfo.InvariantCulture);
+    /// <summary>"处理总量"指标显示计划总数；取消时已处理与未处理的项数在副标题中分列。</summary>
+    public string TotalText => PlannedCount.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>取消后未处理的项数。</summary>
+    public int UnprocessedCount => PlannedCount - TotalCount;
 
     public int SuccessCount { get; }
 
@@ -269,7 +270,9 @@ public sealed partial class TaskReportViewModel : ViewModelBase
         SummaryText = _localizer.Format("ReportSummaryFormat", SuccessCount, ProblemCount, SkippedCount)
                       + (WasCanceled ? _localizer["ReportCanceledSuffix"] : string.Empty);
         ErrorMessage = Failure?.Describe(_localizer) ?? string.Empty;
-        TotalSubText = _localizer[WasCanceled ? "ReportKpiTotalCanceledSub" : "ReportKpiTotalSub"];
+        TotalSubText = WasCanceled
+            ? _localizer.Format("ReportKpiTotalCanceledSubFormat", TotalCount, UnprocessedCount)
+            : _localizer["ReportKpiTotalSub"];
         ProblemSubText = _localizer.Format("ReportKpiProblemsSubFormat", FailedCount, CleanupCount);
         DurationText = Elapsed.TotalSeconds >= 1
             ? string.Create(culture, $"{Elapsed.TotalSeconds:F1}s")

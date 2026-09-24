@@ -20,7 +20,7 @@
       <Border Classes="engine-card" Margin="6">
         <StackPanel Spacing="10">
           <Grid ColumnDefinitions="Auto,*,Auto">
-            <Border Classes="status-dot large" Classes.ok="{Binding IsHealthy}" Classes.warn="{Binding HasWarning}" Classes.bad="{Binding IsMissing}" Margin="0,0,8,0" />
+            <Border Classes="status-dot large" Classes.ok="{Binding IsHealthy}" Classes.warn="{Binding HasWarning}" Classes.bad="{Binding IsMissing}" Classes.probing="{Binding IsProbing}" Margin="0,0,8,0" />
             <TextBlock Grid.Column="1" Text="{Binding DisplayName}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
             <Border Grid.Column="2" Classes="status-pill" Classes.success="{Binding IsHealthy}" Classes.warning="{Binding HasWarning}" Classes.danger="{Binding IsMissing}" Classes.muted="{Binding IsProbing}"
                     ToolTip.Tip="{Binding VersionDetail}">

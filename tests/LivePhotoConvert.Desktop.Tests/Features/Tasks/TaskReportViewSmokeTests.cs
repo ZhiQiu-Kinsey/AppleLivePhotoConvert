@@ -38,4 +38,31 @@ public class TaskReportViewSmokeTests
         Assert.True(detail.IsEffectivelyVisible);
         session.Log.AssertNoBindingErrors();
     }
+
+    /// <summary>取消的任务：处理总量显示计划总数，副标题分列已处理与未处理。</summary>
+    [AvaloniaTheory]
+    [InlineData("zh", ThemeService.Light)]
+    [InlineData("en", ThemeService.Dark)]
+    public async Task CanceledReport_ShowsPlannedTotalWithProcessedAndUnprocessed(string language, string theme)
+    {
+        var runner = new ScriptedRunner((_, progress, _) =>
+        {
+            progress!.Report(new BatchProgress(2, 6, "b.jpg"));
+            return Task.FromResult(new BatchReport(
+                [ItemOutcome.Succeeded("/in/a.jpg", "/out/a.jpg"), ItemOutcome.Skipped("/in/b.jpg", OutcomeReason.NotMotionPhoto)],
+                TimeSpan.FromSeconds(2),
+                Canceled: true));
+        });
+        using var session = new ShellSession(language, theme, configure: services => services.AddSingleton<IConversionRunner>(runner));
+        var files = Enumerable.Range(0, 6).Select(i => $"/in/{i}.jpg").ToArray();
+
+        await session.Host.Get<TaskCenter>().RunAsync(Jobs.Files(ConversionAction.Extract, "/out", files));
+        session.Navigate(AppPage.Tasks);
+
+        var texts = session.Descendants<TextBlock>().Where(t => t.IsEffectivelyVisible).Select(t => t.Text).ToList();
+        Assert.Contains("6", texts);
+        Assert.Contains(session.Localizer.Format("ReportKpiTotalCanceledSubFormat", 2, 4), texts);
+        Screenshots.Save(session, $"report-canceled-{theme.ToLowerInvariant()}-{language}");
+        session.Log.AssertNoBindingErrors();
+    }
 }

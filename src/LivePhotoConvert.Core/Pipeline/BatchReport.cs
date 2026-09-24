@@ -110,4 +110,6 @@ public sealed record BatchReport(IReadOnlyList<ItemOutcome> Items, TimeSpan Elap
 /// <param name="Completed">已完成条目数</param>
 /// <param name="Total">条目总数</param>
 /// <param name="CurrentItem">刚完成的条目文件名</param>
-public readonly record struct BatchProgress(int Completed, int Total, string CurrentItem);
+/// <param name="Preresolved">处理前就已确定结果的条目数（如配对校验未通过而跳过），已计入 <paramref name="Completed"/>；
+/// 吞吐与剩余时间应只按其余条目计算</param>
+public readonly record struct BatchProgress(int Completed, int Total, string CurrentItem, int Preresolved = 0);

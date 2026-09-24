@@ -28,11 +28,12 @@ public static class TaskTexts
 }
 
 /// <summary>
-/// 运行中任务的进度卡片。吞吐与剩余时间按扣除暂停后的实际运行时间估算。
+/// 运行中任务的进度卡片。吞吐与剩余时间按扣除暂停后的实际运行时间估算，
+/// 且只计实际处理的条目：处理前就确定结果的条目（如配对校验跳过的）会在第一次进度里一次性计入已完成。
 /// </summary>
 public sealed partial class RunningTaskViewModel : ViewModelBase
 {
-    /// <summary>已完成项少于该值时速率波动太大，剩余时间显示为"估算中"。</summary>
+    /// <summary>实际处理的项少于该值时速率波动太大，剩余时间显示为"估算中"。</summary>
     public const int MinSamplesForEstimate = 3;
 
     private readonly ILocalizer _localizer;
@@ -40,6 +41,7 @@ public sealed partial class RunningTaskViewModel : ViewModelBase
     private readonly long _startedAt;
     private long _pausedAt;
     private TimeSpan _pausedTotal;
+    private int _preresolved;
 
     public RunningTaskViewModel(ConversionJob job, ILocalizer localizer, TimeProvider time)
     {
@@ -110,6 +112,7 @@ public sealed partial class RunningTaskViewModel : ViewModelBase
     {
         Total = Math.Max(0, value.Total);
         Completed = Math.Clamp(value.Completed, 0, Total);
+        _preresolved = Math.Clamp(value.Preresolved, 0, Completed);
         CurrentFile = value.CurrentItem ?? string.Empty;
         UpdateEstimate();
     }
@@ -144,8 +147,9 @@ public sealed partial class RunningTaskViewModel : ViewModelBase
     private void UpdateEstimate()
     {
         var seconds = ActiveElapsed.TotalSeconds;
-        ItemsPerSecond = Completed > 0 && seconds > 0 ? Completed / seconds : null;
-        Remaining = Completed >= MinSamplesForEstimate && ItemsPerSecond is > 0 and var rate
+        var processed = Completed - _preresolved;
+        ItemsPerSecond = processed > 0 && seconds > 0 ? processed / seconds : null;
+        Remaining = processed >= MinSamplesForEstimate && ItemsPerSecond is > 0 and var rate
             ? TimeSpan.FromSeconds((Total - Completed) / rate)
             : null;
         UpdateTexts();

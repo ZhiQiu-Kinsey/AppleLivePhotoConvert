@@ -224,4 +224,35 @@ public class StringResourceTests
         Assert.True(mismatched.Count == 0, "中英格式串占位符不一致: " + string.Join("; ", mismatched));
         Assert.True(unparsable.Count == 0, "格式串无法解析: " + string.Join("; ", unparsable));
     }
+
+    /// <summary>零 Emoji：图标只用 FluentIcons 矢量图标。箭头（←→）属于按键说明，不算 Emoji。</summary>
+    [Fact]
+    public void DesktopSourcesAndStrings_ContainNoEmoji()
+    {
+        var found = new List<string>();
+        foreach (var file in DesktopSources.Files("*.axaml").Concat(DesktopSources.Files("*.cs")))
+        {
+            var lineNumber = 0;
+            foreach (var line in File.ReadLines(file))
+            {
+                lineNumber++;
+                foreach (var rune in line.EnumerateRunes())
+                {
+                    if (IsEmoji(rune))
+                    {
+                        found.Add($"{Path.GetRelativePath(DesktopSources.Directory, file)}:{lineNumber} U+{rune.Value:X4}");
+                    }
+                }
+            }
+        }
+
+        Assert.True(found.Count == 0, "出现 Emoji 字符:\n" + string.Join('\n', found));
+    }
+
+    /// <summary>彩色表情、杂项符号与装饰符号区段，以及把字符变成表情样式的变体选择符和零宽连接符。</summary>
+    private static bool IsEmoji(Rune rune) =>
+        rune.Value is >= 0x1F000 and <= 0x1FAFF
+            or >= 0x2600 and <= 0x27BF
+            or >= 0x2B00 and <= 0x2BFF
+            or 0xFE0F or 0x200D;
 }

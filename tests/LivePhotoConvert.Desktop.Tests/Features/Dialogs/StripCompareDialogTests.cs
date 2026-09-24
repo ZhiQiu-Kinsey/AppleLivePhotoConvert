@@ -155,6 +155,37 @@ public sealed class StripCompareDialogTests : IDisposable
         Assert.Null(vm.Sample);
     }
 
+    /// <summary>分析阶段失败（照片已被删除、无法读取）按原因码显示当前语言的文案，不显示 Core 的异常原文。</summary>
+    [AvaloniaTheory]
+    [InlineData("zh-CN", true)]
+    [InlineData("en-US", true)]
+    [InlineData("zh-CN", false)]
+    [InlineData("en-US", false)]
+    public async Task AnalysisFailure_ShowsLocalizedReasonInsteadOfCoreMessage(string language, bool deleted)
+    {
+        using var culture = new CultureScope();
+        var engines = new CountingEngines(new LossyStandInEncoder());
+        var photo = Path.Combine(_sandbox.InputDirectory, deleted ? "gone.jpg" : "broken.heic");
+        if (!deleted)
+        {
+            File.WriteAllBytes(photo, Core.Tests.Support.SyntheticMedia.Heic());
+            engines.Metadata.FailXmpReads = _ => true;
+        }
+
+        var localizer = new Localizer();
+        localizer.SetLanguage(language);
+        var vm = new StripCompareDialogViewModel(localizer, CompareSamples.Sampler(engines), photo, new StripSampleOptions(ToolPaths.Auto, true, 90));
+
+        await vm.LoadTask.WaitAsync(TimeSpan.FromSeconds(10), Token);
+
+        var reason = deleted
+            ? localizer.Format("OutcomeReasonSourceMissingFormat", "gone.jpg")
+            : localizer.Format("OutcomeReasonSourceUnreadableFormat", "broken.heic");
+        Assert.True(vm.HasFailed);
+        Assert.Equal(localizer.Format("CompareFailedFormat", reason), vm.StatusText);
+        Assert.False(language == "en-US" && UiTexts.ContainsChinese(vm.StatusText), vm.StatusText);
+    }
+
     [AvaloniaFact]
     public async Task WithoutHeicConversion_OnlyStripsVideo()
     {

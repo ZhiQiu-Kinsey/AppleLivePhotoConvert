@@ -73,6 +73,8 @@ public sealed partial class ShellViewModel : ViewModelBase
 
     public bool AreToolsMissing => ToolsHealth == ToolHealth.Missing;
 
+    public bool AreToolsProbing => ToolsHealth == ToolHealth.Probing;
+
     public bool IsLibrarySelected => _navigator.Current == AppPage.Library;
     public bool IsTasksSelected => _navigator.Current == AppPage.Tasks;
     public bool IsToolsSelected => _navigator.Current == AppPage.Tools;
@@ -117,18 +119,18 @@ public sealed partial class ShellViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsSettingsSelected));
     }
 
-    /// <summary>"需要注意"取依赖页卡片的警告：建议升级、指定路径无效、FFmpeg 缺 HDR 能力或版本探测失败。</summary>
+    /// <summary>探测完成前为"检测中"；"需要注意"取依赖页卡片的警告：建议升级、指定路径无效、FFmpeg 缺 HDR 能力或版本探测失败。</summary>
     private void SyncToolStatuses()
     {
         for (var i = 0; i < _toolCards.Length; i++)
         {
-            ToolStatuses[i].Health = ToolStatusItem.Evaluate(_toolCards[i].IsReady, _toolCards[i].HasWarning);
+            ToolStatuses[i].Health = ToolStatusItem.Evaluate(_toolCards[i].IsProbing, _toolCards[i].IsReady, _toolCards[i].HasWarning);
         }
     }
 
     private void OnToolCardChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(ToolCardViewModel.IsReady) or nameof(ToolCardViewModel.HasWarning))
+        if (e.PropertyName is nameof(ToolCardViewModel.IsProbing) or nameof(ToolCardViewModel.IsReady) or nameof(ToolCardViewModel.HasWarning))
         {
             SyncToolStatuses();
         }
@@ -142,6 +144,7 @@ public sealed partial class ShellViewModel : ViewModelBase
             OnPropertyChanged(nameof(AreToolsReady));
             OnPropertyChanged(nameof(DoToolsNeedAttention));
             OnPropertyChanged(nameof(AreToolsMissing));
+            OnPropertyChanged(nameof(AreToolsProbing));
         }
     }
 

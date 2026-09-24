@@ -11,6 +11,7 @@
   <sys:String x:Key="ShellToolReady">已就绪</sys:String>
   <sys:String x:Key="ShellToolAttention">可用，但需要注意，详见依赖引擎页</sys:String>
   <sys:String x:Key="ShellToolMissing">未找到，相关功能不可用</sys:String>
+  <sys:String x:Key="ShellToolProbing">正在检测</sys:String>
 
   <!-- 漏斗与方向 -->
   <sys:String x:Key="SelectedSummaryFormat">{0} 组实况照片 · {1}</sys:String>
@@ -295,6 +296,7 @@
   <sys:String x:Key="ReportEmptyDesc">在图库中启动任务后，报告会保存在这里，直到程序退出。</sys:String>
   <sys:String x:Key="ReportKpiTotal">处理总量</sys:String>
   <sys:String x:Key="ReportKpiTotalSub">本次任务的项目数</sys:String>
+  <sys:String x:Key="ReportKpiTotalCanceledSubFormat">已处理 {0} · 未处理 {1}</sys:String>
   <sys:String x:Key="ReportKpiSuccess">转换成功</sys:String>
   <sys:String x:Key="ReportKpiSuccessRate">成功率</sys:String>
   <sys:String x:Key="ReportKpiProblems">异常</sys:String>
@@ -415,6 +417,8 @@
   <!-- 图库工作台与检查器 -->
   <sys:String x:Key="NavLibrary">图库</sys:String>
   <sys:String x:Key="InspectorTitle">动作与参数</sys:String>
+  <sys:String x:Key="InspectorCollapseTip">收起检查器</sys:String>
+  <sys:String x:Key="InspectorExpandTip">展开检查器</sys:String>
   <sys:String x:Key="ActionToAndroid">转为安卓</sys:String>
   <sys:String x:Key="ActionToApple">转为苹果</sys:String>
   <sys:String x:Key="ActionExtract">解包提取</sys:String>
@@ -426,7 +430,7 @@
   <sys:String x:Key="ApplicableFormat">适用 {0} 项 · {1}</sys:String>
   <sys:String x:Key="ApplicableScopeSelectedFormat">统计范围：已选中的 {0} 项</sys:String>
   <sys:String x:Key="ApplicableScopeAll">未选中照片，统计全部就绪照片</sys:String>
-  <sys:String x:Key="InspectorOutputTitle">输出</sys:String>
+  <sys:String x:Key="InspectorOutputTitle">输出位置</sys:String>
   <sys:String x:Key="KeepSubfoldersDesc">按相册中的子目录结构写出，避免平铺后重名。</sys:String>
   <sys:String x:Key="StripConvertHeicTitle">同时转码为 HEIC</sys:String>
   <sys:String x:Key="StripConvertHeicDesc">进一步缩小体积；带 HDR 增益图的照片保持原格式。</sys:String>
@@ -480,7 +484,6 @@
   <sys:String x:Key="ClearThumbnailCacheBtn">清理缓存</sys:String>
 
   <!-- 任务报告：结果原因与附注（对应 Core 原因码） -->
-  <sys:String x:Key="ReportKpiTotalCanceledSub">已处理 / 计划</sys:String>
   <sys:String x:Key="ReportDetailToggle">详情</sys:String>
   <sys:String x:Key="ReportCsvTechnicalDetail">技术细节</sys:String>
   <sys:String x:Key="ReportCleanupFailedDesc">输出已保存，但按所选方式处理源文件时出错</sys:String>
@@ -500,6 +503,7 @@
   <sys:String x:Key="OutcomeReasonPairNameOnly">缺少可校验的元数据，按文件名匹配</sys:String>
   <sys:String x:Key="OutcomeReasonPairManual">人工确认配对</sys:String>
   <sys:String x:Key="OutcomeReasonSourceMissingFormat">源文件不存在或为空：{0}</sys:String>
+  <sys:String x:Key="OutcomeReasonSourceUnreadableFormat">无法读取源文件（可能已损坏或没有访问权限）：{0}</sys:String>
   <sys:String x:Key="OutcomeReasonVideoConversionFailed">视频转换失败</sys:String>
   <sys:String x:Key="OutcomeReasonHdrEncoderUnavailable">源视频为 HDR，但 FFmpeg 缺少 10-bit HEVC 编码器（libx265），为避免画质下降未转换</sys:String>
   <sys:String x:Key="OutcomeReasonVerificationFailed">输出校验未通过，已放弃写出</sys:String>

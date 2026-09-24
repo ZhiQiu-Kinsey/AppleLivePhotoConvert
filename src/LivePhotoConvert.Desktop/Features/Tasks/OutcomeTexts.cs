@@ -26,6 +26,7 @@ public static class OutcomeTexts
         OutcomeReason.PairNameOnly => "OutcomeReasonPairNameOnly",
         OutcomeReason.PairManuallyConfirmed => "OutcomeReasonPairManual",
         OutcomeReason.SourceMissingOrEmpty => "OutcomeReasonSourceMissingFormat",
+        OutcomeReason.SourceUnreadable => "OutcomeReasonSourceUnreadableFormat",
         OutcomeReason.VideoConversionFailed => "OutcomeReasonVideoConversionFailed",
         OutcomeReason.HdrEncoderUnavailable => "OutcomeReasonHdrEncoderUnavailable",
         OutcomeReason.ToolMissing => "ToolMissingFormat",
