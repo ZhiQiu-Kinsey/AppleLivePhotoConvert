@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using LivePhotoConvert.Desktop.Features.Library.Thumbnails;
 
 namespace LivePhotoConvert.Desktop.Models;
 
@@ -19,15 +20,10 @@ public sealed class TimelineGroup
 
         if (candidateCards.Count == 0) return rows;
 
-        const double rowGap = 8;
-        const double cardMargin = 8;
+        const double rowGap = GalleryMetrics.CardSpacing;
+        const double cardMargin = GalleryMetrics.CardHorizontalChrome;
         double available = Math.Max(260, parentWidth - 24);
-        double targetHeight = scaleMode switch
-        {
-            "Small" => 180,
-            "Large" => 320,
-            _ => 250
-        };
+        double targetHeight = GalleryMetrics.TargetRowHeight(scaleMode);
 
         for (int offset = 0, rowIndex = 0; offset < candidateCards.Count; rowIndex++)
         {

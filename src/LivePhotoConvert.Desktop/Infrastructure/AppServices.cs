@@ -1,6 +1,9 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
+using LivePhotoConvert.Core.Media.Thumbnails;
+using LivePhotoConvert.Core.Platform;
 using LivePhotoConvert.Desktop.Features.Library;
+using LivePhotoConvert.Desktop.Features.Library.Thumbnails;
 using LivePhotoConvert.Desktop.Features.Settings;
 using LivePhotoConvert.Desktop.Features.Shell;
 using LivePhotoConvert.Desktop.Features.Tasks;
@@ -59,12 +62,22 @@ public static class AppServices
         services.AddSingleton<IToolAvailability>(_ => ToolAvailability.Instance);
         services.AddSingleton<IStripEstimator>(sp => new StripEstimator(sp.GetRequiredService<IConversionEngines>()));
         services.AddSingleton<IDiskSpaceGuard>(_ => DiskSpaceGuard.Instance);
+        services.AddSingleton(sp => new ThumbnailDiskCache(
+            ThumbnailDiskCache.DefaultRoot,
+            sp.GetRequiredService<SettingsStore>().Current.Gallery.ThumbnailDiskCacheBytes));
+        services.AddSingleton(sp => new ThumbnailGenerator(
+            sp.GetRequiredService<ThumbnailDiskCache>(),
+            WindowsShellThumbnailSource.TryCreate()));
+        services.AddSingleton<IThumbnailPipeline>(sp => new ThumbnailPipeline(
+            sp.GetRequiredService<ThumbnailGenerator>(),
+            sp.GetRequiredService<SettingsStore>().Current.Gallery.ThumbnailBudgetBytes));
         services.AddSingleton(sp => new LibraryViewModel(
             sp.GetRequiredService<SettingsStore>(),
             sp.GetRequiredService<ILocalizer>(),
             sp.GetRequiredService<IDialogService>(),
             sp.GetRequiredService<IFilePicker>(),
-            sp.GetRequiredService<PlaybackHost>()));
+            sp.GetRequiredService<PlaybackHost>(),
+            sp.GetRequiredService<IThumbnailPipeline>()));
         services.AddSingleton(sp => new InspectorViewModel(
             sp.GetRequiredService<LibraryViewModel>(),
             sp.GetRequiredService<SettingsStore>(),

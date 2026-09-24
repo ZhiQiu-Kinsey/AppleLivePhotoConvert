@@ -1,3 +1,4 @@
+using LivePhotoConvert.Core.Media.Thumbnails;
 using LivePhotoConvert.Desktop.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -17,6 +18,8 @@ public sealed class DesktopTestHost : IDisposable
         Provider = AppServices.Build(services =>
         {
             services.AddSingleton(_ => new SettingsStore(SettingsPath));
+            // 缩略图缓存写到本用例的临时目录，不污染本机应用数据，也不受其它用例残留影响
+            services.AddSingleton(_ => new ThumbnailDiskCache(ThumbnailCacheDirectory, 256L * 1024 * 1024));
             services.AddSingleton<IFilePicker>(FilePicker);
             services.AddSingleton<IShellLauncher>(Shell);
             configure?.Invoke(services);
@@ -26,6 +29,8 @@ public sealed class DesktopTestHost : IDisposable
     public string Directory { get; }
 
     public string SettingsPath { get; }
+
+    public string ThumbnailCacheDirectory => Path.Combine(Directory, "thumbnails");
 
     public ServiceProvider Provider { get; }
 

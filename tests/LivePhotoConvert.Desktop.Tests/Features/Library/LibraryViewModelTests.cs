@@ -1,4 +1,5 @@
 using LivePhotoConvert.Desktop.Features.Library;
+using LivePhotoConvert.Desktop.Features.Library.Thumbnails;
 using LivePhotoConvert.Desktop.Collections;
 using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Models;
@@ -124,19 +125,12 @@ public class LibraryViewModelTests
     }
 
     [Fact]
-    public void PrioritizeThumbnail_MissingFile_DoesNotThrow()
+    public void Library_UsesTheSharedThumbnailPipeline()
     {
         using var host = new DesktopTestHost();
         var libraryVm = host.Get<LibraryViewModel>();
 
-        var card = new PhotoCardItemViewModel
-        {
-            Key = "p1",
-            PhotoPath = "non_existent.jpg"
-        };
-
-        // Should not throw and should handle missing disk cache gracefully
-        libraryVm.PrioritizeThumbnail(card);
+        Assert.Same(host.Get<IThumbnailPipeline>(), libraryVm.Thumbnails);
     }
 
     [Fact]

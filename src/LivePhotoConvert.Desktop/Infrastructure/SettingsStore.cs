@@ -10,7 +10,7 @@ namespace LivePhotoConvert.Desktop.Infrastructure;
 /// </summary>
 public sealed class SettingsStore : IDisposable
 {
-    public const int CurrentSchemaVersion = 3;
+    public const int CurrentSchemaVersion = 4;
     public const string CorruptSuffix = ".corrupt";
 
     private static readonly TimeSpan DefaultDebounce = TimeSpan.FromMilliseconds(500);
@@ -157,6 +157,19 @@ public sealed class SettingsStore : IDisposable
             }
 
             root.Remove("stripLastDirectory");
+        }
+
+        if (version < 4)
+        {
+            // 缩略图由固定 24 张改为字节预算与磁盘缓存上限；显式写入默认值，文件里能看到可调项
+            if (root["gallery"] is not JsonObject gallery)
+            {
+                gallery = new JsonObject();
+                root["gallery"] = gallery;
+            }
+
+            gallery["thumbnailBudgetMb"] ??= GalleryPreferences.DefaultThumbnailBudgetMb;
+            gallery["thumbnailDiskCacheMb"] ??= GalleryPreferences.DefaultThumbnailDiskCacheMb;
         }
 
         root["schemaVersion"] = CurrentSchemaVersion;

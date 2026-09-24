@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using LivePhotoConvert.Desktop.Features.Library.Thumbnails;
 
 namespace LivePhotoConvert.Desktop.Features.Library;
 
@@ -9,6 +10,8 @@ public partial class LibraryView : UserControl
     private double _lastMeasuredWidth;
     private ScrollViewer? _galleryScrollViewer;
     private double _savedScrollOffsetY;
+    private GalleryThumbnailBinder? _thumbnailBinder;
+    private TopLevel? _topLevel;
 
     public LibraryView()
     {
@@ -19,6 +22,7 @@ public partial class LibraryView : UserControl
             var listBox = this.FindControl<ListBox>("GalleryListBox");
             if (listBox is not null && DataContext is LibraryViewModel vm)
             {
+                AttachThumbnails(listBox, vm);
                 _lastMeasuredWidth = listBox.Bounds.Width;
                 vm.UpdateCardWidth(_lastMeasuredWidth);
 
@@ -61,7 +65,7 @@ public partial class LibraryView : UserControl
                     currentVm.OnViewportScrolled(scroll.Offset.Y, scroll.Viewport.Height);
                 }, RoutingStrategies.Bubble);
 
-                // 首次布局完成后主动预热首屏，不能依赖鼠标经过才触发加载。
+                // 首次布局完成后预热首屏视频，不能依赖鼠标经过才触发。
                 Dispatcher.UIThread.Post(() =>
                 {
                     if (DataContext is LibraryViewModel currentVm && listBox.Bounds.Height > 0)
@@ -80,5 +84,45 @@ public partial class LibraryView : UserControl
                 };
             }
         };
+
+        Unloaded += (_, _) => DetachThumbnails();
+    }
+
+    /// <summary>
+    /// 列表容器的准备与回收驱动卡片的缩略图引用；屏幕缩放比决定缩略图档位。
+    /// 视图卸载时放开全部引用，重新加载时从已实例化的容器恢复。
+    /// </summary>
+    private void AttachThumbnails(ListBox listBox, LibraryViewModel vm)
+    {
+        DetachThumbnails();
+        _thumbnailBinder = new GalleryThumbnailBinder(listBox, vm.Thumbnails);
+        _topLevel = TopLevel.GetTopLevel(this);
+        if (_topLevel is not null)
+        {
+            _topLevel.ScalingChanged += OnScalingChanged;
+            vm.SetRenderScaling(_topLevel.RenderScaling);
+        }
+    }
+
+    /// <summary>供界面测试检查已实例化容器持有的卡片。</summary>
+    internal GalleryThumbnailBinder? ThumbnailBinder => _thumbnailBinder;
+
+    private void DetachThumbnails()
+    {
+        _thumbnailBinder?.Dispose();
+        _thumbnailBinder = null;
+        if (_topLevel is not null)
+        {
+            _topLevel.ScalingChanged -= OnScalingChanged;
+            _topLevel = null;
+        }
+    }
+
+    private void OnScalingChanged(object? sender, EventArgs e)
+    {
+        if (_topLevel is not null && DataContext is LibraryViewModel vm)
+        {
+            vm.SetRenderScaling(_topLevel.RenderScaling);
+        }
     }
 }

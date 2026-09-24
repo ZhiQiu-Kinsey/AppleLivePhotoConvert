@@ -92,12 +92,14 @@ public sealed class AlbumScanner
                         string dirName = Path.GetFileName(Path.GetDirectoryName(file) ?? string.Empty);
                         string locSummary = string.IsNullOrWhiteSpace(dirName) ? localizer["LocalAlbumFallback"] : dirName;
 
-                        var (aspectRatio, resolutionText) = SniffPhotoDimensions(file);
+                        var (aspectRatio, resolutionText, header) = SniffPhotoDimensions(file);
 
                         var card = new PhotoCardItemViewModel
                         {
                             Key = file,
                             PhotoPath = file,
+                            PhotoFile = ToLibraryFile(fi),
+                            PhotoHeader = header,
                             VideoPath = null, // 按需在悬停或 QuickLook 时切片
                             IsMotionPhoto = true,
                             EmbeddedVideoOffset = info.Offset,
@@ -164,12 +166,14 @@ public sealed class AlbumScanner
                         }
                     }
 
-                    var (aspectRatio, resolutionText) = SniffPhotoDimensions(pair.PhotoPath);
+                    var (aspectRatio, resolutionText, header) = SniffPhotoDimensions(pair.PhotoPath);
 
                     PhotoCardItemViewModel card = new()
                     {
                         Key = pair.PhotoPath,
                         PhotoPath = pair.PhotoPath,
+                        PhotoFile = ToLibraryFile(photoInfo),
+                        PhotoHeader = header,
                         VideoPath = pair.VideoPath,
                         Pair = pair,
                         FileName = fileName,
@@ -212,12 +216,14 @@ public sealed class AlbumScanner
                     string locSummary = string.IsNullOrWhiteSpace(dirName) ? localizer["LocalAlbumFallback"] : dirName;
                     string ext = photoInfo.Extension.TrimStart('.').ToUpperInvariant();
 
-                    var (aspectRatio, resolutionText) = SniffPhotoDimensions(pair.PhotoPath);
+                    var (aspectRatio, resolutionText, header) = SniffPhotoDimensions(pair.PhotoPath);
 
                     PhotoCardItemViewModel card = new()
                     {
                         Key = pair.PhotoPath,
                         PhotoPath = pair.PhotoPath,
+                        PhotoFile = ToLibraryFile(photoInfo),
+                        PhotoHeader = header,
                         VideoPath = pair.VideoPath,
                         Pair = pair,
                         FileName = fileName,
@@ -265,12 +271,14 @@ public sealed class AlbumScanner
                         string dirName = Path.GetFileName(Path.GetDirectoryName(file) ?? string.Empty);
                         string locSummary = string.IsNullOrWhiteSpace(dirName) ? localizer["LocalAlbumFallback"] : dirName;
 
-                        var (aspectRatio, resolutionText) = SniffPhotoDimensions(file);
+                        var (aspectRatio, resolutionText, header) = SniffPhotoDimensions(file);
 
                         var card = new PhotoCardItemViewModel
                         {
                             Key = file,
                             PhotoPath = file,
+                            PhotoFile = ToLibraryFile(fi),
+                            PhotoHeader = header,
                             VideoPath = null,
                             IsMotionPhoto = true,
                             EmbeddedVideoOffset = info.Offset,
@@ -340,14 +348,17 @@ public sealed class AlbumScanner
         }, cancellationToken);
     }
 
-    private static (double AspectRatio, string ResolutionText) SniffPhotoDimensions(string photoPath)
+    private static (double AspectRatio, string ResolutionText, ImageHeader? Header) SniffPhotoDimensions(string photoPath)
     {
-        if (FastImageHeaderReader.TryReadDimensions(photoPath, out var dims) && dims.Width > 0 && dims.Height > 0)
+        if (FastImageHeaderReader.TryReadHeader(photoPath, out var header) && header.Width > 0 && header.Height > 0)
         {
-            return (dims.AspectRatio, $"{dims.Width}×{dims.Height}");
+            return (header.AspectRatio, $"{header.Width}×{header.Height}", header);
         }
-        return (4.0 / 3.0, string.Empty);
+        return (4.0 / 3.0, string.Empty, null);
     }
+
+    private static LibraryFile? ToLibraryFile(FileInfo info) =>
+        info.Exists ? new LibraryFile(info.FullName, info.Length, info.LastWriteTimeUtc, info.CreationTimeUtc) : null;
 
     private static string FormatBytes(long bytes) =>
         ByteSizeConverter.Instance.Convert(bytes, typeof(string), null, CultureInfo.InvariantCulture) as string

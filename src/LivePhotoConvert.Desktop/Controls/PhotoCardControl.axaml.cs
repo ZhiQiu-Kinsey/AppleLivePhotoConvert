@@ -9,26 +9,6 @@ public partial class PhotoCardControl : UserControl
         InitializeComponent();
     }
 
-    protected override void OnAttachedToVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
-    {
-        base.OnAttachedToVisualTree(e);
-        TriggerPriorityLoad();
-    }
-
-    protected override void OnDataContextChanged(EventArgs e)
-    {
-        base.OnDataContextChanged(e);
-        TriggerPriorityLoad();
-    }
-
-    private void TriggerPriorityLoad()
-    {
-        if (VisualRoot is not null && DataContext is Models.PhotoCardItemViewModel { Thumbnail: null } card)
-        {
-            card.RequestPriorityLoad();
-        }
-    }
-
     protected override void OnPointerEntered(Avalonia.Input.PointerEventArgs e)
     {
         base.OnPointerEntered(e);

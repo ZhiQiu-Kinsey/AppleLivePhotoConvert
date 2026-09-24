@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:library="using:LivePhotoConvert.Desktop.Features.Library"
              xmlns:models="using:LivePhotoConvert.Desktop.Models"
+             xmlns:thumbs="using:LivePhotoConvert.Desktop.Features.Library.Thumbnails"
              xmlns:controls="using:LivePhotoConvert.Desktop.Controls"
              xmlns:conv="using:LivePhotoConvert.Desktop.Converters"
              x:Class="LivePhotoConvert.Desktop.Features.Library.LibraryView"
@@ -108,7 +109,7 @@
         <ListBox.Styles>
           <Style Selector="ListBoxItem">
             <Setter Property="Padding" Value="0" />
-            <Setter Property="Margin" Value="0,0,0,12" />
+            <Setter Property="Margin" Value="{x:Static thumbs:GalleryMetrics.RowSpacingMargin}" />
             <Setter Property="Background" Value="Transparent" />
           </Style>
           <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
@@ -121,9 +122,10 @@
         <ListBox.DataTemplates>
           <!-- 1. 组头项：独占 100% 满宽 -->
           <DataTemplate DataType="models:TimelineHeaderItemViewModel">
-            <Border Background="{DynamicResource HoverBrush}" CornerRadius="12" Padding="12,8"
+            <Border Background="{DynamicResource HoverBrush}" CornerRadius="12" Padding="12,0"
+                    Height="{x:Static thumbs:GalleryMetrics.GroupHeaderHeight}"
                     IsVisible="{Binding IsVisible}">
-              <Grid ColumnDefinitions="Auto,*,Auto">
+              <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
                 <Button Grid.Column="0" Background="Transparent" BorderThickness="0" Padding="0"
                         Command="{Binding ToggleCollapseCommand}" Cursor="Hand">
                   <StackPanel Orientation="Horizontal" Spacing="8">
@@ -155,7 +157,7 @@
             <ItemsControl ItemsSource="{Binding Cards}">
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
-                  <StackPanel Orientation="Horizontal" Spacing="8" />
+                  <StackPanel Orientation="Horizontal" Spacing="{x:Static thumbs:GalleryMetrics.CardSpacing}" />
                 </ItemsPanelTemplate>
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>

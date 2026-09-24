@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using LivePhotoConvert.Core.Media;
 using LivePhotoConvert.Core.Pairing;
 
 namespace LivePhotoConvert.Desktop.Models;
@@ -69,6 +70,12 @@ public sealed partial class PhotoCardItemViewModel : ObservableObject, IGalleryD
 {
     public required string Key { get; init; }
     public required string PhotoPath { get; init; }
+
+    /// <summary>扫描时取得的照片大小与修改时间，缩略图缓存键直接使用，不再 stat；缺失时由后台线程补取。</summary>
+    public LibraryFile? PhotoFile { get; init; }
+
+    /// <summary>扫描时读到的头部（转正后宽高与方向），供缩略图生成规划缩放解码。</summary>
+    public ImageHeader? PhotoHeader { get; init; }
     public string? VideoPath { get; set; }
     public MediaPair? Pair { get; init; }
 
@@ -87,7 +94,6 @@ public sealed partial class PhotoCardItemViewModel : ObservableObject, IGalleryD
     public string LocationSummary { get; init; } = string.Empty;
     public string DeviceInfo { get; init; } = string.Empty;
 
-    // 真实像素分辨率：由后台 ThumbnailReader 解码后渐进回填
     [ObservableProperty]
     private string _resolutionText = string.Empty;
 
@@ -108,7 +114,7 @@ public sealed partial class PhotoCardItemViewModel : ObservableObject, IGalleryD
         }
     }
 
-    /// <summary>原图宽高比。扫描阶段可能未知，缩略图解码后会渐进修正。</summary>
+    /// <summary>转正后的原图宽高比，由扫描确定；缩略图到达不改变它，避免整体重排。</summary>
     [ObservableProperty]
     private double _aspectRatio = 4.0 / 3.0;
 
@@ -171,13 +177,6 @@ public sealed partial class PhotoCardItemViewModel : ObservableObject, IGalleryD
 
     public Action<PhotoCardItemViewModel>? OnArbitrateRequested { get; set; }
     public Action<PhotoCardItemViewModel>? OnQuickLookRequested { get; set; }
-    public Action<PhotoCardItemViewModel>? OnPriorityLoadRequested { get; set; }
-
-    public void RequestPriorityLoad()
-    {
-        OnPriorityLoadRequested?.Invoke(this);
-    }
-
     [RelayCommand]
     public void ToggleSelect()
     {

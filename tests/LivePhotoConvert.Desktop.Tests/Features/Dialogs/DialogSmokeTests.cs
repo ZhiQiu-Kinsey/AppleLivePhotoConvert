@@ -5,6 +5,7 @@ using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using LivePhotoConvert.Core.Tests.Support;
 using LivePhotoConvert.Desktop.Features.Dialogs;
+using LivePhotoConvert.Desktop.Features.Library.Thumbnails;
 using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Models;
 using LivePhotoConvert.Desktop.Tests.Harness;
@@ -229,7 +230,7 @@ public sealed class DialogSmokeTests : IDisposable
                     StillCard("IMG_0101", 1),
                     StillCard("IMG_0102", 2)
                 ];
-                var vm = new QuickLookDialogViewModel(loc, i => i >= 0 && i < cards.Length ? cards[i] : null, cards.Length, 0);
+                var vm = new QuickLookDialogViewModel(loc, session.Host.Get<IThumbnailPipeline>(), i => i >= 0 && i < cards.Length ? cards[i] : null, cards.Length, 0);
                 return new DialogCase(vm, typeof(QuickLookDialog), false)
                 {
                     Ready = s => s.WaitUntilAsync(() => vm.CurrentDisplayImage is not null)
