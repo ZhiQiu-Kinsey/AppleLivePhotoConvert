@@ -53,6 +53,8 @@
   <sys:String x:Key="SourceActionSubfolderShort">移入备份文件夹</sys:String>
   <sys:String x:Key="SourceActionRecycleShort">移入回收站</sys:String>
   <sys:String x:Key="SourceActionDeleteShort">永久删除</sys:String>
+  <sys:String x:Key="ArchiveFolderMerged">已合成</sys:String>
+  <sys:String x:Key="ArchiveFolderSplit">已拆分</sys:String>
   <sys:String x:Key="DeleteWarningTitle">物理删除原片警报</sys:String>
   <sys:String x:Key="DeleteWarningDesc">转换成功后源文件将被永久删除，开始前需要输入确认词。</sys:String>
   <sys:String x:Key="AutoAppendIndexTitle">遇到同名文件时追加序号</sys:String>

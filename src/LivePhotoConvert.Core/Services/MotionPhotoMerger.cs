@@ -37,6 +37,9 @@ public sealed record MergeRequest
 
     public SourceFileAction SourceAction { get; init; }
 
+    /// <summary><see cref="SourceFileAction.Move"/> 时源文件移入的子文件夹名，由调用方按界面语言提供。</summary>
+    public string? ArchiveFolderName { get; init; }
+
     public bool SkipValidation { get; init; }
 
     public int Parallelism { get; init; } = ConversionDefaults.Parallelism;
@@ -82,7 +85,7 @@ public sealed class MotionPhotoMerger(
 
         OutputCommitter.DeleteStaleStagingFiles(request.Output.Directory, ConversionDefaults.StaleStagingAge);
         var committer = new OutputCommitter(request.Output.Conflict, files);
-        var disposition = new SourceDisposition(request.SourceAction, SourceDisposition.MergedFolderName);
+        var disposition = new SourceDisposition(request.SourceAction, request.ArchiveFolderName);
         using var workspace = new TempWorkspace();
 
         return await BatchRunner.RunAsync(

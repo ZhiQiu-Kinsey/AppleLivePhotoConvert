@@ -30,6 +30,12 @@ public sealed record ConversionOptions
 
     public SourceFileAction SourceAction { get; init; }
 
+    /// <summary>
+    /// <see cref="SourceFileAction.Move"/> 时源文件移入的子文件夹名；为 null 时由任务中心在提交时按当前界面语言确定，
+    /// 此后切换语言或重试失败项都沿用同一个名称。
+    /// </summary>
+    public string? ArchiveFolderName { get; init; }
+
     public int HeicQuality { get; init; } = ConversionDefaults.HeicQuality;
 
     public bool ConvertToHeic { get; init; } = true;

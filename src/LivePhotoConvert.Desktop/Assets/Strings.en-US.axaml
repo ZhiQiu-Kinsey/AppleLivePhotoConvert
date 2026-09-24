@@ -53,6 +53,8 @@
   <sys:String x:Key="SourceActionSubfolderShort">Move to backup</sys:String>
   <sys:String x:Key="SourceActionRecycleShort">Move to Recycle Bin</sys:String>
   <sys:String x:Key="SourceActionDeleteShort">Delete permanently</sys:String>
+  <sys:String x:Key="ArchiveFolderMerged">Merged</sys:String>
+  <sys:String x:Key="ArchiveFolderSplit">Split</sys:String>
   <sys:String x:Key="DeleteWarningTitle">Physical Deletion Alert</sys:String>
   <sys:String x:Key="DeleteWarningDesc">Source files are permanently deleted after conversion; you must type a confirmation word to start.</sys:String>
   <sys:String x:Key="AutoAppendIndexTitle">Append a number on name clashes</sys:String>

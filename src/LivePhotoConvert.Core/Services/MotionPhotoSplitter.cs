@@ -26,6 +26,9 @@ public sealed record SplitRequest
 
     public SourceFileAction SourceAction { get; init; }
 
+    /// <summary><see cref="SourceFileAction.Move"/> 时源文件移入的子文件夹名，由调用方按界面语言提供。</summary>
+    public string? ArchiveFolderName { get; init; }
+
     public int HeicQuality { get; init; } = ConversionDefaults.HeicQuality;
 
     public int Parallelism { get; init; } = ConversionDefaults.Parallelism;
@@ -55,7 +58,7 @@ public sealed class MotionPhotoSplitter(IMetadataService metadata, IImageConvert
 
         OutputCommitter.DeleteStaleStagingFiles(request.Output.Directory, ConversionDefaults.StaleStagingAge);
         var committer = new OutputCommitter(request.Output.Conflict, request.Files);
-        var disposition = new SourceDisposition(request.SourceAction, SourceDisposition.SplitFolderName);
+        var disposition = new SourceDisposition(request.SourceAction, request.ArchiveFolderName);
         using var workspace = new TempWorkspace();
 
         return await BatchRunner.RunAsync(

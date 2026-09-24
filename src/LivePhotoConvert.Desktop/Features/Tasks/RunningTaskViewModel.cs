@@ -17,6 +17,10 @@ public static class TaskTexts
         _ => "TaskTitleStrip"
     }];
 
+    /// <summary>「移入备份文件夹」时的子文件夹名：合成与拆分各用一个，按界面语言命名。</summary>
+    public static string ArchiveFolderName(ILocalizer localizer, ConversionAction action) =>
+        localizer[action == ConversionAction.ToAndroid ? "ArchiveFolderMerged" : "ArchiveFolderSplit"];
+
     /// <summary>剩余时间：不足一小时显示 分:秒。</summary>
     public static string Duration(TimeSpan value)
     {
