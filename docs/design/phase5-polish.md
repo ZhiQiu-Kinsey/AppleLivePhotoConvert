@@ -13,3 +13,10 @@
 - **文档**：README（中英）与 AGENTS.md **重写**（不是修补）：优化表达与布局、适当简化，可自由调整结构、增删章节（例如 README 加入功能对比表、快速上手、常见问题；AGENTS.md 收敛为架构速览 + 必守规则 + 协议要点 + 工作流，删除与 docs/design 重复的细节）；CHANGELOG `## [4.0.0]`；用 Avalonia Headless 截图更新 `docs/screenshots/`（浅色/深色、中/英）；删除 `docs/preview.png`（已移除 CLI 的截图）或更新引用。
 - **版本**：`Directory.Build.props` 升到 4.0.0（`AssemblyVersion`/`FileVersion` 同步）。**不要自行打 tag**，由用户决定发布时机。
 - **真机验证清单**（交付时附在 PR 中）：iPhone 实况 → 小米/Google 相册识别；安卓动态照片 → 导入 iPhone 识别为实况；就地瘦身替换与回收站；Windows Shell 缩略图；HDR 观感；Magick HEIC 编码可用性。
+
+## 阶段 1 遗留
+
+- 导航按钮悬停时 Fluent 模板的背景覆盖 `nav-btn.selected`，当前页悬停后变灰底。
+- `Button.mini-segmented-btn` 等无引用样式清理（扫描 Styles.axaml 中未被使用的 Class）。
+- 任务报告口径统一：指标卡"异常/跳过"含跳过，摘要行"异常 N 项"不含；取消的任务"处理总量"只统计已处理项，应显示计划总数。
+- 合成时配对校验阶段跳过的项一开始就计入已完成，前几秒吞吐偏高。

@@ -24,3 +24,8 @@
 - `ToolInstaller`：下载到暂存目录 → 校验哈希 → 解压到暂存目录（路径穿越防护；zip 用 .NET 10 异步 `ZipFile.ExtractToDirectoryAsync`）→ 探测可运行 → 整目录原子替换；空闲超时；取消不留半成品。
 - `ToolRegistry`：解析一次并缓存路径、版本与能力（FFmpeg：zscale、tonemap、libx265、10-bit；heif-enc 版本），设置变更或安装完成后失效；依赖页展示版本与能力，有推荐版本时提示升级。
 - 评估 Magick.NET 自带 HEIC 编码能否在同等体积下达到 heif-enc 的画质，决定是否去掉 heif-enc 依赖。
+
+## 阶段 1 遗留
+
+- `CurtainCompareControl` 颜色写死；照片比控件窄时左下角"原片"角标被裁掉。
+- 检查器的空间预估每次新建 ExifTool 会话，照片多时开销大：复用会话或按文件（路径+大小+修改时间）缓存分析结果。
