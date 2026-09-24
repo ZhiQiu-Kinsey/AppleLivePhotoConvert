@@ -5,7 +5,7 @@ using LivePhotoConvert.Core.Services;
 using LivePhotoConvert.Desktop.Features.Library;
 using LivePhotoConvert.Desktop.Features.Tasks;
 using LivePhotoConvert.Desktop.Infrastructure;
-using LivePhotoConvert.Desktop.ViewModels.Dialogs;
+using LivePhotoConvert.Desktop.Features.Dialogs;
 
 namespace LivePhotoConvert.E2E.Tier1_FeatureCoverage.Tasks;
 

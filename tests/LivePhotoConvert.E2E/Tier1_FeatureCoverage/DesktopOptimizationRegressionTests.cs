@@ -1,7 +1,7 @@
 using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Models;
 using LivePhotoConvert.Desktop.Services;
-using LivePhotoConvert.Desktop.ViewModels;
+using LivePhotoConvert.Desktop.Features.Library;
 using LivePhotoConvert.E2E.Harness;
 
 namespace LivePhotoConvert.E2E.Tier1_FeatureCoverage;
@@ -26,37 +26,10 @@ public class DesktopOptimizationRegressionTests
     }
 
     [Fact]
-    public void StripViewModel_InitialState_ShowsPlaceholdersAndDisablesExecution()
+    public void LibraryViewModel_PrioritizeThumbnail_SkipsAlreadyLoadedThumbnail()
     {
         using var host = new DesktopTestHost();
-        var stripVm = host.Get<StripViewModel>();
-
-        Assert.Equal("—", stripVm.TotalOriginalText);
-        Assert.Equal("—", stripVm.EstimatedAfterText);
-        Assert.Equal("—", stripVm.EstimatedSavedText);
-        Assert.Equal(string.Empty, stripVm.SavedPercentResult);
-        Assert.False(stripVm.CanStartStrip);
-        Assert.False(stripVm.StartStripExecutionCommand.CanExecute(null));
-        Assert.Equal(host.Localizer["NoAlbumOrPhotoSelected"], stripVm.CurrentInputPathText);
-    }
-
-    [Fact]
-    public void StripViewModel_RefreshAnalysisAsync_WhenCannotStartStrip_CompletesSafely()
-    {
-        using var host = new DesktopTestHost();
-        var stripVm = host.Get<StripViewModel>();
-
-        var task = stripVm.RefreshAnalysisAsync();
-        Assert.True(task.IsCompleted);
-        Assert.False(stripVm.CanStartStrip);
-        Assert.Equal("—", stripVm.TotalOriginalText);
-    }
-
-    [Fact]
-    public void ConvertViewModel_PrioritizeThumbnail_SkipsAlreadyLoadedThumbnail()
-    {
-        using var host = new DesktopTestHost();
-        var convertVm = host.Get<ConvertViewModel>();
+        var libraryVm = host.Get<LibraryViewModel>();
 
         var card = new PhotoCardItemViewModel
         {
@@ -65,7 +38,7 @@ public class DesktopOptimizationRegressionTests
         };
 
         // Should not throw and should handle missing disk cache gracefully
-        convertVm.PrioritizeThumbnail(card);
+        libraryVm.PrioritizeThumbnail(card);
     }
 
     [Fact]
@@ -113,12 +86,12 @@ public class DesktopOptimizationRegressionTests
     }
 
     [Fact]
-    public void ConvertViewModel_FlattenedDisplayItems_IsBulkObservableCollection()
+    public void LibraryViewModel_FlattenedDisplayItems_IsBulkObservableCollection()
     {
         using var host = new DesktopTestHost();
-        var convertVm = host.Get<ConvertViewModel>();
+        var libraryVm = host.Get<LibraryViewModel>();
 
-        Assert.IsType<Desktop.Collections.BulkObservableCollection<IGalleryDisplayItem>>(convertVm.FlattenedDisplayItems);
+        Assert.IsType<Desktop.Collections.BulkObservableCollection<IGalleryDisplayItem>>(libraryVm.FlattenedDisplayItems);
     }
 
     [Fact]
@@ -210,33 +183,35 @@ public class DesktopOptimizationRegressionTests
     }
 
     [Fact]
-    public async Task ConvertViewModel_SetDirection_ReusesCachedScanResult()
+    public async Task LibraryViewModel_SetScanMode_ReusesCachedScanResult()
     {
         using var context = new Harness.E2ETestContext();
         context.CreateInputFile("IMG_0001.heic", new byte[1000]);
         context.CreateInputFile("IMG_0001.mov", new byte[1000]);
 
         using var host = new DesktopTestHost();
-        var convertVm = host.Get<ConvertViewModel>();
-        convertVm.AlbumDirectory = context.InputDirectory;
+        var libraryVm = host.Get<LibraryViewModel>();
+        libraryVm.AlbumDirectory = context.InputDirectory;
 
-        // 首次扫描方向 0（苹果转安卓）
-        await convertVm.RefreshAlbumAsync();
-        Assert.Equal(1, convertVm.ReadyCount);
+        // 首次扫描：苹果实况对模式
+        await libraryVm.SetScanModeAsync(ScanModes.ApplePairs);
+        await libraryVm.RefreshAlbumAsync();
+        Assert.Equal(1, libraryVm.ReadyCount);
 
-        // 切换至方向 1（安卓转苹果，由于目录内无 motion photo，此时应就绪 0）
-        await convertVm.SetDirection(1);
-        Assert.Equal(1, convertVm.ConversionDirection);
-        Assert.Equal(0, convertVm.ReadyCount);
+        // 切到安卓动态照片模式：目录内没有动态照片
+        await libraryVm.SetScanModeAsync(ScanModes.MotionPhotos);
+        Assert.Equal(ScanModes.MotionPhotos, libraryVm.ScanMode);
+        Assert.Equal(0, libraryVm.ReadyCount);
 
-        // 再次切回方向 0：应直接命中方向缓存，ReadyCount 瞬间复原为 1
-        await convertVm.SetDirection(0);
-        Assert.Equal(0, convertVm.ConversionDirection);
-        Assert.Equal(1, convertVm.ReadyCount);
+        // 切回：命中该模式的缓存，删掉源文件也不影响结果
+        File.Delete(Path.Combine(context.InputDirectory, "IMG_0001.mov"));
+        await libraryVm.SetScanModeAsync(ScanModes.ApplePairs);
+        Assert.Equal(ScanModes.ApplePairs, libraryVm.ScanMode);
+        Assert.Equal(1, libraryVm.ReadyCount);
     }
 
     [Fact]
-    public async Task ConvertViewModel_DirectoryChange_InvalidatesDirectionCache()
+    public async Task LibraryViewModel_DirectoryChange_InvalidatesDirectionCache()
     {
         using var context1 = new Harness.E2ETestContext();
         context1.CreateInputFile("IMG_0001.heic", new byte[1000]);
@@ -245,29 +220,29 @@ public class DesktopOptimizationRegressionTests
         using var context2 = new Harness.E2ETestContext();
 
         using var host = new DesktopTestHost();
-        var convertVm = host.Get<ConvertViewModel>();
-        convertVm.AlbumDirectory = context1.InputDirectory;
+        var libraryVm = host.Get<LibraryViewModel>();
+        libraryVm.AlbumDirectory = context1.InputDirectory;
 
-        await convertVm.RefreshAlbumAsync();
-        Assert.Equal(1, convertVm.ReadyCount);
+        await libraryVm.RefreshAlbumAsync();
+        Assert.Equal(1, libraryVm.ReadyCount);
 
         // 变更相册目录为不同目录
-        convertVm.AlbumDirectory = context2.InputDirectory;
-        await convertVm.RefreshAlbumAsync();
-        Assert.Equal(0, convertVm.ReadyCount);
+        libraryVm.AlbumDirectory = context2.InputDirectory;
+        await libraryVm.RefreshAlbumAsync();
+        Assert.Equal(0, libraryVm.ReadyCount);
     }
 
     [Fact]
-    public void ConvertViewModel_OnViewportScrolled_SetsIsUserScrollingAndDefersRelayout()
+    public void LibraryViewModel_OnViewportScrolled_SetsIsUserScrollingAndDefersRelayout()
     {
         using var host = new DesktopTestHost();
-        var convertVm = host.Get<ConvertViewModel>();
+        var libraryVm = host.Get<LibraryViewModel>();
 
-        Assert.False(convertVm.IsUserScrolling);
+        Assert.False(libraryVm.IsUserScrolling);
 
         // 模拟滚动视口
-        convertVm.OnViewportScrolled(100, 600);
-        Assert.True(convertVm.IsUserScrolling);
+        libraryVm.OnViewportScrolled(100, 600);
+        Assert.True(libraryVm.IsUserScrolling);
     }
 
     [Fact]

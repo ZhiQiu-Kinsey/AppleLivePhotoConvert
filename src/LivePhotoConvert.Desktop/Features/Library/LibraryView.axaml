@@ -1,0 +1,192 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:library="using:LivePhotoConvert.Desktop.Features.Library"
+             xmlns:models="using:LivePhotoConvert.Desktop.Models"
+             xmlns:controls="using:LivePhotoConvert.Desktop.Controls"
+             xmlns:conv="using:LivePhotoConvert.Desktop.Converters"
+             x:Class="LivePhotoConvert.Desktop.Features.Library.LibraryView"
+             x:CompileBindings="True"
+             x:DataType="library:LibraryViewModel"
+             xmlns:ic="using:FluentIcons.Avalonia">
+
+  <Grid RowDefinitions="Auto,*" Background="{DynamicResource CanvasBrush}">
+
+    <!-- 顶部：相册目录与扫描统计 -->
+    <Border x:Name="HeaderRow" Grid.Row="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1" Padding="14,10">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <!-- 左侧：当前相册目录 -->
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" ToolTip.Tip="{Binding AlbumDirectory}">
+          <ic:SymbolIcon Symbol="FolderOpen" FontSize="15" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
+          <TextBlock Text="{Binding AlbumDirectorySummary}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"
+                     VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="260" />
+          <Border Classes="task-chip accent" VerticalAlignment="Center" IsVisible="{Binding IsScanning}">
+            <TextBlock Text="{DynamicResource LibraryScanning}" />
+          </Border>
+        </StackPanel>
+
+        <!-- 右侧：精简呼吸感状态指示徽章（单行自适应排版，永不截断） -->
+        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Spacing="6"
+                    IsVisible="{Binding HasScannedFiles}">
+          <!-- 实况就绪徽章 (绿) -->
+          <Border Background="{DynamicResource SuccessSoftBrush}" BorderBrush="{DynamicResource SuccessBorderBrush}" BorderThickness="1"
+                  CornerRadius="10" Padding="8,3" VerticalAlignment="Center"
+                  IsVisible="{Binding HasReadyItems}" ToolTip.Tip="{Binding FunnelReadyText}">
+            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+              <ic:SymbolIcon Symbol="CheckmarkCircle" FontSize="12" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
+              <TextBlock Text="{Binding FunnelReadyText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center"
+                         IsVisible="{Binding #HeaderRow.Bounds.Width, Converter={x:Static conv:MinWidthToBoolConverter.Instance}, ConverterParameter=520}"/>
+              <TextBlock Text="{Binding ReadyCount}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center"
+                         IsVisible="{Binding #HeaderRow.Bounds.Width, Converter={x:Static conv:MinWidthToBoolConverter.Instance}, ConverterParameter=&lt;520}"/>
+            </StackPanel>
+          </Border>
+
+          <!-- 待裁决徽章 (橙黄，仅在 >0 时展示) -->
+          <Border Background="{DynamicResource WarningSoftBrush}" BorderBrush="{DynamicResource WarningBorderBrush}" BorderThickness="1"
+                  CornerRadius="10" Padding="8,3" VerticalAlignment="Center"
+                  IsVisible="{Binding HasSuspiciousItems}" ToolTip.Tip="{Binding FunnelSuspiciousText}">
+            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+              <ic:SymbolIcon Symbol="Warning" FontSize="12" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
+              <TextBlock Text="{Binding FunnelSuspiciousText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center"
+                         IsVisible="{Binding #HeaderRow.Bounds.Width, Converter={x:Static conv:MinWidthToBoolConverter.Instance}, ConverterParameter=520}"/>
+              <TextBlock Text="{Binding SuspiciousCount}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center"
+                         IsVisible="{Binding #HeaderRow.Bounds.Width, Converter={x:Static conv:MinWidthToBoolConverter.Instance}, ConverterParameter=&lt;520}"/>
+            </StackPanel>
+          </Border>
+
+          <!-- 扫描与过滤统计胶囊 -->
+          <Border Background="{DynamicResource HoverBrush}" CornerRadius="10" Padding="8,3" VerticalAlignment="Center"
+                  IsVisible="{Binding #HeaderRow.Bounds.Width, Converter={x:Static conv:MinWidthToBoolConverter.Instance}, ConverterParameter=560}">
+            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+              <ic:SymbolIcon Symbol="DocumentSearch" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
+              <TextBlock Text="{Binding FunnelTotalText}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+              <TextBlock Text="·" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" IsVisible="{Binding HasFilteredItems}"/>
+              <TextBlock Text="{Binding FunnelFilteredText}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" IsVisible="{Binding HasFilteredItems}"/>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- 画廊主体容器 -->
+    <Grid Grid.Row="1" RowDefinitions="Auto,Auto,*" Margin="16,12">
+      <!-- 紧凑工具栏 -->
+      <controls:CompactToolbar Grid.Row="0" Margin="0,0,0,8" />
+
+      <!-- 筛选指示条 -->
+      <Border Grid.Row="1" Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBorderBrush}" BorderThickness="1"
+              CornerRadius="12" Padding="12,8" Margin="0,0,0,10"
+              IsVisible="{Binding IsFilterBannerVisible}">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <ic:SymbolIcon Symbol="Filter" FontSize="12" Foreground="{DynamicResource AccentBrush}"/>
+            <TextBlock Text="{DynamicResource FilterBannerPrefix}" FontSize="11" Foreground="{DynamicResource AccentTextBrush}" />
+            <TextBlock Text="{Binding FilterBannerDesc}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentTextBrush}" />
+          </StackPanel>
+          <Button Grid.Column="1" Command="{Binding SetFilterModeCommand}" CommandParameter="All"
+                  Classes="toolbar-btn" Padding="8,2">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <ic:SymbolIcon Symbol="Dismiss" FontSize="10" Foreground="{DynamicResource AccentBrush}"/>
+              <TextBlock Text="{DynamicResource FilterClear}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
+            </StackPanel>
+          </Button>
+        </Grid>
+      </Border>
+
+      <!-- 画廊滚动视口：虚拟化单流排版，仅为可视区域生成视觉元素 -->
+      <ListBox Grid.Row="2"
+               x:Name="GalleryListBox"
+               ItemsSource="{Binding FlattenedDisplayItems}"
+               Background="Transparent"
+               BorderThickness="0"
+               Padding="0"
+               ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+        <ListBox.ItemsPanel>
+          <ItemsPanelTemplate>
+            <VirtualizingStackPanel />
+          </ItemsPanelTemplate>
+        </ListBox.ItemsPanel>
+        <ListBox.Styles>
+          <Style Selector="ListBoxItem">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0,0,0,12" />
+            <Setter Property="Background" Value="Transparent" />
+          </Style>
+          <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+          </Style>
+          <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+          </Style>
+        </ListBox.Styles>
+        <ListBox.DataTemplates>
+          <!-- 1. 组头项：独占 100% 满宽 -->
+          <DataTemplate DataType="models:TimelineHeaderItemViewModel">
+            <Border Background="{DynamicResource HoverBrush}" CornerRadius="12" Padding="12,8"
+                    IsVisible="{Binding IsVisible}">
+              <Grid ColumnDefinitions="Auto,*,Auto">
+                <Button Grid.Column="0" Background="Transparent" BorderThickness="0" Padding="0"
+                        Command="{Binding ToggleCollapseCommand}" Cursor="Hand">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Panel Width="16" Height="16">
+                      <ic:SymbolIcon Symbol="ChevronDown" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" IsVisible="{Binding !IsCollapsed}"/>
+                      <ic:SymbolIcon Symbol="ChevronRight" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" IsVisible="{Binding IsCollapsed}"/>
+                    </Panel>
+                    <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                    <Border Width="1" Height="10" Background="{DynamicResource LineStrongBrush}" VerticalAlignment="Center" />
+                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                      <ic:SymbolIcon Symbol="Location" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"/>
+                      <TextBlock Text="{Binding LocationSummary}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
+                    </StackPanel>
+                  </StackPanel>
+                </Button>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                  <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding PhotoCount}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
+                    <TextBlock Text="{DynamicResource UnitLivePhotos}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
+                  </StackPanel>
+                </StackPanel>
+              </Grid>
+            </Border>
+          </DataTemplate>
+
+          <!-- 2. 等高自适应行：按原图比例分配宽度，行高在目标值附近调整并预先测量 -->
+          <DataTemplate DataType="models:PhotoGridRowViewModel">
+            <ItemsControl ItemsSource="{Binding Cards}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <StackPanel Orientation="Horizontal" Spacing="8" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="models:PhotoCardItemViewModel">
+                  <controls:PhotoCardControl Width="{CompiledBinding DisplayWidth}"
+                                             IsVisible="{CompiledBinding IsVisible}" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </DataTemplate>
+        </ListBox.DataTemplates>
+      </ListBox>
+
+      <!-- 空状态 -->
+      <Panel Grid.Row="2" IsVisible="{Binding !HasPhotos}">
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
+          <ic:SymbolIcon Symbol="Camera" FontSize="56" Foreground="{DynamicResource LineStrongBrush}" HorizontalAlignment="Center"/>
+          <TextBlock Text="{Binding EmptyStateTitle}" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"
+                     HorizontalAlignment="Center" TextAlignment="Center" />
+          <TextBlock Text="{Binding EmptyStateSubtitle}" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"
+                     HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="380" TextWrapping="Wrap" />
+          <Button Classes="primary-btn" Command="{Binding SelectAlbumFolderCommand}"
+                  HorizontalAlignment="Center" Padding="18,9" Margin="0,6,0,0">
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+              <ic:SymbolIcon Symbol="Folder" FontSize="15" Foreground="{DynamicResource OnAccentBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
+              <TextBlock Text="{Binding SelectAlbumFolderBtnText}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
+      </Panel>
+    </Grid>
+
+  </Grid>
+</UserControl>

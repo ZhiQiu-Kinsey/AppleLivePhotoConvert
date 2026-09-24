@@ -8,7 +8,6 @@ using LivePhotoConvert.Core.Services;
 using LivePhotoConvert.Desktop.Converters;
 using LivePhotoConvert.Desktop.Features.Library;
 using LivePhotoConvert.Desktop.Infrastructure;
-using LivePhotoConvert.Desktop.ViewModels;
 
 namespace LivePhotoConvert.Desktop.Features.Tasks;
 

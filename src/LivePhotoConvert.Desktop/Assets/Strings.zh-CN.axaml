@@ -6,16 +6,10 @@
   <!-- 应用标题与全局导航 -->
   <sys:String x:Key="AppTitle">LivePhotoConvert</sys:String>
   <sys:String x:Key="AppSubtitle">桌面端专业实况照片工坊</sys:String>
-  <sys:String x:Key="NavConvert">实况互转</sys:String>
-  <sys:String x:Key="NavStrip">空间瘦身</sys:String>
   <sys:String x:Key="NavTools">依赖引擎</sys:String>
   <sys:String x:Key="NavSettings">偏好设置</sys:String>
 
   <!-- 漏斗与方向 -->
-  <sys:String x:Key="ConvertDirectionLabel">转换方向:</sys:String>
-  <sys:String x:Key="DirAppleToAndroid">苹果 → 安卓</sys:String>
-  <sys:String x:Key="DirAndroidToApple">安卓 → 苹果</sys:String>
-  <sys:String x:Key="DirExtract">提取单文件</sys:String>
   <sys:String x:Key="SelectedSummaryFormat">{0} 组实况照片 · {1}</sys:String>
 
   <!-- 工具栏与相册卡片 -->
@@ -49,8 +43,6 @@
   <sys:String x:Key="RefreshAlbum">重新扫描刷新相册</sys:String>
 
   <!-- 控制台与输出 -->
-  <sys:String x:Key="ConsoleTitle">任务转换控制台</sys:String>
-  <sys:String x:Key="ConsoleConfig">转换配置</sys:String>
   <sys:String x:Key="NamingFormatTitle">生成文件命名格式</sys:String>
   <sys:String x:Key="NamingFormatOriginalShort">保留原名</sys:String>
   <sys:String x:Key="NamingFormatDateNameShort">日期 + 原名</sys:String>
@@ -61,32 +53,26 @@
   <sys:String x:Key="SourceActionRecycleShort">移入回收站</sys:String>
   <sys:String x:Key="SourceActionDeleteShort">永久删除</sys:String>
   <sys:String x:Key="DeleteWarningTitle">物理删除原片警报</sys:String>
-  <sys:String x:Key="DeleteWarningDesc">原 iPhone 实况照片将被永久彻底清除，点击转换时需输入确认词解锁。</sys:String>
-  <sys:String x:Key="AutoAppendIndexTitle">遇同名文件自动追加 _1 序号</sys:String>
-  <sys:String x:Key="AutoAppendIndexDesc">关闭后将直接覆盖已有同名文件</sys:String>
-  <sys:String x:Key="HeicQualityTitle">苹果实况封面画质 (HEIC)</sys:String>
-  <sys:String x:Key="HeicQualityDesc">JPEG 封面转码为苹果 HEIC 时的画质因数。</sys:String>
-  <sys:String x:Key="OutputDirLabel">输出目录:</sys:String>
+  <sys:String x:Key="DeleteWarningDesc">转换成功后源文件将被永久删除，开始前需要输入确认词。</sys:String>
+  <sys:String x:Key="AutoAppendIndexTitle">遇到同名文件时追加序号</sys:String>
+  <sys:String x:Key="AutoAppendIndexDesc">关闭后将直接覆盖输出目录中的同名文件。</sys:String>
+  <sys:String x:Key="HeicQualityTitle">HEIC 画质</sys:String>
+  <sys:String x:Key="HeicQualityDesc">转码为 HEIC 时的画质，数值越高画质越好、文件越大。</sys:String>
   <sys:String x:Key="ChangeOutputDirBtn">更改</sys:String>
-  <sys:String x:Key="OpenOutputDirTip">在文件资源管理器中打开</sys:String>
+  <sys:String x:Key="OpenOutputDirTip">打开文件夹</sys:String>
   <sys:String x:Key="KeepSubfoldersLabel">保持原相册子目录层级</sys:String>
-  <sys:String x:Key="KeepSubfoldersTip">保持原相册子目录层级 (防止平铺重名)</sys:String>
   <sys:String x:Key="CancelTaskBtn">取消任务</sys:String>
 
   <!-- 空间瘦身 -->
   <sys:String x:Key="NoAlbumOrPhotoSelected">尚未选择相册或照片</sys:String>
-  <sys:String x:Key="StripBannerTitle">空间瘦身优化工坊</sys:String>
-  <sys:String x:Key="StripBannerDesc">剥离动态照片中冗余的内嵌短视频流（高保真静态封面 100% 完好留存），释放 70%~90% 存储空间。</sys:String>
-  <sys:String x:Key="CurtainCompareTitle">画质深度对比沙盒 (前后覆盖滑动对比)</sys:String>
-  <sys:String x:Key="CurtainCompareDesc">左右拖拽中轴分割线，直接肉眼比对原实况图与瘦身后 HEIC 的发丝与纹理细节：</sys:String>
+  <sys:String x:Key="CurtainCompareTitle">瘦身画质对比</sys:String>
+  <sys:String x:Key="CurtainCompareDesc">左右拖动分割线，比较原片与按当前 HEIC 画质重新编码后的细节。</sys:String>
   <sys:String x:Key="InPlaceStripTitle">就地覆盖原照片 (破坏性替换)</sys:String>
   <sys:String x:Key="InPlaceStripDesc">开启后直接覆盖原片，关闭则安全导出至独立目录</sys:String>
-  <sys:String x:Key="SafeExportDirTitle">安全导出目录 (保留原含视频副本)：</sys:String>
   <sys:String x:Key="SpaceEstimateTitle">空间释放预估</sys:String>
   <sys:String x:Key="OriginalSizeLabel">原相册总体积:</sys:String>
   <sys:String x:Key="StrippedSizeLabel">瘦身后预计体积:</sys:String>
   <sys:String x:Key="SavedSizeLabel">预计释放磁盘空间:</sys:String>
-  <sys:String x:Key="StartStripBtn">开始执行相册瘦身</sys:String>
   <sys:String x:Key="PauseBtn">暂停</sys:String>
   <sys:String x:Key="OpenOutputDirBtn">打开输出文件夹查看</sys:String>
 
@@ -104,13 +90,11 @@
   <sys:String x:Key="MirrorPresetCustom">自定义镜像源 (手动输入)</sys:String>
   <sys:String x:Key="TestPingBtn">测试连通性</sys:String>
 
-  <!-- 批次报告 -->
-
   <!-- 防灾弹窗 -->
   <sys:String x:Key="DeleteDialogTitle">高危警报：即将彻底删除原照片！</sys:String>
   <sys:String x:Key="DeleteDialogDesc">此操作不可撤销！原照片将直接从磁盘永久粉碎</sys:String>
   <sys:String x:Key="DeleteDialogInputLabel">请输入大写确认词 DELETE 以解除安全锁定：</sys:String>
-  <sys:String x:Key="DeleteDialogCancel">取消，改用回收站</sys:String>
+  <sys:String x:Key="DeleteDialogCancel">取消，保留原片</sys:String>
   <sys:String x:Key="DeleteDialogConfirm">确认永久删除原片</sys:String>
 
   <sys:String x:Key="LowDiskDialogTitle">磁盘空间不足预警 (ENOSPC)</sys:String>
@@ -137,12 +121,6 @@
   <sys:String x:Key="ToolbarFilterTip">筛选</sys:String>
   <sys:String x:Key="ToolbarViewTip">视图布局与卡片比例</sys:String>
   <sys:String x:Key="ToolbarMoreTip">更多选项</sys:String>
-
-  <!-- StripView Keys -->
-  <sys:String x:Key="DragLeftCompare">拖向左侧比对瘦身 HEIC 效果</sys:String>
-  <sys:String x:Key="DragRightCompare">拖向右侧比对原始照片细节</sys:String>
-  <sys:String x:Key="OutputDirModeTitle">输出目录模式</sys:String>
-  <sys:String x:Key="BrowseBtn">浏览...</sys:String>
 
   <!-- ToolsView Keys -->
   <sys:String x:Key="ExifToolDesc">注入 XMP 动态照片标签与 QuickTime UTC 时区元数据。</sys:String>
@@ -182,7 +160,7 @@
 
   <!-- Dialog Secondary Keys -->
   <sys:String x:Key="DeleteAffectedFormat">本次受影响源文件：{0} 组原始照片 ({1})</sys:String>
-  <sys:String x:Key="DeleteIrreversibleDesc">删除后将无法从 Windows 回收站撤回还原。</sys:String>
+  <sys:String x:Key="DeleteIrreversibleDesc">删除后无法从回收站或废纸篓中找回。</sys:String>
   <sys:String x:Key="DeleteInputPlaceholder">键入 DELETE</sys:String>
   <sys:String x:Key="LowDiskRequiredLabel">预计所需空间 (含防损冗余 1.2倍 + 500MB)：</sys:String>
   <sys:String x:Key="LowDiskAvailableLabel">目标驱动器当前剩余可用：</sys:String>
@@ -246,12 +224,8 @@
   <sys:String x:Key="CreditFluentIconsDesc">Fluent Design 矢量图标库</sys:String>
   <sys:String x:Key="CreditMotionPhotoSpecDesc">安卓动态照片官方容器格式规范</sys:String>
 
-  <!-- MainWindow Navigation Category -->
-  <sys:String x:Key="NavCategoryBusiness">业务模块</sys:String>
-
   <!-- Dynamic Units & Labels -->
   <sys:String x:Key="UnitLivePhotos">张实况</sys:String>
-  <sys:String x:Key="UnitQuality">质量</sys:String>
   <sys:String x:Key="CurrentFileLabel">当前文件:</sys:String>
   <sys:String x:Key="PingLatencyLabel">当前响应延迟:</sys:String>
   <sys:String x:Key="SelectAlbumFolderBtn">选择目录</sys:String>
@@ -261,8 +235,6 @@
   <!-- ============================================================= -->
   <sys:String x:Key="ReportCanceledSuffix">（已取消）</sys:String>
   <sys:String x:Key="ReportAvgSpeedFormat">{0:F2} 秒/项</sys:String>
-  <sys:String x:Key="StageStatusReady">沙盒对比与就绪</sys:String>
-  <sys:String x:Key="StageStatusRunning">任务执行中…</sys:String>
   <sys:String x:Key="SplitTargetApple">Apple Live Photo</sys:String>
   <sys:String x:Key="SplitTargetExtract">独立封面与视频</sys:String>
   <sys:String x:Key="MergeSuccessDesc">已成功合成为动态照片</sys:String>
@@ -277,8 +249,7 @@
 
   <!-- 报告 / 对比 / 弹窗补充文案 -->
   <sys:String x:Key="ReportEmptyTitle">暂无任务报告</sys:String>
-  <sys:String x:Key="ReportEmptyDesc">在实况互转或空间瘦身页面启动任务后，报告会保存在这里，直到程序退出。</sys:String>
-  <sys:String x:Key="ReportGoConvertBtn">前往实况互转工作台</sys:String>
+  <sys:String x:Key="ReportEmptyDesc">在图库中启动任务后，报告会保存在这里，直到程序退出。</sys:String>
   <sys:String x:Key="ReportKpiTotal">处理总量</sys:String>
   <sys:String x:Key="ReportKpiTotalSub">已完成扫描配对</sys:String>
   <sys:String x:Key="ReportKpiSuccess">转换成功</sys:String>
@@ -299,24 +270,20 @@
   <sys:String x:Key="ReportCsvSourceFormat">来源格式</sys:String>
   <sys:String x:Key="ReportCsvTargetFormat">目标格式</sys:String>
   <sys:String x:Key="ReportCsvDetail">详细信息</sys:String>
-  <sys:String x:Key="StripPickSample">选取单张对比</sys:String>
-  <sys:String x:Key="StripRescanTip">重新扫描分析</sys:String>
-  <sys:String x:Key="CurtainPickSample">导入实况照片进行画质比对</sys:String>
   <sys:String x:Key="QuickLookCloseTip">关闭 (Esc)</sys:String>
 
   <!-- 空状态与格式串 -->
   <sys:String x:Key="EmptyStateNoDirTitle">请选择待处理相册目录</sys:String>
-  <sys:String x:Key="EmptyStateNoDirSubtitle">点击下方按钮选择包含实况照片（HEIC+MOV 或 Motion Photo）的本地相册文件夹</sys:String>
+  <sys:String x:Key="EmptyStateNoDirSubtitle">选择包含实况照片（HEIC/JPG + MOV）或安卓动态照片的文件夹，再在右侧选择要执行的动作。</sys:String>
   <sys:String x:Key="EmptyStateEmptyTitle">当前目录未扫描到实况照片</sys:String>
   <sys:String x:Key="EmptyStateEmptySubtitle">请确认所选文件夹包含有效的实况成对文件或安卓动态照片</sys:String>
   <sys:String x:Key="FunnelTotalFormat">{0:N0} 项已扫描</sys:String>
   <sys:String x:Key="FunnelReadyFormat">{0:N0} 组就绪</sys:String>
   <sys:String x:Key="FunnelSuspiciousFormat">{0:N0} 组待裁决</sys:String>
   <sys:String x:Key="FunnelFilteredFormat">{0:N0} 项已过滤</sys:String>
-  <sys:String x:Key="PrimaryBtnMergeFormat">开始批量转换 ({0}/{1} 就绪)</sys:String>
-  <sys:String x:Key="PrimaryBtnAppleFormat">开始转为苹果实况 ({0} 组)</sys:String>
-  <sys:String x:Key="PrimaryBtnExtractFormat">开始提取封面与视频 ({0} 组)</sys:String>
-  <sys:String x:Key="PrimaryBtnDefault">开始转换</sys:String>
+  <sys:String x:Key="PrimaryBtnMergeFormat">合成 {0} 组安卓动态照片</sys:String>
+  <sys:String x:Key="PrimaryBtnAppleFormat">还原 {0} 组苹果实况</sys:String>
+  <sys:String x:Key="PrimaryBtnExtractFormat">解包 {0} 张动态照片</sys:String>
   <sys:String x:Key="FilterBannerSuspiciousFormat">仅待人工裁决 ({0}项)</sys:String>
   <sys:String x:Key="FilterBannerSelected">仅已选中项目</sys:String>
   <sys:String x:Key="SelectedBadgeFormat">已选 {0} 项</sys:String>
@@ -350,8 +317,6 @@
 
   <!-- 系统文件选择器 -->
   <sys:String x:Key="PickerOutputFolderTitle">选择转换输出目录</sys:String>
-  <sys:String x:Key="PickerSamplePhotoTitle">选择实况照片或图片样本</sys:String>
-  <sys:String x:Key="PickerImageFilterLabel">图片与实况照片 (*.heic;*.jpg;*.jpeg;*.png)</sys:String>
 
   <!-- Dialogs & Lifecycle -->
   <sys:String x:Key="ConfirmDialogOk">确定</sys:String>
@@ -382,7 +347,7 @@
   <sys:String x:Key="TaskRemainingFormat">剩余约 {0}</sys:String>
   <sys:String x:Key="TaskRemainingEstimating">剩余时间估算中…</sys:String>
   <sys:String x:Key="TaskIdleTitle">当前没有运行中的任务</sys:String>
-  <sys:String x:Key="TaskIdleDesc">在实况互转或空间瘦身页面启动后，进度会显示在这里。</sys:String>
+  <sys:String x:Key="TaskIdleDesc">在图库中选择照片与动作并开始后，进度会显示在这里。</sys:String>
   <sys:String x:Key="TaskHistoryTitle">历史报告</sys:String>
   <sys:String x:Key="TaskHistoryTimeFormat">MM-dd HH:mm:ss</sys:String>
   <sys:String x:Key="TaskStatusCompleted">已完成</sys:String>
@@ -401,5 +366,44 @@
   <sys:String x:Key="ReportCsvOutputPath">输出文件</sys:String>
   <sys:String x:Key="StripItemSavedFormat">已释放 {0}</sys:String>
   <sys:String x:Key="ReportSavedFormat">共释放 {0}</sys:String>
+
+  <!-- 图库工作台与检查器 -->
+  <sys:String x:Key="NavLibrary">图库</sys:String>
+  <sys:String x:Key="InspectorTitle">动作与参数</sys:String>
+  <sys:String x:Key="ActionToAndroid">转为安卓</sys:String>
+  <sys:String x:Key="ActionToApple">转为苹果</sys:String>
+  <sys:String x:Key="ActionExtract">解包提取</sys:String>
+  <sys:String x:Key="ActionStrip">空间瘦身</sys:String>
+  <sys:String x:Key="ActionToAndroidDesc">把苹果实况对（照片 + MOV）合成为单文件安卓动态照片。</sys:String>
+  <sys:String x:Key="ActionToAppleDesc">把安卓动态照片还原为苹果实况对（HEIC + MOV）。</sys:String>
+  <sys:String x:Key="ActionExtractDesc">把安卓动态照片无损拆分为封面图与独立 MP4。</sys:String>
+  <sys:String x:Key="ActionStripDesc">去掉内嵌视频或配对视频，只保留静态照片，可选转码 HEIC。</sys:String>
+  <sys:String x:Key="ApplicableFormat">适用 {0} 项 · {1}</sys:String>
+  <sys:String x:Key="ApplicableScopeSelectedFormat">统计范围：已选中的 {0} 项</sys:String>
+  <sys:String x:Key="ApplicableScopeAll">未选中照片，统计全部照片</sys:String>
+  <sys:String x:Key="InspectorOutputTitle">输出</sys:String>
+  <sys:String x:Key="KeepSubfoldersDesc">按相册中的子目录结构写出，避免平铺后重名。</sys:String>
+  <sys:String x:Key="StripConvertHeicTitle">同时转码为 HEIC</sys:String>
+  <sys:String x:Key="StripConvertHeicDesc">进一步缩小体积；带 HDR 增益图的照片保持原格式。</sys:String>
+  <sys:String x:Key="StripCompareBtn">对比预览</sys:String>
+  <sys:String x:Key="EstimateCalculating">正在估算…</sys:String>
+  <sys:String x:Key="EstimateEmpty">适用项中没有可剥离的视频。</sys:String>
+  <sys:String x:Key="EstimateFailedFormat">暂时无法估算：{0}</sys:String>
+  <sys:String x:Key="EstimateSavedFormat">{0} (-{1:F1}%)</sys:String>
+  <sys:String x:Key="PrimaryBtnStripFormat">瘦身 {0} 项</sys:String>
+  <sys:String x:Key="PrimaryBtnNone">没有适用于该动作的照片</sys:String>
+  <sys:String x:Key="MissingToolsTitle">缺少所需依赖</sys:String>
+  <sys:String x:Key="MissingToolsFormat">此操作需要 {0}，但尚未检测到。请先在依赖引擎页安装或指定路径。</sys:String>
+  <sys:String x:Key="MissingToolsGoBtn">前往依赖引擎</sys:String>
+  <sys:String x:Key="ToolNameHeicEncoder">HEIC 编码器（heif-enc）</sys:String>
+  <sys:String x:Key="LibraryScanning">扫描中…</sys:String>
+  <sys:String x:Key="DialogCloseTip">关闭 (Esc)</sys:String>
+  <sys:String x:Key="CompareLoading">正在生成对比图…</sys:String>
+  <sys:String x:Key="CompareUnavailable">无法为这张照片生成对比图。</sys:String>
+  <sys:String x:Key="CompareBeforeSizeLabel">原片（含配对视频）</sys:String>
+  <sys:String x:Key="CompareAfterSizeLabel">瘦身后（按当前画质编码）</sys:String>
+  <sys:String x:Key="SettingsAppearanceTitle">外观与语言</sys:String>
+  <sys:String x:Key="SettingsBehaviorTitle">任务与性能</sys:String>
+  <sys:String x:Key="ReportGoLibraryBtn">前往图库</sys:String>
 
 </ResourceDictionary>

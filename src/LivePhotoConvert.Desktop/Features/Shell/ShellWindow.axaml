@@ -1,0 +1,194 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="using:LivePhotoConvert.Desktop.Features.Shell"
+        xmlns:dialogs="using:LivePhotoConvert.Desktop.Features.Dialogs"
+        xmlns:library="using:LivePhotoConvert.Desktop.Features.Library"
+        xmlns:tasks="using:LivePhotoConvert.Desktop.Features.Tasks"
+        xmlns:tools="using:LivePhotoConvert.Desktop.Features.Tools"
+        xmlns:settings="using:LivePhotoConvert.Desktop.Features.Settings"
+        x:Class="LivePhotoConvert.Desktop.Features.Shell.ShellWindow"
+        x:CompileBindings="True"
+        x:DataType="shell:ShellViewModel"
+        Title="{DynamicResource AppTitle}"
+        Width="1280" Height="820"
+        MinWidth="960" MinHeight="640"
+        CanResize="True"
+        WindowStartupLocation="CenterScreen"
+        ExtendClientAreaToDecorationsHint="True"
+        WindowDecorations="BorderOnly"
+        Win32Properties.WindowCornerPreference="Round"
+        Background="{DynamicResource CanvasBrush}"
+        xmlns:ic="using:FluentIcons.Avalonia">
+
+
+  <Grid RowDefinitions="40,*">
+
+    <!-- 自绘标题栏 -->
+    <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1" Padding="14,0,0,0"
+            WindowDecorationProperties.ElementRole="TitleBar">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <Border Width="22" Height="22" CornerRadius="6">
+            <Border.Background>
+              <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                <GradientStop Offset="0" Color="{DynamicResource AccentGradientStartColor}" />
+                <GradientStop Offset="1" Color="{DynamicResource AccentGradientEndColor}" />
+              </LinearGradientBrush>
+            </Border.Background>
+            <TextBlock Text="LP" Foreground="{DynamicResource OnAccentBrush}" FontWeight="Black" FontSize="11"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <TextBlock Text="{DynamicResource AppTitle}" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+          <Border Width="1" Height="12" Background="{DynamicResource LineStrongBrush}" VerticalAlignment="Center" />
+          <TextBlock Text="{DynamicResource AppSubtitle}" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" MaxWidth="160" TextTrimming="CharacterEllipsis" />
+        </StackPanel>
+
+        <!-- 窗口系统控制按钮（贴合最右上角，无内边距，标准 Fluent/Windows 样式） -->
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="0" VerticalAlignment="Stretch" HorizontalAlignment="Right">
+          <Button Classes="caption-btn" Click="Minimize_Click"
+                  WindowDecorationProperties.ElementRole="MinimizeButton">
+            <Rectangle Width="10" Height="1" Fill="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Button>
+          <Button Classes="caption-btn" Click="Maximize_Click"
+                  WindowDecorationProperties.ElementRole="MaximizeButton">
+            <Panel Width="10" Height="10" HorizontalAlignment="Center" VerticalAlignment="Center">
+              <Border Width="10" Height="10" BorderBrush="{DynamicResource TextSecondaryBrush}" BorderThickness="1"
+                      IsVisible="{Binding !IsWindowMaximized}" />
+              <Grid Width="10" Height="10" IsVisible="{Binding IsWindowMaximized}">
+                <Border Width="7.5" Height="7.5" Margin="2.5,0,0,2.5" BorderBrush="{DynamicResource TextSecondaryBrush}" BorderThickness="1" />
+                <Border Width="7.5" Height="7.5" Margin="0,2.5,2.5,0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource TextSecondaryBrush}" BorderThickness="1" />
+              </Grid>
+            </Panel>
+          </Button>
+          <Button Classes="caption-close-btn" Click="Close_Click"
+                  WindowDecorationProperties.ElementRole="CloseButton">
+            <ic:SymbolIcon Symbol="Dismiss" FontSize="11" Foreground="{Binding $parent[Button].Foreground}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          </Button>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- 主体：左侧导航 + 页面 -->
+    <Grid Grid.Row="1" ColumnDefinitions="200,*">
+
+      <Border Grid.Column="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,1,0" Padding="12">
+        <Grid RowDefinitions="Auto,*,Auto">
+          <StackPanel Grid.Row="0" Spacing="4">
+            <Button Classes="nav-btn" Classes.selected="{Binding IsLibrarySelected}" Command="{Binding NavigateCommand}" CommandParameter="Library">
+              <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
+                <ic:SymbolIcon Grid.Column="0" Symbol="ImageMultiple" FontSize="16" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
+                <TextBlock Grid.Column="1" Text="{DynamicResource NavLibrary}" FontSize="12" Margin="10,0,0,0" VerticalAlignment="Center" />
+                <Border Grid.Column="2" Classes="nav-badge" IsVisible="{Binding Library.HasPhotos}">
+                  <TextBlock Text="{Binding Library.AllCards.Count}" />
+                </Border>
+              </Grid>
+            </Button>
+
+            <Button Classes="nav-btn" Classes.selected="{Binding IsTasksSelected}" Command="{Binding NavigateCommand}" CommandParameter="Tasks">
+              <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
+                <ic:SymbolIcon Grid.Column="0" Symbol="DocumentBulletListClock" FontSize="16" Foreground="{DynamicResource VioletBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
+                <TextBlock Grid.Column="1" Text="{DynamicResource NavTasks}" FontSize="12" Margin="10,0,0,0" VerticalAlignment="Center" />
+                <Border Grid.Column="2" Classes="nav-badge" IsVisible="{Binding Tasks.Center.IsRunning}">
+                  <TextBlock Text="{Binding Tasks.Center.Current.PercentText}" FontFamily="Consolas" />
+                </Border>
+              </Grid>
+            </Button>
+
+            <Button Classes="nav-btn" Classes.selected="{Binding IsToolsSelected}" Command="{Binding NavigateCommand}" CommandParameter="Tools">
+              <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
+                <ic:SymbolIcon Grid.Column="0" Symbol="Wrench" FontSize="16" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
+                <TextBlock Grid.Column="1" Text="{DynamicResource NavTools}" FontSize="12" Margin="10,0,0,0" VerticalAlignment="Center" />
+                <Border Grid.Column="2" Classes="status-dot ok" IsVisible="{Binding Tools.AllToolsReady}" />
+                <Border Grid.Column="2" Classes="status-dot bad" IsVisible="{Binding !Tools.AllToolsReady}" />
+              </Grid>
+            </Button>
+          </StackPanel>
+
+          <!-- 左下角：引擎状态 + 设置入口 -->
+          <StackPanel Grid.Row="2" Spacing="6">
+            <Border Background="{DynamicResource HoverBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="10" Padding="9,7">
+              <StackPanel Spacing="5">
+                <TextBlock Text="{DynamicResource ToolsTitle}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <StackPanel Orientation="Horizontal" Spacing="4">
+                    <Border Classes="status-dot ok" IsVisible="{Binding Tools.IsExifToolReady}" />
+                    <Border Classes="status-dot bad" IsVisible="{Binding !Tools.IsExifToolReady}" />
+                    <TextBlock Text="ExifTool" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" />
+                  </StackPanel>
+                  <StackPanel Orientation="Horizontal" Spacing="4">
+                    <Border Classes="status-dot ok" IsVisible="{Binding Tools.IsFfmpegReady}" />
+                    <Border Classes="status-dot bad" IsVisible="{Binding !Tools.IsFfmpegReady}" />
+                    <TextBlock Text="FFmpeg" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" />
+                  </StackPanel>
+                  <StackPanel Orientation="Horizontal" Spacing="4">
+                    <Border Classes="status-dot ok" IsVisible="{Binding Tools.IsHeifEncReady}" />
+                    <Border Classes="status-dot bad" IsVisible="{Binding !Tools.IsHeifEncReady}" />
+                    <TextBlock Text="heif-enc" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" />
+                  </StackPanel>
+                </StackPanel>
+              </StackPanel>
+            </Border>
+            <Button Classes="nav-btn" Classes.selected="{Binding IsSettingsSelected}" Command="{Binding NavigateCommand}" CommandParameter="Settings">
+              <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
+                <ic:SymbolIcon Grid.Column="0" Symbol="Settings" FontSize="16" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
+                <TextBlock Grid.Column="1" Text="{DynamicResource NavSettings}" FontSize="12" Margin="10,0,0,0" VerticalAlignment="Center" />
+              </Grid>
+            </Button>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- 页面内容：各页面常驻，切换只改可见性，保留滚动位置与画廊状态 -->
+      <Panel Grid.Column="1">
+        <Grid IsVisible="{Binding IsLibrarySelected}" ColumnDefinitions="*,320">
+          <library:LibraryView Grid.Column="0" DataContext="{Binding Library}" />
+          <library:InspectorView Grid.Column="1" DataContext="{Binding Inspector}" />
+        </Grid>
+        <Panel IsVisible="{Binding IsTasksSelected}">
+          <tasks:TasksView DataContext="{Binding Tasks}" />
+        </Panel>
+        <Panel IsVisible="{Binding IsToolsSelected}">
+          <tools:ToolsView DataContext="{Binding Tools}" />
+        </Panel>
+        <Panel IsVisible="{Binding IsSettingsSelected}">
+          <settings:SettingsView DataContext="{Binding Settings}" />
+        </Panel>
+      </Panel>
+
+      <!-- 弹窗宿主：遮罩点击与 Esc 都走当前弹窗的 CancelCommand -->
+      <Panel Grid.Column="0" Grid.ColumnSpan="2" IsVisible="{Binding HasActiveDialog}">
+        <Border x:Name="DialogOverlay" Background="{DynamicResource OverlayBrush}" PointerPressed="DialogOverlay_PointerPressed" />
+        <ContentControl Content="{Binding ActiveDialog}">
+          <ContentControl.DataTemplates>
+            <DataTemplate DataType="dialogs:ConfirmDialogViewModel">
+              <dialogs:ConfirmDialog />
+            </DataTemplate>
+            <DataTemplate DataType="dialogs:DeleteConfirmDialogViewModel">
+              <dialogs:DeleteConfirmDialog />
+            </DataTemplate>
+            <DataTemplate DataType="dialogs:LowDiskSpaceDialogViewModel">
+              <dialogs:LowDiskSpaceDialog />
+            </DataTemplate>
+            <DataTemplate DataType="dialogs:BackupConfirmDialogViewModel">
+              <dialogs:BackupConfirmDialog />
+            </DataTemplate>
+            <DataTemplate DataType="dialogs:ArbitrateDialogViewModel">
+              <dialogs:ArbitrateDialog />
+            </DataTemplate>
+            <DataTemplate DataType="dialogs:QuickLookDialogViewModel">
+              <dialogs:QuickLookDialog />
+            </DataTemplate>
+            <DataTemplate DataType="dialogs:StripCompareDialogViewModel">
+              <dialogs:StripCompareDialog />
+            </DataTemplate>
+            <DataTemplate DataType="dialogs:DonateDialogViewModel">
+              <dialogs:DonateDialog />
+            </DataTemplate>
+          </ContentControl.DataTemplates>
+        </ContentControl>
+      </Panel>
+
+    </Grid>
+
+  </Grid>
+</Window>

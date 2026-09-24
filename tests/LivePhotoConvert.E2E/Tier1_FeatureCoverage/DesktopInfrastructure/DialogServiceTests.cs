@@ -1,8 +1,8 @@
 using System.ComponentModel;
 using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Models;
-using LivePhotoConvert.Desktop.ViewModels;
-using LivePhotoConvert.Desktop.ViewModels.Dialogs;
+using LivePhotoConvert.Desktop.Features.Shell;
+using LivePhotoConvert.Desktop.Features.Dialogs;
 using LivePhotoConvert.E2E.Harness;
 
 namespace LivePhotoConvert.E2E.Tier1_FeatureCoverage.DesktopInfrastructure;
@@ -151,11 +151,11 @@ public class DialogServiceTests
     }
 
     [Fact]
-    public async Task MainWindow_Escape_CancelsActiveDialog_AndExposesHostState()
+    public async Task Shell_Escape_CancelsActiveDialog_AndExposesHostState()
     {
         using var host = new DesktopTestHost();
         var dialogs = host.Get<IDialogService>();
-        var shell = host.Get<MainWindowViewModel>();
+        var shell = host.Get<ShellViewModel>();
         var changed = new List<string?>();
         ((INotifyPropertyChanged)shell).PropertyChanged += (_, e) => changed.Add(e.PropertyName);
 
@@ -165,7 +165,7 @@ public class DialogServiceTests
         var task = dialogs.ShowAsync(confirm);
         Assert.Same(confirm, shell.ActiveDialog);
         Assert.True(shell.HasActiveDialog);
-        Assert.Contains(nameof(MainWindowViewModel.ActiveDialog), changed);
+        Assert.Contains(nameof(ShellViewModel.ActiveDialog), changed);
 
         Assert.True(shell.TryCancelActiveDialog());
         Assert.False(await CompletesSoon(task));

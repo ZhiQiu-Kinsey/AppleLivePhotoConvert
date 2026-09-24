@@ -2,13 +2,14 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using System.ComponentModel;
+using LivePhotoConvert.Desktop.Features.Dialogs;
 
 namespace LivePhotoConvert.Desktop.Controls;
 
 public partial class CurtainCompareControl : UserControl
 {
     private bool _isDragging;
-    private ViewModels.StripViewModel? _subscribedVm;
+    private StripCompareDialogViewModel? _subscribedVm;
 
     public CurtainCompareControl()
     {
@@ -23,7 +24,7 @@ public partial class CurtainCompareControl : UserControl
             _subscribedVm.PropertyChanged -= OnVmPropertyChanged;
         }
 
-        if (DataContext is ViewModels.StripViewModel vm)
+        if (DataContext is StripCompareDialogViewModel vm)
         {
             _subscribedVm = vm;
             vm.PropertyChanged += OnVmPropertyChanged;
@@ -37,8 +38,8 @@ public partial class CurtainCompareControl : UserControl
 
     private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(ViewModels.StripViewModel.OriginalCompareBitmap)
-            or nameof(ViewModels.StripViewModel.CurtainPosition))
+        if (e.PropertyName is nameof(StripCompareDialogViewModel.OriginalCompareBitmap)
+            or nameof(StripCompareDialogViewModel.CurtainPosition))
         {
             UpdateMetrics();
         }
@@ -52,7 +53,7 @@ public partial class CurtainCompareControl : UserControl
 
     private Rect GetImageRenderRect()
     {
-        if (DataContext is not ViewModels.StripViewModel vm || vm.OriginalCompareBitmap == null)
+        if (DataContext is not StripCompareDialogViewModel vm || vm.OriginalCompareBitmap == null)
         {
             return new Rect(0, 0, Math.Max(1, Bounds.Width), Math.Max(1, Bounds.Height));
         }
@@ -84,7 +85,7 @@ public partial class CurtainCompareControl : UserControl
 
     private void AdjustContainerHeight()
     {
-        if (DataContext is not ViewModels.StripViewModel vm)
+        if (DataContext is not StripCompareDialogViewModel vm)
             return;
 
         double controlWidth = Bounds.Width;
@@ -94,10 +95,9 @@ public partial class CurtainCompareControl : UserControl
         if (bmp is { PixelSize: { Width: > 0, Height: > 0 } })
         {
             double imgRatio = (double)bmp.PixelSize.Width / bmp.PixelSize.Height;
-            // 依据图片宽高比计算让图片尽可能占满的自适应高度
-            // 限制在合理舒适的区间 [380, 680]，兼顾大图占满与页面滚动舒适度
+            // 依据图片宽高比让图片尽可能占满，同时限制高度保证弹窗在最小窗口内完整显示
             double idealHeight = controlWidth / imgRatio;
-            double targetHeight = Math.Clamp(idealHeight, 380.0, 680.0);
+            double targetHeight = Math.Clamp(idealHeight, 300.0, 520.0);
             if (double.IsNaN(Height) || Math.Abs(Height - targetHeight) > 2.0)
             {
                 Height = targetHeight;
@@ -105,16 +105,16 @@ public partial class CurtainCompareControl : UserControl
         }
         else
         {
-            if (!double.IsNaN(Height) && Height != 380)
+            if (!double.IsNaN(Height) && Height != 300)
             {
-                Height = 380;
+                Height = 300;
             }
         }
     }
 
     private void UpdateMetrics()
     {
-        if (DataContext is not ViewModels.StripViewModel vm || Bounds.Width <= 0 || Bounds.Height <= 0)
+        if (DataContext is not StripCompareDialogViewModel vm || Bounds.Width <= 0 || Bounds.Height <= 0)
             return;
 
         AdjustContainerHeight();
@@ -163,7 +163,7 @@ public partial class CurtainCompareControl : UserControl
         var rect = GetImageRenderRect();
         if (rect.Width <= 0) return;
         double pct = Math.Clamp(((x - rect.Left) / rect.Width) * 100.0, 0.0, 100.0);
-        if (DataContext is ViewModels.StripViewModel vm)
+        if (DataContext is StripCompareDialogViewModel vm)
         {
             vm.CurtainPosition = pct;
         }

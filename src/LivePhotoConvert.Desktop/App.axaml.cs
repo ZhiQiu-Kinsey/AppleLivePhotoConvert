@@ -3,11 +3,10 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using LivePhotoConvert.Core.Services;
+using LivePhotoConvert.Desktop.Features.Dialogs;
+using LivePhotoConvert.Desktop.Features.Shell;
 using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Services;
-using LivePhotoConvert.Desktop.ViewModels;
-using LivePhotoConvert.Desktop.ViewModels.Dialogs;
-using LivePhotoConvert.Desktop.Views;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace LivePhotoConvert.Desktop;
@@ -36,7 +35,7 @@ public class App : Application
 
             Dispatcher.UIThread.UnhandledException += OnUiThreadUnhandledException;
 
-            var window = new MainWindow { DataContext = services.GetRequiredService<MainWindowViewModel>() };
+            var window = new ShellWindow { DataContext = services.GetRequiredService<ShellViewModel>() };
             services.GetRequiredService<WindowPlacementTracker>().Attach(window);
             services.GetRequiredService<AppLifetime>().Attach(window);
             desktop.MainWindow = window;

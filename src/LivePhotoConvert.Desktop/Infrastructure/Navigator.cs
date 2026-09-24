@@ -3,13 +3,12 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace LivePhotoConvert.Desktop.Infrastructure;
 
-/// <summary>主窗口的页面；枚举值即标签页序号。</summary>
+/// <summary>主窗口的页面。</summary>
 public enum AppPage
 {
-    Convert,
-    Strip,
-    Tools,
+    Library,
     Tasks,
+    Tools,
     Settings
 }
 

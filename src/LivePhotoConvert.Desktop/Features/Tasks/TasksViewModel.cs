@@ -4,7 +4,6 @@ using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LivePhotoConvert.Desktop.Infrastructure;
-using LivePhotoConvert.Desktop.ViewModels;
 
 namespace LivePhotoConvert.Desktop.Features.Tasks;
 
@@ -44,7 +43,7 @@ public sealed partial class TasksViewModel : ViewModelBase
     public void Cancel() => Center.Cancel();
 
     [RelayCommand]
-    public void GoToConvert() => _navigator.NavigateTo(AppPage.Convert);
+    public void GoToLibrary() => _navigator.NavigateTo(AppPage.Library);
 
     private void OnCenterPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {

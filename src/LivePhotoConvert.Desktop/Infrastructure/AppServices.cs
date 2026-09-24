@@ -1,8 +1,11 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
+using LivePhotoConvert.Desktop.Features.Library;
+using LivePhotoConvert.Desktop.Features.Settings;
+using LivePhotoConvert.Desktop.Features.Shell;
 using LivePhotoConvert.Desktop.Features.Tasks;
+using LivePhotoConvert.Desktop.Features.Tools;
 using LivePhotoConvert.Desktop.Services;
-using LivePhotoConvert.Desktop.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace LivePhotoConvert.Desktop.Infrastructure;
@@ -53,23 +56,28 @@ public static class AppServices
         services.AddSingleton(sp => new TasksViewModel(
             sp.GetRequiredService<TaskCenter>(),
             sp.GetRequiredService<INavigator>()));
-        services.AddSingleton(sp => new ConvertViewModel(
+        services.AddSingleton<IToolAvailability>(_ => ToolAvailability.Instance);
+        services.AddSingleton<IStripEstimator>(sp => new StripEstimator(sp.GetRequiredService<IConversionEngines>()));
+        services.AddSingleton<IDiskSpaceGuard>(_ => DiskSpaceGuard.Instance);
+        services.AddSingleton(sp => new LibraryViewModel(
+            sp.GetRequiredService<SettingsStore>(),
+            sp.GetRequiredService<ILocalizer>(),
+            sp.GetRequiredService<IDialogService>(),
+            sp.GetRequiredService<IFilePicker>(),
+            sp.GetRequiredService<PlaybackHost>()));
+        services.AddSingleton(sp => new InspectorViewModel(
+            sp.GetRequiredService<LibraryViewModel>(),
             sp.GetRequiredService<SettingsStore>(),
             sp.GetRequiredService<ILocalizer>(),
             sp.GetRequiredService<IDialogService>(),
             sp.GetRequiredService<IFilePicker>(),
             sp.GetRequiredService<IShellLauncher>(),
-            sp.GetRequiredService<PlaybackHost>(),
             sp.GetRequiredService<TaskCenter>(),
-            sp.GetRequiredService<INavigator>()));
-        services.AddSingleton(sp => new StripViewModel(
-            sp.GetRequiredService<SettingsStore>(),
-            sp.GetRequiredService<ILocalizer>(),
-            sp.GetRequiredService<IDialogService>(),
-            sp.GetRequiredService<IFilePicker>(),
-            sp.GetRequiredService<IShellLauncher>(),
-            sp.GetRequiredService<TaskCenter>(),
-            sp.GetRequiredService<INavigator>()));
+            sp.GetRequiredService<INavigator>(),
+            sp.GetRequiredService<IToolAvailability>(),
+            sp.GetRequiredService<IStripEstimator>(),
+            sp.GetRequiredService<IDiskSpaceGuard>(),
+            sp.GetRequiredService<TimeProvider>()));
         services.AddSingleton(sp => new ToolsViewModel(
             sp.GetRequiredService<SettingsStore>(),
             sp.GetRequiredService<ILocalizer>(),
@@ -80,13 +88,13 @@ public static class AppServices
             sp.GetRequiredService<ThemeService>(),
             sp.GetRequiredService<IShellLauncher>(),
             sp.GetRequiredService<IDialogService>()));
-        services.AddSingleton(sp => new MainWindowViewModel(
+        services.AddSingleton(sp => new ShellViewModel(
             sp.GetRequiredService<INavigator>(),
             sp.GetRequiredService<IDialogService>(),
-            sp.GetRequiredService<ConvertViewModel>(),
-            sp.GetRequiredService<StripViewModel>(),
-            sp.GetRequiredService<ToolsViewModel>(),
+            sp.GetRequiredService<LibraryViewModel>(),
+            sp.GetRequiredService<InspectorViewModel>(),
             sp.GetRequiredService<TasksViewModel>(),
+            sp.GetRequiredService<ToolsViewModel>(),
             sp.GetRequiredService<SettingsViewModel>()));
 
         services.AddSingleton(sp => new AppLifetime(

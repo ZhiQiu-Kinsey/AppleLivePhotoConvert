@@ -2,7 +2,7 @@ using System.Reflection;
 using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Models;
 using LivePhotoConvert.Desktop.Services;
-using LivePhotoConvert.Desktop.ViewModels;
+using LivePhotoConvert.Desktop.Features.Library;
 using LivePhotoConvert.E2E.Harness;
 
 namespace LivePhotoConvert.E2E.Tier1_FeatureCoverage;
@@ -28,14 +28,14 @@ public class GalleryGroupingAndSortingTests : IDisposable
         field.SetValue(target, value);
     }
 
-    private static List<TimelineGroup> GetPrivateGroups(ConvertViewModel vm)
+    private static List<TimelineGroup> GetPrivateGroups(LibraryViewModel vm)
     {
         var field = vm.GetType().GetField("_groups", BindingFlags.NonPublic | BindingFlags.Instance)
             ?? throw new InvalidOperationException("_groups field not found");
         return (List<TimelineGroup>)field.GetValue(vm)!;
     }
 
-    private ConvertViewModel CreateCleanViewModel() => _host.Get<ConvertViewModel>();
+    private LibraryViewModel CreateCleanViewModel() => _host.Get<LibraryViewModel>();
 
     [Fact]
     public void GroupingMode_Date_GroupsByDay()

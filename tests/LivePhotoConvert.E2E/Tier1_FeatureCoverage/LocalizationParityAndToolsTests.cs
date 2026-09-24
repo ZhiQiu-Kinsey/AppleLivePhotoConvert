@@ -2,7 +2,7 @@ using LivePhotoConvert.Core.Metadata;
 using LivePhotoConvert.Core.External;
 using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Services;
-using LivePhotoConvert.Desktop.ViewModels;
+using LivePhotoConvert.Desktop.Features.Tools;
 using LivePhotoConvert.E2E.Harness;
 
 namespace LivePhotoConvert.E2E.Tier1_FeatureCoverage;

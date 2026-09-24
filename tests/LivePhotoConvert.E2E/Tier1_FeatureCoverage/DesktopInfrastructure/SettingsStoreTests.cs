@@ -82,7 +82,7 @@ public sealed class SettingsStoreTests : IDisposable
     [Fact]
     public void Flush_WhenWriteFails_KeepsPreviousFileIntactAndRetriesLater()
     {
-        File.WriteAllText(SettingsPath, """{ "schemaVersion": 2, "theme": "Light" }""");
+        File.WriteAllText(SettingsPath, $$"""{ "schemaVersion": {{SettingsStore.CurrentSchemaVersion}}, "theme": "Light" }""");
         var original = File.ReadAllText(SettingsPath);
         using var store = new SettingsStore(SettingsPath);
 
@@ -141,6 +141,59 @@ public sealed class SettingsStoreTests : IDisposable
         Assert.Equal(expected.ToString(), (string?)json["conflictPolicy"]);
         Assert.False(json.ContainsKey("overwriteSameName"));
         Assert.False(json.ContainsKey("autoDownloadDependencies"));
+    }
+
+    [Theory]
+    [InlineData("", "/strip", "/strip")]
+    [InlineData("/album", "/strip", "/album")]
+    [InlineData("/album", null, "/album")]
+    public void VersionTwoFile_MergesStripDirectoryIntoTheSingleAlbumDirectory(string scan, string? strip, string expected)
+    {
+        var stripField = strip is null ? string.Empty : $"\"stripLastDirectory\": \"{strip}\",";
+        File.WriteAllText(SettingsPath, $$"""
+            {
+              "schemaVersion": 2,
+              {{stripField}}
+              "lastScanDirectory": "{{scan}}",
+              "inPlaceStrip": true
+            }
+            """);
+
+        using var store = new SettingsStore(SettingsPath);
+
+        Assert.Equal(expected, store.Current.LastScanDirectory);
+        Assert.True(store.Current.InPlaceStrip);
+        Assert.Equal(new DesktopSettings().Action, store.Current.Action);
+        Assert.Equal("Medium", store.Current.Gallery.Scale);
+        var json = ReadJson(SettingsPath);
+        Assert.Equal(SettingsStore.CurrentSchemaVersion, (int?)json["schemaVersion"]);
+        Assert.False(json.ContainsKey("stripLastDirectory"));
+    }
+
+    [Fact]
+    public void RoundTrip_PersistsActionAndGalleryPreferences_AndToleratesNullGallery()
+    {
+        using (var store = new SettingsStore(SettingsPath))
+        {
+            store.Update(s =>
+            {
+                s.Action = Desktop.Features.Library.ConversionAction.Strip;
+                s.Gallery.SortMode = "Name";
+                s.Gallery.Crop = "Square";
+            });
+        }
+
+        var json = ReadJson(SettingsPath);
+        Assert.Equal("Strip", (string?)json["action"]);
+        using (var reloaded = new SettingsStore(SettingsPath))
+        {
+            Assert.Equal(Desktop.Features.Library.ConversionAction.Strip, reloaded.Current.Action);
+            Assert.Equal(("Name", "Square"), (reloaded.Current.Gallery.SortMode, reloaded.Current.Gallery.Crop));
+        }
+
+        File.WriteAllText(SettingsPath, $$"""{ "schemaVersion": {{SettingsStore.CurrentSchemaVersion}}, "gallery": null }""");
+        using var withNull = new SettingsStore(SettingsPath);
+        Assert.Equal("DateTaken", withNull.Current.Gallery.SortMode);
     }
 
     [Fact]

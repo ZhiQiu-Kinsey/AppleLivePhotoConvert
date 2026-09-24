@@ -142,8 +142,8 @@
         </Border>
         <TextBlock Text="{DynamicResource ReportEmptyTitle}" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center" />
         <TextBlock Text="{DynamicResource ReportEmptyDesc}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="420" />
-        <Button Classes="primary-btn" Command="{Binding GoToConvertCommand}" HorizontalAlignment="Center" Margin="0,8,0,0">
-          <TextBlock Text="{DynamicResource ReportGoConvertBtn}" FontSize="11" FontWeight="Bold" />
+        <Button Classes="primary-btn" Command="{Binding GoToLibraryCommand}" HorizontalAlignment="Center" Margin="0,8,0,0">
+          <TextBlock Text="{DynamicResource ReportGoLibraryBtn}" FontSize="11" FontWeight="Bold" />
         </Button>
       </StackPanel>
     </Border>

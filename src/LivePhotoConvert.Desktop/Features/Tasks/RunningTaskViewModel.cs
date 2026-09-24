@@ -3,7 +3,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using LivePhotoConvert.Core.Pipeline;
 using LivePhotoConvert.Desktop.Features.Library;
 using LivePhotoConvert.Desktop.Infrastructure;
-using LivePhotoConvert.Desktop.ViewModels;
 
 namespace LivePhotoConvert.Desktop.Features.Tasks;
 

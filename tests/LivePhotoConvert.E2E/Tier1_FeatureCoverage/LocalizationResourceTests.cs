@@ -171,6 +171,31 @@ public class LocalizationResourceTests
     }
 
     [Fact]
+    public void StringDictionaries_HaveNoUnusedKeys()
+    {
+        // 视图里的 DynamicResource 与代码里任何与键同名的字符串字面量都算引用（间接键表同样以字面量出现）
+        var referenced = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var file in DesktopSources("*.axaml").Where(p => !IsStringsDictionary(p)))
+        {
+            foreach (Match m in Regex.Matches(File.ReadAllText(file), @"\{(?:DynamicResource|StaticResource)\s+([A-Za-z0-9_]+)\s*\}"))
+            {
+                referenced.Add(m.Groups[1].Value);
+            }
+        }
+
+        foreach (var file in DesktopSources("*.cs"))
+        {
+            foreach (Match m in Regex.Matches(File.ReadAllText(file), @"""([A-Za-z0-9_]+)"""))
+            {
+                referenced.Add(m.Groups[1].Value);
+            }
+        }
+
+        var unused = LoadStrings("zh-CN").Keys.Where(k => !referenced.Contains(k)).Order().ToList();
+        Assert.True(unused.Count == 0, "未被引用的字符串键: " + string.Join(", ", unused));
+    }
+
+    [Fact]
     public void FormatStrings_HaveSamePlaceholdersInBothLanguagesAndParse()
     {
         var zh = LoadStrings("zh-CN");
@@ -248,21 +273,21 @@ public class LocalizationResourceTests
 
         Assert.Equal(Localizer.Chinese, localizer.Language);
         Assert.Equal("zh-CN", localizer.Culture.Name);
-        Assert.Equal("实况互转", localizer["NavConvert"]);
+        Assert.Equal("图库", localizer["NavLibrary"]);
     }
 
     [Theory]
-    [InlineData("en-US", "en-US", "Convert")]
-    [InlineData("en", "en-US", "Convert")]
-    [InlineData("EN", "en-US", "Convert")]
-    [InlineData("EN-US", "en-US", "Convert")]
-    [InlineData("zh-CN", "zh-CN", "实况互转")]
-    [InlineData("zh", "zh-CN", "实况互转")]
-    [InlineData("ZH-CN", "zh-CN", "实况互转")]
-    [InlineData("fr-FR", "zh-CN", "实况互转")]
-    [InlineData("", "zh-CN", "实况互转")]
-    [InlineData(null, "zh-CN", "实况互转")]
-    public void Localizer_SetLanguage_NormalizesCodeSwitchesCultureAndRaisesEvent(string? code, string expected, string expectedNavConvert)
+    [InlineData("en-US", "en-US", "Library")]
+    [InlineData("en", "en-US", "Library")]
+    [InlineData("EN", "en-US", "Library")]
+    [InlineData("EN-US", "en-US", "Library")]
+    [InlineData("zh-CN", "zh-CN", "图库")]
+    [InlineData("zh", "zh-CN", "图库")]
+    [InlineData("ZH-CN", "zh-CN", "图库")]
+    [InlineData("fr-FR", "zh-CN", "图库")]
+    [InlineData("", "zh-CN", "图库")]
+    [InlineData(null, "zh-CN", "图库")]
+    public void Localizer_SetLanguage_NormalizesCodeSwitchesCultureAndRaisesEvent(string? code, string expected, string expectedNavLibrary)
     {
         using var _ = new CultureScope();
         var localizer = new Localizer();
@@ -284,7 +309,7 @@ public class LocalizationResourceTests
         Assert.Equal(expected, CultureInfo.CurrentUICulture.Name);
         Assert.Equal(expected, CultureInfo.DefaultThreadCurrentCulture?.Name);
         Assert.Equal(expected, CultureInfo.DefaultThreadCurrentUICulture?.Name);
-        Assert.Equal(expectedNavConvert, localizer["NavConvert"]);
+        Assert.Equal(expectedNavLibrary, localizer["NavLibrary"]);
     }
 
     [Fact]

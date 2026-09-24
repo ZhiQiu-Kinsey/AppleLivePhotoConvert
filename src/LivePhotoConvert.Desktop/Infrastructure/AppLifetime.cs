@@ -1,7 +1,7 @@
 using Avalonia.Controls;
 using LivePhotoConvert.Core.Services;
 using LivePhotoConvert.Desktop.Services;
-using LivePhotoConvert.Desktop.ViewModels.Dialogs;
+using LivePhotoConvert.Desktop.Features.Dialogs;
 
 namespace LivePhotoConvert.Desktop.Infrastructure;
 

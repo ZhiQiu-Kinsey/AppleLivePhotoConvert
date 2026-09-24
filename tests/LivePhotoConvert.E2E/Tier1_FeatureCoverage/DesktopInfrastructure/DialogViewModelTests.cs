@@ -1,6 +1,6 @@
 using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Models;
-using LivePhotoConvert.Desktop.ViewModels.Dialogs;
+using LivePhotoConvert.Desktop.Features.Dialogs;
 
 namespace LivePhotoConvert.E2E.Tier1_FeatureCoverage.DesktopInfrastructure;
 

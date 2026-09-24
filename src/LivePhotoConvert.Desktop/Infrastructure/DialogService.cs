@@ -1,6 +1,6 @@
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
-using LivePhotoConvert.Desktop.ViewModels.Dialogs;
+using LivePhotoConvert.Desktop.Features.Dialogs;
 
 namespace LivePhotoConvert.Desktop.Infrastructure;
 

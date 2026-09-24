@@ -10,7 +10,7 @@ namespace LivePhotoConvert.Desktop.Infrastructure;
 /// </summary>
 public sealed class SettingsStore : IDisposable
 {
-    public const int CurrentSchemaVersion = 2;
+    public const int CurrentSchemaVersion = 3;
     public const string CorruptSuffix = ".corrupt";
 
     private static readonly TimeSpan DefaultDebounce = TimeSpan.FromMilliseconds(500);
@@ -144,6 +144,19 @@ public sealed class SettingsStore : IDisposable
             root["conflictPolicy"] = overwrite ? "Overwrite" : "AppendIndex";
             root.Remove("overwriteSameName");
             root.Remove("autoDownloadDependencies");
+        }
+
+        if (version < 3)
+        {
+            // 瘦身并入图库后只保留一个相册目录；旧的瘦身目录仅在图库目录为空时接替它
+            var scan = root["lastScanDirectory"] is JsonValue d && d.TryGetValue<string>(out var dir) ? dir : null;
+            var strip = root["stripLastDirectory"] is JsonValue sd && sd.TryGetValue<string>(out var stripDir) ? stripDir : null;
+            if (string.IsNullOrWhiteSpace(scan) && !string.IsNullOrWhiteSpace(strip))
+            {
+                root["lastScanDirectory"] = strip;
+            }
+
+            root.Remove("stripLastDirectory");
         }
 
         root["schemaVersion"] = CurrentSchemaVersion;

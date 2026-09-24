@@ -6,16 +6,10 @@
   <!-- Application Title & Navigation -->
   <sys:String x:Key="AppTitle">LivePhotoConvert</sys:String>
   <sys:String x:Key="AppSubtitle">Professional Live Photo Studio</sys:String>
-  <sys:String x:Key="NavConvert">Convert</sys:String>
-  <sys:String x:Key="NavStrip">Strip</sys:String>
   <sys:String x:Key="NavTools">Engines</sys:String>
   <sys:String x:Key="NavSettings">Preferences</sys:String>
 
   <!-- Funnel & Direction -->
-  <sys:String x:Key="ConvertDirectionLabel">Direction:</sys:String>
-  <sys:String x:Key="DirAppleToAndroid">Apple → Android</sys:String>
-  <sys:String x:Key="DirAndroidToApple">Android → Apple</sys:String>
-  <sys:String x:Key="DirExtract">Extract Files</sys:String>
   <sys:String x:Key="SelectedSummaryFormat">{0} Live Photos · {1}</sys:String>
 
   <!-- Toolbar & Gallery -->
@@ -49,8 +43,6 @@
   <sys:String x:Key="RefreshAlbum">Rescan Album</sys:String>
 
   <!-- Console & Output -->
-  <sys:String x:Key="ConsoleTitle">Conversion Console</sys:String>
-  <sys:String x:Key="ConsoleConfig">Conversion Settings</sys:String>
   <sys:String x:Key="NamingFormatTitle">Output Naming Format</sys:String>
   <sys:String x:Key="NamingFormatOriginalShort">Keep original</sys:String>
   <sys:String x:Key="NamingFormatDateNameShort">Date + name</sys:String>
@@ -61,32 +53,26 @@
   <sys:String x:Key="SourceActionRecycleShort">Move to Recycle Bin</sys:String>
   <sys:String x:Key="SourceActionDeleteShort">Delete permanently</sys:String>
   <sys:String x:Key="DeleteWarningTitle">Physical Deletion Alert</sys:String>
-  <sys:String x:Key="DeleteWarningDesc">Original live photos will be wiped permanently. Type DELETE to unlock.</sys:String>
-  <sys:String x:Key="AutoAppendIndexTitle">Auto-append _1 suffix on collision</sys:String>
-  <sys:String x:Key="AutoAppendIndexDesc">If disabled, existing files with the same name will be overwritten</sys:String>
-  <sys:String x:Key="HeicQualityTitle">Apple Cover HEIC Quality</sys:String>
-  <sys:String x:Key="HeicQualityDesc">Quality factor when transcoding cover JPEG to Apple HEIC.</sys:String>
-  <sys:String x:Key="OutputDirLabel">Output Directory:</sys:String>
+  <sys:String x:Key="DeleteWarningDesc">Source files are permanently deleted after conversion; you must type a confirmation word to start.</sys:String>
+  <sys:String x:Key="AutoAppendIndexTitle">Append a number on name clashes</sys:String>
+  <sys:String x:Key="AutoAppendIndexDesc">When off, files with the same name in the output folder are overwritten.</sys:String>
+  <sys:String x:Key="HeicQualityTitle">HEIC quality</sys:String>
+  <sys:String x:Key="HeicQualityDesc">Quality used when encoding HEIC; higher means better quality and larger files.</sys:String>
   <sys:String x:Key="ChangeOutputDirBtn">Change</sys:String>
-  <sys:String x:Key="OpenOutputDirTip">Open in File Explorer</sys:String>
+  <sys:String x:Key="OpenOutputDirTip">Open folder</sys:String>
   <sys:String x:Key="KeepSubfoldersLabel">Keep subfolders</sys:String>
-  <sys:String x:Key="KeepSubfoldersTip">Preserve subfolder hierarchy (prevent name collision)</sys:String>
   <sys:String x:Key="CancelTaskBtn">Cancel Task</sys:String>
 
   <!-- Storage Strip -->
   <sys:String x:Key="NoAlbumOrPhotoSelected">No album or photo selected</sys:String>
-  <sys:String x:Key="StripBannerTitle">Storage Optimization Studio</sys:String>
-  <sys:String x:Key="StripBannerDesc">Strip redundant micro-videos from live photos while keeping photos intact. Reclaims 70%~90% space.</sys:String>
-  <sys:String x:Key="CurtainCompareTitle">Quality Sandbox (Before / After Overlay)</sys:String>
-  <sys:String x:Key="CurtainCompareDesc">Drag divider to compare pixel details between original and stripped HEIC:</sys:String>
+  <sys:String x:Key="CurtainCompareTitle">Slim-down quality comparison</sys:String>
+  <sys:String x:Key="CurtainCompareDesc">Drag the divider to compare the original with a re-encode at the current HEIC quality.</sys:String>
   <sys:String x:Key="InPlaceStripTitle">In-Place Overwrite (Destructive)</sys:String>
   <sys:String x:Key="InPlaceStripDesc">Overwrites sources in-place; disable to export safely</sys:String>
-  <sys:String x:Key="SafeExportDirTitle">Safe Export Directory (Keeps video copies):</sys:String>
   <sys:String x:Key="SpaceEstimateTitle">Estimated Space Savings</sys:String>
   <sys:String x:Key="OriginalSizeLabel">Original Album Size:</sys:String>
   <sys:String x:Key="StrippedSizeLabel">Estimated Stripped Size:</sys:String>
   <sys:String x:Key="SavedSizeLabel">Estimated Saved Space:</sys:String>
-  <sys:String x:Key="StartStripBtn">Start Storage Optimization</sys:String>
   <sys:String x:Key="PauseBtn">Pause</sys:String>
   <sys:String x:Key="OpenOutputDirBtn">Open Output Folder</sys:String>
 
@@ -104,13 +90,11 @@
   <sys:String x:Key="MirrorPresetCustom">Custom mirror (enter manually)</sys:String>
   <sys:String x:Key="TestPingBtn">Test Connectivity</sys:String>
 
-  <!-- Reports -->
-
   <!-- Dialogs -->
   <sys:String x:Key="DeleteDialogTitle">Alert: Permanent Source Deletion!</sys:String>
   <sys:String x:Key="DeleteDialogDesc">This action is irreversible! Files will be permanently deleted.</sys:String>
   <sys:String x:Key="DeleteDialogInputLabel">Type uppercase DELETE to unlock:</sys:String>
-  <sys:String x:Key="DeleteDialogCancel">Cancel, Use Recycle Bin</sys:String>
+  <sys:String x:Key="DeleteDialogCancel">Cancel and keep originals</sys:String>
   <sys:String x:Key="DeleteDialogConfirm">Confirm Permanent Deletion</sys:String>
 
   <sys:String x:Key="LowDiskDialogTitle">Low Disk Space Alert (ENOSPC)</sys:String>
@@ -137,12 +121,6 @@
   <sys:String x:Key="ToolbarFilterTip">Filter</sys:String>
   <sys:String x:Key="ToolbarViewTip">View layout and card aspect ratio</sys:String>
   <sys:String x:Key="ToolbarMoreTip">More options</sys:String>
-
-  <!-- StripView Keys -->
-  <sys:String x:Key="DragLeftCompare">Drag left to inspect stripped HEIC</sys:String>
-  <sys:String x:Key="DragRightCompare">Drag right to inspect original photo</sys:String>
-  <sys:String x:Key="OutputDirModeTitle">Output Directory Mode</sys:String>
-  <sys:String x:Key="BrowseBtn">Browse...</sys:String>
 
   <!-- ToolsView Keys -->
   <sys:String x:Key="ExifToolDesc">Injects XMP Motion Photo tags and QuickTime UTC timezone metadata.</sys:String>
@@ -182,7 +160,7 @@
 
   <!-- Dialog Secondary Keys -->
   <sys:String x:Key="DeleteAffectedFormat">Affected source files: {0} pairs ({1})</sys:String>
-  <sys:String x:Key="DeleteIrreversibleDesc">Deleted files cannot be restored from the Windows Recycle Bin.</sys:String>
+  <sys:String x:Key="DeleteIrreversibleDesc">Deleted files cannot be recovered from the Recycle Bin or Trash.</sys:String>
   <sys:String x:Key="DeleteInputPlaceholder">Type DELETE</sys:String>
   <sys:String x:Key="LowDiskRequiredLabel">Estimated space required (1.2x safety margin + 500MB):</sys:String>
   <sys:String x:Key="LowDiskAvailableLabel">Available free space on target drive:</sys:String>
@@ -246,12 +224,8 @@
   <sys:String x:Key="CreditFluentIconsDesc">Fluent Design vector icon library</sys:String>
   <sys:String x:Key="CreditMotionPhotoSpecDesc">Official Android Motion Photo container specification</sys:String>
 
-  <!-- MainWindow Navigation Category -->
-  <sys:String x:Key="NavCategoryBusiness">Modules</sys:String>
-
   <!-- Dynamic Units & Labels -->
   <sys:String x:Key="UnitLivePhotos">Live Photos</sys:String>
-  <sys:String x:Key="UnitQuality">Quality</sys:String>
   <sys:String x:Key="CurrentFileLabel">Current file:</sys:String>
   <sys:String x:Key="PingLatencyLabel">Latency:</sys:String>
   <sys:String x:Key="SelectAlbumFolderBtn">Select Folder</sys:String>
@@ -261,8 +235,6 @@
   <!-- ============================================================= -->
   <sys:String x:Key="ReportCanceledSuffix" xml:space="preserve"> (canceled)</sys:String>
   <sys:String x:Key="ReportAvgSpeedFormat">{0:F2}s / item</sys:String>
-  <sys:String x:Key="StageStatusReady">Sandbox Compare &amp; Ready</sys:String>
-  <sys:String x:Key="StageStatusRunning">Task in progress…</sys:String>
   <sys:String x:Key="SplitTargetApple">Apple Live Photo</sys:String>
   <sys:String x:Key="SplitTargetExtract">Cover &amp; Video</sys:String>
   <sys:String x:Key="MergeSuccessDesc">Successfully merged into a Live Photo</sys:String>
@@ -277,8 +249,7 @@
 
   <!-- Report / Curtain / Dialog Supplemental Strings -->
   <sys:String x:Key="ReportEmptyTitle">No task reports yet</sys:String>
-  <sys:String x:Key="ReportEmptyDesc">Start a conversion or a space-saving run; its report stays here until the app exits.</sys:String>
-  <sys:String x:Key="ReportGoConvertBtn">Go to Convert Workspace</sys:String>
+  <sys:String x:Key="ReportEmptyDesc">Reports of tasks started from the Library stay here until the app exits.</sys:String>
   <sys:String x:Key="ReportKpiTotal">Total Processed</sys:String>
   <sys:String x:Key="ReportKpiTotalSub">Scanned &amp; paired</sys:String>
   <sys:String x:Key="ReportKpiSuccess">Succeeded</sys:String>
@@ -299,24 +270,20 @@
   <sys:String x:Key="ReportCsvSourceFormat">Source Format</sys:String>
   <sys:String x:Key="ReportCsvTargetFormat">Target Format</sys:String>
   <sys:String x:Key="ReportCsvDetail">Details</sys:String>
-  <sys:String x:Key="StripPickSample">Pick a Sample Photo</sys:String>
-  <sys:String x:Key="StripRescanTip">Rescan Analysis</sys:String>
-  <sys:String x:Key="CurtainPickSample">Import a Live Photo to Compare</sys:String>
   <sys:String x:Key="QuickLookCloseTip">Close (Esc)</sys:String>
 
   <!-- Empty States &amp; Format Strings -->
   <sys:String x:Key="EmptyStateNoDirTitle">Please select an album directory</sys:String>
-  <sys:String x:Key="EmptyStateNoDirSubtitle">Click below to select a local folder containing Live Photos (HEIC+MOV or Motion Photos)</sys:String>
+  <sys:String x:Key="EmptyStateNoDirSubtitle">Choose a folder with Live Photos (HEIC/JPG + MOV) or Android motion photos, then pick an action on the right.</sys:String>
   <sys:String x:Key="EmptyStateEmptyTitle">No live photos found in directory</sys:String>
   <sys:String x:Key="EmptyStateEmptySubtitle">Please ensure the folder contains valid Live Photo pairs or Motion Photos</sys:String>
   <sys:String x:Key="FunnelTotalFormat">Scanned: {0:N0}</sys:String>
   <sys:String x:Key="FunnelReadyFormat">Ready: {0:N0}</sys:String>
   <sys:String x:Key="FunnelSuspiciousFormat">Suspicious: {0:N0}</sys:String>
   <sys:String x:Key="FunnelFilteredFormat">Filtered: {0:N0}</sys:String>
-  <sys:String x:Key="PrimaryBtnMergeFormat">Start Batch Convert ({0}/{1} Ready)</sys:String>
-  <sys:String x:Key="PrimaryBtnAppleFormat">Convert to Apple Live ({0} items)</sys:String>
-  <sys:String x:Key="PrimaryBtnExtractFormat">Extract Cover &amp; Video ({0} items)</sys:String>
-  <sys:String x:Key="PrimaryBtnDefault">Start Conversion</sys:String>
+  <sys:String x:Key="PrimaryBtnMergeFormat">Merge {0} into Android motion photos</sys:String>
+  <sys:String x:Key="PrimaryBtnAppleFormat">Restore {0} as Apple Live Photos</sys:String>
+  <sys:String x:Key="PrimaryBtnExtractFormat">Extract {0} motion photos</sys:String>
   <sys:String x:Key="FilterBannerSuspiciousFormat">Pending Arbitration Only ({0})</sys:String>
   <sys:String x:Key="FilterBannerSelected">Selected Only</sys:String>
   <sys:String x:Key="SelectedBadgeFormat">{0} selected</sys:String>
@@ -350,8 +317,6 @@
 
   <!-- System File Pickers -->
   <sys:String x:Key="PickerOutputFolderTitle">Select Output Folder</sys:String>
-  <sys:String x:Key="PickerSamplePhotoTitle">Select Live Photo or Image Sample</sys:String>
-  <sys:String x:Key="PickerImageFilterLabel">Images &amp; Live Photos (*.heic;*.jpg;*.jpeg;*.png)</sys:String>
 
   <!-- Dialogs & Lifecycle -->
   <sys:String x:Key="ConfirmDialogOk">OK</sys:String>
@@ -382,7 +347,7 @@
   <sys:String x:Key="TaskRemainingFormat">About {0} left</sys:String>
   <sys:String x:Key="TaskRemainingEstimating">Estimating time left…</sys:String>
   <sys:String x:Key="TaskIdleTitle">No task is running</sys:String>
-  <sys:String x:Key="TaskIdleDesc">Start a conversion or a space-saving run and its progress will appear here.</sys:String>
+  <sys:String x:Key="TaskIdleDesc">Pick photos and an action in the Library; progress appears here once it starts.</sys:String>
   <sys:String x:Key="TaskHistoryTitle">History</sys:String>
   <sys:String x:Key="TaskHistoryTimeFormat">MM-dd HH:mm:ss</sys:String>
   <sys:String x:Key="TaskStatusCompleted">Completed</sys:String>
@@ -401,5 +366,44 @@
   <sys:String x:Key="ReportCsvOutputPath">Output File</sys:String>
   <sys:String x:Key="StripItemSavedFormat">Freed {0}</sys:String>
   <sys:String x:Key="ReportSavedFormat">Freed {0} in total</sys:String>
+
+  <!-- 图库工作台与检查器 -->
+  <sys:String x:Key="NavLibrary">Library</sys:String>
+  <sys:String x:Key="InspectorTitle">Action &amp; options</sys:String>
+  <sys:String x:Key="ActionToAndroid">To Android</sys:String>
+  <sys:String x:Key="ActionToApple">To Apple</sys:String>
+  <sys:String x:Key="ActionExtract">Extract</sys:String>
+  <sys:String x:Key="ActionStrip">Slim down</sys:String>
+  <sys:String x:Key="ActionToAndroidDesc">Merge Apple Live Photo pairs (photo + MOV) into single-file Android motion photos.</sys:String>
+  <sys:String x:Key="ActionToAppleDesc">Restore Android motion photos as Apple Live Photo pairs (HEIC + MOV).</sys:String>
+  <sys:String x:Key="ActionExtractDesc">Split Android motion photos losslessly into a cover image and a separate MP4.</sys:String>
+  <sys:String x:Key="ActionStripDesc">Remove embedded or paired videos and keep only the still photo, optionally as HEIC.</sys:String>
+  <sys:String x:Key="ApplicableFormat">{0} applicable · {1}</sys:String>
+  <sys:String x:Key="ApplicableScopeSelectedFormat">Counted from {0} selected items</sys:String>
+  <sys:String x:Key="ApplicableScopeAll">Nothing selected, counting all photos</sys:String>
+  <sys:String x:Key="InspectorOutputTitle">Output</sys:String>
+  <sys:String x:Key="KeepSubfoldersDesc">Recreate the album subfolders in the output to avoid name clashes.</sys:String>
+  <sys:String x:Key="StripConvertHeicTitle">Also convert to HEIC</sys:String>
+  <sys:String x:Key="StripConvertHeicDesc">Saves more space; photos with an HDR gain map keep their format.</sys:String>
+  <sys:String x:Key="StripCompareBtn">Compare preview</sys:String>
+  <sys:String x:Key="EstimateCalculating">Estimating…</sys:String>
+  <sys:String x:Key="EstimateEmpty">No removable video among the applicable items.</sys:String>
+  <sys:String x:Key="EstimateFailedFormat">Cannot estimate right now: {0}</sys:String>
+  <sys:String x:Key="EstimateSavedFormat">{0} (-{1:F1}%)</sys:String>
+  <sys:String x:Key="PrimaryBtnStripFormat">Slim down {0} items</sys:String>
+  <sys:String x:Key="PrimaryBtnNone">No photos for this action</sys:String>
+  <sys:String x:Key="MissingToolsTitle">Required tools are missing</sys:String>
+  <sys:String x:Key="MissingToolsFormat">This action needs {0}, which was not found. Install it or set its path on the Tools page first.</sys:String>
+  <sys:String x:Key="MissingToolsGoBtn">Open Tools</sys:String>
+  <sys:String x:Key="ToolNameHeicEncoder">HEIC encoder (heif-enc)</sys:String>
+  <sys:String x:Key="LibraryScanning">Scanning…</sys:String>
+  <sys:String x:Key="DialogCloseTip">Close (Esc)</sys:String>
+  <sys:String x:Key="CompareLoading">Rendering the comparison…</sys:String>
+  <sys:String x:Key="CompareUnavailable">Cannot render a comparison for this photo.</sys:String>
+  <sys:String x:Key="CompareBeforeSizeLabel">Original (with paired video)</sys:String>
+  <sys:String x:Key="CompareAfterSizeLabel">Slimmed (at current quality)</sys:String>
+  <sys:String x:Key="SettingsAppearanceTitle">Appearance &amp; language</sys:String>
+  <sys:String x:Key="SettingsBehaviorTitle">Tasks &amp; performance</sys:String>
+  <sys:String x:Key="ReportGoLibraryBtn">Go to Library</sys:String>
 
 </ResourceDictionary>

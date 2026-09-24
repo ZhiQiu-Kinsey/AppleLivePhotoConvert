@@ -1,9 +1,9 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:LivePhotoConvert.Desktop.ViewModels"
+             xmlns:library="using:LivePhotoConvert.Desktop.Features.Library"
              x:Class="LivePhotoConvert.Desktop.Controls.CompactToolbar"
              x:CompileBindings="True"
-             x:DataType="vm:ConvertViewModel"
+             x:DataType="library:LibraryViewModel"
         xmlns:conv="using:LivePhotoConvert.Desktop.Converters"
         xmlns:ic="using:FluentIcons.Avalonia">
 
@@ -47,24 +47,32 @@
                 <!-- Button: SetSortModeCommand -->
                 <Button Classes="nav-btn" Command="{Binding SetSortModeCommand}" CommandParameter="DateTaken" HorizontalAlignment="Stretch">
                   <Grid ColumnDefinitions="20,20,*">
+                    <TextBlock Grid.Column="0" Text="•" FontSize="12" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"
+                               IsVisible="{Binding SortMode, Converter={x:Static conv:EqualityConverter.Instance}, ConverterParameter=DateTaken}"/>
                     <ic:SymbolIcon Symbol="Calendar" FontSize="12" Grid.Column="1" Foreground="{DynamicResource TextTertiaryBrush}"/>
                     <TextBlock Grid.Column="2" Text="{DynamicResource SortDateTaken}" FontSize="12" Margin="6,0,0,0" VerticalAlignment="Center" />
                   </Grid>
                 </Button>
                 <Button Classes="nav-btn" Command="{Binding SetSortModeCommand}" CommandParameter="DateCreated" HorizontalAlignment="Stretch">
                   <Grid ColumnDefinitions="20,20,*">
+                    <TextBlock Grid.Column="0" Text="•" FontSize="12" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"
+                               IsVisible="{Binding SortMode, Converter={x:Static conv:EqualityConverter.Instance}, ConverterParameter=DateCreated}"/>
                     <ic:SymbolIcon Symbol="Clock" FontSize="12" Grid.Column="1" Foreground="{DynamicResource TextTertiaryBrush}"/>
                     <TextBlock Grid.Column="2" Text="{DynamicResource SortDateCreated}" FontSize="12" Margin="6,0,0,0" VerticalAlignment="Center" />
                   </Grid>
                 </Button>
                 <Button Classes="nav-btn" Command="{Binding SetSortModeCommand}" CommandParameter="DateModified" HorizontalAlignment="Stretch">
                   <Grid ColumnDefinitions="20,20,*">
+                    <TextBlock Grid.Column="0" Text="•" FontSize="12" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"
+                               IsVisible="{Binding SortMode, Converter={x:Static conv:EqualityConverter.Instance}, ConverterParameter=DateModified}"/>
                     <ic:SymbolIcon Symbol="Calendar" FontSize="12" Grid.Column="1" Foreground="{DynamicResource TextTertiaryBrush}"/>
                     <TextBlock Grid.Column="2" Text="{DynamicResource SortDateModified}" FontSize="12" Margin="6,0,0,0" VerticalAlignment="Center" />
                   </Grid>
                 </Button>
                 <Button Classes="nav-btn" Command="{Binding SetSortModeCommand}" CommandParameter="Name" HorizontalAlignment="Stretch">
                   <Grid ColumnDefinitions="20,20,*">
+                    <TextBlock Grid.Column="0" Text="•" FontSize="12" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"
+                               IsVisible="{Binding SortMode, Converter={x:Static conv:EqualityConverter.Instance}, ConverterParameter=Name}"/>
                     <ic:SymbolIcon Symbol="Document" FontSize="12" Grid.Column="1" Foreground="{DynamicResource TextTertiaryBrush}"/>
                     <TextBlock Grid.Column="2" Text="{DynamicResource SortName}" FontSize="12" Margin="6,0,0,0" VerticalAlignment="Center" />
                   </Grid>
@@ -75,12 +83,14 @@
                 <!-- 排序方向 -->
                 <Button Classes="nav-btn" Command="{Binding SetSortDirectionCommand}" CommandParameter="{x:True}" HorizontalAlignment="Stretch">
                   <Grid ColumnDefinitions="20,20,*">
+                    <TextBlock Grid.Column="0" Text="•" FontSize="12" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" IsVisible="{Binding IsSortAscending}"/>
                     <ic:SymbolIcon Symbol="ArrowSortUp" FontSize="12" Grid.Column="1" Foreground="{DynamicResource TextTertiaryBrush}"/>
                     <TextBlock Grid.Column="2" Text="{DynamicResource SortAsc}" FontSize="12" Margin="6,0,0,0" VerticalAlignment="Center" />
                   </Grid>
                 </Button>
                 <Button Classes="nav-btn" Command="{Binding SetSortDirectionCommand}" CommandParameter="{x:False}" HorizontalAlignment="Stretch">
                   <Grid ColumnDefinitions="20,20,*">
+                    <TextBlock Grid.Column="0" Text="•" FontSize="12" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" IsVisible="{Binding !IsSortAscending}"/>
                     <ic:SymbolIcon Symbol="ArrowSortDown" FontSize="12" Grid.Column="1" Foreground="{DynamicResource TextTertiaryBrush}"/>
                     <TextBlock Grid.Column="2" Text="{DynamicResource SortDesc}" FontSize="12" Margin="6,0,0,0" VerticalAlignment="Center" />
                   </Grid>

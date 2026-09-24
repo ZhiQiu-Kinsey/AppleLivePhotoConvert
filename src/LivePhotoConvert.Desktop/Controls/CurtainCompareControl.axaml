@@ -1,28 +1,21 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:LivePhotoConvert.Desktop.ViewModels"
+             xmlns:dialogs="using:LivePhotoConvert.Desktop.Features.Dialogs"
              x:Class="LivePhotoConvert.Desktop.Controls.CurtainCompareControl"
              x:CompileBindings="True"
-             x:DataType="vm:StripViewModel"
+             x:DataType="dialogs:StripCompareDialogViewModel"
              xmlns:ic="using:FluentIcons.Avalonia">
 
   <Border CornerRadius="16" ClipToBounds="True" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1">
-    <Grid ClipToBounds="True" MinHeight="380" MaxHeight="720" x:Name="RootGrid" Cursor="SizeWestEast">
-      <!-- 空状态：引导选取照片或相册 -->
+    <Grid ClipToBounds="True" MinHeight="300" MaxHeight="520" x:Name="RootGrid" Cursor="SizeWestEast">
+      <!-- 生成对比图期间或失败时的说明 -->
       <Border Background="{DynamicResource SurfaceBrush}"
               IsVisible="{CompiledBinding OriginalCompareBitmap, Converter={x:Static ObjectConverters.IsNull}}">
         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
           <Border Width="56" Height="56" CornerRadius="28" Background="{DynamicResource AccentSoftBrush}" HorizontalAlignment="Center">
             <ic:SymbolIcon Symbol="ArrowBidirectionalLeftRight" FontSize="26" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
           </Border>
-          <TextBlock Text="{DynamicResource CurtainCompareTitle}" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center"/>
-          <TextBlock Text="{DynamicResource CurtainCompareDesc}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="460" TextWrapping="Wrap"/>
-          <Button Classes="primary-btn" Command="{Binding PickSamplePhotoCommand}" HorizontalAlignment="Center" Padding="16,8">
-            <StackPanel Orientation="Horizontal" Spacing="6">
-              <ic:SymbolIcon Symbol="ImageAdd" FontSize="14" Foreground="{DynamicResource OnAccentBrush}"/>
-              <TextBlock Text="{DynamicResource CurtainPickSample}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"/>
-            </StackPanel>
-          </Button>
+          <TextBlock Text="{CompiledBinding StatusText}" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="460" TextWrapping="Wrap"/>
         </StackPanel>
       </Border>
 

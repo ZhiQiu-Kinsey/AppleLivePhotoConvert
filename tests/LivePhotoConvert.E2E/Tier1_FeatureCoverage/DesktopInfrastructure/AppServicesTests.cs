@@ -1,8 +1,11 @@
+using LivePhotoConvert.Desktop.Features.Dialogs;
+using LivePhotoConvert.Desktop.Features.Library;
+using LivePhotoConvert.Desktop.Features.Settings;
+using LivePhotoConvert.Desktop.Features.Shell;
 using LivePhotoConvert.Desktop.Features.Tasks;
+using LivePhotoConvert.Desktop.Features.Tools;
 using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Services;
-using LivePhotoConvert.Desktop.ViewModels;
-using LivePhotoConvert.Desktop.ViewModels.Dialogs;
 using LivePhotoConvert.E2E.Harness;
 
 namespace LivePhotoConvert.E2E.Tier1_FeatureCoverage.DesktopInfrastructure;
@@ -30,16 +33,15 @@ public class AppServicesTests
 
         Assert.Equal(host.SettingsPath, host.Settings.FilePath);
 
-        var shell = host.Get<MainWindowViewModel>();
-        Assert.Same(shell, host.Get<MainWindowViewModel>());
-        Assert.Same(host.Get<ConvertViewModel>(), shell.ConvertVm);
-        Assert.Same(host.Get<StripViewModel>(), shell.StripVm);
-        Assert.Same(host.Get<ToolsViewModel>(), shell.ToolsVm);
-        Assert.Same(host.Get<TasksViewModel>(), shell.TasksVm);
-        Assert.Same(host.Get<TaskCenter>(), shell.TasksVm.Center);
-        Assert.Same(host.Get<TaskCenter>(), host.Get<ConvertViewModel>().Tasks);
-        Assert.Same(host.Get<TaskCenter>(), host.Get<StripViewModel>().Tasks);
-        Assert.Same(host.Get<SettingsViewModel>(), shell.SettingsVm);
+        var shell = host.Get<ShellViewModel>();
+        Assert.Same(shell, host.Get<ShellViewModel>());
+        Assert.Same(host.Get<LibraryViewModel>(), shell.Library);
+        Assert.Same(host.Get<InspectorViewModel>(), shell.Inspector);
+        Assert.Same(host.Get<ToolsViewModel>(), shell.Tools);
+        Assert.Same(host.Get<TasksViewModel>(), shell.Tasks);
+        Assert.Same(host.Get<TaskCenter>(), shell.Tasks.Center);
+        Assert.Same(host.Get<TaskCenter>(), shell.Inspector.Tasks);
+        Assert.Same(host.Get<SettingsViewModel>(), shell.Settings);
         Assert.NotNull(host.Get<AppLifetime>());
         Assert.NotNull(host.Get<WindowPlacementTracker>());
         Assert.Same(PlaybackHost.Instance, host.Get<PlaybackHost>());
@@ -47,20 +49,32 @@ public class AppServicesTests
     }
 
     [Fact]
-    public void Navigator_DrivesMainWindowTabs()
+    public void Navigator_DrivesTheFourShellPages()
     {
         using var host = new DesktopTestHost();
-        var shell = host.Get<MainWindowViewModel>();
+        var shell = host.Get<ShellViewModel>();
+        Assert.Equal([AppPage.Library, AppPage.Tasks, AppPage.Tools, AppPage.Settings], Enum.GetValues<AppPage>());
+        Assert.True(shell.IsLibrarySelected, "启动时显示图库");
 
         host.Get<INavigator>().NavigateTo(AppPage.Tasks);
-        Assert.True(shell.IsTasksTabSelected);
-        Assert.Equal(3, shell.SelectedTabIndex);
+        Assert.True(shell.IsTasksSelected);
+        Assert.Equal(AppPage.Tasks, shell.CurrentPage);
 
-        host.Get<TasksViewModel>().GoToConvertCommand.Execute(null);
-        Assert.True(shell.IsConvertTabSelected);
+        host.Get<TasksViewModel>().GoToLibraryCommand.Execute(null);
+        Assert.True(shell.IsLibrarySelected);
 
-        shell.SelectTabCommand.Execute("4");
-        Assert.True(shell.IsSettingsTabSelected);
+        shell.NavigateCommand.Execute("Tools");
+        Assert.True(shell.IsToolsSelected);
+
+        shell.NavigateCommand.Execute("Settings");
+        Assert.True(shell.IsSettingsSelected);
+        Assert.False(shell.IsLibrarySelected || shell.IsTasksSelected || shell.IsToolsSelected);
+
+        // 旧页面名与无效值不改变当前页
+        shell.NavigateCommand.Execute("Convert");
+        shell.NavigateCommand.Execute("Strip");
+        shell.NavigateCommand.Execute(null);
+        Assert.Equal(AppPage.Settings, shell.CurrentPage);
     }
 
     [Fact]
@@ -79,24 +93,6 @@ public class AppServicesTests
         Assert.Equal(7, reloaded.Current.Concurrency);
         Assert.False(reloaded.Current.AutoCleanTemp);
         Assert.False(reloaded.Current.NotifyOnComplete);
-    }
-
-    [Fact]
-    public void ConvertPage_ParametersAreStoredInSettings()
-    {
-        using var host = new DesktopTestHost();
-        var convert = host.Get<ConvertViewModel>();
-
-        convert.HeicQuality = 72;
-        convert.AutoAppendIndex = false;
-        convert.NamingFormat = 2;
-        convert.KeepSubfolderHierarchy = false;
-
-        var current = host.Settings.Current;
-        Assert.Equal(72, current.HeicQuality);
-        Assert.Equal(Core.Pipeline.ConflictPolicy.Overwrite, current.ConflictPolicy);
-        Assert.Equal(2, current.NamingFormat);
-        Assert.False(current.KeepSubfolderHierarchy);
     }
 
     [Fact]
