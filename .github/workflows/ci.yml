@@ -137,8 +137,9 @@ jobs:
           --logger trx --results-directory TestResults
           --collect "XPlat Code Coverage"
 
-      # 允许的跳过共 3 条：
+      # 允许的跳过共 5 条：
       #   - WindowsShellThumbnailSourceTests 的 2 条用例：Windows Shell 缩略图仅在 Windows 上可用；
+      #   - RecycleBinTests 的 2 条用例：回收站只在 Windows 上使用；
       #   - UltraHdrMergeIntegrationTests.ExternalSamples_ReportSizeTimeAndError：需要 LPC_HDR_SAMPLES 私有样片集。
       # 两条"无权限子目录"用例只在 root 下跳过；托管 runner 以普通用户 runner 运行，应实际执行。
       # 外部工具或 LPC_ULTRAHDR_APP 失效时会多出 70 余条跳过（本地去掉工具实测 76 条），在这里直接失败。
@@ -147,7 +148,7 @@ jobs:
         shell: pwsh
         run: >-
           ./.github/scripts/test-summary.ps1 -ResultsDirectory TestResults -Title 'Linux · 真实工具测试'
-          -MaxSkipped 3
+          -MaxSkipped 5
           -ExpectedProjects LivePhotoConvert.Core.Tests, LivePhotoConvert.Desktop.Tests, LivePhotoConvert.E2E
 
       - name: 上传测试结果（trx）

@@ -14,7 +14,7 @@
     测试失败本身由 dotnet test 步骤负责报告，这里只汇总，不因失败用例改变退出码。
 
 .EXAMPLE
-    pwsh .github/scripts/test-summary.ps1 -ResultsDirectory TestResults -Title 'Linux' -MaxSkipped 3 `
+    pwsh .github/scripts/test-summary.ps1 -ResultsDirectory TestResults -Title 'Linux' -MaxSkipped 5 `
         -ExpectedProjects LivePhotoConvert.Core.Tests, LivePhotoConvert.Desktop.Tests, LivePhotoConvert.E2E
 #>
 [CmdletBinding()]

@@ -173,7 +173,7 @@ LPC_DOCS_SCREENSHOTS=docs/screenshots dotnet test tests/LivePhotoConvert.Desktop
 
 | 工作流 | 触发 | 内容 |
 | :--- | :--- | :--- |
-| [`ci.yml`](.github/workflows/ci.yml) | push `main`、所有 PR、手动、被 `release.yml` 调用（不接受外部指定检出引用） | **Linux**：安装 ExifTool / FFmpeg / libheif / Noto CJK 并编译固定版本的 libultrahdr，全部测试（`-m:1` 串行、排除 `ToolManifestPackageTests`）并收集覆盖率；**跳过数超过 3 即失败**（允许的 3 条见工作流注释）。**Windows**：构建与测试（未装外部工具，集成用例按设计跳过）。**AOT 与安装包**：`win-x64` 发布，并用同一产物打两个测试版本，静默安装、启动、增量升级、卸载（不联网）。编译与发布均以警告为错误。 |
+| [`ci.yml`](.github/workflows/ci.yml) | push `main`、所有 PR、手动、被 `release.yml` 调用（不接受外部指定检出引用） | **Linux**：安装 ExifTool / FFmpeg / libheif / Noto CJK 并编译固定版本的 libultrahdr，全部测试（`-m:1` 串行、排除 `ToolManifestPackageTests`）并收集覆盖率；**跳过数超过 5 即失败**（允许的 5 条见工作流注释）。**Windows**：构建与测试（未装外部工具，集成用例按设计跳过）。**AOT 与安装包**：`win-x64` 发布，并用同一产物打两个测试版本，静默安装、启动、增量升级、卸载（不联网）。编译与发布均以警告为错误。 |
 | [`tools-manifest.yml`](.github/workflows/tools-manifest.yml) | 每周一、手动、PR 改动 `External/Tools/**` | 在 Linux 与 Windows 下载 `tools.json` 的每个包并用 `ToolInstaller` 校验哈希与结构。 |
 | [`release.yml`](.github/workflows/release.yml) | 推送版本 tag | 见 5.3。 |
 

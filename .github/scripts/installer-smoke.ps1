@@ -119,7 +119,7 @@ $installed = Get-InstalledVersion
 if ($installed -ne $OldVersion) { Fail "安装的版本是 $installed，期望 $OldVersion" }
 Write-Host "  ok  已安装版本 $installed"
 
-$shortcuts = Find-Shortcuts
+$shortcuts = @(Find-Shortcuts)
 if ($shortcuts.Count -lt 2) { Fail "期望桌面与开始菜单各一个快捷方式，实际：$($shortcuts.FullName -join '; ')" }
 $shortcuts | ForEach-Object { Write-Host "  ok  快捷方式：$($_.FullName)" }
 
@@ -159,7 +159,9 @@ if ($uninstall -ne 0) { Fail "Update.exe uninstall 退出码 $uninstall" }
 Wait-Until { -not (Test-Path -LiteralPath (Join-Path $InstallRoot 'current')) } 60 '删除程序目录'
 Wait-Until { -not (Test-Path -LiteralPath $InstallRoot) -or -not (Get-ChildItem -LiteralPath $InstallRoot -Force) } 60 '清空安装根目录'
 Write-Host "  ok  程序目录已移除：$InstallRoot"
-if ((Find-Shortcuts).Count -gt 0) { Fail "卸载后仍有快捷方式：$((Find-Shortcuts).FullName -join '; ')" }
+# 严格模式下空结果是 $null，没有 Count 属性，需先包成数组
+$remaining = @(Find-Shortcuts)
+if ($remaining.Count -gt 0) { Fail "卸载后仍有快捷方式：$($remaining.FullName -join '; ')" }
 if (Test-Path -LiteralPath $UninstallKey) { Fail "卸载后仍有卸载注册：$UninstallKey" }
 Assert-Exists $Marker '卸载后的用户数据'
 
