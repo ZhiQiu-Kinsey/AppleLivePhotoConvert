@@ -24,7 +24,7 @@
 
 - 运行时：.NET 10（`net10.0`），Native AOT 发布，`TrimMode=full`
 - UI：**Avalonia 12.1.2**（`Avalonia.Desktop` / `Themes.Fluent` / `Fonts.Inter`）+ CommunityToolkit.Mvvm 8.4.0 + FluentIcons.Avalonia 2.1.339.1
-- 核心引擎：`LivePhotoConvert.Core`，零 UI 依赖，除 `Magick.NET-Q8-x64` 14.16.0（图像解码/缩略图）外无第三方包
+- 核心引擎：`LivePhotoConvert.Core`，零 UI 依赖，第三方包仅 `Magick.NET-Q8-x64` 14.16.0（图像解码/缩略图）与 `SharpCompress` 1.0.0（依赖包 7z 解压）
 - 外部工具：ExifTool（元数据/XMP）、FFmpeg（转码/流复制）、heif-enc（HEIC 编码）
 - 测试：xunit.v3（`LivePhotoConvert.Core.Tests` 单元测试 + `LivePhotoConvert.E2E` 黑盒端到端）
 - **已移除**：`LivePhotoConvert.Cli`、Spectre.Console、手写 `CliParser` 及旧命令行入口。不要再引用、恢复或为新功能增加 CLI 分支；可复用能力必须放入 Core，交互入口放入 Desktop。

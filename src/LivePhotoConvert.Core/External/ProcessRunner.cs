@@ -82,7 +82,9 @@ public static class ProcessRunner
             Kill(process);
             await ((Task)Task.WhenAll(standardOutput, standardError)).WaitAsync(TimeSpan.FromSeconds(5), CancellationToken.None).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
             cancellationToken.ThrowIfCancellationRequested();
-            throw new TimeoutException($"{Path.GetFileName(fileName)} 运行超过 {(timeout ?? DefaultTimeout).TotalMinutes:F0} 分钟，已终止。");
+            var limit = timeout ?? DefaultTimeout;
+            var limitText = limit < TimeSpan.FromMinutes(1) ? $"{limit.TotalSeconds:F0} 秒" : $"{limit.TotalMinutes:F0} 分钟";
+            throw new TimeoutException($"{Path.GetFileName(fileName)} 运行超过 {limitText}，已终止。");
         }
 
         return new ProcessResult(process.ExitCode, await standardOutput, await standardError);

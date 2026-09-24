@@ -1,9 +1,11 @@
+using LivePhotoConvert.Core.External.Tools;
+
 namespace LivePhotoConvert.Core.External;
 
 /// <summary>
 /// 外部工具的下载源
 /// </summary>
-/// <param name="Name">源的名称（例如 "国内加速镜像 1"、"官方源"）</param>
+/// <param name="Name">源名称（清单中的本地化资源键）</param>
 /// <param name="Url">下载链接</param>
 /// <param name="IsGitHubRelease">是否为 GitHub Release 链接（可接受自定义镜像前缀）</param>
 public sealed record ToolDownloadSource(string Name, string Url, bool IsGitHubRelease = false);
@@ -18,130 +20,36 @@ public sealed record ToolDownloadSource(string Name, string Url, bool IsGitHubRe
 public sealed record DownloadProgressReport(string SourceName, long DownloadedBytes, long? TotalBytes, double SpeedBytesPerSecond);
 
 /// <summary>
-/// 外部工具的下载与提取元数据
+/// 外部工具的下载与提取元数据（旧接口，下载源取自内嵌清单）。
 /// </summary>
+/// <param name="Id">清单中的工具标识</param>
 /// <param name="ToolName">工具名称（如 "ExifTool", "FFmpeg"）</param>
 /// <param name="TargetExecutableName">最终生成的可执行文件名（如 "exiftool.exe", "ffmpeg.exe"）</param>
 /// <param name="Sources">按优先级排序的下载源列表</param>
-/// <param name="ZipEntryFilter">从 Zip 压缩包中匹配目标可执行文件的筛选条件</param>
 /// <param name="ManualDownloadHelpUrl">全部下载失败时供用户手动下载的参考网址</param>
-public sealed record ToolDownloadInfo(string ToolName, string TargetExecutableName, IReadOnlyList<ToolDownloadSource> Sources, Func<string, bool> ZipEntryFilter, string ManualDownloadHelpUrl)
+public sealed record ToolDownloadInfo(ToolId Id, string ToolName, string TargetExecutableName, IReadOnlyList<ToolDownloadSource> Sources, string ManualDownloadHelpUrl)
 {
-    /// <summary>
-    /// 获取针对用户自定义镜像前缀调整后的下载源列表
-    /// </summary>
-    /// <param name="customMirrorPrefix">用户指定的 GitHub 镜像加速前缀（例如 "https://mirror.ghproxy.com/"）</param>
-    /// <returns>调整后的下载源列表</returns>
-    public IReadOnlyList<ToolDownloadSource> GetEffectiveSources(string? customMirrorPrefix = null)
+    /// <summary>从内嵌清单生成 Windows x64 的旧式元数据。</summary>
+    internal static ToolDownloadInfo FromManifest(ToolId id)
     {
-        if (string.IsNullOrWhiteSpace(customMirrorPrefix))
-        {
-            return Sources;
-        }
-
-        var normalizedPrefix = customMirrorPrefix.Trim();
-        if (!normalizedPrefix.EndsWith('/'))
-        {
-            normalizedPrefix += "/";
-        }
-
-        var list = new List<ToolDownloadSource>();
-
-        // 将用户自定义的镜像作为最高优先级源加入
-        foreach (var source in Sources)
-        {
-            if (source.IsGitHubRelease)
-            {
-                var rawUrl = source.Url;
-                var ghIndex = rawUrl.IndexOf("https://github.com/", StringComparison.OrdinalIgnoreCase);
-                if (ghIndex >= 0)
-                {
-                    rawUrl = rawUrl[ghIndex..];
-                }
-
-                var acceleratedUrl = normalizedPrefix.Equals("https://github.com/", StringComparison.OrdinalIgnoreCase)
-                    ? rawUrl
-                    : normalizedPrefix + rawUrl;
-                list.Add(new ToolDownloadSource($"自定义加速镜像 ({source.Name})", acceleratedUrl));
-            }
-        }
-
-        list.AddRange(Sources);
-        return list;
+        var definition = ToolManifest.Embedded.Get(id);
+        return new ToolDownloadInfo(
+            id,
+            definition.DisplayName,
+            definition.ExecutableFileName,
+            [.. definition.PackagesFor("win-x64").Select(package => new ToolDownloadSource(package.NameKey, package.Url, package.GithubRelease))],
+            definition.Homepage);
     }
 }
 
 /// <summary>
-/// 内置外部工具的下载定义
+/// 内置外部工具的下载定义（Windows x64）
 /// </summary>
 public static class ExternalToolMetadata
 {
-    /// <summary>
-    /// ExifTool 的下载元数据（Windows）
-    /// </summary>
-    public static readonly ToolDownloadInfo ExifTool = new(
-        ToolName: "ExifTool",
-        TargetExecutableName: OperatingSystem.IsWindows() ? "exiftool.exe" : "exiftool",
-        Sources:
-        [
-            new ToolDownloadSource("阿里云国内高速镜像 (npmmirror)", "https://registry.npmmirror.com/exiftool-vendored.exe/-/exiftool-vendored.exe-13.59.2.tgz"),
-            new ToolDownloadSource("SourceForge 官方源 (64位 Windows)", "https://sourceforge.net/projects/exiftool/files/exiftool-13.59_64.zip/download"),
-            new ToolDownloadSource("SourceForge 备用源 (32位 Windows)", "https://sourceforge.net/projects/exiftool/files/exiftool-13.59_32.zip/download")
-        ],
-        ZipEntryFilter: entry =>
-        {
-            var normalized = entry.Replace('\\', '/');
-            return normalized.EndsWith("/exiftool(-k).exe", StringComparison.OrdinalIgnoreCase)
-                   || normalized.EndsWith("/exiftool.exe", StringComparison.OrdinalIgnoreCase)
-                   || normalized.EndsWith("/vendor/exiftool.exe", StringComparison.OrdinalIgnoreCase)
-                   || string.Equals(normalized, "exiftool(-k).exe", StringComparison.OrdinalIgnoreCase)
-                   || string.Equals(normalized, "exiftool.exe", StringComparison.OrdinalIgnoreCase)
-                   || !OperatingSystem.IsWindows() && normalized.EndsWith("/exiftool", StringComparison.OrdinalIgnoreCase);
-        },
-        ManualDownloadHelpUrl: "https://exiftool.org/");
+    public static readonly ToolDownloadInfo ExifTool = ToolDownloadInfo.FromManifest(ToolId.ExifTool);
 
-    /// <summary>
-    /// FFmpeg 的下载元数据（Windows）
-    /// </summary>
-    public static readonly ToolDownloadInfo FFmpeg = new(
-        ToolName: "FFmpeg",
-        TargetExecutableName: OperatingSystem.IsWindows() ? "ffmpeg.exe" : "ffmpeg",
-        Sources:
-        [
-            new ToolDownloadSource("阿里云国内高速镜像 (npmmirror)", "https://registry.npmmirror.com/@ffmpeg-binary/win32-x64/-/win32-x64-7.0.0.tgz"),
-            new ToolDownloadSource("国内 GitHub 加速镜像 (gh-proxy.com)", "https://gh-proxy.com/https://github.com/GyanD/codexffmpeg/releases/download/7.0.2/ffmpeg-7.0.2-essentials_build.zip", IsGitHubRelease: true),
-            new ToolDownloadSource("国内 GitHub BtbN 镜像 (gh-proxy.com)", "https://gh-proxy.com/https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip", IsGitHubRelease: true),
-            new ToolDownloadSource("GitHub 官方源", "https://github.com/GyanD/codexffmpeg/releases/download/7.0.2/ffmpeg-7.0.2-essentials_build.zip", IsGitHubRelease: true)
-        ],
-        ZipEntryFilter: entry =>
-        {
-            var normalized = entry.Replace('\\', '/');
-            return normalized.EndsWith("/bin/ffmpeg.exe", StringComparison.OrdinalIgnoreCase)
-                   || normalized.EndsWith("/ffmpeg.exe", StringComparison.OrdinalIgnoreCase)
-                   || string.Equals(normalized, "ffmpeg.exe", StringComparison.OrdinalIgnoreCase)
-                   || !OperatingSystem.IsWindows() && (normalized.EndsWith("/bin/ffmpeg", StringComparison.OrdinalIgnoreCase) || string.Equals(normalized, "ffmpeg", StringComparison.OrdinalIgnoreCase));
-        },
-        ManualDownloadHelpUrl: "https://ffmpeg.org/download.html");
+    public static readonly ToolDownloadInfo FFmpeg = ToolDownloadInfo.FromManifest(ToolId.Ffmpeg);
 
-    /// <summary>
-    /// heif-enc (libheif) 的下载元数据（Windows）
-    /// </summary>
-    public static readonly ToolDownloadInfo HeifEnc = new(
-        ToolName: "heif-enc",
-        TargetExecutableName: OperatingSystem.IsWindows() ? "heif-enc.exe" : "heif-enc",
-        Sources:
-        [
-            new ToolDownloadSource("国内 GitHub 加速镜像 1 (gh-proxy.com)", "https://gh-proxy.com/https://github.com/pphh77/libheif-Windowsbinary/releases/download/v1.23.1/libheif-1.23.1-win64.7z", IsGitHubRelease: true),
-            new ToolDownloadSource("国内 GitHub 加速镜像 2 (ghproxy.net)", "https://ghproxy.net/https://github.com/pphh77/libheif-Windowsbinary/releases/download/v1.23.1/libheif-1.23.1-win64.7z", IsGitHubRelease: true),
-            new ToolDownloadSource("国内 GitHub 加速镜像 3 (gh.ddlc.top)", "https://gh.ddlc.top/https://github.com/pphh77/libheif-Windowsbinary/releases/download/v1.23.1/libheif-1.23.1-win64.7z", IsGitHubRelease: true),
-            new ToolDownloadSource("GitHub 官方源", "https://github.com/pphh77/libheif-Windowsbinary/releases/download/v1.23.1/libheif-1.23.1-win64.7z", IsGitHubRelease: true)
-        ],
-        ZipEntryFilter: entry =>
-        {
-            var normalized = entry.Replace('\\', '/');
-            return normalized.EndsWith("/heif-enc.exe", StringComparison.OrdinalIgnoreCase)
-                   || string.Equals(normalized, "heif-enc.exe", StringComparison.OrdinalIgnoreCase)
-                   || !OperatingSystem.IsWindows() && (normalized.EndsWith("/heif-enc", StringComparison.OrdinalIgnoreCase) || string.Equals(normalized, "heif-enc", StringComparison.OrdinalIgnoreCase));
-        },
-        ManualDownloadHelpUrl: "https://github.com/pphh77/libheif-Windowsbinary/releases");
+    public static readonly ToolDownloadInfo HeifEnc = ToolDownloadInfo.FromManifest(ToolId.HeifEnc);
 }
