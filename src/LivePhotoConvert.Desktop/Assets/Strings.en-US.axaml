@@ -186,7 +186,7 @@
 
   <!-- QuickLook Keys -->
   <sys:String x:Key="QuickLookLiveBadge">Live Photo</sys:String>
-  <sys:String x:Key="QuickLookDevice">Device</sys:String>
+  <sys:String x:Key="QuickLookFormat">Format</sys:String>
   <sys:String x:Key="QuickLookResolution">Resolution</sys:String>
   <sys:String x:Key="QuickLookPairing">Pairing</sys:String>
   <sys:String x:Key="QuickLookSize">Size</sys:String>

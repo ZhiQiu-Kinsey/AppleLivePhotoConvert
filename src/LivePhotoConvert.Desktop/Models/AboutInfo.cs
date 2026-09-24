@@ -35,8 +35,8 @@ public static class AboutInfo
     public static readonly CreditEntry[] RuntimeCredits =
     [
         new("ExifTool", "CreditExifToolDesc", "https://exiftool.org/", "Artistic-2.0"),
-        new("FFmpeg", "CreditFfmpegDesc", "https://ffmpeg.org/", "LGPL-2.1+"),
-        new("libheif / x265", "CreditLibheifDesc", "https://github.com/strukturag/libheif", "LGPL-3.0"),
+        new("FFmpeg", "CreditFfmpegDesc", "https://ffmpeg.org/", "LGPL-2.1+ / GPL-2.0+"),
+        new("libheif / x265", "CreditLibheifDesc", "https://github.com/strukturag/libheif", "LGPL-3.0 / GPL-2.0+"),
         new("Magick.NET", "CreditMagickDesc", "https://github.com/dlemstra/Magick.NET", "Apache-2.0")
     ];
 

@@ -186,7 +186,7 @@
 
   <!-- QuickLook Keys -->
   <sys:String x:Key="QuickLookLiveBadge">实况 Live Photo</sys:String>
-  <sys:String x:Key="QuickLookDevice">拍摄设备</sys:String>
+  <sys:String x:Key="QuickLookFormat">格式</sys:String>
   <sys:String x:Key="QuickLookResolution">分辨率</sys:String>
   <sys:String x:Key="QuickLookPairing">封装配对</sys:String>
   <sys:String x:Key="QuickLookSize">存储体积</sys:String>
