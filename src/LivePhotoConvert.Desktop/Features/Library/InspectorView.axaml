@@ -3,6 +3,7 @@
              xmlns:library="using:LivePhotoConvert.Desktop.Features.Library"
              xmlns:infra="using:LivePhotoConvert.Desktop.Infrastructure"
              xmlns:ic="using:FluentIcons.Avalonia"
+             xmlns:controls="using:LivePhotoConvert.Desktop.Controls"
              x:Class="LivePhotoConvert.Desktop.Features.Library.InspectorView"
              x:CompileBindings="True"
              x:DataType="library:InspectorViewModel">
@@ -226,7 +227,8 @@
             </Button>
           </Grid>
         </Border>
-        <Button Classes="primary-btn" Command="{Binding StartCommand}" HorizontalAlignment="Stretch">
+        <Button Classes="primary-btn" Command="{Binding StartCommand}" HorizontalAlignment="Stretch"
+                controls:ShortcutTip.Label="{Binding PrimaryButtonText}" controls:ShortcutTip.Shortcut="{x:Static infra:AppShortcuts.StartAction}">
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
             <ic:SymbolIcon Symbol="Play" FontSize="14" Foreground="{DynamicResource OnAccentBrush}" VerticalAlignment="Center" />
             <TextBlock Text="{Binding PrimaryButtonText}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />

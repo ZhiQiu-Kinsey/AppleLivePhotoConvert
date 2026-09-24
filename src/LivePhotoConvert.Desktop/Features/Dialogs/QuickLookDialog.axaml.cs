@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using LivePhotoConvert.Desktop.Features.Playback;
+using LivePhotoConvert.Desktop.Infrastructure;
 
 namespace LivePhotoConvert.Desktop.Features.Dialogs;
 
@@ -57,20 +58,20 @@ public partial class QuickLookDialog : UserControl
             return;
         }
 
-        switch (e.Key)
+        if (AppShortcuts.TogglePlay.Matches(e))
         {
-            case Key.Space:
-                vm.TogglePlayCommand.Execute(null);
-                e.Handled = true;
-                break;
-            case Key.Left:
-                vm.PrevItemCommand.Execute(null);
-                e.Handled = true;
-                break;
-            case Key.Right:
-                vm.NextItemCommand.Execute(null);
-                e.Handled = true;
-                break;
+            vm.TogglePlayCommand.Execute(null);
+            e.Handled = true;
+        }
+        else if (AppShortcuts.Previous.Matches(e))
+        {
+            vm.PrevItemCommand.Execute(null);
+            e.Handled = true;
+        }
+        else if (AppShortcuts.Next.Matches(e))
+        {
+            vm.NextItemCommand.Execute(null);
+            e.Handled = true;
         }
     }
 }

@@ -2,6 +2,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:dialogs="using:LivePhotoConvert.Desktop.Features.Dialogs"
              xmlns:ic="using:FluentIcons.Avalonia"
+             xmlns:controls="using:LivePhotoConvert.Desktop.Controls"
+             xmlns:infra="using:LivePhotoConvert.Desktop.Infrastructure"
              x:Class="LivePhotoConvert.Desktop.Features.Dialogs.DonateDialog"
              x:CompileBindings="True"
              x:DataType="dialogs:DonateDialogViewModel">
@@ -17,7 +19,7 @@
           <TextBlock Text="{DynamicResource AboutSponsorDesc}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextTertiaryBrush}" />
         </StackPanel>
         <Button Grid.Column="2" Classes="dialog-close-btn" Command="{CompiledBinding CancelCommand}"
-                ToolTip.Tip="{DynamicResource DialogCloseTip}" VerticalAlignment="Top">
+                controls:ShortcutTip.Label="{DynamicResource DialogCloseTip}" controls:ShortcutTip.Shortcut="{x:Static infra:AppShortcuts.CloseDialog}" VerticalAlignment="Top">
           <ic:SymbolIcon Symbol="Dismiss" FontSize="14" />
         </Button>
       </Grid>

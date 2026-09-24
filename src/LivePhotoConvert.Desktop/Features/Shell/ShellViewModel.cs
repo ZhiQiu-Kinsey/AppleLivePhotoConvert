@@ -1,4 +1,6 @@
 using System.ComponentModel;
+using System.Windows.Input;
+using Avalonia.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LivePhotoConvert.Desktop.Features.Library;
@@ -105,6 +107,62 @@ public sealed partial class ShellViewModel : ViewModelBase
         }
 
         dialog.CancelCommand.Execute(null);
+        return true;
+    }
+
+    /// <summary>
+    /// 主窗口的全局快捷键；返回 true 表示已处理。弹窗打开时一律不处理，按键留给弹窗。
+    /// </summary>
+    /// <param name="focusOwnsEnter">焦点控件自己要用回车（输入框、键盘选中的按钮），此时回车不开始动作。</param>
+    public bool TryExecuteShortcut(Key key, KeyModifiers modifiers, bool focusOwnsEnter)
+    {
+        if (HasActiveDialog)
+        {
+            return false;
+        }
+
+        if (AppShortcuts.OpenAlbum.Matches(key, modifiers))
+        {
+            if (!Library.SelectAlbumFolderCommand.CanExecute(null))
+            {
+                return false;
+            }
+
+            _navigator.NavigateTo(AppPage.Library);
+            Library.SelectAlbumFolderCommand.Execute(null);
+            return true;
+        }
+
+        if (AppShortcuts.Rescan.Matches(key, modifiers))
+        {
+            return IsLibrarySelected && Library.HasSelectedDirectory && TryExecute(Library.RescanAlbumCommand);
+        }
+
+        if (AppShortcuts.StartAction.Matches(key, modifiers))
+        {
+            return IsLibrarySelected && !focusOwnsEnter && TryExecute(Inspector.StartCommand);
+        }
+
+        foreach (var (shortcut, page) in AppShortcuts.Pages)
+        {
+            if (shortcut.Matches(key, modifiers))
+            {
+                _navigator.NavigateTo(page);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool TryExecute(ICommand command)
+    {
+        if (!command.CanExecute(null))
+        {
+            return false;
+        }
+
+        command.Execute(null);
         return true;
     }
 

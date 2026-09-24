@@ -1279,4 +1279,40 @@
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
 
+  <!-- 快捷键、拖放与目录记忆 -->
+
+  <!-- 图库拖放：拖入文件夹时覆盖整个图库的提示层 -->
+  <Style Selector="Border.drop-overlay">
+    <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+    <Setter Property="BorderThickness" Value="2" />
+    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="Margin" Value="8" />
+    <Setter Property="IsHitTestVisible" Value="False" />
+  </Style>
+
+  <Style Selector="TextBlock.drop-overlay-title">
+    <Setter Property="FontSize" Value="15" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="TextAlignment" Value="Center" />
+  </Style>
+
+  <Style Selector="TextBlock.drop-overlay-path">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="TextAlignment" Value="Center" />
+    <Setter Property="TextTrimming" Value="PathSegmentEllipsis" />
+    <Setter Property="MaxWidth" Value="480" />
+  </Style>
+
+  <Style Selector="TextBlock.empty-drop-hint">
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="TextAlignment" Value="Center" />
+  </Style>
+
 </Styles>

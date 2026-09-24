@@ -6,6 +6,8 @@
         xmlns:tasks="using:LivePhotoConvert.Desktop.Features.Tasks"
         xmlns:tools="using:LivePhotoConvert.Desktop.Features.Tools"
         xmlns:settings="using:LivePhotoConvert.Desktop.Features.Settings"
+        xmlns:controls="using:LivePhotoConvert.Desktop.Controls"
+        xmlns:infra="using:LivePhotoConvert.Desktop.Infrastructure"
         x:Class="LivePhotoConvert.Desktop.Features.Shell.ShellWindow"
         x:CompileBindings="True"
         x:DataType="shell:ShellViewModel"
@@ -79,7 +81,8 @@
       <Border Grid.Column="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,1,0" Padding="12">
         <Grid RowDefinitions="Auto,*,Auto">
           <StackPanel Grid.Row="0" Spacing="4">
-            <Button Classes="nav-btn" Classes.selected="{Binding IsLibrarySelected}" Command="{Binding NavigateCommand}" CommandParameter="Library">
+            <Button Classes="nav-btn" Classes.selected="{Binding IsLibrarySelected}" Command="{Binding NavigateCommand}" CommandParameter="Library"
+                    controls:ShortcutTip.Label="{DynamicResource NavLibrary}" controls:ShortcutTip.Shortcut="{x:Static infra:AppShortcuts.NavigateLibrary}">
               <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
                 <ic:SymbolIcon Grid.Column="0" Symbol="ImageMultiple" FontSize="16" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
                 <TextBlock Grid.Column="1" Text="{DynamicResource NavLibrary}" FontSize="12" Margin="10,0,0,0" VerticalAlignment="Center" />
@@ -89,7 +92,8 @@
               </Grid>
             </Button>
 
-            <Button Classes="nav-btn" Classes.selected="{Binding IsTasksSelected}" Command="{Binding NavigateCommand}" CommandParameter="Tasks">
+            <Button Classes="nav-btn" Classes.selected="{Binding IsTasksSelected}" Command="{Binding NavigateCommand}" CommandParameter="Tasks"
+                    controls:ShortcutTip.Label="{DynamicResource NavTasks}" controls:ShortcutTip.Shortcut="{x:Static infra:AppShortcuts.NavigateTasks}">
               <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
                 <ic:SymbolIcon Grid.Column="0" Symbol="DocumentBulletListClock" FontSize="16" Foreground="{DynamicResource VioletBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
                 <TextBlock Grid.Column="1" Text="{DynamicResource NavTasks}" FontSize="12" Margin="10,0,0,0" VerticalAlignment="Center" />
@@ -99,7 +103,8 @@
               </Grid>
             </Button>
 
-            <Button Classes="nav-btn" Classes.selected="{Binding IsToolsSelected}" Command="{Binding NavigateCommand}" CommandParameter="Tools">
+            <Button Classes="nav-btn" Classes.selected="{Binding IsToolsSelected}" Command="{Binding NavigateCommand}" CommandParameter="Tools"
+                    controls:ShortcutTip.Label="{DynamicResource NavTools}" controls:ShortcutTip.Shortcut="{x:Static infra:AppShortcuts.NavigateTools}">
               <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
                 <ic:SymbolIcon Grid.Column="0" Symbol="Wrench" FontSize="16" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
                 <TextBlock Grid.Column="1" Text="{DynamicResource NavTools}" FontSize="12" Margin="10,0,0,0" VerticalAlignment="Center" />
@@ -136,7 +141,8 @@
                 </ItemsControl>
               </StackPanel>
             </Border>
-            <Button Classes="nav-btn" Classes.selected="{Binding IsSettingsSelected}" Command="{Binding NavigateCommand}" CommandParameter="Settings">
+            <Button Classes="nav-btn" Classes.selected="{Binding IsSettingsSelected}" Command="{Binding NavigateCommand}" CommandParameter="Settings"
+                    controls:ShortcutTip.Label="{DynamicResource NavSettings}" controls:ShortcutTip.Shortcut="{x:Static infra:AppShortcuts.NavigateSettings}">
               <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
                 <ic:SymbolIcon Grid.Column="0" Symbol="Settings" FontSize="16" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
                 <TextBlock Grid.Column="1" Text="{DynamicResource NavSettings}" FontSize="12" Margin="10,0,0,0" VerticalAlignment="Center" />

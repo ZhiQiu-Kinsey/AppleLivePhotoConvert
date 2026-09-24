@@ -3,6 +3,7 @@
              xmlns:dialogs="using:LivePhotoConvert.Desktop.Features.Dialogs"
              xmlns:controls="using:LivePhotoConvert.Desktop.Controls"
              xmlns:ic="using:FluentIcons.Avalonia"
+             xmlns:infra="using:LivePhotoConvert.Desktop.Infrastructure"
              x:Class="LivePhotoConvert.Desktop.Features.Dialogs.StripCompareDialog"
              x:CompileBindings="True"
              x:DataType="dialogs:StripCompareDialogViewModel">
@@ -23,7 +24,7 @@
           <TextBlock Text="{CompiledBinding SavedPercentResult}" />
         </Border>
         <Button Grid.Column="3" Classes="dialog-close-btn" Command="{CompiledBinding CancelCommand}"
-                ToolTip.Tip="{DynamicResource DialogCloseTip}" VerticalAlignment="Top">
+                controls:ShortcutTip.Label="{DynamicResource DialogCloseTip}" controls:ShortcutTip.Shortcut="{x:Static infra:AppShortcuts.CloseDialog}" VerticalAlignment="Top">
           <ic:SymbolIcon Symbol="Dismiss" FontSize="14" />
         </Button>
       </Grid>

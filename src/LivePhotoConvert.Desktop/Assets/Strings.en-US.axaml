@@ -190,9 +190,9 @@
   <sys:String x:Key="QuickLookPairing">Pairing</sys:String>
   <sys:String x:Key="QuickLookSize">Size</sys:String>
   <sys:String x:Key="QuickLookPause">Pause</sys:String>
-  <sys:String x:Key="QuickLookShortcuts">Press Space to play/pause · ← / → to navigate · Esc to close</sys:String>
-  <sys:String x:Key="QuickLookPrevTip">Previous (←)</sys:String>
-  <sys:String x:Key="QuickLookNextTip">Next (→)</sys:String>
+  <sys:String x:Key="QuickLookShortcutsFormat">Press {0} to play/pause · {1} / {2} to navigate · {3} to close</sys:String>
+  <sys:String x:Key="QuickLookPrevTip">Previous</sys:String>
+  <sys:String x:Key="QuickLookNextTip">Next</sys:String>
 
   <!-- Dialog Secondary Keys -->
   <sys:String x:Key="DeleteAffectedFormat">Affected source files: {0} pairs ({1})</sys:String>
@@ -313,11 +313,12 @@
   <sys:String x:Key="ReportCsvSourceFormat">Source Format</sys:String>
   <sys:String x:Key="ReportCsvTargetFormat">Target Format</sys:String>
   <sys:String x:Key="ReportCsvDetail">Details</sys:String>
-  <sys:String x:Key="QuickLookCloseTip">Close (Esc)</sys:String>
 
   <!-- Empty States &amp; Format Strings -->
   <sys:String x:Key="EmptyStateNoDirTitle">Please select an album directory</sys:String>
   <sys:String x:Key="EmptyStateNoDirSubtitle">Choose a folder with Live Photos (HEIC/JPG + MOV) or Android motion photos, then pick an action on the right.</sys:String>
+  <sys:String x:Key="EmptyStateDropHint">Or drag a folder here</sys:String>
+  <sys:String x:Key="DropOverlayTitle">Drop to open this folder</sys:String>
   <sys:String x:Key="EmptyStateEmptyTitle">No live photos found in directory</sys:String>
   <sys:String x:Key="EmptyStateEmptySubtitle">Please ensure the folder contains valid Live Photo pairs or Motion Photos</sys:String>
   <sys:String x:Key="FunnelTotalFormat">{0:N0} files scanned</sys:String>
@@ -449,7 +450,7 @@
   <sys:String x:Key="ScanErrorAccessDeniedFormat">No permission to read the folder: {0}</sys:String>
   <sys:String x:Key="ScanErrorFailedFormat">Scan failed: {0}</sys:String>
   <sys:String x:Key="ScanSkippedInaccessibleFormat">Skipped {0} subfolder(s) without read permission</sys:String>
-  <sys:String x:Key="DialogCloseTip">Close (Esc)</sys:String>
+  <sys:String x:Key="DialogCloseTip">Close</sys:String>
   <sys:String x:Key="CompareLoading">Decoding the comparison…</sys:String>
   <sys:String x:Key="CompareBeforeSizeLabel">Original (with paired video)</sys:String>
   <sys:String x:Key="CompareAfterSizeLabel">Slimmed (actual output)</sys:String>

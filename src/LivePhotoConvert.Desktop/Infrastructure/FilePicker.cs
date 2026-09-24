@@ -87,12 +87,32 @@ public sealed class FilePicker(Func<TopLevel?> topLevelProvider) : IFilePicker
         }
     }
 
+    /// <summary>文件取其所在目录；不存在的目录逐级向上找。</summary>
+    internal static string? NearestExistingDirectory(string path)
+    {
+        var current = Path.GetFullPath(path);
+        if (File.Exists(current))
+        {
+            current = Path.GetDirectoryName(current);
+        }
+
+        while (!string.IsNullOrEmpty(current) && !Directory.Exists(current))
+        {
+            current = Path.GetDirectoryName(current);
+        }
+
+        return string.IsNullOrEmpty(current) ? null : current;
+    }
+
     private static List<FilePickerFileType>? ToPickerTypes(IReadOnlyList<FileTypeFilter>? filters) =>
         filters is { Count: > 0 }
             ? [.. filters.Select(f => new FilePickerFileType(f.Name) { Patterns = [.. f.Patterns] })]
             : null;
 
-    /// <summary>起始位置不存在时交给系统默认位置，而不是让整个选择器失败。</summary>
+    /// <summary>
+    /// 起始位置已被删除或尚未创建（如默认输出目录）时退到最近的现存上级目录；都不存在时交给系统默认位置，
+    /// 而不是让整个选择器失败。
+    /// </summary>
     private static async Task<IStorageFolder?> TryGetFolderAsync(IStorageProvider provider, string? path)
     {
         if (string.IsNullOrWhiteSpace(path))
@@ -102,10 +122,8 @@ public sealed class FilePicker(Func<TopLevel?> topLevelProvider) : IFilePicker
 
         try
         {
-            var folder = File.Exists(path) ? Path.GetDirectoryName(path) : path;
-            return !string.IsNullOrEmpty(folder) && Directory.Exists(folder)
-                ? await provider.TryGetFolderFromPathAsync(new Uri(Path.GetFullPath(folder)))
-                : null;
+            var folder = NearestExistingDirectory(path);
+            return folder is not null ? await provider.TryGetFolderFromPathAsync(new Uri(folder)) : null;
         }
         catch (Exception ex) when (ex is ArgumentException or UriFormatException or IOException or UnauthorizedAccessException or NotSupportedException)
         {

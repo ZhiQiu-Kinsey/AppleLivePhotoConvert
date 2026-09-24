@@ -190,9 +190,9 @@
   <sys:String x:Key="QuickLookPairing">封装配对</sys:String>
   <sys:String x:Key="QuickLookSize">存储体积</sys:String>
   <sys:String x:Key="QuickLookPause">暂停播放</sys:String>
-  <sys:String x:Key="QuickLookShortcuts">按 Space 暂停/继续 · ← / → 切换 · 按 Esc 关闭</sys:String>
-  <sys:String x:Key="QuickLookPrevTip">上一张 (←)</sys:String>
-  <sys:String x:Key="QuickLookNextTip">下一张 (→)</sys:String>
+  <sys:String x:Key="QuickLookShortcutsFormat">按 {0} 暂停/继续 · {1} / {2} 切换 · 按 {3} 关闭</sys:String>
+  <sys:String x:Key="QuickLookPrevTip">上一张</sys:String>
+  <sys:String x:Key="QuickLookNextTip">下一张</sys:String>
 
   <!-- Dialog Secondary Keys -->
   <sys:String x:Key="DeleteAffectedFormat">本次受影响源文件：{0} 组原始照片 ({1})</sys:String>
@@ -313,11 +313,12 @@
   <sys:String x:Key="ReportCsvSourceFormat">来源格式</sys:String>
   <sys:String x:Key="ReportCsvTargetFormat">目标格式</sys:String>
   <sys:String x:Key="ReportCsvDetail">详细信息</sys:String>
-  <sys:String x:Key="QuickLookCloseTip">关闭 (Esc)</sys:String>
 
   <!-- 空状态与格式串 -->
   <sys:String x:Key="EmptyStateNoDirTitle">请选择待处理相册目录</sys:String>
   <sys:String x:Key="EmptyStateNoDirSubtitle">选择包含实况照片（HEIC/JPG + MOV）或安卓动态照片的文件夹，再在右侧选择要执行的动作。</sys:String>
+  <sys:String x:Key="EmptyStateDropHint">也可以把文件夹拖到这里</sys:String>
+  <sys:String x:Key="DropOverlayTitle">松开以打开这个文件夹</sys:String>
   <sys:String x:Key="EmptyStateEmptyTitle">当前目录未扫描到实况照片</sys:String>
   <sys:String x:Key="EmptyStateEmptySubtitle">请确认所选文件夹包含有效的实况成对文件或安卓动态照片</sys:String>
   <sys:String x:Key="FunnelTotalFormat">已扫描 {0:N0} 个文件</sys:String>
@@ -449,7 +450,7 @@
   <sys:String x:Key="ScanErrorAccessDeniedFormat">没有读取该目录的权限：{0}</sys:String>
   <sys:String x:Key="ScanErrorFailedFormat">扫描失败：{0}</sys:String>
   <sys:String x:Key="ScanSkippedInaccessibleFormat">{0} 个子目录没有读取权限，已跳过</sys:String>
-  <sys:String x:Key="DialogCloseTip">关闭 (Esc)</sys:String>
+  <sys:String x:Key="DialogCloseTip">关闭</sys:String>
   <sys:String x:Key="CompareLoading">正在解码对比图…</sys:String>
   <sys:String x:Key="CompareBeforeSizeLabel">原片（含配对视频）</sys:String>
   <sys:String x:Key="CompareAfterSizeLabel">瘦身后（实际产物）</sys:String>

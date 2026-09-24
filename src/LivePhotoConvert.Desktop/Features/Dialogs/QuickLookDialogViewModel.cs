@@ -87,6 +87,10 @@ public sealed partial class QuickLookDialogViewModel : DialogViewModel<bool>
 
     internal ILivePhotoPlayer? Player => _player;
 
+    /// <summary>底栏的按键说明，按键文本取自快捷键定义。</summary>
+    public string ShortcutsText => _localizer.Format("QuickLookShortcutsFormat",
+        AppShortcuts.TogglePlay.DisplayText, AppShortcuts.Previous.DisplayText, AppShortcuts.Next.DisplayText, AppShortcuts.CloseDialog.DisplayText);
+
     /// <param name="cardAt">按序号取卡片；序号越界或卡片已失效时返回 null。</param>
     /// <param name="count">可浏览的卡片总数，左右切换在此范围内循环。</param>
     /// <param name="startIndex">首张卡片的序号。</param>

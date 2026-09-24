@@ -187,15 +187,34 @@ public sealed partial class LibraryViewModel : ViewModelBase
     [RelayCommand]
     private void SelectGroup(TimelineHeaderItemViewModel? header) => Selection.SetSelected(Layout.CardsOf(header), true);
 
+    /// <summary>选择器从当前相册（即上次选择或拖入的目录）开始。</summary>
     [RelayCommand]
     public async Task SelectAlbumFolderAsync()
     {
         var folder = await _filePicker.PickFolderAsync(_localizer["SelectAlbumFolderBtn"], AlbumDirectory);
         if (!string.IsNullOrWhiteSpace(folder))
         {
-            AlbumDirectory = folder;
-            _settings.Update(s => s.LastScanDirectory = folder);
-            await RefreshAlbumAsync();
+            await OpenAlbumAsync(folder);
+        }
+    }
+
+    /// <summary>拖入与选择按钮同一判定：选择相册的命令正在执行（选择器打开或其扫描未完成）时不接受新相册。</summary>
+    public bool CanOpenAlbum => SelectAlbumFolderCommand.CanExecute(null);
+
+    /// <summary>切换到指定相册：选择器与拖入共用，记入设置后扫描。</summary>
+    public Task OpenAlbumAsync(string folder)
+    {
+        AlbumDirectory = folder;
+        _settings.Update(s => s.LastScanDirectory = folder);
+        return RefreshAlbumAsync();
+    }
+
+    /// <summary>视图的拖放处理不等待扫描；异常与冷启动扫描一样只记日志。</summary>
+    public void OpenDroppedAlbum(string folder)
+    {
+        if (CanOpenAlbum)
+        {
+            Observe(OpenAlbumAsync(folder), "打开拖入的相册");
         }
     }
 

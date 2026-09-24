@@ -309,7 +309,9 @@ public sealed partial class ToolsViewModel : ViewModelBase
     public async Task PickPathAsync(ToolId tool)
     {
         var card = Card(tool);
-        var file = await _filePicker.PickFileAsync(_localizer["PickerToolExecutableTitle"]);
+        // 从该工具当前指定的位置开始；未指定时取其它工具指定的位置（多半装在同一处）
+        var start = _paths.Get(tool) ?? Enum.GetValues<ToolId>().Select(_paths.Get).FirstOrDefault(p => p is not null);
+        var file = await _filePicker.PickFileAsync(_localizer["PickerToolExecutableTitle"], suggestedStartLocation: start);
         if (string.IsNullOrWhiteSpace(file))
         {
             return;
