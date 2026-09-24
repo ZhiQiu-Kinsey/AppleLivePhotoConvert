@@ -161,11 +161,13 @@ public class TaskCenterTests
 
         await Task.Delay(300, TestContext.Current.CancellationToken);
         Assert.Equal(0, Volatile.Read(ref processed));
-        Assert.Equal(1, center.Current!.Completed);
+        var running = center.Current!;
+        Assert.Equal(1, running.Completed);
         Assert.False(run.IsCompleted);
 
+        // 恢复后工作线程可能立刻跑完并清空 Current，断言持有的卡片而不是再次读取 Current
         center.TogglePause();
-        Assert.False(center.Current!.IsPaused);
+        Assert.False(running.IsPaused);
         var report = await run.Within();
 
         Assert.Equal(3, processed);
