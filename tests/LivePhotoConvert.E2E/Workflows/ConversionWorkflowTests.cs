@@ -122,13 +122,23 @@ public sealed class ConversionWorkflowTests : IDisposable
         await session.WaitUntilAsync(() => shell.Library is { IsScanning: false, Selection.HasScannedFiles: true }, 30);
 
         session.Click(session.Descendants<Button>()
-            .Single(b => ReferenceEquals(b.Command, shell.Inspector.SetActionCommand) && (string?)b.CommandParameter == action.ToString()));
+            .Single(b => ReferenceEquals(b.Command, shell.Inspector.SetActionCommand) && (string?)b.CommandParameter == action.ToString() && b.IsEffectivelyVisible));
         // 切换动作会按新扫描模式重新扫描
         await session.WaitUntilAsync(() => shell.Inspector.ApplicableCount == expectedCards, 30);
 
+        // 输出位置分组默认收起，先展开再更改目录
+        if (!shell.Inspector.IsOutputExpanded)
+        {
+            session.Click(FirstVisibleButton(session, shell.Inspector.ToggleOutputExpandedCommand));
+        }
+
         picker.NextResult = _sandbox.OutputDirectory;
         var chooseOutput = action == ConversionAction.Strip ? shell.Inspector.SelectStripFolderCommand : shell.Inspector.SelectOutputFolderCommand;
-        session.Click(FirstVisibleButton(session, chooseOutput));
+        // 展开后目录按钮可能在检查器首屏之下，像用户一样先滚动到它
+        var chooseButton = FirstVisibleButton(session, chooseOutput);
+        chooseButton.BringIntoView();
+        session.Click(chooseButton);
+        Assert.Equal(_sandbox.OutputDirectory, shell.Inspector.OutputLocation);
 
         var tasks = session.Host.Get<TaskCenter>();
         session.Click(FirstVisibleButton(session, shell.Inspector.StartCommand));

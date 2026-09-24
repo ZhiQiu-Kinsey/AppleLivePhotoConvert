@@ -30,10 +30,17 @@ public sealed class GalleryHoverPlaybackTests : IDisposable
         var hover = HoverPlayer();
         var (control, card) = VideoCard(session);
 
+        var moved = System.Diagnostics.Stopwatch.StartNew();
         MoveToPreview(session, control);
-        Assert.Empty(hover.Plays);
+        // 延迟由真实时间的计时器控制：只有移动与处理消息确实在延迟内完成时，才能断言尚未开始
+        if (moved.Elapsed < GalleryHoverPlayback.DefaultStartDelay)
+        {
+            Assert.Empty(hover.Plays);
+        }
+
         Assert.Same(card, session.Shell.Library.FocusedCard);
-        await session.WaitUntilAsync(() => hover.Plays.Count == 1);
+        // 首帧在下一个渲染节拍才赋给卡片
+        await session.WaitUntilAsync(() => hover.Plays.Count == 1 && control.PlaybackFrame is not null);
 
         var play = hover.Plays[0];
         Assert.Equal(card.Video, play.Source);

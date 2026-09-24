@@ -32,7 +32,7 @@ public sealed class HeifEncImageConverter : IImageConverter
         if (!result.Success || new FileInfo(destinationPath) is not { Exists: true, Length: > 0 })
         {
             FileHelper.TryDeleteFile(destinationPath);
-            throw new InvalidOperationException($"HEIC 编码失败：{result.ErrorSummary}");
+            throw new ImageConversionException($"HEIC 编码失败：{result.ErrorSummary}");
         }
     }
 }

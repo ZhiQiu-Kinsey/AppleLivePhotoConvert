@@ -22,6 +22,30 @@ public enum ToolCapabilities
     Hdr = Zscale | Tonemap | Libx265 | Libx265TenBit
 }
 
+/// <summary>找到了可执行文件，但读取版本或能力失败的原因。</summary>
+public enum ToolProbeFailure
+{
+    /// <summary>探测命令超时，已被结束。</summary>
+    Timeout,
+
+    /// <summary>无法启动（文件损坏、架构不符、无执行权限或被安全软件拦截）。</summary>
+    CannotStart,
+
+    /// <summary>其它错误。</summary>
+    Failed
+}
+
+/// <summary>探测失败：原因分类供界面显示，原始异常供记录日志。</summary>
+public sealed record ToolProbeError(ToolProbeFailure Kind, Exception Cause)
+{
+    internal static ToolProbeError From(Exception ex) => new(ex switch
+    {
+        TimeoutException => ToolProbeFailure.Timeout,
+        System.ComponentModel.Win32Exception or InvalidOperationException or UnauthorizedAccessException or NotSupportedException => ToolProbeFailure.CannotStart,
+        _ => ToolProbeFailure.Failed
+    }, ex);
+}
+
 /// <summary>一次探测的结果。</summary>
 /// <param name="Tool">工具</param>
 /// <param name="Path">可执行文件完整路径；未找到时为 null</param>
@@ -30,7 +54,7 @@ public enum ToolCapabilities
 /// <param name="Capabilities">能力</param>
 /// <param name="RecommendedVersion">清单为当前平台推荐的版本；当前平台没有下载包时为 null</param>
 /// <param name="IsExplicitPathInvalid">设置里指定了路径但该路径不可用（已回退到自动发现）</param>
-/// <param name="ProbeError">找到了文件但读取版本或能力失败的原因</param>
+/// <param name="ProbeError">找到了文件但读取版本或能力失败的原因；成功时为 null</param>
 public sealed record ToolInfo(
     ToolId Tool,
     string? Path,
@@ -39,7 +63,7 @@ public sealed record ToolInfo(
     ToolCapabilities Capabilities,
     string? RecommendedVersion,
     bool IsExplicitPathInvalid,
-    string? ProbeError)
+    ToolProbeError? ProbeError)
 {
     public bool IsAvailable => Path is not null;
 
@@ -99,9 +123,6 @@ public sealed class ToolRegistry(Func<ToolId, string?>? explicitPathProvider = n
         return probe.WaitAsync(cancellationToken);
     }
 
-    public async Task<IReadOnlyList<ToolInfo>> GetAllAsync(CancellationToken cancellationToken = default) =>
-        await Task.WhenAll(_manifest.Tools.Select(tool => GetAsync(tool.Id, cancellationToken)));
-
     /// <summary>已完成探测时直接返回结果，不启动探测。</summary>
     public bool TryGetCached(ToolId tool, out ToolInfo? info)
     {
@@ -157,7 +178,7 @@ public sealed class ToolRegistry(Func<ToolId, string?>? explicitPathProvider = n
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            return new ToolInfo(tool, null, null, null, ToolCapabilities.None, recommended, explicitPath is not null, ex.Message);
+            return new ToolInfo(tool, null, null, null, ToolCapabilities.None, recommended, explicitPath is not null, ToolProbeError.From(ex));
         }
 
         if (path is null)
@@ -167,7 +188,7 @@ public sealed class ToolRegistry(Func<ToolId, string?>? explicitPathProvider = n
 
         string? versionText = null;
         var capabilities = ToolCapabilities.None;
-        string? error = null;
+        ToolProbeError? error = null;
         try
         {
             var version = await RunAsync(path, definition.VersionArguments);
@@ -179,7 +200,7 @@ public sealed class ToolRegistry(Func<ToolId, string?>? explicitPathProvider = n
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            error = ex.Message;
+            error = ToolProbeError.From(ex);
         }
 
         return new ToolInfo(tool, path, versionText, ToolOutputParser.ParseVersion(versionText), capabilities, recommended, explicitInvalid, error);

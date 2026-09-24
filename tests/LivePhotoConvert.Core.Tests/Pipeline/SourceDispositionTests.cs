@@ -31,13 +31,36 @@ public class SourceDispositionTests
         Assert.Equal([2], File.ReadAllBytes(temp.Combine("b", "已合成", "IMG.jpg")));
     }
 
+    /// <summary>名称来自本地化资源：写错时拒绝，不能把源文件移到所在目录之外。</summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("  ")]
+    [InlineData(" Merged")]
+    [InlineData(".")]
+    [InlineData("..")]
+    [InlineData("a/b")]
+    [InlineData("a\\b")]
+    [InlineData("../Merged")]
+    public void Move_RejectsInvalidArchiveFolderName(string? name)
+    {
+        Assert.Throws<ArgumentException>(() => new SourceDisposition(SourceFileAction.Move, name));
+    }
+
+    [Fact]
+    public void OtherActions_IgnoreArchiveFolderName()
+    {
+        Assert.Equal(SourceFileAction.Keep, new SourceDisposition(SourceFileAction.Keep).Action);
+        Assert.Equal(SourceFileAction.Delete, new SourceDisposition(SourceFileAction.Delete, "..").Action);
+    }
+
     [Fact]
     public void Delete_RemovesFilesAndIgnoresMissingOnes()
     {
         using var temp = new TempDirectory();
         var file = temp.CreateFile("IMG.jpg", [1]);
 
-        Assert.Null(new SourceDisposition(SourceFileAction.Delete, string.Empty).Apply(file, temp.Combine("missing.mov")));
+        Assert.Null(new SourceDisposition(SourceFileAction.Delete).Apply(file, temp.Combine("missing.mov")));
         Assert.False(File.Exists(file));
     }
 
@@ -48,7 +71,7 @@ public class SourceDispositionTests
         using var temp = new TempDirectory();
         var file = temp.CreateFile("IMG.mov", [1]);
 
-        Assert.NotNull(new SourceDisposition(SourceFileAction.Recycle, string.Empty).Apply(file));
+        Assert.NotNull(new SourceDisposition(SourceFileAction.Recycle).Apply(file));
         Assert.True(File.Exists(file));
     }
 }

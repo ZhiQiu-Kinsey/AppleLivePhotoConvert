@@ -4,7 +4,7 @@ using LivePhotoConvert.Desktop.Infrastructure;
 
 namespace LivePhotoConvert.Desktop.Features.Tools;
 
-/// <summary>安装进度与失败原因的界面文案。</summary>
+/// <summary>安装进度、探测与安装失败原因的界面文案。</summary>
 public static class ToolTexts
 {
     public static string FailureKind(ILocalizer localizer, ToolFailureKind kind) => kind switch
@@ -17,6 +17,14 @@ public static class ToolTexts
         ToolFailureKind.InvalidArchive => localizer["ToolFailureInvalidArchive"],
         ToolFailureKind.ProbeFailed => localizer["ToolFailureProbe"],
         _ => localizer["ToolFailureCommit"]
+    };
+
+    /// <summary>找到了工具但读取版本失败的原因；原始异常只写日志。</summary>
+    public static string ProbeFailure(ILocalizer localizer, ToolProbeFailure kind) => kind switch
+    {
+        ToolProbeFailure.Timeout => localizer["ToolProbeTimeout"],
+        ToolProbeFailure.CannotStart => localizer["ToolProbeCannotStart"],
+        _ => localizer["ToolProbeFailed"]
     };
 
     /// <summary>下载源名称；经加速前缀时附上代理主机名，便于用户判断是哪个节点出了问题。</summary>

@@ -38,15 +38,12 @@ public sealed class RawVideoDecoder : IAsyncDisposable
     {
         _process = process;
         _output = process.StandardOutput.BaseStream;
-        OutputSize = outputSize;
         FrameBytes = checked(outputSize.Width * outputSize.Height * 4);
         _nominalFrameDuration = nominalFrameDuration;
         _lastDuration = nominalFrameDuration;
         ProcessId = process.Id;
         _errorPump = Task.Run(PumpErrorsAsync);
     }
-
-    public PixelSize OutputSize { get; }
 
     /// <summary>每帧字节数（宽 × 高 × 4，无行填充）。</summary>
     public int FrameBytes { get; }

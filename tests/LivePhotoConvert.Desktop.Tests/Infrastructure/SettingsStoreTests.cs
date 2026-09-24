@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using LivePhotoConvert.Core.Pipeline;
+using LivePhotoConvert.Desktop.Features.Updates;
 using LivePhotoConvert.Desktop.Infrastructure;
 
 namespace LivePhotoConvert.Desktop.Tests.Infrastructure;
@@ -197,6 +198,33 @@ public sealed class SettingsStoreTests : IDisposable
     }
 
     [Fact]
+    public void RoundTrip_PersistsInspectorLayout_AndOlderFilesWithoutItGetDefaults()
+    {
+        using (var store = new SettingsStore(SettingsPath))
+        {
+            store.Update(s =>
+            {
+                s.Inspector.IsCollapsed = true;
+                s.Inspector.IsOutputExpanded = true;
+            });
+        }
+
+        var inspector = (JsonObject)ReadJson(SettingsPath)["inspector"]!;
+        Assert.True((bool?)inspector["isCollapsed"]);
+        using (var reloaded = new SettingsStore(SettingsPath))
+        {
+            Assert.Equal((true, true), (reloaded.Current.Inspector.IsCollapsed, reloaded.Current.Inspector.IsOutputExpanded));
+        }
+
+        foreach (var json in new[] { "", """, "inspector": null""" })
+        {
+            File.WriteAllText(SettingsPath, $$"""{ "schemaVersion": {{SettingsStore.CurrentSchemaVersion}}{{json}} }""");
+            using var older = new SettingsStore(SettingsPath);
+            Assert.Equal((false, false), (older.Current.Inspector.IsCollapsed, older.Current.Inspector.IsOutputExpanded));
+        }
+    }
+
+    [Fact]
     public void VersionThreeFile_GainsThumbnailBudgets_AndKeepsGalleryPreferences()
     {
         File.WriteAllText(SettingsPath, """
@@ -275,5 +303,49 @@ public sealed class SettingsStoreTests : IDisposable
         Assert.Equal(1100, window.Width);
         Assert.Equal(700, window.Height);
         Assert.True(window.IsMaximized);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(",\"updates\": null")]
+    public void FileWithoutUpdatePreferences_GetsDefaults(string updates)
+    {
+        File.WriteAllText(SettingsPath, $$"""{"schemaVersion": {{SettingsStore.CurrentSchemaVersion}}, "language": "en"{{updates}}}""");
+
+        using var store = new SettingsStore(SettingsPath);
+
+        Assert.True(store.Current.Updates.AutoCheck);
+        Assert.Null(store.Current.Updates.LastCheckTime);
+        Assert.Equal(UpdateCheckStatus.Never, store.Current.Updates.LastCheckStatus);
+        Assert.Equal(string.Empty, store.Current.Updates.SkippedVersion);
+    }
+
+    [Fact]
+    public void UpdatePreferences_RoundTrip_WithoutSchemaChange()
+    {
+        var checkedAt = new DateTimeOffset(2026, 9, 24, 8, 30, 0, TimeSpan.FromHours(8));
+        using (var store = new SettingsStore(SettingsPath))
+        {
+            store.Update(s =>
+            {
+                s.Updates.AutoCheck = false;
+                s.Updates.LastCheckTime = checkedAt;
+                s.Updates.LastCheckStatus = UpdateCheckStatus.Failed;
+                s.Updates.LastFailure = UpdateFailureKind.RateLimited;
+                s.Updates.LastAvailableVersion = "3.1.0";
+                s.Updates.SkippedVersion = "3.1.0";
+            });
+        }
+
+        var json = ReadJson(SettingsPath);
+        Assert.Equal(SettingsStore.CurrentSchemaVersion, (int)json["schemaVersion"]!);
+        Assert.Equal("RateLimited", (string?)json["updates"]!["lastFailure"]);
+        using var reloaded = new SettingsStore(SettingsPath);
+        var updates = reloaded.Current.Updates;
+        Assert.False(updates.AutoCheck);
+        Assert.Equal(checkedAt, updates.LastCheckTime);
+        Assert.Equal(UpdateCheckStatus.Failed, updates.LastCheckStatus);
+        Assert.Equal(UpdateFailureKind.RateLimited, updates.LastFailure);
+        Assert.Equal(("3.1.0", "3.1.0"), (updates.LastAvailableVersion, updates.SkippedVersion));
     }
 }

@@ -1,3 +1,4 @@
+using System.Runtime.Versioning;
 using LivePhotoConvert.Core.External;
 using LivePhotoConvert.Core.External.Tools;
 
@@ -80,5 +81,21 @@ public class ToolLocatorTests
         {
             Directory.Delete(installDirectory, recursive: true);
         }
+    }
+
+    [Fact]
+    [UnsupportedOSPlatform("windows")]
+    public void IsValidTool_LaunchFailure_IsNotCachedAndRecoversOnceRunnable()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "用可执行位模拟暂时无法启动，仅适用于类 Unix 系统。");
+        using var temp = new TempDirectory();
+        // 名称含 ffmpeg 才会真正启动进程探测；改可执行位不改变大小与修改时间，缓存键不变
+        var tool = temp.CreateFile($"ffmpeg-{Guid.NewGuid():N}", "#!/bin/sh\nexit 0\n"u8.ToArray());
+        File.SetUnixFileMode(tool, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+
+        Assert.False(ToolLocator.IsValidTool(tool));
+
+        File.SetUnixFileMode(tool, File.GetUnixFileMode(tool) | UnixFileMode.UserExecute);
+        Assert.True(ToolLocator.IsValidTool(tool));
     }
 }

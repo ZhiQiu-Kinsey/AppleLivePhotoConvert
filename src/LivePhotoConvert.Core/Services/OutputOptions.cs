@@ -21,16 +21,24 @@ public sealed record OutputOptions(string Directory)
         }
 
         var relative = Path.GetRelativePath(PreserveHierarchyFrom, Path.GetDirectoryName(Path.GetFullPath(sourcePath))!);
-        return relative == "." || relative.StartsWith("..", StringComparison.Ordinal) || Path.IsPathRooted(relative)
+        return relative == "." || IsOutside(relative) || Path.IsPathRooted(relative)
             ? Directory
             : Path.Combine(Directory, relative);
     }
+
+    /// <summary>只看首段是否为 <c>..</c>：名为 <c>..abc</c> 的子目录仍在根目录之内。</summary>
+    private static bool IsOutside(string relative) =>
+        relative == ".." || relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal)
+                         || relative.StartsWith(".." + Path.AltDirectorySeparatorChar, StringComparison.Ordinal);
 }
 
 public static class ConversionDefaults
 {
     /// <summary>CPU 核心数的一半，限制在 1~4：解码与转码同时进行时内存占用较高。</summary>
     public static int Parallelism => Math.Clamp(Environment.ProcessorCount / 2, 1, 4);
+
+    /// <summary>用户可设置的并行数上限：并发的 HEIC 编解码与视频转码各自占用数百 MB 内存。</summary>
+    public const int MaxParallelism = 8;
 
     public const int HeicQuality = 90;
 

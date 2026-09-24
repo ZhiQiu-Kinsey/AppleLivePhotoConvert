@@ -65,22 +65,26 @@ public sealed class DesktopTestHost : IDisposable
     }
 }
 
-/// <summary>返回预设路径的文件选择器替身，并记录每次调用的标题。</summary>
+/// <summary>返回预设路径的文件选择器替身，并记录每次调用的标题与建议的起始位置。</summary>
 public sealed class FakeFilePicker : IFilePicker
 {
     public string? NextResult { get; set; }
 
     public List<string> Titles { get; } = [];
 
-    public Task<string?> PickFolderAsync(string title, string? suggestedStartLocation = null) => Answer(title);
+    /// <summary>与 <see cref="Titles"/> 一一对应。</summary>
+    public List<string?> StartLocations { get; } = [];
 
-    public Task<string?> PickFileAsync(string title, IReadOnlyList<FileTypeFilter>? filters = null, string? suggestedStartLocation = null) => Answer(title);
+    public Task<string?> PickFolderAsync(string title, string? suggestedStartLocation = null) => Answer(title, suggestedStartLocation);
 
-    public Task<string?> SaveFileAsync(string title, string suggestedFileName, IReadOnlyList<FileTypeFilter>? filters = null, string? suggestedStartLocation = null) => Answer(title);
+    public Task<string?> PickFileAsync(string title, IReadOnlyList<FileTypeFilter>? filters = null, string? suggestedStartLocation = null) => Answer(title, suggestedStartLocation);
 
-    private Task<string?> Answer(string title)
+    public Task<string?> SaveFileAsync(string title, string suggestedFileName, IReadOnlyList<FileTypeFilter>? filters = null, string? suggestedStartLocation = null) => Answer(title, suggestedStartLocation);
+
+    private Task<string?> Answer(string title, string? suggestedStartLocation)
     {
         Titles.Add(title);
+        StartLocations.Add(suggestedStartLocation);
         return Task.FromResult(NextResult);
     }
 }

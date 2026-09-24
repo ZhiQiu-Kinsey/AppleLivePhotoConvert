@@ -1,4 +1,3 @@
-using System.Globalization;
 using Avalonia;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
@@ -44,8 +43,8 @@ public sealed class StripCompareDialogTests : IDisposable
         Assert.Equal(new FileInfo(sample.ProductPath).Length, sample.ProductBytes);
         Assert.Equal(original.LongLength, sample.OriginalBytes);
         Assert.True(sample.ProductBytes < original.LongLength, "瘦身产物应当小于原片");
-        Assert.Equal(FormatBytes(sample.ProductBytes), vm.AfterSizeText);
-        Assert.Equal(FormatBytes(sample.OriginalBytes), vm.BeforeSizeText);
+        Assert.Equal(ByteSizeConverter.Format(sample.ProductBytes), vm.AfterSizeText);
+        Assert.Equal(ByteSizeConverter.Format(sample.OriginalBytes), vm.BeforeSizeText);
         Assert.Equal(new PixelSize(1200, 900), vm.SourcePixelSize);
 
         vm.DisplayPixelSize = new PixelSize(600, 450);
@@ -82,7 +81,7 @@ public sealed class StripCompareDialogTests : IDisposable
         var sample = vm.Sample!;
         Assert.Equal(1, encoder.Calls);
         Assert.Equal(new FileInfo(sample.ProductPath).Length, sample.ProductBytes);
-        Assert.Equal(FormatBytes(sample.ProductBytes), vm.AfterSizeText);
+        Assert.Equal(ByteSizeConverter.Format(sample.ProductBytes), vm.AfterSizeText);
         var saved = (sample.OriginalBytes - sample.ProductBytes) * 100.0 / sample.OriginalBytes;
         Assert.Equal(localizer.Format("StripSavedPctFormat", saved), vm.SavedPercentResult);
         Assert.Equal(localizer.Format("CompareParamsHeicFormat", 90), vm.ParametersText);
@@ -153,6 +152,37 @@ public sealed class StripCompareDialogTests : IDisposable
         Assert.False(vm.IsBusy);
         Assert.Equal(localizer.Format("CompareFailedFormat", FailingEncoder.Reason), vm.StatusText);
         Assert.Null(vm.Sample);
+    }
+
+    /// <summary>分析阶段失败（照片已被删除、无法读取）按原因码显示当前语言的文案，不显示 Core 的异常原文。</summary>
+    [AvaloniaTheory]
+    [InlineData("zh-CN", true)]
+    [InlineData("en-US", true)]
+    [InlineData("zh-CN", false)]
+    [InlineData("en-US", false)]
+    public async Task AnalysisFailure_ShowsLocalizedReasonInsteadOfCoreMessage(string language, bool deleted)
+    {
+        using var culture = new CultureScope();
+        var engines = new CountingEngines(new LossyStandInEncoder());
+        var photo = Path.Combine(_sandbox.InputDirectory, deleted ? "gone.jpg" : "broken.heic");
+        if (!deleted)
+        {
+            File.WriteAllBytes(photo, Core.Tests.Support.SyntheticMedia.Heic());
+            engines.Metadata.FailXmpReads = _ => true;
+        }
+
+        var localizer = new Localizer();
+        localizer.SetLanguage(language);
+        var vm = new StripCompareDialogViewModel(localizer, CompareSamples.Sampler(engines), photo, new StripSampleOptions(ToolPaths.Auto, true, 90));
+
+        await vm.LoadTask.WaitAsync(TimeSpan.FromSeconds(10), Token);
+
+        var reason = deleted
+            ? localizer.Format("OutcomeReasonSourceMissingFormat", "gone.jpg")
+            : localizer.Format("OutcomeReasonSourceUnreadableFormat", "broken.heic");
+        Assert.True(vm.HasFailed);
+        Assert.Equal(localizer.Format("CompareFailedFormat", reason), vm.StatusText);
+        Assert.False(language == "en-US" && UiTexts.ContainsChinese(vm.StatusText), vm.StatusText);
     }
 
     [AvaloniaFact]
@@ -266,8 +296,6 @@ public sealed class StripCompareDialogTests : IDisposable
             ? ExternalToolEngines.Instance
             : null;
 
-    private static string FormatBytes(long bytes) =>
-        (string)ByteSizeConverter.Instance.Convert(bytes, typeof(string), null, CultureInfo.InvariantCulture)!;
 
     private sealed class FailingEncoder : Core.Abstractions.IImageConverter
     {

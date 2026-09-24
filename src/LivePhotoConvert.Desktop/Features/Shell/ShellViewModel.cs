@@ -1,10 +1,13 @@
 using System.ComponentModel;
+using System.Windows.Input;
+using Avalonia.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LivePhotoConvert.Desktop.Features.Library;
 using LivePhotoConvert.Desktop.Features.Settings;
 using LivePhotoConvert.Desktop.Features.Tasks;
 using LivePhotoConvert.Desktop.Features.Tools;
+using LivePhotoConvert.Desktop.Features.Updates;
 using LivePhotoConvert.Desktop.Infrastructure;
 
 namespace LivePhotoConvert.Desktop.Features.Shell;
@@ -25,7 +28,8 @@ public sealed partial class ShellViewModel : ViewModelBase
         InspectorViewModel inspector,
         TasksViewModel tasks,
         ToolsViewModel tools,
-        SettingsViewModel settings)
+        SettingsViewModel settings,
+        UpdateCenter updates)
     {
         _navigator = navigator;
         _dialogs = dialogs;
@@ -34,6 +38,7 @@ public sealed partial class ShellViewModel : ViewModelBase
         Tasks = tasks;
         Tools = tools;
         Settings = settings;
+        Updates = updates;
 
         _toolCards = [Tools.ExifTool, Tools.Ffmpeg, Tools.HeifEnc];
         ToolStatuses = [.. _toolCards.Select(card => new ToolStatusItem(card.DisplayName))];
@@ -59,6 +64,9 @@ public sealed partial class ShellViewModel : ViewModelBase
     public ToolsViewModel Tools { get; }
     public SettingsViewModel Settings { get; }
 
+    /// <summary>侧栏"设置"上的新版本提示。</summary>
+    public UpdateCenter Updates { get; }
+
     public AppPage CurrentPage => _navigator.Current;
 
     /// <summary>侧栏依赖状态，顺序为 ExifTool、FFmpeg、heif-enc。</summary>
@@ -72,6 +80,8 @@ public sealed partial class ShellViewModel : ViewModelBase
     public bool DoToolsNeedAttention => ToolsHealth == ToolHealth.Attention;
 
     public bool AreToolsMissing => ToolsHealth == ToolHealth.Missing;
+
+    public bool AreToolsProbing => ToolsHealth == ToolHealth.Probing;
 
     public bool IsLibrarySelected => _navigator.Current == AppPage.Library;
     public bool IsTasksSelected => _navigator.Current == AppPage.Tasks;
@@ -108,6 +118,62 @@ public sealed partial class ShellViewModel : ViewModelBase
         return true;
     }
 
+    /// <summary>
+    /// 主窗口的全局快捷键；返回 true 表示已处理。弹窗打开时一律不处理，按键留给弹窗。
+    /// </summary>
+    /// <param name="focusOwnsEnter">焦点控件自己要用回车（输入框、键盘选中的按钮），此时回车不开始动作。</param>
+    public bool TryExecuteShortcut(Key key, KeyModifiers modifiers, bool focusOwnsEnter)
+    {
+        if (HasActiveDialog)
+        {
+            return false;
+        }
+
+        if (AppShortcuts.OpenAlbum.Matches(key, modifiers))
+        {
+            if (!Library.SelectAlbumFolderCommand.CanExecute(null))
+            {
+                return false;
+            }
+
+            _navigator.NavigateTo(AppPage.Library);
+            Library.SelectAlbumFolderCommand.Execute(null);
+            return true;
+        }
+
+        if (AppShortcuts.Rescan.Matches(key, modifiers))
+        {
+            return IsLibrarySelected && Library.HasSelectedDirectory && TryExecute(Library.RescanAlbumCommand);
+        }
+
+        if (AppShortcuts.StartAction.Matches(key, modifiers))
+        {
+            return IsLibrarySelected && !focusOwnsEnter && TryExecute(Inspector.StartCommand);
+        }
+
+        foreach (var (shortcut, page) in AppShortcuts.Pages)
+        {
+            if (shortcut.Matches(key, modifiers))
+            {
+                _navigator.NavigateTo(page);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool TryExecute(ICommand command)
+    {
+        if (!command.CanExecute(null))
+        {
+            return false;
+        }
+
+        command.Execute(null);
+        return true;
+    }
+
     private void OnNavigatorChanged(object? sender, PropertyChangedEventArgs e)
     {
         OnPropertyChanged(nameof(CurrentPage));
@@ -117,18 +183,18 @@ public sealed partial class ShellViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsSettingsSelected));
     }
 
-    /// <summary>"需要注意"取依赖页卡片的警告：建议升级、指定路径无效、FFmpeg 缺 HDR 能力或版本探测失败。</summary>
+    /// <summary>探测完成前为"检测中"；"需要注意"取依赖页卡片的警告：建议升级、指定路径无效、FFmpeg 缺 HDR 能力或版本探测失败。</summary>
     private void SyncToolStatuses()
     {
         for (var i = 0; i < _toolCards.Length; i++)
         {
-            ToolStatuses[i].Health = ToolStatusItem.Evaluate(_toolCards[i].IsReady, _toolCards[i].HasWarning);
+            ToolStatuses[i].Health = ToolStatusItem.Evaluate(_toolCards[i].IsProbing, _toolCards[i].IsReady, _toolCards[i].HasWarning);
         }
     }
 
     private void OnToolCardChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(ToolCardViewModel.IsReady) or nameof(ToolCardViewModel.HasWarning))
+        if (e.PropertyName is nameof(ToolCardViewModel.IsProbing) or nameof(ToolCardViewModel.IsReady) or nameof(ToolCardViewModel.HasWarning))
         {
             SyncToolStatuses();
         }
@@ -142,6 +208,7 @@ public sealed partial class ShellViewModel : ViewModelBase
             OnPropertyChanged(nameof(AreToolsReady));
             OnPropertyChanged(nameof(DoToolsNeedAttention));
             OnPropertyChanged(nameof(AreToolsMissing));
+            OnPropertyChanged(nameof(AreToolsProbing));
         }
     }
 

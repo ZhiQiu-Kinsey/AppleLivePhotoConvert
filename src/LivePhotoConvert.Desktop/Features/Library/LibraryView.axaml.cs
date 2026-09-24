@@ -8,13 +8,14 @@ using Avalonia.VisualTree;
 using LivePhotoConvert.Desktop.Controls;
 using LivePhotoConvert.Desktop.Features.Library.Thumbnails;
 using LivePhotoConvert.Desktop.Features.Playback;
+using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Models;
 
 namespace LivePhotoConvert.Desktop.Features.Library;
 
 /// <summary>
 /// 画廊视图：把视口宽度交给排版，把列表容器接到缩略图引用计数，并在重排前后按锚点保持滚动位置；
-/// 指针停在卡片预览区时经 <see cref="GalleryHoverPlayback"/> 悬浮播放。
+/// 指针停在卡片预览区时经 <see cref="GalleryHoverPlayback"/> 悬浮播放；拖入文件夹即打开为相册。
 /// </summary>
 public partial class LibraryView : UserControl
 {
@@ -33,7 +34,12 @@ public partial class LibraryView : UserControl
         // 画廊自身接收焦点，Ctrl+A / Esc / 空格才能在点击卡片后生效
         Focusable = true;
         AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
-        GalleryListBox.AddHandler(PointerPressedEvent, (_, _) => Focus(NavigationMethod.Pointer), RoutingStrategies.Bubble, handledEventsToo: true);
+        GalleryListBox.AddHandler(PointerPressedEvent, OnGalleryPointerPressed, RoutingStrategies.Bubble, handledEventsToo: true);
+        DragDrop.SetAllowDrop(this, true);
+        AddHandler(DragDrop.DragEnterEvent, OnDragOver);
+        AddHandler(DragDrop.DragOverEvent, OnDragOver);
+        AddHandler(DragDrop.DragLeaveEvent, OnDragLeave);
+        AddHandler(DragDrop.DropEvent, OnDrop);
         Loaded += (_, _) => Attach();
         Unloaded += (_, _) => Detach();
     }
@@ -182,7 +188,7 @@ public partial class LibraryView : UserControl
                 _hover?.Stop();
             }
 
-            _vm?.OnViewportScrolled(scroll.Offset.Y, scroll.Viewport.Height);
+            _vm?.OnViewportScrolled();
         }
     }
 
@@ -247,6 +253,17 @@ public partial class LibraryView : UserControl
         }
     }
 
+    /// <summary>
+    /// 点在卡片上时画廊取得焦点；按钮（人工裁决、组标题）自己保留焦点：按钮失去焦点即取消按下，抬起时不会触发点击。
+    /// </summary>
+    private void OnGalleryPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if ((e.Source as Visual)?.FindAncestorOfType<Button>(includeSelf: true) is null)
+        {
+            Focus(NavigationMethod.Pointer);
+        }
+    }
+
     private void OnGalleryPointerMoved(object? sender, PointerEventArgs e)
     {
         if (_hover is null || !IsShown)
@@ -303,25 +320,58 @@ public partial class LibraryView : UserControl
             return;
         }
 
-        var command = e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta);
-        switch (e.Key)
+        // 焦点在工具栏或卡片内的按钮上时，空格与 Ctrl+A 留给该控件
+        var galleryTarget = IsGalleryKeyTarget(e.Source);
+        if (galleryTarget && AppShortcuts.SelectAll.Matches(e))
         {
-            // 焦点在工具栏或卡片内的按钮上时，空格与 Ctrl+A 留给该控件
-            case Key.A or Key.Space when !IsGalleryKeyTarget(e.Source):
-                break;
-            case Key.A when command:
-                vm.SelectAllVisible(true);
-                e.Handled = true;
-                break;
-            case Key.Escape when vm.Selection.SelectedCount > 0:
-                vm.ClearSelection();
-                e.Handled = true;
-                break;
-            case Key.Space when e.KeyModifiers == KeyModifiers.None && vm.PreviewTarget is { } card:
-                vm.OpenQuickLookCommand.Execute(card);
-                e.Handled = true;
-                break;
+            vm.SelectAllVisible(true);
+            e.Handled = true;
         }
+        else if (AppShortcuts.ClearSelection.Matches(e) && vm.Selection.SelectedCount > 0)
+        {
+            vm.ClearSelection();
+            e.Handled = true;
+        }
+        else if (galleryTarget && AppShortcuts.Preview.Matches(e) && vm.PreviewTarget is { } card)
+        {
+            vm.OpenQuickLookCommand.Execute(card);
+            e.Handled = true;
+        }
+    }
+
+    private void OnDragOver(object? sender, DragEventArgs e)
+    {
+        var folder = _vm is { HasActiveDialog: false, CanOpenAlbum: true } && IsShown ? AlbumDrop.Resolve(e.DataTransfer) : null;
+        e.DragEffects = folder is null ? DragDropEffects.None : AcceptedEffect(e.DragEffects);
+        ShowDropOverlay(e.DragEffects == DragDropEffects.None ? null : folder);
+        e.Handled = true;
+    }
+
+    private void OnDragLeave(object? sender, DragEventArgs e) => ShowDropOverlay(null);
+
+    private void OnDrop(object? sender, DragEventArgs e)
+    {
+        ShowDropOverlay(null);
+        var folder = _vm is { HasActiveDialog: false } && IsShown ? AlbumDrop.Resolve(e.DataTransfer) : null;
+        if (folder is null || _vm is not { CanOpenAlbum: true } vm)
+        {
+            e.DragEffects = DragDropEffects.None;
+            return;
+        }
+
+        e.DragEffects = AcceptedEffect(e.DragEffects);
+        e.Handled = true;
+        vm.OpenDroppedAlbum(folder);
+    }
+
+    /// <summary>只是打开目录，不复制也不移动文件；来源不允许链接时退而用复制，告知来源不要删除原件。</summary>
+    private static DragDropEffects AcceptedEffect(DragDropEffects allowed) =>
+        allowed.HasFlag(DragDropEffects.Link) ? DragDropEffects.Link : allowed & DragDropEffects.Copy;
+
+    private void ShowDropOverlay(string? folder)
+    {
+        DropOverlay.IsVisible = folder is not null;
+        DropOverlayPath.Text = folder;
     }
 
     private bool IsGalleryKeyTarget(object? source) =>

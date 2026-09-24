@@ -1,0 +1,88 @@
+name: Tools Manifest
+
+# 每周下载 tools.json 中的每个依赖包，用 Core 的 ToolInstaller（ToolManifestPackageTests）
+# 校验 SHA256 / npm integrity、根目录、入口与文件筛选。任一源失效或哈希变化即失败。
+# 下载体积约 250 MB 且依赖第三方站点，不放进每次提交的 CI。
+on:
+  schedule:
+    - cron: '23 2 * * 1'   # 每周一 02:23 UTC（北京时间 10:23）
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - src/LivePhotoConvert.Core/External/Tools/**
+      - tests/LivePhotoConvert.Core.Tests/External/ToolManifestPackageTests.cs
+      - .github/scripts/download-tool-packages.ps1
+      - .github/workflows/tools-manifest.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tools-manifest-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  NUGET_XMLDOC_MODE: skip
+
+jobs:
+  verify:
+    name: 下载并校验依赖包（${{ matrix.os }}）
+    # Windows 走系统 tar.exe / 托管解压的真实目标平台路径；Linux 未装 bsdtar，覆盖 SharpCompress 托管解压
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, windows-latest ]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: 配置 .NET（版本取自 global.json）
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: 缓存 NuGet 包
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props', 'global.json') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: 下载清单中的全部依赖包
+        shell: pwsh
+        run: ./.github/scripts/download-tool-packages.ps1 -OutDirectory "$env:RUNNER_TEMP/tool-packages"
+
+      # 即使有包下载失败也继续，把其余包校验完；缺失的包在测试中表现为跳过，由下一步判为失败
+      - name: 用 ToolInstaller 校验哈希与包结构
+        if: ${{ !cancelled() }}
+        env:
+          LPC_TOOL_PACKAGE_DIR: ${{ runner.temp }}/tool-packages
+        run: >-
+          dotnet test tests/LivePhotoConvert.Core.Tests/LivePhotoConvert.Core.Tests.csproj -c Release
+          --filter "FullyQualifiedName~ToolManifestPackageTests"
+          --logger trx --results-directory TestResults
+
+      # 清单中每个包都必须实际校验，不允许跳过
+      - name: 汇总校验结果
+        if: ${{ !cancelled() }}
+        shell: pwsh
+        run: >-
+          ./.github/scripts/test-summary.ps1 -ResultsDirectory TestResults -Title "依赖包校验（${{ matrix.os }}）"
+          -MaxSkipped 0 -ExpectedProjects LivePhotoConvert.Core.Tests
+          -SkipHint '有依赖包未下载成功，见"下载清单中的全部依赖包"步骤。'
+
+      - name: 上传测试结果（trx）
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: tools-manifest-${{ matrix.os }}
+          path: TestResults/**/*.trx
+          if-no-files-found: warn

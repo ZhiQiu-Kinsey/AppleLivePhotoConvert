@@ -11,6 +11,7 @@
   <sys:String x:Key="ShellToolReady">Ready</sys:String>
   <sys:String x:Key="ShellToolAttention">Available, but needs attention. See Engines.</sys:String>
   <sys:String x:Key="ShellToolMissing">Not found; related features are unavailable</sys:String>
+  <sys:String x:Key="ShellToolProbing">Checking</sys:String>
 
   <!-- Funnel & Direction -->
   <sys:String x:Key="SelectedSummaryFormat">{0} Live Photos · {1}</sys:String>
@@ -52,6 +53,8 @@
   <sys:String x:Key="SourceActionSubfolderShort">Move to backup</sys:String>
   <sys:String x:Key="SourceActionRecycleShort">Move to Recycle Bin</sys:String>
   <sys:String x:Key="SourceActionDeleteShort">Delete permanently</sys:String>
+  <sys:String x:Key="ArchiveFolderMerged">Merged</sys:String>
+  <sys:String x:Key="ArchiveFolderSplit">Split</sys:String>
   <sys:String x:Key="DeleteWarningTitle">Physical Deletion Alert</sys:String>
   <sys:String x:Key="DeleteWarningDesc">Source files are permanently deleted after conversion; you must type a confirmation word to start.</sys:String>
   <sys:String x:Key="AutoAppendIndexTitle">Append a number on name clashes</sys:String>
@@ -93,29 +96,29 @@
   <sys:String x:Key="TestPingBtn">Test Connectivity</sys:String>
 
   <!-- Dialogs -->
-  <sys:String x:Key="DeleteDialogTitle">Alert: Permanent Source Deletion!</sys:String>
-  <sys:String x:Key="DeleteDialogDesc">This action is irreversible! Files will be permanently deleted.</sys:String>
+  <sys:String x:Key="DeleteDialogTitle">Originals Will Be Permanently Deleted</sys:String>
+  <sys:String x:Key="DeleteDialogDesc">This cannot be undone. The original photos will be permanently deleted from disk.</sys:String>
   <sys:String x:Key="DeleteDialogInputLabel">Type uppercase DELETE to unlock:</sys:String>
   <sys:String x:Key="DeleteDialogCancel">Cancel and keep originals</sys:String>
   <sys:String x:Key="DeleteDialogConfirm">Confirm Permanent Deletion</sys:String>
 
-  <sys:String x:Key="LowDiskDialogTitle">Low Disk Space Alert (ENOSPC)</sys:String>
+  <sys:String x:Key="LowDiskDialogTitle">Low Disk Space</sys:String>
   <sys:String x:Key="LowDiskDialogDesc">Target drive has insufficient space for safe conversion</sys:String>
   <sys:String x:Key="LowDiskDialogDismiss">Go Back</sys:String>
 
-  <sys:String x:Key="BackupDialogTitle">High-Risk Confirmation: In-Place Overwrite</sys:String>
-  <sys:String x:Key="BackupDialogDesc">Enabling this will permanently strip embedded video streams!</sys:String>
+  <sys:String x:Key="BackupDialogTitle">Confirm In-Place Overwrite</sys:String>
+  <sys:String x:Key="BackupDialogDesc">When enabled, slimming replaces the original photos in the album.</sys:String>
   <sys:String x:Key="BackupDialogCancel">Cancel, Use Safe Export</sys:String>
   <sys:String x:Key="BackupDialogConfirm">I Understand the Risk, Enable Overwrite</sys:String>
 
-  <sys:String x:Key="ArbitrateDialogTitle">Dual-Frame Verification (Time Gap Exceeded)</sys:String>
-  <sys:String x:Key="ArbitrateDialogDesc">Compare photo and video first frame to verify shutter moment</sys:String>
-  <sys:String x:Key="ArbitrateReject">Not Live Pair (Split Separately)</sys:String>
-  <sys:String x:Key="ArbitrateConfirm">Confirm Live Pair (Add to Whitelist)</sys:String>
+  <sys:String x:Key="ArbitrateDialogTitle">Confirm Live Photo Pair (Time Gap Exceeded)</sys:String>
+  <sys:String x:Key="ArbitrateDialogDesc">The photo and video were captured far apart. Confirm whether they belong to the same Live Photo.</sys:String>
+  <sys:String x:Key="ArbitrateReject">Not the Same Live Photo</sys:String>
+  <sys:String x:Key="ArbitrateConfirm">Confirm Same Live Photo</sys:String>
 
   <sys:String x:Key="SettingsPageTitle">Global Preferences</sys:String>
   <sys:String x:Key="ThemeTitle">Appearance Theme</sys:String>
-  <sys:String x:Key="LangTitle">System Language</sys:String>
+  <sys:String x:Key="LangTitle">Interface Language</sys:String>
   <sys:String x:Key="ConcurrencyTitle">Concurrent Task Count</sys:String>
 
   <!-- CompactToolbar Keys -->
@@ -141,6 +144,10 @@
   <sys:String x:Key="ToolsInstallRootLabel">Install location:</sys:String>
   <sys:String x:Key="ToolProbing">Detecting</sys:String>
   <sys:String x:Key="ToolVersionUnknown">Unknown version</sys:String>
+  <sys:String x:Key="ToolProbeTimeout">Version check timed out; the program may hang or be blocked by security software</sys:String>
+  <sys:String x:Key="ToolProbeCannotStart">Cannot run the program: the file may be damaged, incompatible or blocked by security software</sys:String>
+  <sys:String x:Key="ToolProbeFailed">Failed to read the version; see the error log</sys:String>
+  <sys:String x:Key="ToolInstallUnexpected">an unexpected error occurred; see the error log</sys:String>
   <sys:String x:Key="ToolUpdateAvailableFormat">Recommended version {0} is available</sys:String>
   <sys:String x:Key="ToolUpgradeBtnFormat">Upgrade to {0}</sys:String>
   <sys:String x:Key="ToolHdrUnavailable">HDR preview/transcoding unavailable: this FFmpeg lacks HDR tone mapping or 10-bit HEVC encoding.</sys:String>
@@ -175,40 +182,40 @@
   <sys:String x:Key="PingTimedOut">timed out</sys:String>
 
   <!-- CurtainCompare Keys -->
-  <sys:String x:Key="CurtainAfterBadge">Optimized</sys:String>
+  <sys:String x:Key="CurtainAfterBadge">Slimmed</sys:String>
   <sys:String x:Key="CurtainBeforeBadge">Original</sys:String>
 
   <!-- PhotoCard Keys -->
   <sys:String x:Key="CardLiveBadge">Live</sys:String>
   <sys:String x:Key="CardTimeMismatch">Timestamp Mismatch</sys:String>
-  <sys:String x:Key="CardArbitrateBtn">Manual Arbitration</sys:String>
+  <sys:String x:Key="CardArbitrateBtn">Confirm Pair Manually</sys:String>
 
   <!-- QuickLook Keys -->
   <sys:String x:Key="QuickLookLiveBadge">Live Photo</sys:String>
-  <sys:String x:Key="QuickLookDevice">Device</sys:String>
+  <sys:String x:Key="QuickLookFormat">Format</sys:String>
   <sys:String x:Key="QuickLookResolution">Resolution</sys:String>
   <sys:String x:Key="QuickLookPairing">Pairing</sys:String>
   <sys:String x:Key="QuickLookSize">Size</sys:String>
   <sys:String x:Key="QuickLookPause">Pause</sys:String>
-  <sys:String x:Key="QuickLookShortcuts">Press Space to play/pause · ← / → to navigate · Esc to close</sys:String>
-  <sys:String x:Key="QuickLookPrevTip">Previous (←)</sys:String>
-  <sys:String x:Key="QuickLookNextTip">Next (→)</sys:String>
+  <sys:String x:Key="QuickLookShortcutsFormat">Press {0} to play/pause · {1} / {2} to navigate · {3} to close</sys:String>
+  <sys:String x:Key="QuickLookPrevTip">Previous</sys:String>
+  <sys:String x:Key="QuickLookNextTip">Next</sys:String>
 
   <!-- Dialog Secondary Keys -->
-  <sys:String x:Key="DeleteAffectedFormat">Affected source files: {0} pairs ({1})</sys:String>
+  <sys:String x:Key="DeleteAffectedFormat">Affected originals: {0} items ({1})</sys:String>
   <sys:String x:Key="DeleteIrreversibleDesc">Deleted files cannot be recovered from the Recycle Bin or Trash.</sys:String>
   <sys:String x:Key="DeleteInputPlaceholder">Type DELETE</sys:String>
-  <sys:String x:Key="LowDiskRequiredLabel">Estimated space required (1.2x safety margin + 500MB):</sys:String>
+  <sys:String x:Key="LowDiskRequiredLabel">Estimated space required (1.2x the sources + 500 MB margin):</sys:String>
   <sys:String x:Key="LowDiskAvailableLabel">Available free space on target drive:</sys:String>
   <sys:String x:Key="LowDiskSolutionDesc">Please free up disk space or choose another output drive.</sys:String>
   <sys:String x:Key="BackupRiskTitle">Operational Impact &amp; Irreversible Risks:</sys:String>
-  <sys:String x:Key="BackupRiskPoint1">1. Motion Photo video streams will be permanently removed, keeping only static covers;</sys:String>
-  <sys:String x:Key="BackupRiskPoint2">2. Safety guarantee: .livephoto_backup will be staged atomically before deletion.</sys:String>
-  <sys:String x:Key="ArbitratePhotoTitle">Static Photo (HEIC)</sys:String>
-  <sys:String x:Key="ArbitratePhotoDesc">High-res static original</sys:String>
-  <sys:String x:Key="ArbitrateVideoTitle">Video First Frame (MOV)</sys:String>
-  <sys:String x:Key="ArbitrateVideoDesc">Live video frame at 0ms</sys:String>
-  <sys:String x:Key="ArbitrateConclusionLabel" xml:space="preserve">Time Offset Conclusion: </sys:String>
+  <sys:String x:Key="BackupRiskPoint1">1. Embedded videos are permanently removed and paired Live Photo videos go to the Recycle Bin; only the still photos are kept;</sys:String>
+  <sys:String x:Key="BackupRiskPoint2">2. Originals are replaced only after the new file is verified; if replacing fails, the original is kept.</sys:String>
+  <sys:String x:Key="ArbitratePhotoTitle">Photo</sys:String>
+  <sys:String x:Key="ArbitratePhotoDesc">Photo file</sys:String>
+  <sys:String x:Key="ArbitrateVideoTitle">Live Video</sys:String>
+  <sys:String x:Key="ArbitrateVideoDesc">Video file</sys:String>
+  <sys:String x:Key="ArbitrateConclusionLabel">Time gap:</sys:String>
 
   <!-- Settings Dialog Options -->
   <sys:String x:Key="ThemeLightOption">Light Mode</sys:String>
@@ -219,11 +226,11 @@
 
   <!-- Settings Dialog Redesign -->
   <sys:String x:Key="CancelBtn">Cancel</sys:String>
-  <sys:String x:Key="SettingsConcurrencyDesc">Number of live photo pairs processed in parallel (1~16). Higher values are faster but consume more memory and disk IO.</sys:String>
+  <sys:String x:Key="SettingsConcurrencyDesc">Number of Live Photo pairs processed in parallel (1~8). Higher values are faster but consume more memory and disk IO.</sys:String>
   <sys:String x:Key="SettingsPageDesc">Global preferences such as theme, language and conversion performance. Changes apply immediately and are saved automatically.</sys:String>
   <sys:String x:Key="SettingsSavedHint">Saved automatically</sys:String>
   <sys:String x:Key="NotifyOnCompleteTitle">Completion Notification</sys:String>
-  <sys:String x:Key="NotifyOnCompleteDesc">Play a sound when a batch conversion or strip finishes.</sys:String>
+  <sys:String x:Key="NotifyOnCompleteDesc">Play a sound when a batch conversion or slim-down finishes.</sys:String>
   <sys:String x:Key="AutoOpenOutputTitle">Open Output Folder After Convert</sys:String>
   <sys:String x:Key="AutoOpenOutputDesc">Automatically open the output folder in File Explorer when a task completes.</sys:String>
   <sys:String x:Key="AutoCleanTempTitle">Auto-clean Temporary Files</sys:String>
@@ -273,7 +280,8 @@
   <sys:String x:Key="ReportAvgSpeedFormat">{0:F2}s / item</sys:String>
   <sys:String x:Key="SplitTargetApple">Apple Live Photo</sys:String>
   <sys:String x:Key="SplitTargetExtract">Cover &amp; Video</sys:String>
-  <sys:String x:Key="MergeSuccessDesc">Successfully merged into a Live Photo</sys:String>
+  <sys:String x:Key="MergeTargetMotionPhoto">Motion Photo</sys:String>
+  <sys:String x:Key="MergeSuccessDesc">Successfully merged into a motion photo</sys:String>
   <sys:String x:Key="SplitSuccessDescFormat">Successfully split into {0}</sys:String>
 
   <!-- QuickLook Extended Playback States -->
@@ -295,11 +303,14 @@
   <sys:String x:Key="ReportEmptyDesc">Reports of tasks started from the Library stay here until the app exits.</sys:String>
   <sys:String x:Key="ReportKpiTotal">Total Processed</sys:String>
   <sys:String x:Key="ReportKpiTotalSub">Items in this task</sys:String>
+  <sys:String x:Key="ReportKpiTotalCanceledSubFormat">Processed {0} · {1} left</sys:String>
   <sys:String x:Key="ReportKpiSuccess">Succeeded</sys:String>
   <sys:String x:Key="ReportKpiSuccessRate">Success Rate</sys:String>
   <sys:String x:Key="ReportKpiProblems">Issues</sys:String>
   <sys:String x:Key="ReportKpiProblemsSubFormat">Failed {0} · Cleanup {1}</sys:String>
   <sys:String x:Key="ReportKpiDuration">Total Batch Time</sys:String>
+  <sys:String x:Key="ReportDurationSecondsFormat">{0:F1}s</sys:String>
+  <sys:String x:Key="ReportDurationUnderOneSecond">&lt; 1s</sys:String>
   <sys:String x:Key="ReportDistTitle">Result Distribution</sys:String>
   <sys:String x:Key="ReportLegendSuccess">Success:</sys:String>
   <sys:String x:Key="ReportLegendSkipped">Skipped:</sys:String>
@@ -313,30 +324,30 @@
   <sys:String x:Key="ReportCsvSourceFormat">Source Format</sys:String>
   <sys:String x:Key="ReportCsvTargetFormat">Target Format</sys:String>
   <sys:String x:Key="ReportCsvDetail">Details</sys:String>
-  <sys:String x:Key="QuickLookCloseTip">Close (Esc)</sys:String>
 
   <!-- Empty States &amp; Format Strings -->
   <sys:String x:Key="EmptyStateNoDirTitle">Please select an album directory</sys:String>
   <sys:String x:Key="EmptyStateNoDirSubtitle">Choose a folder with Live Photos (HEIC/JPG + MOV) or Android motion photos, then pick an action on the right.</sys:String>
-  <sys:String x:Key="EmptyStateEmptyTitle">No live photos found in directory</sys:String>
-  <sys:String x:Key="EmptyStateEmptySubtitle">Please ensure the folder contains valid Live Photo pairs or Motion Photos</sys:String>
+  <sys:String x:Key="EmptyStateDropHint">Or drag a folder here</sys:String>
+  <sys:String x:Key="DropOverlayTitle">Drop to open this folder</sys:String>
+  <sys:String x:Key="EmptyStateEmptyTitle">No Live Photos found in this folder</sys:String>
+  <sys:String x:Key="EmptyStateEmptySubtitle">Please ensure the folder contains valid Live Photo pairs or motion photos</sys:String>
   <sys:String x:Key="FunnelTotalFormat">{0:N0} files scanned</sys:String>
-  <sys:String x:Key="FunnelReadyFormat">Ready: {0:N0}</sys:String>
-  <sys:String x:Key="FunnelSuspiciousFormat">Suspicious: {0:N0}</sys:String>
+  <sys:String x:Key="FunnelReadyFormat">{0:N0} ready</sys:String>
+  <sys:String x:Key="FunnelSuspiciousFormat">{0:N0} need a decision</sys:String>
   <sys:String x:Key="FunnelItemsFormat">{0:N0} items</sys:String>
   <sys:String x:Key="FunnelIgnoredFormat">{0:N0} ignored</sys:String>
   <sys:String x:Key="FunnelTooltipFormat">Scanned {0:N0} files into {1:N0} library items (a Live Photo pair counts as one item). {2:N0} non-media, hidden or system files and conversion staging or backup files were ignored.</sys:String>
   <sys:String x:Key="PrimaryBtnMergeFormat">Merge {0} into Android motion photos</sys:String>
   <sys:String x:Key="PrimaryBtnAppleFormat">Restore {0} as Apple Live Photos</sys:String>
   <sys:String x:Key="PrimaryBtnExtractFormat">Extract {0} motion photos</sys:String>
-  <sys:String x:Key="FilterBannerSuspiciousFormat">Pending Arbitration Only ({0})</sys:String>
+  <sys:String x:Key="FilterBannerSuspiciousFormat">Needs Decision Only ({0})</sys:String>
   <sys:String x:Key="FilterBannerSelected">Selected Only</sys:String>
   <sys:String x:Key="SelectedBadgeFormat">{0} selected</sys:String>
   <sys:String x:Key="StripSavedPctFormat">Saved: {0:F1}%</sys:String>
-  <sys:String x:Key="ArbitrateTimeDiffFormat">Capture time offset {0:F2}s (safety threshold 3.0s)</sys:String>
-  <sys:String x:Key="ArbitrateVerdictFormat">Measured offset {0:F2}s. Verify both frames, device and location belong to the same shutter moment.</sys:String>
+  <sys:String x:Key="ArbitrateVerdictFormat">The capture times differ by {0:F2}s. Pair them only if they come from the same shot; otherwise keep them separate.</sys:String>
   <sys:String x:Key="NoMergePairs">No real convertible Live Photo pairs found</sys:String>
-  <sys:String x:Key="NoSplitCandidates">No real Motion Photos found to split</sys:String>
+  <sys:String x:Key="NoSplitCandidates">No motion photos found to split</sys:String>
 
   <!-- Runtime Status Strings -->
   <sys:String x:Key="AlbumSummaryNoDir">No directory selected</sys:String>
@@ -351,6 +362,10 @@
   <sys:String x:Key="CurtainPositionFormat">Position: {0:F0}% / {1:F0}%</sys:String>
   <sys:String x:Key="PingTesting">Testing...</sys:String>
   <sys:String x:Key="PingFailedFormat">Connection failed ({0})</sys:String>
+  <sys:String x:Key="PingResultFormat">{0} ms (HTTP {1})</sys:String>
+  <sys:String x:Key="PingDnsFailed">DNS lookup failed</sys:String>
+  <sys:String x:Key="PingTlsFailed">TLS handshake failed</sys:String>
+  <sys:String x:Key="PingUnreachable">cannot connect</sys:String>
   <sys:String x:Key="ToolNotDetectedFormat">{0} not detected</sys:String>
   <sys:String x:Key="ToolMissingFormat">{0} was not found. Download it or set its path on the Engines page.</sys:String>
   <sys:String x:Key="ReportTimestampFormat">Batch completed: {0:yyyy-MM-dd HH:mm:ss}</sys:String>
@@ -382,7 +397,7 @@
   <sys:String x:Key="TaskTitleToAndroid">Apple Live Photo to Android Motion Photo</sys:String>
   <sys:String x:Key="TaskTitleToApple">Android Motion Photo to Apple Live Photo</sys:String>
   <sys:String x:Key="TaskTitleExtract">Extract Cover and Video</sys:String>
-  <sys:String x:Key="TaskTitleStrip">Space Saver</sys:String>
+  <sys:String x:Key="TaskTitleStrip">Slim Down</sys:String>
   <sys:String x:Key="TaskRunningBadge">Running</sys:String>
   <sys:String x:Key="TaskPausedBadge">Paused</sys:String>
   <sys:String x:Key="TaskCancellingBadge">Cancelling…</sys:String>
@@ -415,6 +430,8 @@
   <!-- 图库工作台与检查器 -->
   <sys:String x:Key="NavLibrary">Library</sys:String>
   <sys:String x:Key="InspectorTitle">Action &amp; options</sys:String>
+  <sys:String x:Key="InspectorCollapseTip">Collapse panel</sys:String>
+  <sys:String x:Key="InspectorExpandTip">Expand panel</sys:String>
   <sys:String x:Key="ActionToAndroid">To Android</sys:String>
   <sys:String x:Key="ActionToApple">To Apple</sys:String>
   <sys:String x:Key="ActionExtract">Extract</sys:String>
@@ -426,7 +443,7 @@
   <sys:String x:Key="ApplicableFormat">{0} applicable · {1}</sys:String>
   <sys:String x:Key="ApplicableScopeSelectedFormat">Counted from {0} selected items</sys:String>
   <sys:String x:Key="ApplicableScopeAll">Nothing selected, counting all ready photos</sys:String>
-  <sys:String x:Key="InspectorOutputTitle">Output</sys:String>
+  <sys:String x:Key="InspectorOutputTitle">Output location</sys:String>
   <sys:String x:Key="KeepSubfoldersDesc">Recreate the album subfolders in the output to avoid name clashes.</sys:String>
   <sys:String x:Key="StripConvertHeicTitle">Also convert to HEIC</sys:String>
   <sys:String x:Key="StripConvertHeicDesc">Saves more space; photos with an HDR gain map keep their format.</sys:String>
@@ -438,8 +455,8 @@
   <sys:String x:Key="PrimaryBtnStripFormat">Slim down {0} items</sys:String>
   <sys:String x:Key="PrimaryBtnNone">No photos for this action</sys:String>
   <sys:String x:Key="MissingToolsTitle">Required tools are missing</sys:String>
-  <sys:String x:Key="MissingToolsFormat">This action needs {0}, which was not found. Install it or set its path on the Tools page first.</sys:String>
-  <sys:String x:Key="MissingToolsGoBtn">Open Tools</sys:String>
+  <sys:String x:Key="MissingToolsFormat">This action needs {0}, which was not found. Install it or set its path on the Engines page first.</sys:String>
+  <sys:String x:Key="MissingToolsGoBtn">Open Engines</sys:String>
   <sys:String x:Key="ToolNameHeicEncoder">HEIC encoder (heif-enc)</sys:String>
   <sys:String x:Key="LibraryScanning">Scanning…</sys:String>
   <sys:String x:Key="CardMotionPhotoLabel">Motion Photo</sys:String>
@@ -449,7 +466,7 @@
   <sys:String x:Key="ScanErrorAccessDeniedFormat">No permission to read the folder: {0}</sys:String>
   <sys:String x:Key="ScanErrorFailedFormat">Scan failed: {0}</sys:String>
   <sys:String x:Key="ScanSkippedInaccessibleFormat">Skipped {0} subfolder(s) without read permission</sys:String>
-  <sys:String x:Key="DialogCloseTip">Close (Esc)</sys:String>
+  <sys:String x:Key="DialogCloseTip">Close</sys:String>
   <sys:String x:Key="CompareLoading">Decoding the comparison…</sys:String>
   <sys:String x:Key="CompareBeforeSizeLabel">Original (with paired video)</sys:String>
   <sys:String x:Key="CompareAfterSizeLabel">Slimmed (actual output)</sys:String>
@@ -480,7 +497,6 @@
   <sys:String x:Key="ClearThumbnailCacheBtn">Clear cache</sys:String>
 
   <!-- Task report: outcome reasons and notes (Core reason codes) -->
-  <sys:String x:Key="ReportKpiTotalCanceledSub">Processed / planned</sys:String>
   <sys:String x:Key="ReportDetailToggle">Details</sys:String>
   <sys:String x:Key="ReportCsvTechnicalDetail">Technical details</sys:String>
   <sys:String x:Key="ReportCleanupFailedDesc">Output saved, but the source file could not be handled as selected</sys:String>
@@ -500,7 +516,9 @@
   <sys:String x:Key="OutcomeReasonPairNameOnly">No metadata to verify; matched by file name</sys:String>
   <sys:String x:Key="OutcomeReasonPairManual">Pair confirmed manually</sys:String>
   <sys:String x:Key="OutcomeReasonSourceMissingFormat">Source file is missing or empty: {0}</sys:String>
+  <sys:String x:Key="OutcomeReasonSourceUnreadableFormat">Cannot read the source file (it may be damaged or access is denied): {0}</sys:String>
   <sys:String x:Key="OutcomeReasonVideoConversionFailed">Video conversion failed</sys:String>
+  <sys:String x:Key="OutcomeReasonImageConversionFailed">Image conversion failed (the source may be damaged or in an unsupported format)</sys:String>
   <sys:String x:Key="OutcomeReasonHdrEncoderUnavailable">The source video is HDR, but FFmpeg lacks the 10-bit HEVC encoder (libx265); not converted to avoid quality loss</sys:String>
   <sys:String x:Key="OutcomeReasonVerificationFailed">Output verification failed; nothing was written</sys:String>
   <sys:String x:Key="OutcomeReasonUnexpected">Processing failed; expand details for the cause</sys:String>
@@ -511,5 +529,50 @@
   <sys:String x:Key="OutcomeNoteHdrMetadataMissing">HDR metadata insufficient · SDR</sys:String>
   <sys:String x:Key="OutcomeNoteHdrConversionFailed">HDR conversion failed · SDR</sys:String>
   <sys:String x:Key="OutcomeNoteKeptOriginalFormat">Kept original format (HEIC was larger)</sys:String>
+
+  <!-- 自动更新 -->
+  <sys:String x:Key="SettingsUpdatesTitle">Updates</sys:String>
+  <sys:String x:Key="UpdateCurrentVersionLabel">Current version</sys:String>
+  <sys:String x:Key="UpdateNewVersionLabel">New version</sys:String>
+  <sys:String x:Key="UpdateCheckBtn">Check for updates</sys:String>
+  <sys:String x:Key="UpdateShowBtn">View update</sys:String>
+  <sys:String x:Key="UpdateOpenDownloadPageBtn">Open download page</sys:String>
+  <sys:String x:Key="UpdateCancelPendingRestartBtn">Install on exit instead</sys:String>
+  <sys:String x:Key="UpdateAutoCheckTitle">Check for updates automatically</sys:String>
+  <sys:String x:Key="UpdateAutoCheckDesc">Checks in the background after launch, at most once a day, and tells you when a new version is out.</sys:String>
+  <sys:String x:Key="UpdateUnsupportedDesc">This copy (extracted archive or source build) can't update itself. Get the installer or the portable edition from the download page.</sys:String>
+  <sys:String x:Key="UpdateChecking">Checking for updates…</sys:String>
+  <sys:String x:Key="UpdateWaitingForTasks">The update is downloaded. The app will restart to install it when the running task finishes.</sys:String>
+  <sys:String x:Key="UpdateInstallOnExitScheduled">The update is downloaded and will be installed when you exit. The next launch runs the new version.</sys:String>
+  <sys:String x:Key="UpdateNeverChecked">Not checked yet</sys:String>
+  <sys:String x:Key="UpdateLastCheckFormat">Last checked {0:yyyy-MM-dd HH:mm}. {1}</sys:String>
+  <sys:String x:Key="UpdateResultUpToDate">You're up to date</sys:String>
+  <sys:String x:Key="UpdateResultAvailableFormat">Version {0} is available</sys:String>
+  <sys:String x:Key="UpdateResultFailedFormat">Check failed. {0}</sys:String>
+  <sys:String x:Key="UpdateAvailableTipFormat">Version {0} is available</sys:String>
+  <sys:String x:Key="UpdateFailureNetwork">Couldn't reach the update server. Check your connection, or pick another GitHub mirror on the Engines page.</sys:String>
+  <sys:String x:Key="UpdateFailureRateLimited">GitHub is rate limiting requests. Try again later.</sys:String>
+  <sys:String x:Key="UpdateFailureIntegrity">The downloaded update failed verification and was discarded.</sys:String>
+  <sys:String x:Key="UpdateFailureDisk">Not enough disk space, or the update couldn't be saved.</sys:String>
+  <sys:String x:Key="UpdateFailureNotFound">No update package was found in the release.</sys:String>
+  <sys:String x:Key="UpdateFailureUnknown">An unexpected error occurred. See the error log for details.</sys:String>
+  <sys:String x:Key="UpdateDialogTitleFormat">Version {0} is available</sys:String>
+  <sys:String x:Key="UpdateSizeFullFormat">Download size {0}</sys:String>
+  <sys:String x:Key="UpdateSizeDeltaFormat">Incremental update, {0} to download</sys:String>
+  <sys:String x:Key="UpdateNotesTitle">What's new</sys:String>
+  <sys:String x:Key="UpdateNoNotes">This release has no notes.</sys:String>
+  <sys:String x:Key="UpdateDownloadingFormat">Downloading… {0}%</sys:String>
+  <sys:String x:Key="UpdateReadyDesc">The update is downloaded and verified. Restart to finish installing; your settings are saved first.</sys:String>
+  <sys:String x:Key="UpdateReadyTasksRunningDesc">A task is still running. Update automatically when it finishes, or cancel it and update now.</sys:String>
+  <sys:String x:Key="UpdateSkipVersionBtn">Skip this version</sys:String>
+  <sys:String x:Key="UpdateLaterBtn">Remind me later</sys:String>
+  <sys:String x:Key="UpdateNowBtn">Update now</sys:String>
+  <sys:String x:Key="UpdateCancelDownloadBtn">Cancel download</sys:String>
+  <sys:String x:Key="UpdateInstallOnExitBtn">Install on next launch</sys:String>
+  <sys:String x:Key="UpdateRestartNowBtn">Restart and update</sys:String>
+  <sys:String x:Key="UpdateRestartAfterTasksBtn">Update when tasks finish</sys:String>
+  <sys:String x:Key="UpdateCancelTasksAndRestartBtn">Cancel tasks and update now</sys:String>
+  <sys:String x:Key="AboutUpdateAvailableBadge">Update available</sys:String>
+  <sys:String x:Key="CreditVelopackDesc">Installer, delta updates and auto-update framework</sys:String>
 
 </ResourceDictionary>

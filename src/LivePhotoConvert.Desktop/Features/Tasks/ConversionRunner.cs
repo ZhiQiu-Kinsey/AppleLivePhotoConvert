@@ -70,6 +70,7 @@ public sealed class ConversionRunner(IConversionEngines engines) : IConversionRu
                         Output = RequireOutput(job),
                         Naming = options.Naming,
                         SourceAction = options.SourceAction,
+                        ArchiveFolderName = options.ArchiveFolderName,
                         Parallelism = job.Parallelism,
                         PreserveHdr = options.PreserveHdr
                     },
@@ -88,6 +89,7 @@ public sealed class ConversionRunner(IConversionEngines engines) : IConversionRu
                         Output = RequireOutput(job),
                         Target = apple ? SplitTarget.Apple : SplitTarget.Extract,
                         SourceAction = options.SourceAction,
+                        ArchiveFolderName = options.ArchiveFolderName,
                         HeicQuality = options.HeicQuality,
                         Parallelism = job.Parallelism
                     },

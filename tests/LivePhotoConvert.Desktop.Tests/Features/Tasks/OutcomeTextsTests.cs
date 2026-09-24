@@ -1,6 +1,8 @@
 using LivePhotoConvert.Core.Abstractions;
 using LivePhotoConvert.Core.External;
+using LivePhotoConvert.Core.Pairing;
 using LivePhotoConvert.Core.Pipeline;
+using LivePhotoConvert.Core.Services;
 using LivePhotoConvert.Desktop.Features.Library;
 using LivePhotoConvert.Desktop.Features.Tasks;
 using LivePhotoConvert.Desktop.Infrastructure;
@@ -106,6 +108,26 @@ public class OutcomeTextsTests
         Assert.Equal("Succeeded 1 · Issues 1 · Skipped 1", vm.SummaryText);
         Assert.Equal("Failed 1 · Cleanup 0", vm.ProblemSubText);
         Assert.All(vm.FilteredItems.Select(i => i.Detail), text => Assert.False(UiTexts.ContainsChinese(text), text));
+    }
+
+    [Fact]
+    public async Task LanguageSwitch_RefreshesMergeTargetAndDuration()
+    {
+        using var _ = new CultureScope();
+        var pair = new MediaPair("/in/a.heic", "/in/a.mov");
+        using var fixture = new TaskCenterFixture(ScriptedRunner.Returning(Jobs.Report(ItemOutcome.Succeeded(pair.PhotoPath, "/out/a.jpg"))));
+        var localizer = fixture.Host.Localizer;
+        localizer.SetLanguage("zh-CN");
+        var job = new ConversionJob(ConversionAction.ToAndroid, new ConversionOptions { Output = new OutputOptions("/out") }, new ConversionInputs { Pairs = [pair] });
+        var vm = await fixture.Center.RunAsync(job).Within();
+
+        Assert.Equal("动态照片", Assert.Single(vm.Items).TargetFormat);
+        Assert.Equal("4.0 秒", vm.DurationText);
+
+        localizer.SetLanguage("en-US");
+
+        Assert.Equal("Motion Photo", Assert.Single(vm.Items).TargetFormat);
+        Assert.Equal("4.0s", vm.DurationText);
     }
 
     [Fact]

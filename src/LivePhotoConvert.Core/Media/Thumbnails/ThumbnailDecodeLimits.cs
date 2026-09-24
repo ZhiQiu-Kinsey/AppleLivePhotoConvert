@@ -24,15 +24,6 @@ public sealed class ThumbnailDecodeLimits(int jpeg = 2, int heif = 1, int other 
 
     public static ThumbnailDecodeLimits Shared { get; } = new();
 
-    public int MaxJpeg { get; } = jpeg;
-
-    public int MaxHeif { get; } = heif;
-
-    public int MaxOther { get; } = other;
-
-    /// <summary>三类合计的最大同时解码数；宿主据此设置 Magick 线程数。</summary>
-    public int MaxTotal => MaxJpeg + MaxHeif + MaxOther;
-
     internal SemaphoreSlim For(ThumbnailDecodeKind kind) => kind switch
     {
         ThumbnailDecodeKind.Jpeg => _jpeg,

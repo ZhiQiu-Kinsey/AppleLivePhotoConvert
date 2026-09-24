@@ -222,7 +222,7 @@ public sealed partial class ToolsViewModel : ViewModelBase
             stopwatch.Stop();
 
             var status = (int)response.StatusCode;
-            PingLatencyText = $"{stopwatch.ElapsedMilliseconds}ms (HTTP {status})";
+            PingLatencyText = _localizer.Format("PingResultFormat", stopwatch.ElapsedMilliseconds, status);
             // 代理对 HEAD 根路径常回 4xx，只要不是服务端错误就说明节点可达
             IsPingHealthy = status < 500;
         }
@@ -232,9 +232,18 @@ public sealed partial class ToolsViewModel : ViewModelBase
         }
         catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or NotSupportedException)
         {
-            PingLatencyText = _localizer.Format("PingFailedFormat", ex.Message);
+            // 运行时的异常消息不随界面语言变化，按原因归类显示
+            PingLatencyText = _localizer.Format("PingFailedFormat", _localizer[PingFailureKey(ex)]);
         }
     }
+
+    private static string PingFailureKey(Exception ex) => ex switch
+    {
+        HttpRequestException { HttpRequestError: HttpRequestError.NameResolutionError } => "PingDnsFailed",
+        HttpRequestException { HttpRequestError: HttpRequestError.SecureConnectionError } => "PingTlsFailed",
+        HttpRequestException => "PingUnreachable",
+        _ => "PingInvalidAddress"
+    };
 
     [RelayCommand]
     private void CancelInstall() => _installCts?.Cancel();
@@ -289,7 +298,7 @@ public sealed partial class ToolsViewModel : ViewModelBase
         {
             // 命令边界：任何异常都只能变成提示，穿透到 AsyncRelayCommand 会成为界面线程未处理异常
             ErrorLogger.Log(ex, $"安装 {card.DisplayName}");
-            ShowMessage(() => _localizer.Format("InstallFailedFormat", card.DisplayName, ex.Message), isError: true);
+            ShowMessage(() => _localizer.Format("InstallFailedFormat", card.DisplayName, _localizer["ToolInstallUnexpected"]), isError: true);
         }
         finally
         {
@@ -309,7 +318,9 @@ public sealed partial class ToolsViewModel : ViewModelBase
     public async Task PickPathAsync(ToolId tool)
     {
         var card = Card(tool);
-        var file = await _filePicker.PickFileAsync(_localizer["PickerToolExecutableTitle"]);
+        // 从该工具当前指定的位置开始；未指定时取其它工具指定的位置（多半装在同一处）
+        var start = _paths.Get(tool) ?? Enum.GetValues<ToolId>().Select(_paths.Get).FirstOrDefault(p => p is not null);
+        var file = await _filePicker.PickFileAsync(_localizer["PickerToolExecutableTitle"], suggestedStartLocation: start);
         if (string.IsNullOrWhiteSpace(file))
         {
             return;
@@ -381,6 +392,12 @@ public sealed partial class ToolsViewModel : ViewModelBase
 
         if (_refreshGeneration[card.Tool] == generation)
         {
+            // 同一次探测结果会被多次取用，只在结果变化时记录原因
+            if (info.ProbeError is { } error && !ReferenceEquals(error, card.Info?.ProbeError))
+            {
+                ErrorLogger.Log(error.Cause, $"探测 {card.DisplayName}");
+            }
+
             card.Apply(info);
         }
     }

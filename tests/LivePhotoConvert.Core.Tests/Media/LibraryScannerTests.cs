@@ -314,7 +314,7 @@ public class LibraryScannerTests
         var expected = PairValidator.Validate(ExpectedPhotoMetadata(photo, @case), ExpectedVideoMetadata(video, @case));
         Assert.Equal(@case.Accepted, expected.IsAccepted);
         Assert.Equal(expected.IsAccepted, item.PairValidation?.IsAccepted);
-        Assert.Equal(expected.Reasons, item.PairValidation?.Reasons);
+        Assert.Equal(expected.Causes, item.PairValidation?.Causes);
         Assert.Equal(!expected.IsAccepted, item.RequiresPairReview);
     }
 
@@ -465,6 +465,7 @@ public class LibraryScannerTests
         metadata.Xmp[trailer] = MotionPhotoXmp.Apply(null, video.Length, 0);
 
         var scanned = await ScanAsync(temp.Root);
+        Assert.Equal(3, scanned.Items.Count);
         Assert.All(scanned.Items, item => Assert.Equal(LibraryItemKind.Still, item.Kind));
 
         var upgraded = await LibraryScanner.EnrichHeicAsync(scanned.Items, metadata, Token).ToListAsync(Token);

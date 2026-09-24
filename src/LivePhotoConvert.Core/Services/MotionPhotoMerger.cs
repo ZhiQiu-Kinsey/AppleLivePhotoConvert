@@ -37,6 +37,9 @@ public sealed record MergeRequest
 
     public SourceFileAction SourceAction { get; init; }
 
+    /// <summary><see cref="SourceFileAction.Move"/> 时源文件移入的子文件夹名，由调用方按界面语言提供。</summary>
+    public string? ArchiveFolderName { get; init; }
+
     public bool SkipValidation { get; init; }
 
     public int Parallelism { get; init; } = ConversionDefaults.Parallelism;
@@ -82,7 +85,7 @@ public sealed class MotionPhotoMerger(
 
         OutputCommitter.DeleteStaleStagingFiles(request.Output.Directory, ConversionDefaults.StaleStagingAge);
         var committer = new OutputCommitter(request.Output.Conflict, files);
-        var disposition = new SourceDisposition(request.SourceAction, SourceDisposition.MergedFolderName);
+        var disposition = new SourceDisposition(request.SourceAction, request.ArchiveFolderName);
         using var workspace = new TempWorkspace();
 
         return await BatchRunner.RunAsync(
@@ -152,9 +155,9 @@ public sealed class MotionPhotoMerger(
         TempWorkspace workspace,
         CancellationToken cancellationToken)
     {
-        if ((MissingOrEmpty(pair.PhotoPath) ?? MissingOrEmpty(pair.VideoPath)) is { } missing)
+        if (OutcomeCause.MissingOrEmptySource(pair.PhotoPath, pair.VideoPath) is { } missing)
         {
-            return ItemOutcome.Failed(pair.PhotoPath, new OutcomeCause(OutcomeReason.SourceMissingOrEmpty, Path.GetFileName(missing)));
+            return ItemOutcome.Failed(pair.PhotoPath, missing);
         }
 
         var videoTags = tags[pair.VideoPath];
@@ -388,11 +391,5 @@ public sealed class MotionPhotoMerger(
 
         var timestamp = FileTimestamp.Read(pair.PhotoPath);
         return (timestamp.CreationTimeUtc < timestamp.LastWriteTimeUtc ? timestamp.CreationTimeUtc : timestamp.LastWriteTimeUtc).ToLocalTime();
-    }
-
-    private static string? MissingOrEmpty(string path)
-    {
-        var info = new FileInfo(path);
-        return info.Exists && info.Length > 0 ? null : path;
     }
 }

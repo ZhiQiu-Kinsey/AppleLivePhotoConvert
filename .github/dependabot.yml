@@ -1,0 +1,45 @@
+version: 2
+
+updates:
+  - package-ecosystem: nuget
+    # 根目录的 LivePhotoConvert.slnx 汇总全部工程；同时列出工程目录，避免解析 .slnx 不完整时漏掉
+    directories:
+      - /
+      - /src/*
+      - /tests/*
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Asia/Shanghai
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: deps
+    # 依赖按先匹配的分组归类：Avalonia 全家（含 Headless 测试包）需同版本升级，放在最前
+    groups:
+      avalonia:
+        patterns:
+          - Avalonia
+          - Avalonia.*
+      test-frameworks:
+        patterns:
+          - xunit*
+          - Microsoft.NET.Test.Sdk
+          - coverlet.*
+          - Microsoft.Extensions.TimeProvider.Testing
+      microsoft:
+        patterns:
+          - Microsoft.*
+          - System.*
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Asia/Shanghai
+    commit-message:
+      prefix: ci
+    groups:
+      github-actions:
+        patterns:
+          - '*'

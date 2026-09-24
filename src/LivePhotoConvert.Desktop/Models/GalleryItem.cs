@@ -132,12 +132,12 @@ public sealed partial class PhotoCardItemViewModel : ObservableObject, IGalleryD
 
     public string ResolutionText => Item.Header is { Width: > 0, Height: > 0 } header ? $"{header.Width}×{header.Height}" : string.Empty;
 
-    public string PhotoSizeText => FormatBytes(Item.Embedded is { } embedded ? embedded.ImageEnd : Item.Photo.Length);
+    public string PhotoSizeText => ByteSizeConverter.Format(Item.Embedded is { } embedded ? embedded.ImageEnd : Item.Photo.Length);
 
     public string VideoSizeText => Item switch
     {
-        { Embedded: { } embedded, Kind: LibraryItemKind.MotionPhoto } => FormatBytes(embedded.Length),
-        { Video: { } video, Kind: LibraryItemKind.ApplePair } => FormatBytes(video.Length),
+        { Embedded: { } embedded, Kind: LibraryItemKind.MotionPhoto } => ByteSizeConverter.Format(embedded.Length),
+        { Video: { } video, Kind: LibraryItemKind.ApplePair } => ByteSizeConverter.Format(video.Length),
         _ => string.Empty
     };
 
@@ -167,7 +167,7 @@ public sealed partial class PhotoCardItemViewModel : ObservableObject, IGalleryD
     [NotifyPropertyChangedFor(nameof(IsCompact), nameof(IsTiny))]
     private double _displayWidth = 260;
 
-    /// <summary>卡片较窄：状态徽章只显示图标、隐藏设备信息，让文件名保持可读。</summary>
+    /// <summary>卡片较窄：实况徽章只显示图标，隐藏时长角标与设备信息。</summary>
     public bool IsCompact => DisplayWidth < GalleryMetrics.CompactCardWidth;
 
     /// <summary>卡片很窄：再隐藏分辨率。</summary>
@@ -199,7 +199,4 @@ public sealed partial class PhotoCardItemViewModel : ObservableObject, IGalleryD
     }
 
     private static string Extension(string path) => Path.GetExtension(path).TrimStart('.').ToUpperInvariant();
-
-    private static string FormatBytes(long bytes) =>
-        ByteSizeConverter.Instance.Convert(bytes, typeof(string), null, CultureInfo.InvariantCulture) as string ?? $"{bytes} B";
 }

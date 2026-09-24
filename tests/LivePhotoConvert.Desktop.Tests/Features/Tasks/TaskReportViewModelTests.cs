@@ -1,3 +1,4 @@
+using System.Collections.Specialized;
 using System.Text;
 using LivePhotoConvert.Core.Pairing;
 using LivePhotoConvert.Core.Pipeline;
@@ -59,6 +60,20 @@ public class TaskReportViewModelTests
         report.SetFilterCommand.Execute("0");
         Assert.True(report.IsAllFilterSelected);
         Assert.Equal(6, report.FilteredItems.Count);
+    }
+
+    [Fact]
+    public async Task SetFilter_ReplacesItemsWithSingleResetNotification()
+    {
+        using var fixture = new TaskCenterFixture(ScriptedRunner.Returning(MixedReport));
+        var report = await fixture.Center.RunAsync(SplitJob()).Within();
+        var changes = new List<NotifyCollectionChangedAction>();
+        report.FilteredItems.CollectionChanged += (_, e) => changes.Add(e.Action);
+
+        report.SetFilterCommand.Execute(TaskReportViewModel.FilterProblems);
+
+        Assert.Equal(4, report.FilteredItems.Count);
+        Assert.Equal([NotifyCollectionChangedAction.Reset], changes);
     }
 
     [Fact]
@@ -341,8 +356,10 @@ public class TaskReportViewModelTests
         Assert.True(report.WasCanceled);
         Assert.Equal(2, report.TotalCount);
         Assert.Equal(50, report.PlannedCount);
-        Assert.Equal("2 / 50", report.TotalText);
-        Assert.Equal(fixture.Host.Localizer["ReportKpiTotalCanceledSub"], report.TotalSubText);
+        // 主数字是计划总数，已处理与未处理分列在副标题
+        Assert.Equal("50", report.TotalText);
+        Assert.Equal(48, report.UnprocessedCount);
+        Assert.Equal(fixture.Host.Localizer.Format("ReportKpiTotalCanceledSubFormat", 2, 48), report.TotalSubText);
     }
 
     [Fact]
@@ -353,7 +370,8 @@ public class TaskReportViewModelTests
 
         var report = await fixture.Center.RunAsync(Jobs.Files(ConversionAction.Extract, "/out", "/in/a.jpg", "/in/b.jpg", "/in/c.jpg")).Within();
 
-        Assert.Equal("0 / 3", report.TotalText);
+        Assert.Equal("3", report.TotalText);
+        Assert.Equal(fixture.Host.Localizer.Format("ReportKpiTotalCanceledSubFormat", 0, 3), report.TotalSubText);
     }
 
     [Fact]

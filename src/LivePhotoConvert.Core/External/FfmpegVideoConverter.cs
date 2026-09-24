@@ -1,6 +1,6 @@
 using System.Collections.Frozen;
-using System.Text.RegularExpressions;
 using LivePhotoConvert.Core.Abstractions;
+using LivePhotoConvert.Core.External.Tools;
 using LivePhotoConvert.Core.Io;
 
 namespace LivePhotoConvert.Core.External;
@@ -9,9 +9,9 @@ namespace LivePhotoConvert.Core.External;
 /// 基于 FFmpeg 的视频容器转换：优先流复制，失败或需要烧录方向时再重新编码。
 /// HDR 源重新编码走 libx265 10-bit 并保留色彩元数据；HEVC 输出一律标记 hvc1。
 /// </summary>
-public sealed partial class FfmpegVideoConverter : IVideoConverter
+public sealed class FfmpegVideoConverter : IVideoConverter
 {
-    internal const string HevcEncoder = "libx265";
+    private const string HevcEncoder = "libx265";
     private const string HdrPixelFormat = "yuv420p10le";
     private const string SdrPixelFormat = "yuv420p";
 
@@ -29,7 +29,7 @@ public sealed partial class FfmpegVideoConverter : IVideoConverter
     public static string ExecutableName => OperatingSystem.IsWindows() ? "ffmpeg.exe" : "ffmpeg";
 
     /// <param name="executablePath">指定的 ffmpeg 路径；null 时按默认位置查找</param>
-    /// <param name="availableEncoders">已知可用的编码器名单；null 时在首次需要重新编码 HDR 源时运行 <c>ffmpeg -encoders</c> 探测</param>
+    /// <param name="availableEncoders">已知可用的编码器名单；null 时在首次需要重新编码 HDR 源时运行 <c>ffmpeg -encoders</c> 探测（只支持 8-bit 的 libx265 视为缺失）</param>
     /// <exception cref="FileNotFoundException">找不到 FFmpeg</exception>
     public static FfmpegVideoConverter Create(string? executablePath = null, IEnumerable<string>? availableEncoders = null) =>
         new(ToolLocator.Find(ExecutableName, executablePath, "ffmpeg", "FFmpeg", "bin")
@@ -227,27 +227,23 @@ public sealed partial class FfmpegVideoConverter : IVideoConverter
         try
         {
             var result = await ProcessRunner.RunAsync(executablePath, ["-nostdin", "-hide_banner", "-encoders"], CancellationToken.None, TimeSpan.FromSeconds(30));
-            return ParseEncoders(result.StandardOutput);
+            var encoders = ToolOutputParser.ParseEncoderNames(result.StandardOutput).ToHashSet(StringComparer.Ordinal);
+            // 8-bit 版 x265 也注册 libx265，却无法输出 10-bit；对 HDR 保真转码等同于不可用，按缺失处理才能报 HdrEncoderUnavailable
+            if (encoders.Contains(HevcEncoder))
+            {
+                var help = await ProcessRunner.RunAsync(executablePath, ["-nostdin", "-hide_banner", "-h", "encoder=" + HevcEncoder], CancellationToken.None, TimeSpan.FromSeconds(30));
+                if (!ToolOutputParser.ParsePixelFormats(help.StandardOutput).Contains(HdrPixelFormat))
+                {
+                    encoders.Remove(HevcEncoder);
+                }
+            }
+
+            return encoders.ToFrozenSet(StringComparer.Ordinal);
         }
         catch (Exception ex) when (ex is InvalidOperationException or TimeoutException or System.ComponentModel.Win32Exception)
         {
             return FrozenSet<string>.Empty;
         }
-    }
-
-    /// <summary>解析 <c>ffmpeg -encoders</c>：每行为 6 位能力标记 + 编码器名。</summary>
-    internal static FrozenSet<string> ParseEncoders(string standardOutput)
-    {
-        HashSet<string> names = new(StringComparer.Ordinal);
-        foreach (var line in standardOutput.ReplaceLineEndings("\n").Split('\n'))
-        {
-            if (EncoderLineRegex().Match(line) is { Success: true } match)
-            {
-                names.Add(match.Groups[1].Value);
-            }
-        }
-
-        return names.ToFrozenSet(StringComparer.Ordinal);
     }
 
     private static bool IsNonEmptyFile(string path) => new FileInfo(path) is { Exists: true, Length: > 0 };
@@ -265,9 +261,6 @@ public sealed partial class FfmpegVideoConverter : IVideoConverter
         StringComparer.Ordinal,
         "gbr", "bt709", "fcc", "bt470bg", "smpte170m", "smpte240m", "ycgco", "bt2020nc", "bt2020c", "smpte2085",
         "chroma-derived-nc", "chroma-derived-c", "ictcp");
-
-    [GeneratedRegex(@"^\s*[VASD.][A-Z.]{5,}\s+([A-Za-z0-9_\-]+)\s", RegexOptions.CultureInvariant)]
-    private static partial Regex EncoderLineRegex();
 }
 
 /// <summary>输出容器。</summary>

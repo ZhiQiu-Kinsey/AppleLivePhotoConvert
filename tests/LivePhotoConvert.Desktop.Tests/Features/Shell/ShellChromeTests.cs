@@ -153,6 +153,49 @@ public sealed class ShellChromeTests
         session.Log.AssertNoBindingErrors();
     }
 
+    /// <summary>启动探测完成前侧栏、导航状态点与依赖页卡片都显示中性的"检测中"，不先闪一下红色"缺失"。</summary>
+    [AvaloniaTheory]
+    [InlineData("zh")]
+    [InlineData("en")]
+    public async Task ToolStatus_WhileStartupProbeRuns_IsNeutralChecking_ThenShowsResults(string language)
+    {
+        var probe = new TaskCompletionSource();
+        var registry = new FakeToolRegistry { Gate = probe.Task };
+        registry.Infos[ToolId.ExifTool] = FakeToolRegistry.Found(ToolId.ExifTool, "/tools/exiftool", "13.59");
+        registry.Infos[ToolId.Ffmpeg] = FakeToolRegistry.Found(ToolId.Ffmpeg, "/tools/ffmpeg", "8.1.2", ToolCapabilities.Hdr | ToolCapabilities.Libx264);
+        using var session = new ShellSession(language, configure: services => services.AddSingleton<IToolRegistry>(registry));
+        var shell = session.Shell;
+
+        Assert.All(shell.Tools.Cards, card => Assert.True(card.IsProbing));
+        Assert.True(shell.AreToolsProbing);
+        Assert.False(shell.AreToolsMissing);
+        Assert.Equal(["probing"], VisibleNavDots(session));
+        Assert.Equal(["probing", "probing", "probing"], VisibleStatusIcons(session));
+        Assert.All(ToolIcons(session, "probing"), icon => Assert.Equal(session.Localizer["ShellToolProbing"], ToolTip.GetTip(icon)));
+        Screenshots.Save(session, $"shell-sidebar-tools-probing-{language}");
+
+        session.Navigate(AppPage.Tools);
+        var cardDots = session.Descendants<Border>().Where(b => b.Classes.Contains("status-dot") && b.Classes.Contains("large")).ToList();
+        Assert.Equal(3, cardDots.Count);
+        Assert.All(cardDots, dot => Assert.Equal(["large", "probing"], dot.Classes.Where(c => c is "large" or "ok" or "warn" or "bad" or "probing").Order()));
+        var pills = session.Descendants<Border>().Where(b => b.Classes.Contains("status-pill")).ToList();
+        Assert.Equal(3, pills.Count);
+        Assert.All(pills, pill =>
+        {
+            Assert.Contains("muted", pill.Classes);
+            Assert.DoesNotContain("danger", pill.Classes);
+            Assert.Equal(session.Localizer["ToolProbing"], pill.GetVisualDescendants().OfType<TextBlock>().Single().Text);
+        });
+        Screenshots.Save(session, $"tools-probing-{language}");
+
+        probe.SetResult();
+        await session.WaitUntilAsync(() => !shell.AreToolsProbing);
+        Assert.Equal([ToolHealth.Ready, ToolHealth.Ready, ToolHealth.Missing], shell.ToolStatuses.Select(s => s.Health));
+        Assert.Equal(["bad"], VisibleNavDots(session));
+        Assert.Equal(["ok", "ok", "bad"], VisibleStatusIcons(session));
+        session.Log.AssertNoBindingErrors();
+    }
+
     [Fact]
     public void ToolHealth_MissingOutranksAttention_AndOverallIsTheWorst()
     {
@@ -164,6 +207,14 @@ public sealed class ShellChromeTests
         Assert.Equal(ToolHealth.Ready, ToolStatusItem.Worst([Item(ToolHealth.Ready), Item(ToolHealth.Ready)]));
         Assert.Equal(ToolHealth.Attention, ToolStatusItem.Worst([Item(ToolHealth.Ready), Item(ToolHealth.Attention)]));
         Assert.Equal(ToolHealth.Missing, ToolStatusItem.Worst([Item(ToolHealth.Attention), Item(ToolHealth.Missing)]));
+
+        // 没有探测结果时不下结论；已确认的问题优先于"检测中"
+        Assert.Equal(ToolHealth.Probing, new ToolStatusItem("x").Health);
+        Assert.Equal(ToolHealth.Probing, ToolStatusItem.Evaluate(isProbing: true, isReady: false, needsAttention: false));
+        Assert.Equal(ToolHealth.Missing, ToolStatusItem.Evaluate(isProbing: false, isReady: false, needsAttention: false));
+        Assert.Equal(ToolHealth.Probing, ToolStatusItem.Worst([Item(ToolHealth.Ready), Item(ToolHealth.Probing)]));
+        Assert.Equal(ToolHealth.Attention, ToolStatusItem.Worst([Item(ToolHealth.Probing), Item(ToolHealth.Attention)]));
+        Assert.Equal(ToolHealth.Missing, ToolStatusItem.Worst([Item(ToolHealth.Probing), Item(ToolHealth.Missing)]));
     }
 
     private static void Hover(ShellSession session, Control control)
@@ -198,14 +249,17 @@ public sealed class ShellChromeTests
     private static string[] VisibleNavDots(ShellSession session) =>
     [
         .. session.Descendants<Border>()
-            .Where(b => b.Classes.Contains("status-dot") && b.IsEffectivelyVisible)
-            .Select(b => b.Classes.First(c => c is "ok" or "warn" or "bad"))
+            .Where(b => b.Classes.Contains("status-dot") && !b.Classes.Contains("large") && b.IsEffectivelyVisible)
+            .Select(b => b.Classes.First(c => c is "ok" or "warn" or "bad" or "probing"))
     ];
 
     private static string[] VisibleStatusIcons(ShellSession session) =>
     [
         .. session.Descendants<SymbolIcon>()
             .Where(i => i.Classes.Contains("tool-status") && i.IsEffectivelyVisible)
-            .Select(i => i.Classes.First(c => c is "ok" or "warn" or "bad"))
+            .Select(i => i.Classes.First(c => c is "ok" or "warn" or "bad" or "probing"))
     ];
+
+    private static IEnumerable<SymbolIcon> ToolIcons(ShellSession session, string state) =>
+        session.Descendants<SymbolIcon>().Where(i => i.Classes.Contains("tool-status") && i.Classes.Contains(state) && i.IsEffectivelyVisible);
 }

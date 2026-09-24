@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.Text;
+using LivePhotoConvert.Core.Media.UltraHdr;
 
 namespace LivePhotoConvert.Core.Media;
 
@@ -35,11 +36,6 @@ public static class MotionPhotoLayout
 
     /// <summary>顶层 box 数量上限；正常 HEIC 只有 ftyp/meta/mdat 等少数几个，防止畸形文件拖慢扫描。</summary>
     private const int MaxTopLevelBoxes = 1024;
-
-    private const uint Ftyp = 0x66747970; // "ftyp"
-    private const uint Mpvd = 0x6D707664; // "mpvd"
-
-    private static ReadOnlySpan<byte> XmpSignature => "http://ns.adobe.com/xap/1.0/\0"u8;
 
     /// <summary>
     /// 分析图片结构；JPEG 直接解析 XMP，其它格式需由调用方提供 XMP。
@@ -80,7 +76,9 @@ public static class MotionPhotoLayout
     {
         ArgumentNullException.ThrowIfNull(stream);
         stream.Position = 0;
+        var signature = JpegSegments.XmpSignature;
         Span<byte> marker = stackalloc byte[4];
+        Span<byte> head = stackalloc byte[signature.Length];
         if (stream.ReadAtLeast(marker[..2], 2, throwOnEndOfStream: false) < 2 || marker[0] != 0xFF || marker[1] != 0xD8)
         {
             return null;
@@ -122,23 +120,23 @@ public static class MotionPhotoLayout
                 return null;
             }
 
-            if (code == 0xE1 && payloadLength > XmpSignature.Length)
+            var payloadEnd = stream.Position + payloadLength;
+            if (code == 0xE1 && payloadLength > signature.Length)
             {
-                var payload = new byte[payloadLength];
-                if (stream.ReadAtLeast(payload, payloadLength, throwOnEndOfStream: false) < payloadLength)
+                // 先比对签名，Exif 等其它 APP1 段不必读入
+                if (stream.ReadAtLeast(head, head.Length, throwOnEndOfStream: false) < head.Length)
                 {
                     return null;
                 }
 
-                if (payload.AsSpan().StartsWith(XmpSignature))
+                if (head.SequenceEqual(signature))
                 {
-                    return Encoding.UTF8.GetString(payload.AsSpan(XmpSignature.Length));
+                    var packet = new byte[payloadLength - signature.Length];
+                    return stream.ReadAtLeast(packet, packet.Length, throwOnEndOfStream: false) < packet.Length ? null : Encoding.UTF8.GetString(packet);
                 }
-
-                continue;
             }
 
-            stream.Seek(payloadLength, SeekOrigin.Current);
+            stream.Position = payloadEnd;
         }
 
         return null;
@@ -175,7 +173,8 @@ public static class MotionPhotoLayout
         }
 
         // 声明的长度包含 mpvd box 头
-        if (offset > 0 && ReadBoxHeader(stream, offset) is { } box && box.Type == Mpvd && IsVideoAt(stream, offset + box.HeaderLength))
+        if (offset > 0 && IsoBox.ReadHeader(stream, offset) is { Type: IsoBox.Mpvd } box && extent.Length > box.HeaderLength
+            && IsVideoAt(stream, offset + box.HeaderLength))
         {
             return new EmbeddedVideo(offset + box.HeaderLength, extent.Length - box.HeaderLength, offset);
         }
@@ -189,7 +188,7 @@ public static class MotionPhotoLayout
     private static EmbeddedVideo? LocateMpvdBox(Stream stream)
     {
         var length = stream.Length;
-        if (ReadBoxHeader(stream, 0)?.Type != Ftyp)
+        if (IsoBox.ReadHeader(stream, 0)?.Type != IsoBox.Ftyp)
         {
             return null;
         }
@@ -197,25 +196,18 @@ public static class MotionPhotoLayout
         long offset = 0;
         for (var count = 0; count < MaxTopLevelBoxes && offset + 8 <= length; count++)
         {
-            if (ReadBoxHeader(stream, offset) is not { } box)
+            if (IsoBox.ReadBounded(stream, offset, length) is not { } box)
             {
                 return null;
             }
 
-            // size 为 0 表示延续到文件尾
-            var size = box.Size == 0 ? length - offset : box.Size;
-            if (size < box.HeaderLength || size > length - offset)
-            {
-                return null;
-            }
-
-            if (box.Type == Mpvd)
+            if (box.Type == IsoBox.Mpvd)
             {
                 var dataStart = offset + box.HeaderLength;
-                return IsVideoAt(stream, dataStart) ? new EmbeddedVideo(dataStart, size - box.HeaderLength, offset) : null;
+                return IsVideoAt(stream, dataStart) ? new EmbeddedVideo(dataStart, box.Size - box.HeaderLength, offset) : null;
             }
 
-            offset += size;
+            offset += box.Size;
         }
 
         return null;
@@ -229,7 +221,7 @@ public static class MotionPhotoLayout
         foreach (var headerLength in (ReadOnlySpan<int>)[8, 16])
         {
             var start = videoOffset - headerLength;
-            if (start > 0 && ReadBoxHeader(stream, start) is { } box && box.Type == Mpvd && box.HeaderLength == headerLength)
+            if (start > 0 && IsoBox.ReadHeader(stream, start) is { Type: IsoBox.Mpvd } box && box.HeaderLength == headerLength)
             {
                 return start;
             }
@@ -237,41 +229,6 @@ public static class MotionPhotoLayout
 
         return null;
     }
-
-    /// <summary>
-    /// 读取 box 头：32 位长度 + 类型；长度为 1 时后跟 64 位长度。
-    /// </summary>
-    private static BoxHeader? ReadBoxHeader(Stream stream, long offset)
-    {
-        if (offset < 0 || offset + 8 > stream.Length)
-        {
-            return null;
-        }
-
-        Span<byte> header = stackalloc byte[16];
-        stream.Position = offset;
-        if (stream.ReadAtLeast(header[..8], 8, throwOnEndOfStream: false) < 8)
-        {
-            return null;
-        }
-
-        long size = BinaryPrimitives.ReadUInt32BigEndian(header);
-        var type = BinaryPrimitives.ReadUInt32BigEndian(header[4..]);
-        if (size != 1)
-        {
-            return new BoxHeader(size, type, 8);
-        }
-
-        if (stream.ReadAtLeast(header[8..], 8, throwOnEndOfStream: false) < 8)
-        {
-            return null;
-        }
-
-        var largeSize = BinaryPrimitives.ReadUInt64BigEndian(header[8..]);
-        return largeSize > long.MaxValue ? null : new BoxHeader((long)largeSize, type, 16);
-    }
-
-    private readonly record struct BoxHeader(long Size, uint Type, int HeaderLength);
 
     /// <summary>
     /// 三星相机把视频放在文件尾部的 SEF 容器中（条目名 MotionPhoto_Data），部分机型不写 XMP。
@@ -338,7 +295,8 @@ public static class MotionPhotoLayout
             }
 
             var videoOffset = blockStart + 8 + nameLength;
-            var videoLength = blockSize - 8 - nameLength;
+            // blockSize 是无符号数，先转 long，数据块比块头还短时得到负数而不是回绕成巨大长度
+            var videoLength = (long)blockSize - 8 - nameLength;
             if (videoLength > 0 && IsVideoAt(stream, videoOffset))
             {
                 // 截断时连同数据块头一起去掉

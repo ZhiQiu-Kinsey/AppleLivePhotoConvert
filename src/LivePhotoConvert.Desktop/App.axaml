@@ -8,6 +8,6 @@
     <StyleInclude Source="avares://LivePhotoConvert/Assets/Styles.axaml" />
   </Application.Styles>
 
-  <!-- 字符串字典由 Localizer 在创建任何页面之前按设置语言合并，这里不再预置，避免中英两份同时存在 -->
+  <!-- 字符串字典由 Localizer 在创建任何页面之前按设置语言合并，这里不预置，避免中英两份同时存在 -->
 
 </Application>

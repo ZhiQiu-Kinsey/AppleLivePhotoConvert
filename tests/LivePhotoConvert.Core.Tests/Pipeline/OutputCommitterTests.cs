@@ -131,6 +131,21 @@ public class OutputCommitterTests
     }
 
     [Fact]
+    public void ReplaceSource_ExtensionChange_WithOverwritePolicy_StillKeepsUnrelatedFile()
+    {
+        using var temp = new TempDirectory();
+        var jpg = temp.CreateFile("IMG_0001.jpg", [1]);
+        var unrelatedHeic = temp.CreateFile("IMG_0001.heic", [3]);
+        var committer = new OutputCommitter(ConflictPolicy.Overwrite, [jpg]);
+
+        var final = committer.ReplaceSource(Stage(temp, [10]), jpg, ".heic");
+
+        Assert.Equal([3], File.ReadAllBytes(unrelatedHeic));
+        Assert.Equal([10], File.ReadAllBytes(final));
+        Assert.Equal(["IMG_0001.heic", "IMG_0001_1.heic"], temp.FileNames());
+    }
+
+    [Fact]
     public void DeleteStaleStagingFiles_RemovesOnlyOldStagingFiles()
     {
         using var temp = new TempDirectory();

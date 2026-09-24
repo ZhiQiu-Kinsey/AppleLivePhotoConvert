@@ -9,6 +9,7 @@ using LivePhotoConvert.Desktop.Features.Library.Gallery;
 using LivePhotoConvert.Desktop.Features.Library.Thumbnails;
 using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Models;
+using LivePhotoConvert.Desktop.Tests.Features.Library.Thumbnails;
 using LivePhotoConvert.Desktop.Tests.Harness;
 
 namespace LivePhotoConvert.Desktop.Tests.Features.Library.Gallery;
@@ -64,8 +65,10 @@ public sealed class GalleryViewTests : IDisposable
         var card = library.Layout.DisplayedCards.First(c => c.Key == key);
         var widthBefore = library.Layout.ViewportWidth;
 
-        session.Window.Width -= 260;
+        // 保持在检查器自动收起的阈值之上，只让画廊变窄
+        session.Window.Width -= 180;
         session.Pump();
+        Assert.False(session.Shell.Inspector.IsCollapsed);
         await session.WaitUntilAsync(() => Math.Abs(library.Layout.ViewportWidth - widthBefore) > 100);
         session.Pump();
         session.Pump();
@@ -77,6 +80,23 @@ public sealed class GalleryViewTests : IDisposable
         var after = container!.TranslatePoint(default, scroll)!.Value.Y;
         Assert.InRange(after - top, -2, 2);
         session.Log.AssertNoBindingErrors();
+    }
+
+    /// <summary>滚动停下后推进缩略图代次：之后入队的请求排在滚动途中的请求之前。</summary>
+    [AvaloniaFact]
+    public async Task ScrollingThenIdle_AdvancesThumbnailGeneration()
+    {
+        SampleAlbum.WriteApplePairs(_album.InputDirectory, 40);
+        using var session = new ShellSession();
+        var pipeline = Assert.IsType<ThumbnailPipeline>(session.Shell.Library.Thumbnails);
+        await ScanAsync(session, 40);
+        var scroll = session.Descendants<ListBox>().Single(l => l.Name == "GalleryListBox").GetVisualDescendants().OfType<ScrollViewer>().First();
+        var before = pipeline.Generation;
+
+        scroll.Offset = new Vector(0, scroll.Viewport.Height);
+        session.Pump();
+
+        await session.WaitUntilAsync(() => pipeline.Generation > before);
     }
 
     [AvaloniaFact]
@@ -153,11 +173,8 @@ public sealed class GalleryViewTests : IDisposable
         session.Pump();
     }
 
-    private static List<PhotoCardItemViewModel> Attached(ShellSession session)
-    {
-        var list = session.Descendants<ListBox>().Single(l => l.Name == "GalleryListBox");
-        return [.. list.GetRealizedContainers().Select(list.ItemFromContainer).OfType<PhotoGridRowViewModel>().SelectMany(r => r.Cards)];
-    }
+    private static List<PhotoCardItemViewModel> Attached(ShellSession session) =>
+        SyntheticGallery.Attached(session.Descendants<ListBox>().Single(l => l.Name == "GalleryListBox"));
 
     /// <summary>视口顶部的行（跨过视口上沿的那一行）的首张卡片键与其顶部位置。</summary>
     private static (string Key, double Top) TopItem(ListBox list, ScrollViewer scroll)

@@ -1,26 +1,18 @@
-using System.Diagnostics;
 using System.Runtime.ExceptionServices;
-using System.Text;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
-using Avalonia.Media.Imaging;
-using Avalonia.Platform;
-using Avalonia.Threading;
 using Avalonia.VisualTree;
-using LivePhotoConvert.Core.Media;
-using LivePhotoConvert.Core.Media.Thumbnails;
-using LivePhotoConvert.Desktop.Features.Library.Gallery;
+using LivePhotoConvert.Desktop.Controls;
 using LivePhotoConvert.Desktop.Features.Library.Thumbnails;
-using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Models;
 using LivePhotoConvert.Desktop.Tests.Harness;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace LivePhotoConvert.Desktop.Tests.Features.Library.Thumbnails;
 
 /// <summary>
-/// 1 万张卡片的画廊压力：假扫描结果 + 假缩略图（不做真实解码），在真实外壳里自顶到底滚动，检查预算、释放时序与占位回退。
+/// 1 万张卡片的画廊压力：假扫描结果 + 假缩略图（不做真实解码），在真实外壳里自顶到底滚动，
+/// 检查预算、释放时序、占位回退与卡片控件复用。
 /// </summary>
 [Collection(ProcessStateCollection.Name)]
 public sealed class GalleryStressTests
@@ -34,7 +26,7 @@ public sealed class GalleryStressTests
         using var session = Open(store, budgetMb: 64);
         var library = session.Shell.Library;
         var pipeline = Assert.IsType<ThumbnailPipeline>(library.Thumbnails);
-        var list = session.Descendants<ListBox>().Single(l => l.Name == "GalleryListBox");
+        var list = Assert.IsType<GalleryList>(session.Descendants<ListBox>().Single(l => l.Name == "GalleryListBox"));
         var view = session.Descendants<Desktop.Features.Library.LibraryView>().Single();
 
         var disposedErrors = 0;
@@ -49,21 +41,24 @@ public sealed class GalleryStressTests
         AppDomain.CurrentDomain.FirstChanceException += OnFirstChance;
         try
         {
-            var scanWatch = Stopwatch.StartNew();
             library.AlbumDirectory = "/album";
             await library.RefreshAlbumAsync();
             await session.WaitUntilAsync(() => library.Layout.DisplayedCards.Count == CardCount, timeoutSeconds: 30);
             session.Pump();
-            scanWatch.Stop();
 
             var scroll = list.GetVisualDescendants().OfType<ScrollViewer>().First();
             var shownWhileAttached = new HashSet<PhotoCardItemViewModel>();
-            long peakResident = 0, peakPinned = 0, peakOverBudget = 0;
+            var seen = new HashSet<PhotoCardItemViewModel>();
+            long peakPinned = 0;
+            var peakAttached = 0;
             var steps = 0;
 
             void Check(string where)
             {
                 var attached = Attached(list);
+                seen.UnionWith(attached);
+                peakAttached = Math.Max(peakAttached, attached.Count);
+                Assert.Equal(attached.Count, session.Descendants<PhotoCardControl>().Count());
                 Assert.Equal(attached.Count, view.ThumbnailBinder!.AttachedCardCount);
                 Assert.Equal(attached.Count, pipeline.AttachedCount);
                 Assert.True(pipeline.ResidentBytes <= pipeline.BudgetBytes + pipeline.PinnedBytes,
@@ -76,19 +71,16 @@ public sealed class GalleryStressTests
                 }
 
                 shownWhileAttached.UnionWith(attached.Where(c => c.DisplayImage is not null));
-                peakResident = Math.Max(peakResident, pipeline.ResidentBytes);
                 peakPinned = Math.Max(peakPinned, pipeline.PinnedBytes);
-                peakOverBudget = Math.Max(peakOverBudget, pipeline.ResidentBytes - pipeline.BudgetBytes);
             }
 
-            // 每步跨 2.5 屏（相当于拖动滚动条），每一步等缩略图到齐：驱逐在整个滚动过程中持续发生；隔一步渲染一帧，
-            // 检查被驱逐的位图不会在渲染中被使用
-            var scrollWatch = Stopwatch.StartNew();
+            // 每步跨 6 屏（相当于拖动滚动条），行全部换新；每一步等缩略图到齐，驱逐在整个滚动过程中持续发生。
+            // 每 4 步渲染一帧，检查被驱逐的位图不会在渲染中被使用（等待期间的渲染节拍也会渲染）
             var y = 0.0;
             while (true)
             {
                 scroll.Offset = new Vector(0, y);
-                await PumpUntilLoadedAsync(session, list, render: steps % 2 == 0);
+                await PumpUntilLoadedAsync(session, list, render: steps % 4 == 0);
                 Check($"滚动 {y:F0}");
                 steps++;
                 var bottom = Math.Max(0, scroll.Extent.Height - scroll.Viewport.Height);
@@ -97,14 +89,15 @@ public sealed class GalleryStressTests
                     break;
                 }
 
-                y = Math.Min(y + scroll.Viewport.Height * 2.5, bottom);
+                y = Math.Min(y + scroll.Viewport.Height * 6, bottom);
             }
 
             session.Pump();
-            scrollWatch.Stop();
             var lastRow = Assert.IsType<PhotoGridRowViewModel>(list.ItemFromContainer(list.GetRealizedContainers().OrderBy(list.IndexFromContainer).Last()));
             Assert.Contains(library.Layout.DisplayedCards[^1], lastRow.Cards);
-            Assert.True(store.Requests > CardCount / 4, "应为每一步实例化的卡片加载缩略图");
+            Assert.True(seen.Count > CardCount / 10 && store.Requests >= seen.Count, $"应为每一步实例化的卡片加载缩略图：{seen.Count} 张，请求 {store.Requests} 次");
+            Assert.True(list.CardControlsCreated <= peakAttached + GalleryList.MaxIdleCards,
+                $"卡片控件应在行间复用：新建 {list.CardControlsCreated} 个，同时显示最多 {peakAttached} 张");
             Assert.True(library.AllCards.Count(c => c.Thumbnail is not null) * SyntheticStore.BytesAt(pipeline.DecodeHeightPx) <= pipeline.BudgetBytes + peakPinned,
                 "滚过的卡片不应全部留在内存");
 
@@ -114,10 +107,6 @@ public sealed class GalleryStressTests
             Assert.Equal(0, disposedErrors);
             Assert.All(Attached(list), c => Assert.False(SyntheticStore.IsDisposed(c.DisplayImage!)));
             session.Log.AssertNoBindingErrors();
-
-            TestContext.Current.TestOutputHelper?.WriteLine(
-                $"1 万张卡片：扫描到排版 {scanWatch.ElapsedMilliseconds} ms；滚动 {steps} 步共 {scrollWatch.ElapsedMilliseconds} ms（每步 {scrollWatch.ElapsedMilliseconds / (double)steps:F1} ms）；" +
-                $"请求 {store.Requests} 次；驻留峰值 {peakResident / 1024 / 1024} MB，钉住峰值 {peakPinned / 1024 / 1024} MB，预算 {pipeline.BudgetBytes / 1024 / 1024} MB，超出预算峰值 {Math.Max(0, peakOverBudget) / 1024 / 1024} MB");
         }
         finally
         {
@@ -166,106 +155,11 @@ public sealed class GalleryStressTests
         Assert.Equal(64, session.Host.Settings.Current.Gallery.ThumbnailBudgetMb);
     }
 
-    /// <summary>
-    /// 让新位置的行实例化并等缩略图到齐。每张缩略图都要回到界面线程交付后 worker 才继续，
-    /// 这里只推进调度器、按需渲染一帧：整窗渲染的代价远大于交付本身。
-    /// </summary>
-    private static async Task PumpUntilLoadedAsync(ShellSession session, ListBox list, bool render = true)
-    {
-        Dispatcher.UIThread.RunJobs();
-        session.Window.UpdateLayout();
-        var deadline = DateTime.UtcNow.AddSeconds(20);
-        while (!Attached(list).All(c => c.DisplayImage is not null))
-        {
-            Assert.True(DateTime.UtcNow < deadline, "等待缩略图超时");
-            await Task.Delay(1, TestContext.Current.CancellationToken);
-            Dispatcher.UIThread.RunJobs();
-        }
+    private static ShellSession Open(SyntheticStore store, int budgetMb, int cardCount = CardCount) =>
+        SyntheticGallery.Open(store, budgetMb, cardCount);
 
-        if (render)
-        {
-            session.Pump();
-        }
-    }
+    private static Task PumpUntilLoadedAsync(ShellSession session, ListBox list, bool render = true) =>
+        SyntheticGallery.PumpUntilLoadedAsync(session, list, render);
 
-    private static ShellSession Open(SyntheticStore store, int budgetMb, int cardCount = CardCount)
-    {
-        var items = SyntheticItems(cardCount);
-        var session = new ShellSession(
-            configure: services =>
-            {
-                services.AddSingleton(sp => new LibraryCatalog(
-                    sp.GetRequiredService<ILocalizer>(), new NoEnrichment(),
-                    (_, _, _) => Task.FromResult(new LibraryScanResult(items, cardCount * 2, 0))));
-                services.AddSingleton<IThumbnailPipeline>(sp => new ThumbnailPipeline(
-                    store, sp.GetRequiredService<SettingsStore>().Current.Gallery.ThumbnailBudgetBytes, SyntheticStore.Decode));
-            },
-            settings: s => s.Gallery.ThumbnailBudgetMb = budgetMb);
-        // 接近常见桌面窗口：每屏实例化的卡片更多，钉住字节与驱逐压力更接近实际
-        session.Window.Width = 1600;
-        session.Window.Height = 1100;
-        session.Pump();
-        return session;
-    }
-
-    /// <summary>实况对，横竖混排；时间递增使分组与排序稳定。</summary>
-    private static List<LibraryItem> SyntheticItems(int count) =>
-        [.. Enumerable.Range(0, count).Select(i => Cards.ApplePairItem(
-            $"IMG_{i:D5}",
-            aspect: (i % 7) switch { 0 => 0.75, 3 => 16.0 / 9.0, 5 => 1.0, _ => 4.0 / 3.0 },
-            taken: new DateTime(2025, 1, 1).AddMinutes(i * 7)))];
-
-    private static List<PhotoCardItemViewModel> Attached(ListBox list) =>
-        [.. list.GetRealizedContainers().Select(list.ItemFromContainer).OfType<PhotoGridRowViewModel>().SelectMany(r => r.Cards)];
-
-    private sealed class NoEnrichment : ILibraryEnricher
-    {
-        public async IAsyncEnumerable<LibraryItem> EnrichAsync(IReadOnlyList<LibraryItem> items, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
-        {
-            await Task.CompletedTask;
-            yield break;
-        }
-    }
-
-    /// <summary>三分之二命中“磁盘缓存”（共用一个占位文件），其余走生成通道；解码直接按请求高度造 4:3 位图。</summary>
-    private sealed class SyntheticStore : IThumbnailStore, IDisposable
-    {
-        private readonly string _cacheFile = Path.Combine(Path.GetTempPath(), $"lpc_stress_thumb_{Guid.NewGuid():N}.jpg");
-        private int _requests;
-
-        public SyntheticStore() => File.WriteAllText(_cacheFile, "cache");
-
-        public int Requests => Volatile.Read(ref _requests);
-
-        public static long BytesAt(int height) => (long)Width(height) * height * 4;
-
-        public static Bitmap Decode(Stream stream, int heightPx) =>
-            new WriteableBitmap(new PixelSize(Width(heightPx), heightPx), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Premul);
-
-        public static bool IsDisposed(Bitmap bitmap)
-        {
-            try
-            {
-                _ = bitmap.PixelSize;
-                return false;
-            }
-            catch (ObjectDisposedException)
-            {
-                return true;
-            }
-        }
-
-        public ThumbnailResult? TryGetCached(ThumbnailRequest request)
-        {
-            Interlocked.Increment(ref _requests);
-            return request.Path[^6] % 3 == 0 ? null : new ThumbnailResult(ThumbnailOrigin.Cache, _cacheFile, null);
-        }
-
-        public Task<ThumbnailResult?> GetAsync(ThumbnailRequest request, CancellationToken cancellationToken) =>
-            Task.FromResult<ThumbnailResult?>(new ThumbnailResult(ThumbnailOrigin.Decoded, null, Encoding.UTF8.GetBytes("generated")));
-
-        public void Dispose() => File.Delete(_cacheFile);
-
-        private static int Width(int height) => (int)Math.Round(height * 4.0 / 3.0);
-    }
+    private static List<PhotoCardItemViewModel> Attached(ListBox list) => SyntheticGallery.Attached(list);
 }

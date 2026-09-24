@@ -1,3 +1,4 @@
+using LivePhotoConvert.Core.External;
 using LivePhotoConvert.Core.Media;
 using LivePhotoConvert.Core.Metadata;
 using LivePhotoConvert.Core.Pipeline;
@@ -298,6 +299,8 @@ public class MotionPhotoStripperTests
         var candidates = await CreateStripper().AnalyzeAsync([missing, motion], Token);
 
         Assert.NotNull(candidates[0].AnalysisError);
+        Assert.Equal(new OutcomeCause(OutcomeReason.SourceMissingOrEmpty, "gone.jpg"), candidates[0].AnalysisCause);
+        Assert.Null(candidates[1].AnalysisCause);
         Assert.False(candidates[0].HasVideo);
         Assert.False(candidates[0].WillConvert(convertToHeic: true));
         Assert.Null(candidates[1].AnalysisError);
@@ -316,6 +319,40 @@ public class MotionPhotoStripperTests
 
         Assert.Contains("broken.heic", candidates[0].AnalysisError);
         Assert.NotNull(candidates[1].EmbeddedVideo);
+        // 未归类的读取失败给出原因码，界面据此本地化；原文仍保留在 AnalysisError
+        Assert.Equal(new OutcomeCause(OutcomeReason.SourceUnreadable, "broken.heic"), candidates[0].AnalysisCause);
+    }
+
+    [Fact]
+    public async Task StripAsync_AnalysisFailures_UseTheSameCauseAsAnalysis()
+    {
+        using var temp = new TempDirectory();
+        var broken = temp.CreateFile("broken.heic", SyntheticMedia.Heic());
+        var missing = temp.Combine("gone.jpg");
+        _metadata.FailXmpReads = path => path.EndsWith("broken.heic", StringComparison.Ordinal);
+
+        var candidates = await CreateStripper().AnalyzeAsync([broken, missing], Token);
+        var report = await StripAsync([broken, missing]);
+
+        foreach (var candidate in candidates)
+        {
+            var item = Assert.Single(report.Items, i => i.Source == candidate.ImagePath);
+            Assert.Equal(OutcomeKind.Failed, item.Kind);
+            Assert.Equal([candidate.AnalysisCause!], item.Causes);
+            Assert.Equal(candidate.AnalysisError, item.Detail);
+        }
+    }
+
+    [Fact]
+    public void AnalysisCause_KeepsClassifiedExceptions()
+    {
+        var toolMissing = StripCandidate.Unavailable("/in/a.heic", new ToolNotFoundException("exiftool"));
+        var directoryGone = StripCandidate.Unavailable("/in/b.jpg", new DirectoryNotFoundException("x"));
+        var denied = StripCandidate.Unavailable("/in/c.jpg", new UnauthorizedAccessException("x"));
+
+        Assert.Equal(new OutcomeCause(OutcomeReason.ToolMissing, "exiftool"), toolMissing.AnalysisCause);
+        Assert.Equal(new OutcomeCause(OutcomeReason.SourceMissingOrEmpty, "b.jpg"), directoryGone.AnalysisCause);
+        Assert.Equal(new OutcomeCause(OutcomeReason.SourceUnreadable, "c.jpg"), denied.AnalysisCause);
     }
 
     [Fact]
@@ -385,7 +422,7 @@ public class MotionPhotoStripperTests
     }
 
     [Fact]
-    public async Task StripAsync_AnalysisReadFails_ReportsUnexpectedWithDetail()
+    public async Task StripAsync_AnalysisReadFails_ReportsUnreadableSourceWithDetail()
     {
         using var temp = new TempDirectory();
         var broken = temp.CreateFile("broken.heic", SyntheticMedia.Heic());
@@ -394,7 +431,7 @@ public class MotionPhotoStripperTests
         var report = await StripAsync([broken]);
 
         var failed = Assert.Single(report.Items);
-        Assert.Equal(OutcomeReason.Unexpected, failed.Reason);
+        Assert.Equal(new OutcomeCause(OutcomeReason.SourceUnreadable, "broken.heic"), Assert.Single(failed.Causes));
         Assert.Contains("broken.heic", failed.Detail);
     }
 

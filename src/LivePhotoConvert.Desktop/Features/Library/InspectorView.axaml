@@ -3,6 +3,7 @@
              xmlns:library="using:LivePhotoConvert.Desktop.Features.Library"
              xmlns:infra="using:LivePhotoConvert.Desktop.Infrastructure"
              xmlns:ic="using:FluentIcons.Avalonia"
+             xmlns:controls="using:LivePhotoConvert.Desktop.Controls"
              x:Class="LivePhotoConvert.Desktop.Features.Library.InspectorView"
              x:CompileBindings="True"
              x:DataType="library:InspectorViewModel">
@@ -13,12 +14,17 @@
     </DataTemplate>
   </UserControl.Resources>
 
-  <Border Classes="inspector">
+  <Border Classes="inspector" Classes.collapsed="{Binding IsCollapsed}">
     <Grid RowDefinitions="Auto,*,Auto">
 
       <!-- 动作选择 -->
-      <StackPanel Grid.Row="0" Margin="16,14,16,10" Spacing="10">
-        <TextBlock Classes="inspector-title" Text="{DynamicResource InspectorTitle}" />
+      <StackPanel Grid.Row="0" Margin="16,14,16,10" Spacing="10" IsVisible="{Binding !IsCollapsed}">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Classes="inspector-title" Text="{DynamicResource InspectorTitle}" VerticalAlignment="Center" />
+          <Button x:Name="CollapseButton" Grid.Column="1" Classes="rail-btn" Command="{Binding ToggleCollapsedCommand}" ToolTip.Tip="{DynamicResource InspectorCollapseTip}">
+            <ic:SymbolIcon Symbol="PanelRightContract" />
+          </Button>
+        </Grid>
         <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="6" RowSpacing="6">
           <Button Grid.Row="0" Grid.Column="0" Classes="action-tile" Classes.active="{Binding IsToAndroid}"
                   Command="{Binding SetActionCommand}" CommandParameter="ToAndroid">
@@ -53,7 +59,7 @@
       </StackPanel>
 
       <!-- 参数 -->
-      <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+      <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" IsVisible="{Binding !IsCollapsed}">
         <StackPanel Margin="16,0,16,12" Spacing="12">
 
           <!-- 适用项统计 -->
@@ -66,6 +72,35 @@
               </StackPanel>
             </Grid>
           </Border>
+
+          <!-- 瘦身：空间预估与画质对比 -->
+          <StackPanel Spacing="10" IsVisible="{Binding IsStrip}">
+            <TextBlock Classes="inspector-section-title" Text="{DynamicResource SpaceEstimateTitle}" />
+            <Border Classes="inspector-card">
+              <StackPanel Spacing="6">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Grid.Column="0" Text="{DynamicResource OriginalSizeLabel}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" />
+                  <TextBlock Grid.Column="1" Text="{Binding EstimateOriginalText}" FontSize="12" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource TextSecondaryBrush}" />
+                </Grid>
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Grid.Column="0" Text="{DynamicResource StrippedSizeLabel}" FontSize="11" Foreground="{DynamicResource SuccessBrush}" />
+                  <TextBlock Grid.Column="1" Text="{Binding EstimateAfterText}" FontSize="12" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource SuccessBrush}" />
+                </Grid>
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Grid.Column="0" Text="{DynamicResource SavedSizeLabel}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}" />
+                  <TextBlock Grid.Column="1" Text="{Binding EstimateSavedText}" FontSize="12" FontWeight="Black" FontFamily="Consolas" Foreground="{DynamicResource AccentTextBrush}" />
+                </Grid>
+                <TextBlock Classes="option-desc" Text="{Binding EstimateStatusText}"
+                           IsVisible="{Binding EstimateStatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+              </StackPanel>
+            </Border>
+            <Button Classes="toolbar-btn" Command="{Binding OpenStripCompareCommand}" HorizontalAlignment="Stretch">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <ic:SymbolIcon Symbol="ArrowBidirectionalLeftRight" FontSize="14" VerticalAlignment="Center" />
+                <TextBlock Text="{DynamicResource StripCompareBtn}" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+          </StackPanel>
 
           <!-- 合成：命名格式 -->
           <StackPanel Spacing="6" IsVisible="{Binding IsToAndroid}">
@@ -133,89 +168,69 @@
             </Border>
           </StackPanel>
 
-          <!-- 输出位置 -->
+          <!-- 输出位置：很少改动，默认收起，标题下显示当前目录 -->
           <StackPanel Spacing="10" IsVisible="{Binding IsOutputSectionVisible}">
-            <TextBlock Classes="inspector-section-title" Text="{DynamicResource InspectorOutputTitle}" />
-
-            <Border Classes="path-box" IsVisible="{Binding IsOutputDirectoryVisible}">
-              <Grid ColumnDefinitions="Auto,*,Auto,Auto" VerticalAlignment="Center">
-                <ic:SymbolIcon Grid.Column="0" Symbol="Folder" FontSize="13" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" Margin="0,1,6,0" />
-                <TextBlock Grid.Column="1" Text="{Binding OutputDirectory}" FontSize="11" FontFamily="Consolas" Foreground="{DynamicResource TextPrimaryBrush}"
-                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" ToolTip.Tip="{Binding OutputDirectory}" Margin="0,0,6,0" />
-                <Button Grid.Column="2" Classes="capsule-btn" Command="{Binding SelectOutputFolderCommand}" Margin="0,0,2,0">
-                  <TextBlock Text="{DynamicResource ChangeOutputDirBtn}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" />
-                </Button>
-                <Button Grid.Column="3" Classes="capsule-icon-btn" Command="{Binding OpenOutputFolderCommand}" ToolTip.Tip="{DynamicResource OpenOutputDirTip}">
-                  <ic:SymbolIcon Symbol="Open" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}" />
-                </Button>
+            <Button x:Name="OutputGroupHeader" Classes="group-header" Command="{Binding ToggleOutputExpandedCommand}">
+              <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                <TextBlock Classes="inspector-section-title" Text="{DynamicResource InspectorOutputTitle}" Margin="0" />
+                <ic:SymbolIcon Grid.Column="1" Grid.RowSpan="2" Symbol="ChevronDown" IsVisible="{Binding !IsOutputExpanded}" />
+                <ic:SymbolIcon Grid.Column="1" Grid.RowSpan="2" Symbol="ChevronUp" IsVisible="{Binding IsOutputExpanded}" />
+                <TextBlock Grid.Row="1" Classes="group-summary" Text="{Binding OutputLocation}" IsVisible="{Binding !IsOutputExpanded}" />
               </Grid>
-            </Border>
-
-            <Border Classes="path-box" IsVisible="{Binding IsStripExportVisible}">
-              <Grid ColumnDefinitions="Auto,*,Auto,Auto" VerticalAlignment="Center">
-                <ic:SymbolIcon Grid.Column="0" Symbol="Folder" FontSize="13" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" Margin="0,1,6,0" />
-                <TextBlock Grid.Column="1" Text="{Binding StripOutputDirectory}" FontSize="11" FontFamily="Consolas" Foreground="{DynamicResource TextPrimaryBrush}"
-                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" ToolTip.Tip="{Binding StripOutputDirectory}" Margin="0,0,6,0" />
-                <Button Grid.Column="2" Classes="capsule-btn" Command="{Binding SelectStripFolderCommand}" Margin="0,0,2,0">
-                  <TextBlock Text="{DynamicResource ChangeOutputDirBtn}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" />
-                </Button>
-                <Button Grid.Column="3" Classes="capsule-icon-btn" Command="{Binding OpenStripFolderCommand}" ToolTip.Tip="{DynamicResource OpenOutputDirTip}">
-                  <ic:SymbolIcon Symbol="Open" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}" />
-                </Button>
-              </Grid>
-            </Border>
-
-            <Grid Classes="option-row" ColumnDefinitions="*,Auto">
-              <StackPanel>
-                <TextBlock Classes="option-title" Text="{DynamicResource KeepSubfoldersLabel}" />
-                <TextBlock Classes="option-desc" Text="{DynamicResource KeepSubfoldersDesc}" />
-              </StackPanel>
-              <ToggleSwitch Grid.Column="1" Classes="row-switch" IsChecked="{Binding KeepSubfolderHierarchy, Mode=TwoWay}" />
-            </Grid>
-
-            <Grid Classes="option-row" ColumnDefinitions="*,Auto">
-              <StackPanel>
-                <TextBlock Classes="option-title" Text="{DynamicResource AutoAppendIndexTitle}" />
-                <TextBlock Classes="option-desc" Text="{DynamicResource AutoAppendIndexDesc}" />
-              </StackPanel>
-              <ToggleSwitch Grid.Column="1" Classes="row-switch" IsChecked="{Binding AutoAppendIndex, Mode=TwoWay}" />
-            </Grid>
-          </StackPanel>
-
-          <!-- 瘦身：空间预估与画质对比 -->
-          <StackPanel Spacing="10" IsVisible="{Binding IsStrip}">
-            <TextBlock Classes="inspector-section-title" Text="{DynamicResource SpaceEstimateTitle}" />
-            <Border Classes="inspector-card">
-              <StackPanel Spacing="6">
-                <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Grid.Column="0" Text="{DynamicResource OriginalSizeLabel}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" />
-                  <TextBlock Grid.Column="1" Text="{Binding EstimateOriginalText}" FontSize="12" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource TextSecondaryBrush}" />
-                </Grid>
-                <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Grid.Column="0" Text="{DynamicResource StrippedSizeLabel}" FontSize="11" Foreground="{DynamicResource SuccessBrush}" />
-                  <TextBlock Grid.Column="1" Text="{Binding EstimateAfterText}" FontSize="12" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource SuccessBrush}" />
-                </Grid>
-                <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Grid.Column="0" Text="{DynamicResource SavedSizeLabel}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}" />
-                  <TextBlock Grid.Column="1" Text="{Binding EstimateSavedText}" FontSize="12" FontWeight="Black" FontFamily="Consolas" Foreground="{DynamicResource AccentTextBrush}" />
-                </Grid>
-                <TextBlock Classes="option-desc" Text="{Binding EstimateStatusText}"
-                           IsVisible="{Binding EstimateStatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-              </StackPanel>
-            </Border>
-            <Button Classes="toolbar-btn" Command="{Binding OpenStripCompareCommand}" HorizontalAlignment="Stretch">
-              <StackPanel Orientation="Horizontal" Spacing="6">
-                <ic:SymbolIcon Symbol="ArrowBidirectionalLeftRight" FontSize="14" VerticalAlignment="Center" />
-                <TextBlock Text="{DynamicResource StripCompareBtn}" VerticalAlignment="Center" />
-              </StackPanel>
             </Button>
+
+            <StackPanel Spacing="10" IsVisible="{Binding IsOutputExpanded}">
+              <Border Classes="path-box" IsVisible="{Binding IsOutputDirectoryVisible}">
+                <Grid ColumnDefinitions="Auto,*,Auto,Auto" VerticalAlignment="Center">
+                  <ic:SymbolIcon Grid.Column="0" Symbol="Folder" FontSize="13" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" Margin="0,1,6,0" />
+                  <TextBlock Grid.Column="1" Text="{Binding OutputDirectory}" FontSize="11" FontFamily="Consolas" Foreground="{DynamicResource TextPrimaryBrush}"
+                             TextTrimming="CharacterEllipsis" VerticalAlignment="Center" ToolTip.Tip="{Binding OutputDirectory}" Margin="0,0,6,0" />
+                  <Button Grid.Column="2" Classes="capsule-btn" Command="{Binding SelectOutputFolderCommand}" Margin="0,0,2,0">
+                    <TextBlock Text="{DynamicResource ChangeOutputDirBtn}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" />
+                  </Button>
+                  <Button Grid.Column="3" Classes="capsule-icon-btn" Command="{Binding OpenOutputFolderCommand}" ToolTip.Tip="{DynamicResource OpenOutputDirTip}">
+                    <ic:SymbolIcon Symbol="Open" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}" />
+                  </Button>
+                </Grid>
+              </Border>
+
+              <Border Classes="path-box" IsVisible="{Binding IsStripExportVisible}">
+                <Grid ColumnDefinitions="Auto,*,Auto,Auto" VerticalAlignment="Center">
+                  <ic:SymbolIcon Grid.Column="0" Symbol="Folder" FontSize="13" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" Margin="0,1,6,0" />
+                  <TextBlock Grid.Column="1" Text="{Binding StripOutputDirectory}" FontSize="11" FontFamily="Consolas" Foreground="{DynamicResource TextPrimaryBrush}"
+                             TextTrimming="CharacterEllipsis" VerticalAlignment="Center" ToolTip.Tip="{Binding StripOutputDirectory}" Margin="0,0,6,0" />
+                  <Button Grid.Column="2" Classes="capsule-btn" Command="{Binding SelectStripFolderCommand}" Margin="0,0,2,0">
+                    <TextBlock Text="{DynamicResource ChangeOutputDirBtn}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" />
+                  </Button>
+                  <Button Grid.Column="3" Classes="capsule-icon-btn" Command="{Binding OpenStripFolderCommand}" ToolTip.Tip="{DynamicResource OpenOutputDirTip}">
+                    <ic:SymbolIcon Symbol="Open" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}" />
+                  </Button>
+                </Grid>
+              </Border>
+
+              <Grid Classes="option-row" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Classes="option-title" Text="{DynamicResource KeepSubfoldersLabel}" />
+                  <TextBlock Classes="option-desc" Text="{DynamicResource KeepSubfoldersDesc}" />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" Classes="row-switch" IsChecked="{Binding KeepSubfolderHierarchy, Mode=TwoWay}" />
+              </Grid>
+
+              <Grid Classes="option-row" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Classes="option-title" Text="{DynamicResource AutoAppendIndexTitle}" />
+                  <TextBlock Classes="option-desc" Text="{DynamicResource AutoAppendIndexDesc}" />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" Classes="row-switch" IsChecked="{Binding AutoAppendIndex, Mode=TwoWay}" />
+              </Grid>
+            </StackPanel>
           </StackPanel>
 
         </StackPanel>
       </ScrollViewer>
 
       <!-- 运行状态与主按钮 -->
-      <StackPanel Grid.Row="2" Margin="16,10,16,16" Spacing="8">
+      <StackPanel Grid.Row="2" Margin="16,10,16,16" Spacing="8" IsVisible="{Binding !IsCollapsed}">
         <Border Classes="inspector-card accent" Padding="10,6" IsVisible="{Binding Tasks.IsRunning}">
           <Grid ColumnDefinitions="Auto,*,Auto,Auto">
             <ic:SymbolIcon Grid.Column="0" Symbol="ArrowSync" FontSize="13" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" Margin="0,1,8,0" />
@@ -226,13 +241,44 @@
             </Button>
           </Grid>
         </Border>
-        <Button Classes="primary-btn" Command="{Binding StartCommand}" HorizontalAlignment="Stretch">
+        <Button Classes="primary-btn" Command="{Binding StartCommand}" HorizontalAlignment="Stretch"
+                controls:ShortcutTip.Label="{Binding PrimaryButtonText}" controls:ShortcutTip.Shortcut="{x:Static infra:AppShortcuts.StartAction}">
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
             <ic:SymbolIcon Symbol="Play" FontSize="14" Foreground="{DynamicResource OnAccentBrush}" VerticalAlignment="Center" />
             <TextBlock Text="{Binding PrimaryButtonText}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
           </StackPanel>
         </Button>
       </StackPanel>
+
+      <!-- 收起后的窄条：展开按钮、动作图标与开始按钮，悬停提示给出完整文字 -->
+      <Grid Grid.RowSpan="3" RowDefinitions="Auto,Auto,*,Auto" Margin="0,14,0,16" IsVisible="{Binding IsCollapsed}">
+        <Button x:Name="ExpandButton" Grid.Row="0" Classes="rail-btn" HorizontalAlignment="Center"
+                Command="{Binding ToggleCollapsedCommand}" ToolTip.Tip="{DynamicResource InspectorExpandTip}">
+          <ic:SymbolIcon Symbol="PanelRightExpand" />
+        </Button>
+        <StackPanel Grid.Row="1" Spacing="6" Margin="0,14,0,0" HorizontalAlignment="Center">
+          <Button Classes="rail-btn" Classes.active="{Binding IsToAndroid}" Command="{Binding SetActionCommand}" CommandParameter="ToAndroid" ToolTip.Tip="{DynamicResource ActionToAndroid}">
+            <ic:SymbolIcon Symbol="PhoneArrowRight" />
+          </Button>
+          <Button Classes="rail-btn" Classes.active="{Binding IsToApple}" Command="{Binding SetActionCommand}" CommandParameter="ToApple" ToolTip.Tip="{DynamicResource ActionToApple}">
+            <ic:SymbolIcon Symbol="ArrowUndo" />
+          </Button>
+          <Button Classes="rail-btn" Classes.active="{Binding IsExtract}" Command="{Binding SetActionCommand}" CommandParameter="Extract" ToolTip.Tip="{DynamicResource ActionExtract}">
+            <ic:SymbolIcon Symbol="ArrowSplit" />
+          </Button>
+          <Button Classes="rail-btn" Classes.active="{Binding IsStrip}" Command="{Binding SetActionCommand}" CommandParameter="Strip" ToolTip.Tip="{DynamicResource ActionStrip}">
+            <ic:SymbolIcon Symbol="Archive" />
+          </Button>
+        </StackPanel>
+        <StackPanel Grid.Row="3" Spacing="8" HorizontalAlignment="Center">
+          <Button Classes="rail-btn" Command="{Binding ViewTasksCommand}" IsVisible="{Binding Tasks.IsRunning}" ToolTip.Tip="{Binding Tasks.Current?.Title}">
+            <ic:SymbolIcon Symbol="ArrowSync" Foreground="{DynamicResource AccentBrush}" />
+          </Button>
+          <Button Classes="primary-btn rail-start-btn" Command="{Binding StartCommand}" controls:ShortcutTip.Label="{Binding PrimaryButtonText}" controls:ShortcutTip.Shortcut="{x:Static infra:AppShortcuts.StartAction}">
+            <ic:SymbolIcon Symbol="Play" FontSize="16" Foreground="{DynamicResource OnAccentBrush}" />
+          </Button>
+        </StackPanel>
+      </Grid>
     </Grid>
   </Border>
 </UserControl>

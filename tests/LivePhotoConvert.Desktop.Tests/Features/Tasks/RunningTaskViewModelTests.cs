@@ -54,6 +54,32 @@ public class RunningTaskViewModelTests
         Assert.Equal("40%", vm.PercentText);
     }
 
+    /// <summary>合成时配对校验跳过的项在第一次进度里一次性计入已完成，不能把前几秒的吞吐抬高。</summary>
+    [Fact]
+    public void PreresolvedItems_CountInProgressButNotInThroughputOrEstimate()
+    {
+        var vm = Create(items: 20);
+
+        _time.Advance(TimeSpan.FromSeconds(2));
+        vm.Report(new BatchProgress(9, 20, "a.jpg", Preresolved: 8));
+
+        Assert.Equal(45, vm.Percent);
+        Assert.Equal(0.5, vm.ItemsPerSecond!.Value, 3);
+        Assert.Null(vm.Remaining);
+
+        _time.Advance(TimeSpan.FromSeconds(4));
+        vm.Report(new BatchProgress(11, 20, "c.jpg", Preresolved: 8));
+
+        // 实际处理 3 项用时 6 秒；剩余 9 项
+        Assert.Equal(0.5, vm.ItemsPerSecond!.Value, 3);
+        Assert.Equal(TimeSpan.FromSeconds(18), vm.Remaining);
+
+        // 越界的预先确定数按已完成数封顶
+        vm.Report(new BatchProgress(11, 20, "c.jpg", Preresolved: 99));
+        Assert.Null(vm.ItemsPerSecond);
+        Assert.Equal("—", vm.ThroughputText);
+    }
+
     [Fact]
     public void PausedTime_IsExcludedFromRateAndEstimate()
     {
@@ -100,6 +126,18 @@ public class RunningTaskViewModelTests
         vm.Report(new BatchProgress(-1, 0, "x"));
         Assert.Equal(0, vm.Completed);
         Assert.Equal(0, vm.Percent);
+    }
+
+    [Fact]
+    public void Report_IgnoresOlderCountArrivingAfterNewerOne()
+    {
+        var vm = Create();
+
+        vm.Report(new BatchProgress(10, 10, "j.jpg"));
+        vm.Report(new BatchProgress(9, 10, "i.jpg"));
+
+        Assert.Equal(10, vm.Completed);
+        Assert.Equal("j.jpg", vm.CurrentFile);
     }
 
     [Theory]

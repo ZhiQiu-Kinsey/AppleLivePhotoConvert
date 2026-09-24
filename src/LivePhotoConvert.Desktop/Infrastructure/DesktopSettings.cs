@@ -2,11 +2,12 @@ using System.Text.Json.Serialization;
 using LivePhotoConvert.Core.Pipeline;
 using LivePhotoConvert.Core.Services;
 using LivePhotoConvert.Desktop.Features.Library;
+using LivePhotoConvert.Desktop.Features.Updates;
 
 namespace LivePhotoConvert.Desktop.Infrastructure;
 
 /// <summary>
-/// 桌面端持久化配置。字段变更需同步提升 <see cref="SettingsStore.CurrentSchemaVersion"/> 并补迁移。
+/// 桌面端持久化配置。新增字段缺失时取默认值即可；重命名、删除或改变含义时需提升 <see cref="SettingsStore.CurrentSchemaVersion"/> 并补迁移。
 /// </summary>
 public sealed class DesktopSettings
 {
@@ -42,6 +43,9 @@ public sealed class DesktopSettings
     public string StripOutputDirectory { get; set; } = string.Empty;
     public bool StripConvertToHeic { get; set; } = true;
 
+    /// <summary>文件中写成 null 时同样回退默认值，调用方不必判空。</summary>
+    public InspectorPreferences Inspector { get; set => field = value ?? new(); } = new();
+
     // 图库：唯一的相册目录，所有动作共用
     public string LastScanDirectory { get; set; } = string.Empty;
     /// <summary>文件中写成 null 时同样回退默认值，调用方不必判空。</summary>
@@ -55,6 +59,40 @@ public sealed class DesktopSettings
 
     /// <summary>主窗口最近一次的常规（非最大化）位置与大小；从未记录时为 null。</summary>
     public WindowPlacement? Window { get; set; }
+
+    /// <summary>自动更新；文件中写成 null 时同样回退默认值，调用方不必判空。</summary>
+    public UpdatePreferences Updates { get; set => field = value ?? new(); } = new();
+}
+
+/// <summary>自动更新偏好与最近一次检查的结果；缺少字段时取默认值（自动检查开启、从未检查），无需迁移。</summary>
+public sealed class UpdatePreferences
+{
+    /// <summary>启动后在后台自动检查（每天最多一次）。</summary>
+    public bool AutoCheck { get; set; } = true;
+
+    /// <summary>最近一次完成（成功或失败）的检查时间。</summary>
+    public DateTimeOffset? LastCheckTime { get; set; }
+
+    [JsonConverter(typeof(JsonStringEnumConverter<UpdateCheckStatus>))]
+    public UpdateCheckStatus LastCheckStatus { get; set; }
+
+    /// <summary>最近一次检查发现的新版本；没有时为空。</summary>
+    public string LastAvailableVersion { get; set; } = string.Empty;
+
+    /// <summary>最近一次检查失败的原因；仅 <see cref="LastCheckStatus"/> 为 Failed 时有意义。</summary>
+    [JsonConverter(typeof(JsonStringEnumConverter<UpdateFailureKind>))]
+    public UpdateFailureKind LastFailure { get; set; }
+
+    /// <summary>用户选择跳过的版本：不再自动弹出，手动检查仍会显示。</summary>
+    public string SkippedVersion { get; set; } = string.Empty;
+}
+
+public enum UpdateCheckStatus
+{
+    Never,
+    UpToDate,
+    UpdateAvailable,
+    Failed
 }
 
 /// <summary>图库视图偏好；取值与工具栏命令参数一致，无法识别的值在读取时回退默认。</summary>
@@ -85,6 +123,16 @@ public sealed class GalleryPreferences
 
     [JsonIgnore]
     public long ThumbnailDiskCacheBytes => Math.Clamp(ThumbnailDiskCacheMb, MinThumbnailDiskCacheMb, MaxThumbnailDiskCacheMb) * 1024L * 1024;
+}
+
+/// <summary>检查器布局；缺少字段时取默认值（展开、输出分组收起），无需迁移。</summary>
+public sealed class InspectorPreferences
+{
+    /// <summary>最近一次手动收起或展开的选择；窗口过窄时的自动收起不写入这里。</summary>
+    public bool IsCollapsed { get; set; }
+
+    /// <summary>"输出位置"分组是否展开。</summary>
+    public bool IsOutputExpanded { get; set; }
 }
 
 /// <summary>窗口位置为物理像素，宽高为与缩放无关的逻辑单位（与 Avalonia 的 Position / Width 一致）。</summary>

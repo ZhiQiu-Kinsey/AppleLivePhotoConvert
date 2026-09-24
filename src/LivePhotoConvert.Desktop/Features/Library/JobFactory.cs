@@ -36,7 +36,7 @@ public static class JobFactory
         _ => false
     };
 
-    /// <summary>按扫描确定的类型判断；播放时切出的临时视频不影响类型。</summary>
+    /// <summary>按扫描确定的类型判断。</summary>
     public static bool IsApplicable(ConversionAction action, PhotoCardItemViewModel card) => IsApplicable(action, card.Kind);
 
     public static List<PhotoCardItemViewModel> Applicable(ConversionAction action, IEnumerable<PhotoCardItemViewModel> cards) =>
@@ -128,7 +128,7 @@ public static class JobFactory
         return new ConversionJob(action, options, inputs)
         {
             Tools = ToolPaths.From(settings),
-            Parallelism = Math.Clamp(settings.Concurrency, 1, 8)
+            Parallelism = Math.Clamp(settings.Concurrency, 1, ConversionDefaults.MaxParallelism)
         };
     }
 

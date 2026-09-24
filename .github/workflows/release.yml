@@ -1,62 +1,203 @@
-name: Release Build & Publish
+name: Release
 
+# 只由推送的版本 tag 触发；工作流不会创建 tag。发布失败时在 Actions 页面对该次运行"Re-run"，
+# 不提供手动输入 tag 的入口：检出的永远是触发事件本身的 tag，CI 与缓存不会执行外部指定的代码。
 on:
   push:
     tags:
       - 'v*'
       - '[0-9]*.[0-9]*.*'
-  workflow_dispatch:
-    inputs:
-      tag_name:
-        description: '发布版本标签 (如 v2.0.1)'
-        required: false
-        default: ''
 
+# 默认只读；写权限只授予最后的发布任务
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
 
 jobs:
-  build-and-release:
-    runs-on: windows-latest
+  prepare:
+    name: 校验版本号与更新日志
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      version: ${{ steps.meta.outputs.version }}
 
     steps:
-      - name: 检出代码
-        uses: actions/checkout@v4
+      - name: 检出 tag
+        uses: actions/checkout@v7
         with:
-          fetch-depth: 0
+          persist-credentials: false
 
-      - name: 配置 .NET 10 环境
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: 运行自动化测试套件
-        run: dotnet test LivePhotoConvert.slnx -c Release --verbosity normal
-
-      - name: 编译发布 Native AOT 原生程序包
-        run: |
-          dotnet publish src/LivePhotoConvert.Desktop/LivePhotoConvert.Desktop.csproj `
-            -r win-x64 -c Release `
-            -o dist/aot
-          # 清除调试符号 pdb 文件
-          Remove-Item -Path "dist/aot/*.pdb" -Force -ErrorAction SilentlyContinue
-
-          # 提取版本号并打包为 ZIP 归档
-          $tag = "${{ inputs.tag_name || github.ref_name }}"
-          if (-not $tag) { $tag = "win-x64" }
-          $zipName = "LivePhotoConvert-$tag-win-x64.zip"
-          Compress-Archive -Path "dist/aot/*" -DestinationPath $zipName -Force
-          echo "RELEASE_ZIP=$zipName" >> $env:GITHUB_ENV
-
-      - name: 创建 GitHub Release 并上传 ZIP 压缩包
-        uses: softprops/action-gh-release@v2
-        with:
-          name: LivePhotoConvert ${{ inputs.tag_name || github.ref_name }}
-          tag_name: ${{ inputs.tag_name || github.ref_name }}
-          draft: false
-          prerelease: false
-          generate_release_notes: true
-          files: |
-            ${{ env.RELEASE_ZIP }}
+      - name: 校验 tag 与 Directory.Build.props 版本一致
+        id: meta
+        shell: pwsh
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          $props = [xml](Get-Content -LiteralPath Directory.Build.props -Raw)
+          $version = @($props.Project.PropertyGroup | ForEach-Object { $_.Version } | Where-Object { $_ })[0]
+          $expected = $env:TAG -replace '^[vV]', ''
+          if ($version -ne $expected) {
+            Write-Host "::error file=Directory.Build.props::tag $env:TAG 与 <Version>$version</Version> 不一致（见 AGENTS.md 第 7 节）。"
+            exit 1
+          }
+          "tag=$env:TAG" >> $env:GITHUB_OUTPUT
+          "version=$version" >> $env:GITHUB_OUTPUT
+          Write-Host "发布 $env:TAG（版本 $version）"
+
+      - name: 检查更新日志中有对应段落
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: ./.github/scripts/get-changelog-section.ps1 -Version $env:VERSION -OutFile "$env:RUNNER_TEMP/release-notes.md"
+
+  ci:
+    name: 发布前检查
+    needs: prepare
+    uses: ./.github/workflows/ci.yml
+    with:
+      upload-aot: true
+    permissions:
+      contents: read
+
+  # 安装版与更新包在 Windows 上打包：vpk 生成增量包依赖它自带的 Windows 版 zstd，且与 CI 中验证安装与升级的环境一致
+  package:
+    name: 打包安装版与更新包（Velopack）
+    needs: [ prepare, ci ]
+    runs-on: windows-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      TAG: ${{ needs.prepare.outputs.tag }}
+      VERSION: ${{ needs.prepare.outputs.version }}
+
+    steps:
+      - name: 检出打包脚本、更新日志与图标
+        uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ needs.prepare.outputs.tag }}
+          persist-credentials: false
+          sparse-checkout: |
+            .github/scripts
+            CHANGELOG.md
+            global.json
+            src/LivePhotoConvert.Desktop/LivePhotoConvert.Desktop.csproj
+            src/LivePhotoConvert.Desktop/LivePhotoConvert.ico
+          sparse-checkout-cone-mode: false
+
+      # vpk 是 .NET 工具，版本与工程中的 Velopack 包一致（由打包脚本读取）
+      - name: 配置 .NET（版本取自 global.json）
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: 下载 Native AOT 发布目录
+        uses: actions/download-artifact@v8
+        with:
+          name: aot-win-x64
+          path: dist/aot
+
+      - name: 提取更新说明
+        shell: pwsh
+        run: ./.github/scripts/get-changelog-section.ps1 -Version $env:VERSION -OutFile release-notes.md
+
+      # 先下载上一个正式版的完整包作为增量基准；上一版没有 Velopack 资产（首次发布）时只生成完整包
+      - name: 打包安装版、便携版与更新包
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: >-
+          ./.github/scripts/velopack-pack.ps1 -PublishDir dist/aot -Version $env:VERSION -OutputDir velopack
+          -ReleaseNotes release-notes.md
+          -PreviousReleasesFrom "$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY" -Token $env:GITHUB_TOKEN
+
+      # 安装版与便携版按 tag 命名；更新包与 releases.win.json 保持 vpk 的名字（更新清单按文件名引用）。
+      # 上一版的完整包只作增量基准，属于上一个发布，不重复上传。
+      - name: 整理发布文件
+        shell: pwsh
+        run: |
+          $pack = 'LivePhotoConvert.App'
+          New-Item -ItemType Directory -Force -Path velopack-release | Out-Null
+          Copy-Item -LiteralPath "velopack/$pack-win-Setup.exe" -Destination "velopack-release/LivePhotoConvert-$env:TAG-win-x64-Setup.exe"
+          Copy-Item -LiteralPath "velopack/$pack-win-Portable.zip" -Destination "velopack-release/LivePhotoConvert-$env:TAG-win-x64-Portable.zip"
+          Copy-Item -LiteralPath "velopack/releases.win.json" -Destination velopack-release/
+          Get-ChildItem -LiteralPath velopack -Filter "$pack-$env:VERSION-*.nupkg" | Copy-Item -Destination velopack-release/
+          Get-ChildItem -LiteralPath velopack-release | ForEach-Object { Write-Host ("{0,12:N0}  {1}" -f $_.Length, $_.Name) }
+
+      - name: 上传安装版与更新包
+        uses: actions/upload-artifact@v7
+        with:
+          name: velopack-win-x64
+          path: velopack-release/
+          if-no-files-found: error
+          retention-days: 3
+
+  publish:
+    name: 创建 GitHub Release
+    needs: [ prepare, package ]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write      # 创建 Release 并上传附件
+      id-token: write      # 来源证明：向 Sigstore 申请签名证书
+      attestations: write  # 来源证明：写入仓库的 attestations
+    env:
+      TAG: ${{ needs.prepare.outputs.tag }}
+      VERSION: ${{ needs.prepare.outputs.version }}
+
+    steps:
+      - name: 检出发布脚本与更新日志
+        uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ needs.prepare.outputs.tag }}
+          persist-credentials: false
+          sparse-checkout: |
+            .github/scripts
+            CHANGELOG.md
+          sparse-checkout-cone-mode: false
+
+      # 发布包就是 CI 中通过 AOT 检查（警告视为错误）的那份产物，不再重新编译
+      - name: 下载 Native AOT 发布目录
+        uses: actions/download-artifact@v8
+        with:
+          name: aot-win-x64
+          path: dist/aot
+
+      # 安装版、便携版、完整 / 增量更新包与更新清单
+      - name: 下载安装版与更新包
+        uses: actions/download-artifact@v8
+        with:
+          name: velopack-win-x64
+          path: release
+
+      # 纯解压版保留给不想安装的用户；它不含 Velopack 的更新程序，应用内显示"不支持自动更新"并提供下载页
+      - name: 打包 ZIP 并生成 SHA256SUMS.txt
+        shell: pwsh
+        run: |
+          $zip = "release/LivePhotoConvert-$env:TAG-win-x64.zip"
+          Compress-Archive -Path dist/aot/* -DestinationPath $zip -CompressionLevel Optimal
+          ./.github/scripts/write-sha256sums.ps1 -Directory release -OutFile release/SHA256SUMS.txt
+
+      - name: 生成构建来源证明
+        uses: actions/attest@v4
+        with:
+          subject-path: release/*
+
+      - name: 提取更新说明
+        shell: pwsh
+        run: ./.github/scripts/get-changelog-section.ps1 -Version $env:VERSION -OutFile release-notes.md
+
+      - name: 创建 GitHub Release
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          name: LivePhotoConvert ${{ env.TAG }}
+          tag_name: ${{ env.TAG }}
+          body_path: release-notes.md
+          draft: false
+          prerelease: ${{ contains(env.VERSION, '-') }}
+          fail_on_unmatched_files: true
+          files: release/*

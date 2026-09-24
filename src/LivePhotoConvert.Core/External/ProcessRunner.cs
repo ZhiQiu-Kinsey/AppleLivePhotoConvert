@@ -47,6 +47,8 @@ public static class ProcessRunner
     public static async Task<ProcessResult> RunAsync(string fileName, IEnumerable<string> arguments, CancellationToken cancellationToken = default, TimeSpan? timeout = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(fileName);
+        // 已取消时不再启动进程：批处理取消后排队中的条目会立即结束，而不是逐个启动再结束进程树
+        cancellationToken.ThrowIfCancellationRequested();
         var startInfo = new ProcessStartInfo
         {
             FileName = fileName,

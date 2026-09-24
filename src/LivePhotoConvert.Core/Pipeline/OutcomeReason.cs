@@ -56,8 +56,14 @@ public enum OutcomeReason
     /// <summary>源文件不存在或为空。参数：文件名。</summary>
     SourceMissingOrEmpty,
 
+    /// <summary>源文件无法读取或解析（权限不足、文件损坏等）。参数：文件名。</summary>
+    SourceUnreadable,
+
     /// <summary>视频流复制与重新编码都失败。</summary>
     VideoConversionFailed,
+
+    /// <summary>图片转换失败（源图损坏、格式不受支持或编码器出错）。</summary>
+    ImageConversionFailed,
 
     /// <summary>源视频是 HDR，但 FFmpeg 缺少保真所需的 10-bit HEVC 编码器。</summary>
     HdrEncoderUnavailable,
@@ -105,6 +111,23 @@ public sealed record OutcomeCause
     public static implicit operator OutcomeCause(OutcomeReason reason) => new(reason);
 
     /// <summary>
+    /// 按顺序检查源文件，第一个不存在或为空的文件给出 <see cref="OutcomeReason.SourceMissingOrEmpty"/>；全部正常时返回 <c>null</c>。
+    /// </summary>
+    /// <remarks>相册扫描后文件可能已被删除或同步为占位文件，提前检查才能给出明确原因，而不是归为未知异常。</remarks>
+    internal static OutcomeCause? MissingOrEmptySource(params ReadOnlySpan<string> paths)
+    {
+        foreach (var path in paths)
+        {
+            if (new FileInfo(path) is not { Exists: true, Length: > 0 })
+            {
+                return new OutcomeCause(OutcomeReason.SourceMissingOrEmpty, Path.GetFileName(path));
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// 把条目处理中抛出的异常归类为原因码；未知异常归为 <see cref="OutcomeReason.Unexpected"/>。
     /// </summary>
     public static OutcomeCause FromException(Exception exception) => exception switch
@@ -112,6 +135,7 @@ public sealed record OutcomeCause
         ToolNotFoundException missing => new(OutcomeReason.ToolMissing, missing.ToolName),
         VideoConversionException { Error: VideoConversionError.HdrEncoderUnavailable } => OutcomeReason.HdrEncoderUnavailable,
         VideoConversionException => OutcomeReason.VideoConversionFailed,
+        ImageConversionException => OutcomeReason.ImageConversionFailed,
         OutcomeException known => known.Cause,
         _ => OutcomeReason.Unexpected
     };

@@ -11,6 +11,7 @@
   <sys:String x:Key="ShellToolReady">已就绪</sys:String>
   <sys:String x:Key="ShellToolAttention">可用，但需要注意，详见依赖引擎页</sys:String>
   <sys:String x:Key="ShellToolMissing">未找到，相关功能不可用</sys:String>
+  <sys:String x:Key="ShellToolProbing">正在检测</sys:String>
 
   <!-- 漏斗与方向 -->
   <sys:String x:Key="SelectedSummaryFormat">{0} 组实况照片 · {1}</sys:String>
@@ -52,6 +53,8 @@
   <sys:String x:Key="SourceActionSubfolderShort">移入备份文件夹</sys:String>
   <sys:String x:Key="SourceActionRecycleShort">移入回收站</sys:String>
   <sys:String x:Key="SourceActionDeleteShort">永久删除</sys:String>
+  <sys:String x:Key="ArchiveFolderMerged">已合成</sys:String>
+  <sys:String x:Key="ArchiveFolderSplit">已拆分</sys:String>
   <sys:String x:Key="DeleteWarningTitle">物理删除原片警报</sys:String>
   <sys:String x:Key="DeleteWarningDesc">转换成功后源文件将被永久删除，开始前需要输入确认词。</sys:String>
   <sys:String x:Key="AutoAppendIndexTitle">遇到同名文件时追加序号</sys:String>
@@ -93,29 +96,29 @@
   <sys:String x:Key="TestPingBtn">测试连通性</sys:String>
 
   <!-- 防灾弹窗 -->
-  <sys:String x:Key="DeleteDialogTitle">高危警报：即将彻底删除原照片！</sys:String>
-  <sys:String x:Key="DeleteDialogDesc">此操作不可撤销！原照片将直接从磁盘永久粉碎</sys:String>
+  <sys:String x:Key="DeleteDialogTitle">即将永久删除原照片</sys:String>
+  <sys:String x:Key="DeleteDialogDesc">此操作不可撤销，原照片将从磁盘永久删除。</sys:String>
   <sys:String x:Key="DeleteDialogInputLabel">请输入大写确认词 DELETE 以解除安全锁定：</sys:String>
   <sys:String x:Key="DeleteDialogCancel">取消，保留原片</sys:String>
   <sys:String x:Key="DeleteDialogConfirm">确认永久删除原片</sys:String>
 
-  <sys:String x:Key="LowDiskDialogTitle">磁盘空间不足预警 (ENOSPC)</sys:String>
+  <sys:String x:Key="LowDiskDialogTitle">输出磁盘空间不足</sys:String>
   <sys:String x:Key="LowDiskDialogDesc">目标磁盘剩余容量不足以安全完成转换</sys:String>
   <sys:String x:Key="LowDiskDialogDismiss">返回调整</sys:String>
 
-  <sys:String x:Key="BackupDialogTitle">高危防灾确认：就地覆盖原照片</sys:String>
-  <sys:String x:Key="BackupDialogDesc">开启此项将永久剥离并删除相册内嵌的短视频！</sys:String>
+  <sys:String x:Key="BackupDialogTitle">确认就地覆盖原照片</sys:String>
+  <sys:String x:Key="BackupDialogDesc">开启后，瘦身会直接替换相册中的原照片。</sys:String>
   <sys:String x:Key="BackupDialogCancel">取消，推荐安全导出</sys:String>
   <sys:String x:Key="BackupDialogConfirm">我已知晓风险，开启就地覆盖</sys:String>
 
-  <sys:String x:Key="ArbitrateDialogTitle">异常实况同屏裁决与核验 (时差超标)</sys:String>
-  <sys:String x:Key="ArbitrateDialogDesc">双屏同帧比对静态原图与视频首帧，确保属于同一快门瞬间</sys:String>
-  <sys:String x:Key="ArbitrateReject">并非同一实况 (作为独立图影拆分)</sys:String>
-  <sys:String x:Key="ArbitrateConfirm">确认属于同一实况 (强制配对入白名单)</sys:String>
+  <sys:String x:Key="ArbitrateDialogTitle">人工确认实况配对（拍摄时间差超出阈值）</sys:String>
+  <sys:String x:Key="ArbitrateDialogDesc">照片与视频的拍摄时间相差较大，请确认它们是否属于同一张实况照片。</sys:String>
+  <sys:String x:Key="ArbitrateReject">不是同一张实况</sys:String>
+  <sys:String x:Key="ArbitrateConfirm">确认是同一张实况</sys:String>
 
   <sys:String x:Key="SettingsPageTitle">全局偏好设置</sys:String>
   <sys:String x:Key="ThemeTitle">界面外观主题</sys:String>
-  <sys:String x:Key="LangTitle">系统语言</sys:String>
+  <sys:String x:Key="LangTitle">界面语言</sys:String>
   <sys:String x:Key="ConcurrencyTitle">并行并发转换任务数</sys:String>
 
   <!-- CompactToolbar Keys -->
@@ -141,6 +144,10 @@
   <sys:String x:Key="ToolsInstallRootLabel">安装位置：</sys:String>
   <sys:String x:Key="ToolProbing">检测中</sys:String>
   <sys:String x:Key="ToolVersionUnknown">版本未知</sys:String>
+  <sys:String x:Key="ToolProbeTimeout">版本探测超时，程序可能卡住或被安全软件拦截</sys:String>
+  <sys:String x:Key="ToolProbeCannotStart">无法运行该程序：文件可能损坏、与系统不兼容或被安全软件拦截</sys:String>
+  <sys:String x:Key="ToolProbeFailed">读取版本失败，详情见错误日志</sys:String>
+  <sys:String x:Key="ToolInstallUnexpected">出现意外错误，详情见错误日志</sys:String>
   <sys:String x:Key="ToolUpdateAvailableFormat">有推荐版本 {0}，建议升级</sys:String>
   <sys:String x:Key="ToolUpgradeBtnFormat">升级到 {0}</sys:String>
   <sys:String x:Key="ToolHdrUnavailable">HDR 预览/转码不可用：当前 FFmpeg 缺少 HDR 色调映射或 10-bit HEVC 编码。</sys:String>
@@ -185,30 +192,30 @@
 
   <!-- QuickLook Keys -->
   <sys:String x:Key="QuickLookLiveBadge">实况 Live Photo</sys:String>
-  <sys:String x:Key="QuickLookDevice">拍摄设备</sys:String>
+  <sys:String x:Key="QuickLookFormat">格式</sys:String>
   <sys:String x:Key="QuickLookResolution">分辨率</sys:String>
   <sys:String x:Key="QuickLookPairing">封装配对</sys:String>
   <sys:String x:Key="QuickLookSize">存储体积</sys:String>
   <sys:String x:Key="QuickLookPause">暂停播放</sys:String>
-  <sys:String x:Key="QuickLookShortcuts">按 Space 暂停/继续 · ← / → 切换 · 按 Esc 关闭</sys:String>
-  <sys:String x:Key="QuickLookPrevTip">上一张 (←)</sys:String>
-  <sys:String x:Key="QuickLookNextTip">下一张 (→)</sys:String>
+  <sys:String x:Key="QuickLookShortcutsFormat">按 {0} 暂停/继续 · {1} / {2} 切换 · 按 {3} 关闭</sys:String>
+  <sys:String x:Key="QuickLookPrevTip">上一张</sys:String>
+  <sys:String x:Key="QuickLookNextTip">下一张</sys:String>
 
   <!-- Dialog Secondary Keys -->
-  <sys:String x:Key="DeleteAffectedFormat">本次受影响源文件：{0} 组原始照片 ({1})</sys:String>
+  <sys:String x:Key="DeleteAffectedFormat">本次受影响的原片：{0} 项（{1}）</sys:String>
   <sys:String x:Key="DeleteIrreversibleDesc">删除后无法从回收站或废纸篓中找回。</sys:String>
   <sys:String x:Key="DeleteInputPlaceholder">键入 DELETE</sys:String>
-  <sys:String x:Key="LowDiskRequiredLabel">预计所需空间 (含防损冗余 1.2倍 + 500MB)：</sys:String>
+  <sys:String x:Key="LowDiskRequiredLabel">预计所需空间（源文件的 1.2 倍 + 500 MB 余量）：</sys:String>
   <sys:String x:Key="LowDiskAvailableLabel">目标驱动器当前剩余可用：</sys:String>
   <sys:String x:Key="LowDiskSolutionDesc">请释放目标驱动器空间或更改输出目录至其他磁盘分区。</sys:String>
   <sys:String x:Key="BackupRiskTitle">操作影响与不可逆风险：</sys:String>
-  <sys:String x:Key="BackupRiskPoint1">1. 相册内的 Motion Photo 视频流将被彻底清除，仅保留纯静态 HEIC/JPEG 封面；</sys:String>
-  <sys:String x:Key="BackupRiskPoint2">2. 安全保障：底层将自动创建 .livephoto_backup 暂存原片，校验完整后方才清理，断电零损坏。</sys:String>
-  <sys:String x:Key="ArbitratePhotoTitle">静态照片 (HEIC)</sys:String>
-  <sys:String x:Key="ArbitratePhotoDesc">静态高分辨率底片</sys:String>
-  <sys:String x:Key="ArbitrateVideoTitle">视频首帧 (MOV)</sys:String>
-  <sys:String x:Key="ArbitrateVideoDesc">实况视频第 0 毫秒首帧</sys:String>
-  <sys:String x:Key="ArbitrateConclusionLabel">时差分析结论：</sys:String>
+  <sys:String x:Key="BackupRiskPoint1">1. 内嵌视频将被永久移除，配对的实况视频移入回收站，只保留静态照片；</sys:String>
+  <sys:String x:Key="BackupRiskPoint2">2. 新文件校验通过后才替换原片，替换中途出错时原片保持不变。</sys:String>
+  <sys:String x:Key="ArbitratePhotoTitle">照片</sys:String>
+  <sys:String x:Key="ArbitratePhotoDesc">照片文件</sys:String>
+  <sys:String x:Key="ArbitrateVideoTitle">实况视频</sys:String>
+  <sys:String x:Key="ArbitrateVideoDesc">视频文件</sys:String>
+  <sys:String x:Key="ArbitrateConclusionLabel">时间差：</sys:String>
 
   <!-- Settings Dialog Options -->
   <sys:String x:Key="ThemeLightOption">浅色模式</sys:String>
@@ -219,7 +226,7 @@
 
   <!-- Settings Dialog Redesign -->
   <sys:String x:Key="CancelBtn">取消</sys:String>
-  <sys:String x:Key="SettingsConcurrencyDesc">并行处理的实况照片对数（1~16），数值越高速度越快，同时占用的内存与磁盘 IO 也越多。</sys:String>
+  <sys:String x:Key="SettingsConcurrencyDesc">并行处理的实况照片对数（1~8），数值越高速度越快，同时占用的内存与磁盘 IO 也越多。</sys:String>
   <sys:String x:Key="SettingsPageDesc">主题、语言与转换性能等全局偏好，修改即时生效并自动保存。</sys:String>
   <sys:String x:Key="SettingsSavedHint">已自动保存</sys:String>
   <sys:String x:Key="NotifyOnCompleteTitle">转换完成提醒</sys:String>
@@ -273,6 +280,7 @@
   <sys:String x:Key="ReportAvgSpeedFormat">{0:F2} 秒/项</sys:String>
   <sys:String x:Key="SplitTargetApple">Apple Live Photo</sys:String>
   <sys:String x:Key="SplitTargetExtract">独立封面与视频</sys:String>
+  <sys:String x:Key="MergeTargetMotionPhoto">动态照片</sys:String>
   <sys:String x:Key="MergeSuccessDesc">已成功合成为动态照片</sys:String>
   <sys:String x:Key="SplitSuccessDescFormat">已成功拆分为 {0}</sys:String>
 
@@ -295,11 +303,14 @@
   <sys:String x:Key="ReportEmptyDesc">在图库中启动任务后，报告会保存在这里，直到程序退出。</sys:String>
   <sys:String x:Key="ReportKpiTotal">处理总量</sys:String>
   <sys:String x:Key="ReportKpiTotalSub">本次任务的项目数</sys:String>
+  <sys:String x:Key="ReportKpiTotalCanceledSubFormat">已处理 {0} · 未处理 {1}</sys:String>
   <sys:String x:Key="ReportKpiSuccess">转换成功</sys:String>
   <sys:String x:Key="ReportKpiSuccessRate">成功率</sys:String>
   <sys:String x:Key="ReportKpiProblems">异常</sys:String>
   <sys:String x:Key="ReportKpiProblemsSubFormat">失败 {0} · 清理失败 {1}</sys:String>
   <sys:String x:Key="ReportKpiDuration">批次总耗时</sys:String>
+  <sys:String x:Key="ReportDurationSecondsFormat">{0:F1} 秒</sys:String>
+  <sys:String x:Key="ReportDurationUnderOneSecond">不到 1 秒</sys:String>
   <sys:String x:Key="ReportDistTitle">处理结果分布指标</sys:String>
   <sys:String x:Key="ReportLegendSuccess">成功:</sys:String>
   <sys:String x:Key="ReportLegendSkipped">跳过:</sys:String>
@@ -313,11 +324,12 @@
   <sys:String x:Key="ReportCsvSourceFormat">来源格式</sys:String>
   <sys:String x:Key="ReportCsvTargetFormat">目标格式</sys:String>
   <sys:String x:Key="ReportCsvDetail">详细信息</sys:String>
-  <sys:String x:Key="QuickLookCloseTip">关闭 (Esc)</sys:String>
 
   <!-- 空状态与格式串 -->
   <sys:String x:Key="EmptyStateNoDirTitle">请选择待处理相册目录</sys:String>
   <sys:String x:Key="EmptyStateNoDirSubtitle">选择包含实况照片（HEIC/JPG + MOV）或安卓动态照片的文件夹，再在右侧选择要执行的动作。</sys:String>
+  <sys:String x:Key="EmptyStateDropHint">也可以把文件夹拖到这里</sys:String>
+  <sys:String x:Key="DropOverlayTitle">松开以打开这个文件夹</sys:String>
   <sys:String x:Key="EmptyStateEmptyTitle">当前目录未扫描到实况照片</sys:String>
   <sys:String x:Key="EmptyStateEmptySubtitle">请确认所选文件夹包含有效的实况成对文件或安卓动态照片</sys:String>
   <sys:String x:Key="FunnelTotalFormat">已扫描 {0:N0} 个文件</sys:String>
@@ -330,11 +342,10 @@
   <sys:String x:Key="PrimaryBtnAppleFormat">还原 {0} 组苹果实况</sys:String>
   <sys:String x:Key="PrimaryBtnExtractFormat">解包 {0} 张动态照片</sys:String>
   <sys:String x:Key="FilterBannerSuspiciousFormat">仅待人工裁决 ({0}项)</sys:String>
-  <sys:String x:Key="FilterBannerSelected">仅已选中项目</sys:String>
+  <sys:String x:Key="FilterBannerSelected">仅已选中项</sys:String>
   <sys:String x:Key="SelectedBadgeFormat">已选 {0} 项</sys:String>
   <sys:String x:Key="StripSavedPctFormat">释放比例: {0:F1}%</sys:String>
-  <sys:String x:Key="ArbitrateTimeDiffFormat">两者拍摄时间相差 {0:F2} 秒（安全门限 3.0s）</sys:String>
-  <sys:String x:Key="ArbitrateVerdictFormat">实测时差 {0:F2} 秒。请核对双帧画面、机型与地理位置是否属于同一快门瞬间。</sys:String>
+  <sys:String x:Key="ArbitrateVerdictFormat">两者拍摄时间相差 {0:F2} 秒。确认属于同一次拍摄后再配对，否则保持分开。</sys:String>
   <sys:String x:Key="NoMergePairs">未发现可合成的真实实况配对</sys:String>
   <sys:String x:Key="NoSplitCandidates">未发现可拆分的真实动态照片</sys:String>
 
@@ -351,6 +362,10 @@
   <sys:String x:Key="CurtainPositionFormat">对比位置: {0:F0}% / {1:F0}%</sys:String>
   <sys:String x:Key="PingTesting">测试中...</sys:String>
   <sys:String x:Key="PingFailedFormat">连接失败 ({0})</sys:String>
+  <sys:String x:Key="PingResultFormat">{0} ms (HTTP {1})</sys:String>
+  <sys:String x:Key="PingDnsFailed">域名解析失败</sys:String>
+  <sys:String x:Key="PingTlsFailed">安全连接失败</sys:String>
+  <sys:String x:Key="PingUnreachable">无法连接</sys:String>
   <sys:String x:Key="ToolNotDetectedFormat">未检测到 {0}</sys:String>
   <sys:String x:Key="ToolMissingFormat">未找到 {0}，请在「依赖引擎」页面下载或指定路径。</sys:String>
   <sys:String x:Key="ReportTimestampFormat">批次完成时间：{0:yyyy-MM-dd HH:mm:ss}</sys:String>
@@ -405,7 +420,7 @@
   <sys:String x:Key="ExportCsvFilterName">CSV 文件</sys:String>
   <sys:String x:Key="ExportCsvDoneFormat">已导出到 {0}</sys:String>
   <sys:String x:Key="ExportCsvFailedTitle">导出失败</sys:String>
-  <sys:String x:Key="ExportCsvFailedFormat">无法写入 "{0}"：{1}</sys:String>
+  <sys:String x:Key="ExportCsvFailedFormat">无法写入“{0}”：{1}</sys:String>
   <sys:String x:Key="RevealItemTip">打开所在位置</sys:String>
   <sys:String x:Key="ReportCsvSourcePath">源文件</sys:String>
   <sys:String x:Key="ReportCsvOutputPath">输出文件</sys:String>
@@ -415,6 +430,8 @@
   <!-- 图库工作台与检查器 -->
   <sys:String x:Key="NavLibrary">图库</sys:String>
   <sys:String x:Key="InspectorTitle">动作与参数</sys:String>
+  <sys:String x:Key="InspectorCollapseTip">收起检查器</sys:String>
+  <sys:String x:Key="InspectorExpandTip">展开检查器</sys:String>
   <sys:String x:Key="ActionToAndroid">转为安卓</sys:String>
   <sys:String x:Key="ActionToApple">转为苹果</sys:String>
   <sys:String x:Key="ActionExtract">解包提取</sys:String>
@@ -426,7 +443,7 @@
   <sys:String x:Key="ApplicableFormat">适用 {0} 项 · {1}</sys:String>
   <sys:String x:Key="ApplicableScopeSelectedFormat">统计范围：已选中的 {0} 项</sys:String>
   <sys:String x:Key="ApplicableScopeAll">未选中照片，统计全部就绪照片</sys:String>
-  <sys:String x:Key="InspectorOutputTitle">输出</sys:String>
+  <sys:String x:Key="InspectorOutputTitle">输出位置</sys:String>
   <sys:String x:Key="KeepSubfoldersDesc">按相册中的子目录结构写出，避免平铺后重名。</sys:String>
   <sys:String x:Key="StripConvertHeicTitle">同时转码为 HEIC</sys:String>
   <sys:String x:Key="StripConvertHeicDesc">进一步缩小体积；带 HDR 增益图的照片保持原格式。</sys:String>
@@ -449,7 +466,7 @@
   <sys:String x:Key="ScanErrorAccessDeniedFormat">没有读取该目录的权限：{0}</sys:String>
   <sys:String x:Key="ScanErrorFailedFormat">扫描失败：{0}</sys:String>
   <sys:String x:Key="ScanSkippedInaccessibleFormat">{0} 个子目录没有读取权限，已跳过</sys:String>
-  <sys:String x:Key="DialogCloseTip">关闭 (Esc)</sys:String>
+  <sys:String x:Key="DialogCloseTip">关闭</sys:String>
   <sys:String x:Key="CompareLoading">正在解码对比图…</sys:String>
   <sys:String x:Key="CompareBeforeSizeLabel">原片（含配对视频）</sys:String>
   <sys:String x:Key="CompareAfterSizeLabel">瘦身后（实际产物）</sys:String>
@@ -480,7 +497,6 @@
   <sys:String x:Key="ClearThumbnailCacheBtn">清理缓存</sys:String>
 
   <!-- 任务报告：结果原因与附注（对应 Core 原因码） -->
-  <sys:String x:Key="ReportKpiTotalCanceledSub">已处理 / 计划</sys:String>
   <sys:String x:Key="ReportDetailToggle">详情</sys:String>
   <sys:String x:Key="ReportCsvTechnicalDetail">技术细节</sys:String>
   <sys:String x:Key="ReportCleanupFailedDesc">输出已保存，但按所选方式处理源文件时出错</sys:String>
@@ -500,7 +516,9 @@
   <sys:String x:Key="OutcomeReasonPairNameOnly">缺少可校验的元数据，按文件名匹配</sys:String>
   <sys:String x:Key="OutcomeReasonPairManual">人工确认配对</sys:String>
   <sys:String x:Key="OutcomeReasonSourceMissingFormat">源文件不存在或为空：{0}</sys:String>
+  <sys:String x:Key="OutcomeReasonSourceUnreadableFormat">无法读取源文件（可能已损坏或没有访问权限）：{0}</sys:String>
   <sys:String x:Key="OutcomeReasonVideoConversionFailed">视频转换失败</sys:String>
+  <sys:String x:Key="OutcomeReasonImageConversionFailed">图片转换失败（源图可能已损坏或格式不受支持）</sys:String>
   <sys:String x:Key="OutcomeReasonHdrEncoderUnavailable">源视频为 HDR，但 FFmpeg 缺少 10-bit HEVC 编码器（libx265），为避免画质下降未转换</sys:String>
   <sys:String x:Key="OutcomeReasonVerificationFailed">输出校验未通过，已放弃写出</sys:String>
   <sys:String x:Key="OutcomeReasonUnexpected">处理出错，展开详情查看原因</sys:String>
@@ -511,5 +529,50 @@
   <sys:String x:Key="OutcomeNoteHdrMetadataMissing">HDR 元数据不足，已输出 SDR</sys:String>
   <sys:String x:Key="OutcomeNoteHdrConversionFailed">HDR 转换失败，已输出 SDR</sys:String>
   <sys:String x:Key="OutcomeNoteKeptOriginalFormat">保留原格式（HEIC 更大）</sys:String>
+
+  <!-- 自动更新 -->
+  <sys:String x:Key="SettingsUpdatesTitle">更新</sys:String>
+  <sys:String x:Key="UpdateCurrentVersionLabel">当前版本</sys:String>
+  <sys:String x:Key="UpdateNewVersionLabel">新版本</sys:String>
+  <sys:String x:Key="UpdateCheckBtn">检查更新</sys:String>
+  <sys:String x:Key="UpdateShowBtn">查看更新</sys:String>
+  <sys:String x:Key="UpdateOpenDownloadPageBtn">打开下载页</sys:String>
+  <sys:String x:Key="UpdateCancelPendingRestartBtn">改为退出时安装</sys:String>
+  <sys:String x:Key="UpdateAutoCheckTitle">自动检查更新</sys:String>
+  <sys:String x:Key="UpdateAutoCheckDesc">启动后在后台检查新版本，每天最多一次；发现新版本时提醒。</sys:String>
+  <sys:String x:Key="UpdateUnsupportedDesc">当前运行方式（解压版或源码运行）不支持自动更新，请从下载页获取安装版或便携版。</sys:String>
+  <sys:String x:Key="UpdateChecking">正在检查更新…</sys:String>
+  <sys:String x:Key="UpdateWaitingForTasks">更新已下载，将在当前任务完成后自动重启安装。</sys:String>
+  <sys:String x:Key="UpdateInstallOnExitScheduled">更新已下载，将在退出程序时安装，下次启动即为新版本。</sys:String>
+  <sys:String x:Key="UpdateNeverChecked">尚未检查更新</sys:String>
+  <sys:String x:Key="UpdateLastCheckFormat">上次检查：{0:yyyy-MM-dd HH:mm}，{1}</sys:String>
+  <sys:String x:Key="UpdateResultUpToDate">已是最新版本</sys:String>
+  <sys:String x:Key="UpdateResultAvailableFormat">发现新版本 {0}</sys:String>
+  <sys:String x:Key="UpdateResultFailedFormat">检查失败：{0}</sys:String>
+  <sys:String x:Key="UpdateAvailableTipFormat">有新版本 {0}</sys:String>
+  <sys:String x:Key="UpdateFailureNetwork">无法连接更新服务器，请检查网络，或在依赖引擎页更换 GitHub 加速镜像</sys:String>
+  <sys:String x:Key="UpdateFailureRateLimited">GitHub 请求过于频繁，请稍后再试</sys:String>
+  <sys:String x:Key="UpdateFailureIntegrity">更新文件校验未通过，已丢弃</sys:String>
+  <sys:String x:Key="UpdateFailureDisk">磁盘空间不足或无法写入更新文件</sys:String>
+  <sys:String x:Key="UpdateFailureNotFound">发布中没有找到可用的更新文件</sys:String>
+  <sys:String x:Key="UpdateFailureUnknown">出现未知错误，详情见错误日志</sys:String>
+  <sys:String x:Key="UpdateDialogTitleFormat">发现新版本 {0}</sys:String>
+  <sys:String x:Key="UpdateSizeFullFormat">下载大小 {0}</sys:String>
+  <sys:String x:Key="UpdateSizeDeltaFormat">增量更新，需下载 {0}</sys:String>
+  <sys:String x:Key="UpdateNotesTitle">更新说明</sys:String>
+  <sys:String x:Key="UpdateNoNotes">此版本没有附带更新说明。</sys:String>
+  <sys:String x:Key="UpdateDownloadingFormat">正在下载… {0}%</sys:String>
+  <sys:String x:Key="UpdateReadyDesc">更新已下载并校验完成。重启即可完成安装，设置会先自动保存。</sys:String>
+  <sys:String x:Key="UpdateReadyTasksRunningDesc">有任务正在运行：可以等任务完成后自动重启更新，也可以取消任务立即更新。</sys:String>
+  <sys:String x:Key="UpdateSkipVersionBtn">跳过此版本</sys:String>
+  <sys:String x:Key="UpdateLaterBtn">稍后提醒</sys:String>
+  <sys:String x:Key="UpdateNowBtn">立即更新</sys:String>
+  <sys:String x:Key="UpdateCancelDownloadBtn">取消下载</sys:String>
+  <sys:String x:Key="UpdateInstallOnExitBtn">下次启动时安装</sys:String>
+  <sys:String x:Key="UpdateRestartNowBtn">重启并更新</sys:String>
+  <sys:String x:Key="UpdateRestartAfterTasksBtn">任务完成后更新</sys:String>
+  <sys:String x:Key="UpdateCancelTasksAndRestartBtn">取消任务并立即更新</sys:String>
+  <sys:String x:Key="AboutUpdateAvailableBadge">有新版本</sys:String>
+  <sys:String x:Key="CreditVelopackDesc">安装程序、增量更新与自动更新框架</sys:String>
 
 </ResourceDictionary>

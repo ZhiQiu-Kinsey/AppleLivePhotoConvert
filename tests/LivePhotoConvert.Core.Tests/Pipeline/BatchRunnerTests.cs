@@ -28,6 +28,7 @@ public class BatchRunnerTests
     [InlineData("tool")]
     [InlineData("encode")]
     [InlineData("hdr")]
+    [InlineData("image")]
     [InlineData("verify")]
     [InlineData("other")]
     public async Task RunAsync_ItemException_IsMappedToReasonAndKeepsMessageAsDetail(string kind)
@@ -37,6 +38,7 @@ public class BatchRunnerTests
             "tool" => (new ToolNotFoundException("ffmpeg"), new OutcomeCause(OutcomeReason.ToolMissing, "ffmpeg")),
             "encode" => (new VideoConversionException(VideoConversionError.EncodeFailed, "重新编码失败"), OutcomeReason.VideoConversionFailed),
             "hdr" => (new VideoConversionException(VideoConversionError.HdrEncoderUnavailable, "缺少 libx265"), OutcomeReason.HdrEncoderUnavailable),
+            "image" => (new ImageConversionException("HEIC 编码失败"), OutcomeReason.ImageConversionFailed),
             "verify" => (new OutcomeException(OutcomeReason.VerificationFailed, "校验失败"), OutcomeReason.VerificationFailed),
             _ => ((Exception)new IOException("磁盘已满"), (OutcomeCause)OutcomeReason.Unexpected)
         };
@@ -56,7 +58,7 @@ public class BatchRunnerTests
     }
 
     [Fact]
-    public async Task RunAsync_ResolvedOutcomes_CountTowardsTotalAndProgress()
+    public async Task RunAsync_ResolvedOutcomes_CountTowardsTotalAndProgress_AndAreReportedSeparately()
     {
         var progress = new List<BatchProgress>();
 
@@ -70,7 +72,8 @@ public class BatchRunnerTests
             TestContext.Current.CancellationToken);
 
         Assert.Equal(2, report.Items.Count);
-        Assert.Equal(new BatchProgress(2, 2, "a"), Assert.Single(progress));
+        // 预先确定的条目计入已完成，同时单独给出，界面据此只按实际处理的条目计算吞吐
+        Assert.Equal(new BatchProgress(2, 2, "a", Preresolved: 1), Assert.Single(progress));
     }
 
     [Fact]

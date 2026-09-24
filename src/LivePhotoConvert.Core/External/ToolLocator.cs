@@ -11,7 +11,10 @@ public static class ToolLocator
 {
     private static readonly TimeSpan ProbeTimeout = TimeSpan.FromSeconds(6);
 
-    /// <summary>探测结果按文件路径、大小与修改时间缓存，文件被替换后自动重新探测。</summary>
+    /// <summary>
+    /// 探测结果按文件路径、大小与修改时间缓存，文件被替换后自动重新探测。
+    /// 只缓存进程正常退出得到的结论：启动失败或超时多为杀毒软件扫描、文件被占用等瞬时状况，缓存下来会让工具在本次运行中一直显示为不可用。
+    /// </summary>
     private static readonly ConcurrentDictionary<(string Path, long Length, DateTime LastWrite), bool> ProbeCache = new();
 
     /// <summary>
@@ -75,10 +78,23 @@ public static class ToolLocator
             return false;
         }
 
-        return ProbeCache.GetOrAdd((info.FullName, info.Length, info.LastWriteTimeUtc), static key => Probe(key.Path));
+        var key = (info.FullName, info.Length, info.LastWriteTimeUtc);
+        if (ProbeCache.TryGetValue(key, out var valid))
+        {
+            return valid;
+        }
+
+        if (Probe(info.FullName) is not { } result)
+        {
+            return false;
+        }
+
+        ProbeCache[key] = result;
+        return result;
     }
 
-    private static bool Probe(string path)
+    /// <returns>进程正常退出时为退出码是否为 0；无法启动或超时时为 <c>null</c></returns>
+    private static bool? Probe(string path)
     {
         var name = Path.GetFileName(path);
         var versionArgument = name.Contains("exiftool", StringComparison.OrdinalIgnoreCase) ? "-ver"
@@ -104,7 +120,7 @@ public static class ToolLocator
             });
             if (process is null)
             {
-                return false;
+                return null;
             }
 
             process.StandardInput.Close();
@@ -116,11 +132,11 @@ public static class ToolLocator
             }
 
             process.Kill(entireProcessTree: true);
-            return false;
+            return null;
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or IOException)
         {
-            return false;
+            return null;
         }
     }
 

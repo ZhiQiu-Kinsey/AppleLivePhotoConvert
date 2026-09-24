@@ -214,10 +214,14 @@ public class MotionPhotoMergerTests
         var photo = temp.CreateFile("IMG_0001.jpg", SyntheticMedia.Jpeg());
         var video = temp.CreateFile("IMG_0001.mov", SyntheticMedia.Mov());
 
-        var report = await CreateMerger().MergeAsync(Request(temp, [photo, video], b => b.SourceAction = SourceFileAction.Move), cancellationToken: Token);
+        var report = await CreateMerger().MergeAsync(Request(temp, [photo, video], b =>
+        {
+            b.SourceAction = SourceFileAction.Move;
+            b.ArchiveFolderName = "Merged";
+        }), cancellationToken: Token);
 
         Assert.Null(Assert.Single(report.Items).CleanupError);
-        Assert.Equal(["IMG_0001.jpg", "IMG_0001.mov"], temp.FileNames(SourceDisposition.MergedFolderName));
+        Assert.Equal(["IMG_0001.jpg", "IMG_0001.mov"], temp.FileNames("Merged"));
     }
 
     [Fact]
@@ -254,7 +258,7 @@ public class MotionPhotoMergerTests
     }
 
     [Fact]
-    public async Task MergeAsync_Canceled_ReturnsCanceledReport()
+    public async Task MergeAsync_CanceledBeforeStart_ThrowsAndWritesNothing()
     {
         using var temp = new TempDirectory();
         var photo = temp.CreateFile("IMG_0001.jpg", SyntheticMedia.Jpeg());
@@ -271,6 +275,7 @@ public class MotionPhotoMergerTests
         public IReadOnlyCollection<MediaPair> ForceAccepted { get; set; } = [];
         public MergeNamingFormat Naming { get; set; }
         public SourceFileAction SourceAction { get; set; }
+        public string? ArchiveFolderName { get; set; }
         public ConflictPolicy Conflict { get; set; }
         public string? PreserveHierarchyFrom { get; set; }
 
@@ -281,6 +286,7 @@ public class MotionPhotoMergerTests
             Output = new OutputOptions(output) { Conflict = Conflict, PreserveHierarchyFrom = PreserveHierarchyFrom },
             Naming = Naming,
             SourceAction = SourceAction,
+            ArchiveFolderName = ArchiveFolderName,
             Parallelism = 4
         };
     }

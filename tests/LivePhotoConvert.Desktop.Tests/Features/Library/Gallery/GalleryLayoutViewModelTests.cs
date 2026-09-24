@@ -114,18 +114,15 @@ public class GalleryLayoutViewModelTests
     {
         var layout = Layout(ManyCards(60));
         var anchorCard = layout.DisplayedCards[37];
-        var offset = layout.OffsetOf(anchorCard.Key);
-        var anchorKey = layout.AnchorKeyAt(offset + 3);
-        Assert.NotNull(anchorKey);
-        Assert.Equal(layout.IndexOf(anchorCard.Key), layout.IndexOf(anchorKey));
+        var index = layout.IndexOf(anchorCard.Key);
+        Assert.Contains(anchorCard, Assert.IsType<PhotoGridRowViewModel>(layout.Items[index]).Cards);
 
         layout.ApplyViewportWidth(Width / 2);
 
-        var row = Assert.IsType<PhotoGridRowViewModel>(layout.Items[layout.IndexOf(anchorCard.Key)]);
-        Assert.Contains(anchorCard, row.Cards);
-        Assert.True(layout.OffsetOf(anchorCard.Key) > offset, "窄视口下同一张卡片应更靠下");
-        Assert.Equal(layout.IndexOf(anchorKey), layout.IndexAt(layout.OffsetOf(anchorKey) + 1));
-        Assert.Equal(layout.ExtentHeight, layout.Items.Sum(i => i is PhotoGridRowViewModel r ? GalleryMetrics.RowExtent(r.RowHeight) : GalleryMetrics.GroupHeaderExtent), 6);
+        var narrowIndex = layout.IndexOf(anchorCard.Key);
+        Assert.Contains(anchorCard, Assert.IsType<PhotoGridRowViewModel>(layout.Items[narrowIndex]).Cards);
+        Assert.True(narrowIndex > index, "窄视口下同一张卡片应落在更靠后的行");
+        Assert.Equal(-1, layout.IndexOf("missing"));
     }
 
     [AvaloniaFact]

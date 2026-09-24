@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LivePhotoConvert.Core.Pipeline;
@@ -13,7 +12,7 @@ using LivePhotoConvert.Desktop.Services;
 
 namespace LivePhotoConvert.Desktop.Features.Library;
 
-/// <summary>输出盘剩余空间检查；测试可替换。</summary>
+/// <summary>输出盘剩余空间检查；会访问磁盘，调用方应在后台线程调用。测试可替换。</summary>
 public interface IDiskSpaceGuard
 {
     (bool HasEnoughSpace, long RequiredBytes, long AvailableBytes) Check(string targetDirectory, long totalSourceBytes);
@@ -35,6 +34,9 @@ public sealed partial class InspectorViewModel : ViewModelBase
     /// <summary>选择连续变化时只在停下来之后估算一次，避免每次点选都启动 ExifTool。</summary>
     public static readonly TimeSpan EstimateDebounce = TimeSpan.FromMilliseconds(400);
 
+    /// <summary>图库页（画廊 + 检查器）宽度低于此值时检查器自动收起为窄条，把空间让给画廊。</summary>
+    public const double NarrowLayoutWidth = 880;
+
     private const int DeleteSourceAction = 3;
 
     private readonly LibraryViewModel _library;
@@ -52,6 +54,7 @@ public sealed partial class InspectorViewModel : ViewModelBase
     private CancellationTokenSource? _estimateCts;
     private StripEstimate? _estimate;
     private string? _estimateError;
+    private bool _isNarrowLayout;
 
     public InspectorViewModel(
         LibraryViewModel library,
@@ -92,6 +95,8 @@ public sealed partial class InspectorViewModel : ViewModelBase
         _stripOutputDirectory = JobFactory.ResolveStripDirectory(s);
         _inPlaceStrip = s.InPlaceStrip;
         _stripConvertToHeic = s.StripConvertToHeic;
+        _isCollapsed = s.Inspector.IsCollapsed;
+        _isOutputExpanded = s.Inspector.IsOutputExpanded;
 
         library.SelectionChanged += (_, _) => OnSelectionChanged();
         library.PropertyChanged += OnLibraryPropertyChanged;
@@ -104,7 +109,6 @@ public sealed partial class InspectorViewModel : ViewModelBase
         };
         localizer.LanguageChanged += (_, _) => RefreshTexts();
 
-        RefreshApplicable();
         RefreshTexts();
         ScheduleEstimate();
     }
@@ -122,6 +126,7 @@ public sealed partial class InspectorViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(IsOutputSectionVisible))]
     [NotifyPropertyChangedFor(nameof(IsStripExportVisible))]
     [NotifyPropertyChangedFor(nameof(IsOutputDirectoryVisible))]
+    [NotifyPropertyChangedFor(nameof(OutputLocation))]
     private ConversionAction _action;
 
     public bool IsToAndroid => Action == ConversionAction.ToAndroid;
@@ -155,12 +160,29 @@ public sealed partial class InspectorViewModel : ViewModelBase
     private long _applicableBytes;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(OutputLocation))]
     private string _outputDirectory;
 
     /// <summary>就地瘦身不写输出目录，也就没有层级与重名问题。</summary>
     public bool IsOutputSectionVisible => !(IsStrip && InPlaceStrip);
 
     public bool IsOutputDirectoryVisible => !IsStrip;
+
+    /// <summary>当前动作的输出目录；输出分组收起时显示在分组标题下。</summary>
+    public string OutputLocation => IsStrip ? StripOutputDirectory : OutputDirectory;
+
+    /// <summary>输出分组（目录、子目录层级、重名处理）是否展开；这些设置很少改动，默认收起。</summary>
+    [ObservableProperty]
+    private bool _isOutputExpanded;
+
+    // ── 布局 ──
+
+    /// <summary>检查器收起为窄条（图标 + 展开按钮）。</summary>
+    [ObservableProperty]
+    private bool _isCollapsed;
+
+    /// <summary>页面宽度不足，检查器按宽度自动收起。</summary>
+    public bool IsNarrowLayout => _isNarrowLayout;
 
     [ObservableProperty]
     private bool _keepSubfolderHierarchy;
@@ -212,6 +234,7 @@ public sealed partial class InspectorViewModel : ViewModelBase
     public bool IsStripExportVisible => IsStrip && !InPlaceStrip;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(OutputLocation))]
     private string _stripOutputDirectory;
 
     [ObservableProperty]
@@ -260,7 +283,6 @@ public sealed partial class InspectorViewModel : ViewModelBase
     {
         _settings.Update(s => s.Action = value);
         _library.SetActionFilter(value);
-        RefreshApplicable();
         RefreshTexts();
         ScheduleEstimate();
     }
@@ -289,6 +311,41 @@ public sealed partial class InspectorViewModel : ViewModelBase
     partial void OnOutputDirectoryChanged(string value) => _settings.Update(s => s.OutputDirectory = value);
 
     partial void OnStripOutputDirectoryChanged(string value) => _settings.Update(s => s.StripOutputDirectory = value);
+
+    partial void OnIsOutputExpandedChanged(bool value) => _settings.Update(s => s.Inspector.IsOutputExpanded = value);
+
+    [RelayCommand]
+    private void ToggleOutputExpanded() => IsOutputExpanded = !IsOutputExpanded;
+
+    /// <summary>
+    /// 手动收起或展开，并记住这次选择。窄布局下手动展开只维持到下一次跨越宽度阈值。
+    /// </summary>
+    [RelayCommand]
+    private void ToggleCollapsed()
+    {
+        var collapse = !IsCollapsed;
+        _settings.Update(s => s.Inspector.IsCollapsed = collapse);
+        IsCollapsed = collapse;
+    }
+
+    /// <summary>由视图在图库页宽度变化时调用；跨过 <see cref="NarrowLayoutWidth"/> 时按宽度自动收起或恢复用户的选择。</summary>
+    public void UpdateAvailableWidth(double width)
+    {
+        if (!double.IsFinite(width) || width <= 0)
+        {
+            return;
+        }
+
+        var narrow = width < NarrowLayoutWidth;
+        if (narrow == _isNarrowLayout)
+        {
+            return;
+        }
+
+        _isNarrowLayout = narrow;
+        OnPropertyChanged(nameof(IsNarrowLayout));
+        IsCollapsed = narrow || _settings.Current.Inspector.IsCollapsed;
+    }
 
     partial void OnStripConvertToHeicChanged(bool value)
     {
@@ -399,14 +456,15 @@ public sealed partial class InspectorViewModel : ViewModelBase
 
         var totalBytes = JobFactory.SourceBytes(cards);
         var target = JobFactory.ResolveTargetDirectory(action, settings, _library.AlbumDirectory);
-        var (hasSpace, requiredBytes, availableBytes) = _diskSpace.Check(target, totalBytes);
+        // 查询剩余空间可能访问网络盘，同样放到线程池
+        var (hasSpace, requiredBytes, availableBytes) = await Task.Run(() => _diskSpace.Check(target, totalBytes));
         if (!hasSpace)
         {
             var proceed = await _dialogs.ShowAsync(new LowDiskSpaceDialogViewModel
             {
                 TargetDirectory = target,
-                RequiredSpaceText = FormatBytes(requiredBytes),
-                AvailableSpaceText = FormatBytes(availableBytes)
+                RequiredSpaceText = ByteSizeConverter.Format(requiredBytes),
+                AvailableSpaceText = ByteSizeConverter.Format(availableBytes)
             });
             if (!proceed)
             {
@@ -419,7 +477,7 @@ public sealed partial class InspectorViewModel : ViewModelBase
             var confirmed = await _dialogs.ShowAsync(new DeleteConfirmDialogViewModel(_localizer)
             {
                 AffectedCount = cards.Count,
-                AffectedSizeText = FormatBytes(totalBytes)
+                AffectedSizeText = ByteSizeConverter.Format(totalBytes)
             });
             if (!confirmed)
             {
@@ -452,15 +510,18 @@ public sealed partial class InspectorViewModel : ViewModelBase
             return;
         }
 
-        try
+        // 输出目录首次使用前可能尚不存在，先建好再打开；目录可能在网络盘上，不占用界面线程
+        await Task.Run(() =>
         {
-            // 输出目录首次使用前可能尚不存在，先建好再打开
-            Directory.CreateDirectory(folder);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
-        {
-            ErrorLogger.Log(ex, "创建输出目录");
-        }
+            try
+            {
+                Directory.CreateDirectory(folder);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+            {
+                ErrorLogger.Log(ex, "创建输出目录");
+            }
+        });
 
         if (!_shell.OpenFolder(folder))
         {
@@ -492,12 +553,13 @@ public sealed partial class InspectorViewModel : ViewModelBase
         var applicable = JobFactory.Applicable(Action, _library.SelectedOrAllCards);
         ApplicableCount = applicable.Count;
         ApplicableBytes = JobFactory.SourceBytes(applicable);
-        ApplicableText = _localizer.Format("ApplicableFormat", ApplicableCount, FormatBytes(ApplicableBytes));
+        ApplicableText = _localizer.Format("ApplicableFormat", ApplicableCount, ByteSizeConverter.Format(ApplicableBytes));
         ApplicableScopeText = selectedCount > 0
             ? _localizer.Format("ApplicableScopeSelectedFormat", selectedCount)
             : _localizer["ApplicableScopeAll"];
     }
 
+    /// <summary>刷新全部界面文案，适用项统计也随之重算。</summary>
     private void RefreshTexts()
     {
         foreach (var option in NamingFormatOptions.Concat(SourceActionOptions))
@@ -589,10 +651,10 @@ public sealed partial class InspectorViewModel : ViewModelBase
     {
         var estimate = IsEstimating ? null : _estimate;
         HasEstimate = estimate is { Count: > 0 };
-        EstimateOriginalText = HasEstimate ? FormatBytes(estimate!.OriginalBytes) : "—";
-        EstimateAfterText = HasEstimate ? FormatBytes(estimate!.EstimatedBytes) : "—";
+        EstimateOriginalText = HasEstimate ? ByteSizeConverter.Format(estimate!.OriginalBytes) : "—";
+        EstimateAfterText = HasEstimate ? ByteSizeConverter.Format(estimate!.EstimatedBytes) : "—";
         EstimateSavedText = HasEstimate
-            ? _localizer.Format("EstimateSavedFormat", FormatBytes(estimate!.SavedBytes), estimate.SavedPercent)
+            ? _localizer.Format("EstimateSavedFormat", ByteSizeConverter.Format(estimate!.SavedBytes), estimate.SavedPercent)
             : "—";
         EstimateStatusText = IsEstimating
             ? _localizer["EstimateCalculating"]
@@ -600,8 +662,4 @@ public sealed partial class InspectorViewModel : ViewModelBase
                 ? _localizer.Format("EstimateFailedFormat", error)
                 : HasEstimate ? string.Empty : _localizer["EstimateEmpty"];
     }
-
-    private static string FormatBytes(long bytes) =>
-        ByteSizeConverter.Instance.Convert(bytes, typeof(string), null, CultureInfo.InvariantCulture) as string
-        ?? $"{bytes} B";
 }

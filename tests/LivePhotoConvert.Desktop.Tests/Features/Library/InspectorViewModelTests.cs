@@ -85,6 +85,81 @@ public class InspectorViewModelTests
     }
 
     [Fact]
+    public void Collapse_ManualChoiceIsSaved_NarrowLayoutCollapsesWithoutSavingAndRestoresChoice()
+    {
+        using var fixture = new InspectorFixture();
+        var inspector = fixture.Inspector;
+        var wide = InspectorViewModel.NarrowLayoutWidth + 200;
+        var narrow = InspectorViewModel.NarrowLayoutWidth - 1;
+        inspector.UpdateAvailableWidth(wide);
+        Assert.False(inspector.IsCollapsed);
+
+        inspector.UpdateAvailableWidth(narrow);
+        Assert.True(inspector.IsNarrowLayout);
+        Assert.True(inspector.IsCollapsed);
+        Assert.False(fixture.Host.Settings.Current.Inspector.IsCollapsed, "自动收起不是用户的选择");
+
+        // 窄布局下手动展开，宽度在窄范围内变化时保持展开
+        inspector.ToggleCollapsedCommand.Execute(null);
+        Assert.False(inspector.IsCollapsed);
+        inspector.UpdateAvailableWidth(narrow - 100);
+        Assert.False(inspector.IsCollapsed);
+
+        inspector.UpdateAvailableWidth(wide);
+        Assert.False(inspector.IsNarrowLayout);
+        Assert.False(inspector.IsCollapsed);
+
+        inspector.ToggleCollapsedCommand.Execute(null);
+        Assert.True(inspector.IsCollapsed);
+        Assert.True(fixture.Host.Settings.Current.Inspector.IsCollapsed);
+        inspector.UpdateAvailableWidth(narrow);
+        inspector.UpdateAvailableWidth(wide);
+        Assert.True(inspector.IsCollapsed, "变宽后恢复用户收起的选择");
+
+        // 未完成布局时的无效宽度不改变状态
+        inspector.UpdateAvailableWidth(0);
+        inspector.UpdateAvailableWidth(double.NaN);
+        Assert.False(inspector.IsNarrowLayout);
+    }
+
+    [Fact]
+    public void SavedLayoutPreferences_AreRestored_AndOutputGroupToggleIsSaved()
+    {
+        using var fixture = new InspectorFixture(s =>
+        {
+            s.Inspector.IsCollapsed = true;
+            s.Inspector.IsOutputExpanded = true;
+        });
+        var inspector = fixture.Inspector;
+        Assert.True(inspector.IsCollapsed);
+        Assert.True(inspector.IsOutputExpanded);
+
+        inspector.ToggleOutputExpandedCommand.Execute(null);
+        Assert.False(inspector.IsOutputExpanded);
+        Assert.False(fixture.Host.Settings.Current.Inspector.IsOutputExpanded);
+    }
+
+    [Fact]
+    public void OutputLocation_FollowsTheActionsOutputDirectory()
+    {
+        using var fixture = new InspectorFixture(s =>
+        {
+            s.OutputDirectory = "/out/convert";
+            s.StripOutputDirectory = "/out/strip";
+        });
+        var inspector = fixture.Inspector;
+        var changed = new List<string?>();
+        inspector.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        Assert.Equal("/out/convert", inspector.OutputLocation);
+        inspector.Action = ConversionAction.Strip;
+        Assert.Equal("/out/strip", inspector.OutputLocation);
+        inspector.StripOutputDirectory = "/out/strip2";
+        Assert.Equal("/out/strip2", inspector.OutputLocation);
+        Assert.Equal(2, changed.Count(n => n == nameof(InspectorViewModel.OutputLocation)));
+    }
+
+    [Fact]
     public void DeleteWarning_OnlyForSourceActionsThatHaveOne()
     {
         using var fixture = new InspectorFixture();

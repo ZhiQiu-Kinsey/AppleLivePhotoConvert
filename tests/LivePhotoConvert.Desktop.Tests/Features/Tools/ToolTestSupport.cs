@@ -20,12 +20,22 @@ public sealed class FakeToolRegistry : IToolRegistry
         new(tool, null, null, null, ToolCapabilities.None, recommended, explicitInvalid, null);
 
     public static ToolInfo Found(ToolId tool, string path, string versionText, ToolCapabilities capabilities = ToolCapabilities.None,
-        string? recommended = null, bool explicitInvalid = false, string? probeError = null) =>
+        string? recommended = null, bool explicitInvalid = false, ToolProbeError? probeError = null) =>
         new(tool, path, versionText, Version.TryParse(versionText.Split('-')[0].TrimStart('n'), out var v) ? v : null,
             capabilities, recommended, explicitInvalid, probeError);
 
-    public Task<ToolInfo> GetAsync(ToolId tool, CancellationToken cancellationToken = default) =>
-        Task.FromResult(Infos.TryGetValue(tool, out var info) ? info : Missing(tool));
+    /// <summary>设置后探测一直挂起到它完成，用来观察启动探测期间的界面。</summary>
+    public Task? Gate { get; set; }
+
+    public async Task<ToolInfo> GetAsync(ToolId tool, CancellationToken cancellationToken = default)
+    {
+        if (Gate is { } gate)
+        {
+            await gate.WaitAsync(cancellationToken);
+        }
+
+        return Infos.TryGetValue(tool, out var info) ? info : Missing(tool);
+    }
 
     public void Invalidate(ToolId? tool = null)
     {

@@ -54,18 +54,7 @@ public readonly record struct CaptureTime(DateTime LocalTime, TimeSpan? Offset)
         }
 
         TimeSpan? offset = null;
-        if (rest is ['Z' or 'z'])
-        {
-            offset = TimeSpan.Zero;
-        }
-        else if (rest.Length == 6 && rest[0] is '+' or '-' && rest[3] == ':'
-                 && TryParseInt(rest[1..3], out var offsetHours) && TryParseInt(rest[4..6], out var offsetMinutes)
-                 && offsetHours <= 14 && offsetMinutes < 60)
-        {
-            var magnitude = new TimeSpan(offsetHours, offsetMinutes, 0);
-            offset = rest[0] == '-' ? -magnitude : magnitude;
-        }
-        else if (!rest.IsEmpty)
+        if (!rest.IsEmpty && (offset = ParseOffset(rest)) is null)
         {
             return false;
         }
@@ -75,10 +64,26 @@ public readonly record struct CaptureTime(DateTime LocalTime, TimeSpan? Offset)
     }
 
     /// <summary>
-    /// 解析 EXIF OffsetTime 类标签（如 <c>+08:00</c>）。
+    /// 解析 EXIF OffsetTime 类标签（<c>±HH:mm</c> 或 <c>Z</c>）；格式不符时返回 <c>null</c>。
     /// </summary>
-    public static TimeSpan? ParseOffset(ReadOnlySpan<char> text) =>
-        TryParse($"2000:01:01 00:00:00{text.Trim()}", out var probe) ? probe.Offset : null;
+    public static TimeSpan? ParseOffset(ReadOnlySpan<char> text)
+    {
+        text = text.Trim();
+        if (text is ['Z' or 'z'])
+        {
+            return TimeSpan.Zero;
+        }
+
+        if (text.Length != 6 || text[0] is not ('+' or '-') || text[3] != ':'
+            || !TryParseInt(text[1..3], out var hours) || !TryParseInt(text[4..6], out var minutes)
+            || hours > 14 || minutes >= 60)
+        {
+            return null;
+        }
+
+        var magnitude = new TimeSpan(hours, minutes, 0);
+        return text[0] == '-' ? -magnitude : magnitude;
+    }
 
     private static string FormatOffset(TimeSpan offset) =>
         offset == TimeSpan.Zero ? "+00:00" : (offset < TimeSpan.Zero ? "-" : "+") + offset.Duration().ToString(@"hh\:mm", CultureInfo.InvariantCulture);

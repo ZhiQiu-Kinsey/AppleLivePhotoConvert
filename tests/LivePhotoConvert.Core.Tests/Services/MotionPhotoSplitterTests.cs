@@ -15,14 +15,15 @@ public class MotionPhotoSplitterTests
     private readonly FakeImageConverter _images = new();
     private readonly FakeVideoConverter _videos = new();
 
-    private Task<BatchReport> SplitAsync(TempDirectory temp, IReadOnlyList<string> files, SplitTarget target = SplitTarget.Extract, SourceFileAction action = SourceFileAction.Keep, string? output = null, ConflictPolicy conflict = ConflictPolicy.AppendIndex) =>
+    private Task<BatchReport> SplitAsync(TempDirectory temp, IReadOnlyList<string> files, SplitTarget target = SplitTarget.Extract, SourceFileAction action = SourceFileAction.Keep, string? output = null, ConflictPolicy conflict = ConflictPolicy.AppendIndex, string? archiveFolderName = null) =>
         new MotionPhotoSplitter(_metadata, _images, _videos).SplitAsync(
             new SplitRequest
             {
                 Files = files,
                 Output = new OutputOptions(output ?? temp.Combine("out")) { Conflict = conflict },
                 Target = target,
-                SourceAction = action
+                SourceAction = action,
+                ArchiveFolderName = archiveFolderName
             },
             cancellationToken: Token);
 
@@ -120,6 +121,23 @@ public class MotionPhotoSplitterTests
         Assert.Contains("MVIMG_0001_1.jpg", temp.FileNames());
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MissingOrEmptySource_FailsWithReasonAndOtherItemsContinue(bool empty)
+    {
+        using var temp = new TempDirectory();
+        var bad = empty ? temp.CreateFile("MVIMG_0002.jpg") : temp.Combine("MVIMG_0002.jpg");
+        var good = temp.CreateFile("MVIMG_0001.jpg", SyntheticMedia.MotionPhoto());
+
+        var report = await SplitAsync(temp, [bad, good], action: SourceFileAction.Delete);
+
+        Assert.Equal(1, report.Succeeded);
+        var failed = Assert.Single(report.Items, item => item.Kind == OutcomeKind.Failed);
+        Assert.Equal([new OutcomeCause(OutcomeReason.SourceMissingOrEmpty, "MVIMG_0002.jpg")], failed.Causes);
+        Assert.Equal(empty, File.Exists(bad));
+    }
+
     [Fact]
     public async Task FailedItem_IsNeverCleaned()
     {
@@ -142,11 +160,11 @@ public class MotionPhotoSplitterTests
     {
         using var temp = new TempDirectory();
         var source = temp.CreateFile("MVIMG_0001.jpg", SyntheticMedia.MotionPhoto());
-        temp.CreateFile(Path.Combine(SourceDisposition.SplitFolderName, "MVIMG_0001.jpg"), [1]);
+        temp.CreateFile(Path.Combine("Split", "MVIMG_0001.jpg"), [1]);
 
-        await SplitAsync(temp, [source], action: SourceFileAction.Move);
+        await SplitAsync(temp, [source], action: SourceFileAction.Move, archiveFolderName: "Split");
 
-        Assert.Equal(["MVIMG_0001.jpg", "MVIMG_0001_1.jpg"], temp.FileNames(SourceDisposition.SplitFolderName));
+        Assert.Equal(["MVIMG_0001.jpg", "MVIMG_0001_1.jpg"], temp.FileNames("Split"));
     }
 
     [Fact]

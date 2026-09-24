@@ -2,7 +2,6 @@ using System.ComponentModel;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using LivePhotoConvert.Core.Services;
 using LivePhotoConvert.Desktop.Features.Dialogs;
 using LivePhotoConvert.Desktop.Features.Library.Gallery;
 using LivePhotoConvert.Desktop.Features.Library.Thumbnails;
@@ -45,7 +44,6 @@ public sealed partial class LibraryViewModel : ViewModelBase
         _scrollIdleTimer.Tick += (_, _) =>
         {
             _scrollIdleTimer.Stop();
-            IsUserScrolling = false;
             Thumbnails.NextGeneration();
         };
         Layout.LayoutChanged += (_, _) => Thumbnails.NextGeneration();
@@ -73,7 +71,7 @@ public sealed partial class LibraryViewModel : ViewModelBase
         // 记住的相册目录冷启动即扫描；目录已不存在时由目录状态提示
         if (HasSelectedDirectory)
         {
-            Observe(RefreshAlbumAsync(), "扫描相册");
+            RefreshAlbumAsync().LogFaults("扫描相册");
         }
     }
 
@@ -114,9 +112,6 @@ public sealed partial class LibraryViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsFilterBannerVisible), nameof(FilterBannerDesc))]
     private string _filterMode = "All";
-
-    [ObservableProperty]
-    private bool _isUserScrolling;
 
     public bool IsScanning => Catalog.IsScanning;
 
@@ -187,15 +182,34 @@ public sealed partial class LibraryViewModel : ViewModelBase
     [RelayCommand]
     private void SelectGroup(TimelineHeaderItemViewModel? header) => Selection.SetSelected(Layout.CardsOf(header), true);
 
+    /// <summary>选择器从当前相册（即上次选择或拖入的目录）开始。</summary>
     [RelayCommand]
     public async Task SelectAlbumFolderAsync()
     {
         var folder = await _filePicker.PickFolderAsync(_localizer["SelectAlbumFolderBtn"], AlbumDirectory);
         if (!string.IsNullOrWhiteSpace(folder))
         {
-            AlbumDirectory = folder;
-            _settings.Update(s => s.LastScanDirectory = folder);
-            await RefreshAlbumAsync();
+            await OpenAlbumAsync(folder);
+        }
+    }
+
+    /// <summary>拖入与选择按钮同一判定：选择相册的命令正在执行（选择器打开或其扫描未完成）时不接受新相册。</summary>
+    public bool CanOpenAlbum => SelectAlbumFolderCommand.CanExecute(null);
+
+    /// <summary>切换到指定相册：选择器与拖入共用，记入设置后扫描。</summary>
+    public Task OpenAlbumAsync(string folder)
+    {
+        AlbumDirectory = folder;
+        _settings.Update(s => s.LastScanDirectory = folder);
+        return RefreshAlbumAsync();
+    }
+
+    /// <summary>视图的拖放处理不等待扫描；异常与冷启动扫描一样只记日志。</summary>
+    public void OpenDroppedAlbum(string folder)
+    {
+        if (CanOpenAlbum)
+        {
+            OpenAlbumAsync(folder).LogFaults("打开拖入的相册");
         }
     }
 
@@ -236,9 +250,14 @@ public sealed partial class LibraryViewModel : ViewModelBase
     [RelayCommand]
     private async Task OpenQuickLookAsync(PhotoCardItemViewModel? card)
     {
-        if (card is null || _quickLook is { IsClosed: false })
+        if (card is null)
         {
-            _quickLook?.ShowIndex(card is null ? -1 : _quickLookCards.IndexOf(card));
+            return;
+        }
+
+        if (_quickLook is { IsClosed: false } open)
+        {
+            open.ShowIndex(_quickLookCards.IndexOf(card));
             return;
         }
 
@@ -271,15 +290,9 @@ public sealed partial class LibraryViewModel : ViewModelBase
         }
     }
 
-    /// <summary>视口滚动：标记滚动中，静止后推进缩略图代次。</summary>
-    public void OnViewportScrolled(double offsetY, double viewportHeight)
+    /// <summary>视口滚动：静止 250ms 后推进缩略图代次，此后入队的请求优先于滚动途中的请求。</summary>
+    public void OnViewportScrolled()
     {
-        if (viewportHeight <= 0)
-        {
-            return;
-        }
-
-        IsUserScrolling = true;
         _scrollIdleTimer.Stop();
         _scrollIdleTimer.Start();
     }
@@ -358,9 +371,4 @@ public sealed partial class LibraryViewModel : ViewModelBase
             OnPropertyChanged(name);
         }
     }
-
-    /// <summary>未等待的任务也要观察异常，否则只会在终结器里被静默吞掉。</summary>
-    private static void Observe(Task task, string context) =>
-        task.ContinueWith(t => ErrorLogger.Log(t.Exception!.GetBaseException(), context), CancellationToken.None,
-            TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
 }

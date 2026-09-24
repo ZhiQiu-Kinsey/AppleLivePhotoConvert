@@ -1,5 +1,3 @@
-using System.Globalization;
-using System.Reflection;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LivePhotoConvert.Core.Media.Thumbnails;
@@ -7,6 +5,7 @@ using LivePhotoConvert.Core.Services;
 using LivePhotoConvert.Desktop.Converters;
 using LivePhotoConvert.Desktop.Features.Dialogs;
 using LivePhotoConvert.Desktop.Features.Library.Thumbnails;
+using LivePhotoConvert.Desktop.Features.Updates;
 using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Models;
 
@@ -85,8 +84,9 @@ public sealed partial class SettingsViewModel : ViewModelBase
     private IReadOnlyList<AboutCredit> _buildCredits = [];
 
     public SettingsViewModel(SettingsStore settings, ILocalizer localizer, ThemeService theme, IShellLauncher shell, IDialogService dialogs,
-        IThumbnailPipeline thumbnails, ThumbnailDiskCache thumbnailCache, INavigator navigator)
+        IThumbnailPipeline thumbnails, ThumbnailDiskCache thumbnailCache, INavigator navigator, UpdateCenter updates)
     {
+        Updates = updates;
         _settings = settings;
         _localizer = localizer;
         _themeService = theme;
@@ -98,7 +98,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
         var current = settings.Current;
         _theme = current.Theme;
         _language = current.Language;
-        _concurrency = current.Concurrency;
+        _concurrency = Math.Clamp(current.Concurrency, 1, ConversionDefaults.MaxParallelism);
         _notifyOnComplete = current.NotifyOnComplete;
         _autoOpenOutput = current.AutoOpenOutput;
         _autoCleanTemp = current.AutoCleanTemp;
@@ -122,6 +122,8 @@ public sealed partial class SettingsViewModel : ViewModelBase
         };
     }
 
+    public int MaxConcurrency => ConversionDefaults.MaxParallelism;
+
     public int MinThumbnailBudgetMb => GalleryPreferences.MinThumbnailBudgetMb;
 
     public int MaxThumbnailBudgetMb => GalleryPreferences.MaxThumbnailBudgetMb;
@@ -133,12 +135,15 @@ public sealed partial class SettingsViewModel : ViewModelBase
     /// <summary>磁盘缓存当前占用；统计中或尚未统计时显示对应提示。</summary>
     public string CacheUsageText => IsCacheBusy || _cacheUsageBytes is not { } bytes
         ? _localizer["ThumbnailCacheMeasuring"]
-        : _localizer.Format("ThumbnailCacheUsageFormat", ByteSizeConverter.Instance.Convert(bytes, typeof(string), null, CultureInfo.InvariantCulture));
+        : _localizer.Format("ThumbnailCacheUsageFormat", ByteSizeConverter.Format(bytes));
 
     /// <summary>当前统计任务；测试据此等待后台统计结束。</summary>
     public Task CacheUsageTask { get; private set; } = Task.CompletedTask;
 
-    public string AppVersion { get; } = ResolveAppVersion();
+    public string AppVersion => AboutInfo.AppVersion;
+
+    /// <summary>"更新"分组与关于页的新版本提示。</summary>
+    public UpdateCenter Updates { get; }
 
     public string AuthorName => AboutInfo.AuthorName;
 
@@ -292,18 +297,4 @@ public sealed partial class SettingsViewModel : ViewModelBase
 
     private AboutCredit[] MaterializeCredits(AboutInfo.CreditEntry[] entries) =>
         [.. entries.Select(entry => new AboutCredit(entry.Name, _localizer[entry.DescriptionKey], entry.Url, entry.Badge))];
-
-    private static string ResolveAppVersion()
-    {
-        var assembly = typeof(SettingsViewModel).Assembly;
-        var informational = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
-        if (!string.IsNullOrEmpty(informational))
-        {
-            int plus = informational.IndexOf('+', StringComparison.Ordinal);
-            return plus > 0 ? informational[..plus] : informational;
-        }
-
-        var version = assembly.GetName().Version;
-        return version is null ? "0.0.0" : $"{version.Major}.{version.Minor}.{version.Build}";
-    }
 }

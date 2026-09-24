@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using LivePhotoConvert.Desktop.Converters;
 using LivePhotoConvert.Desktop.Infrastructure;
@@ -101,7 +100,7 @@ public sealed partial class GallerySelection(ILocalizer localizer) : ObservableO
 
     public string SelectedBadgeText => localizer.Format("SelectedBadgeFormat", SelectedCount);
 
-    public string SelectedSummaryText => localizer.Format("SelectedSummaryFormat", _cards.Count, FormatBytes(_scopeBytes));
+    public string SelectedSummaryText => localizer.Format("SelectedSummaryFormat", _cards.Count, ByteSizeConverter.Format(_scopeBytes));
 
     /// <summary>更换动作范围（重扫或切换动作）；范围外卡片的选中状态保留，切回时恢复。</summary>
     public void SetScope(IReadOnlyList<PhotoCardItemViewModel> cards, ScanCounts counts)
@@ -180,6 +179,7 @@ public sealed partial class GallerySelection(ILocalizer localizer) : ObservableO
             card.IsSelected = selected;
         }
     });
+
     /// <summary>在一次批量内修改卡片状态；嵌套调用合并为最外层的一次通知。</summary>
     public void Batch(Action change)
     {
@@ -268,7 +268,4 @@ public sealed partial class GallerySelection(ILocalizer localizer) : ObservableO
 
         return -1;
     }
-
-    private static string FormatBytes(long bytes) =>
-        ByteSizeConverter.Instance.Convert(bytes, typeof(string), null, CultureInfo.InvariantCulture) as string ?? $"{bytes} B";
 }

@@ -74,6 +74,11 @@ public sealed partial class TaskCenter : ObservableObject, IBackgroundWork
 
     bool IBackgroundWork.IsBusy => IsRunning;
 
+    /// <inheritdoc />
+    public event EventHandler? BusyChanged;
+
+    partial void OnIsRunningChanged(bool value) => BusyChanged?.Invoke(this, EventArgs.Empty);
+
     /// <summary>
     /// 启动任务并在结束后返回报告；已有任务运行时直接拒绝，调用方应以 <see cref="IsRunning"/> 控制入口可用性。
     /// </summary>
@@ -84,6 +89,11 @@ public sealed partial class TaskCenter : ObservableObject, IBackgroundWork
         if (IsRunning)
         {
             throw new InvalidOperationException("已有任务在运行。");
+        }
+
+        if (job.Options is { SourceAction: SourceFileAction.Move, ArchiveFolderName: null })
+        {
+            job = job with { Options = job.Options with { ArchiveFolderName = TaskTexts.ArchiveFolderName(_localizer, job.Action) } };
         }
 
         var cts = new CancellationTokenSource();

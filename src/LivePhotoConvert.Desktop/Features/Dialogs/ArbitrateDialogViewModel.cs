@@ -32,8 +32,6 @@ public sealed partial class ArbitrateDialogViewModel(ILocalizer localizer) : Dia
     public double TimeDiffSeconds => TargetCard.Item.PairTimeDelta?.TotalSeconds
         ?? (TargetCard.Item.Video is { } video ? (TargetCard.PhotoFile.LastWriteTimeUtc - video.LastWriteTimeUtc).Duration().TotalSeconds : 0);
 
-    public string TimeDiffText => localizer.Format("ArbitrateTimeDiffFormat", TimeDiffSeconds);
-
     public string VerdictConclusion => localizer.Format("ArbitrateVerdictFormat", TimeDiffSeconds);
 
     public override object? CancelResult => ArbitrationVerdict.Dismiss;

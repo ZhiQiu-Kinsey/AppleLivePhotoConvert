@@ -101,13 +101,16 @@ public sealed class OutputCommitter
     /// 覆盖模式下单个文件的重命名覆盖本身是原子的；成组时后一项失败需要还原前一项覆盖掉的旧文件，
     /// 因此先把旧文件改名为同目录的暂存备份，整组成功后再删除。
     /// </remarks>
-    public IReadOnlyList<string> CommitGroup(IReadOnlyList<StagedFile> files, string directory, FileTimestamp? timestamp = null)
+    public IReadOnlyList<string> CommitGroup(IReadOnlyList<StagedFile> files, string directory, FileTimestamp? timestamp = null) =>
+        CommitGroup(files, directory, timestamp, _policy == ConflictPolicy.Overwrite);
+
+    private IReadOnlyList<string> CommitGroup(IReadOnlyList<StagedFile> files, string directory, FileTimestamp? timestamp, bool allowOverwrite)
     {
         ArgumentOutOfRangeException.ThrowIfZero(files.Count);
         for (var index = 0; index < MaxIndex; index++)
         {
             var targets = files.Select(file => Path.GetFullPath(Path.Combine(directory, WithIndex(file.FileName, index)))).ToArray();
-            var overwrite = _policy == ConflictPolicy.Overwrite && index == 0;
+            var overwrite = allowOverwrite && index == 0;
             if (!TryClaim(targets, overwrite))
             {
                 continue;
@@ -179,7 +182,8 @@ public sealed class OutputCommitter
             return fullSource;
         }
 
-        var committed = CommitGroup([new StagedFile(stagingPath, Path.GetFileName(target))], directory, timestamp);
+        // 就地替换只应替换源文件本身：无论冲突策略如何，都不覆盖目录中恰好同名的其它文件
+        var committed = CommitGroup([new StagedFile(stagingPath, Path.GetFileName(target))], directory, timestamp, allowOverwrite: false);
         try
         {
             File.Delete(fullSource);

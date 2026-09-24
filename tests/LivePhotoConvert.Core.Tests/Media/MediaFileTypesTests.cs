@@ -69,7 +69,6 @@ public class MediaFileTypesTests
         Assert.False(MediaFileTypes.IsJpeg(heicFile));
     }
 
-    // S3: AVIF 分支测试（DetectPhotoExtension 的 AvifBrands 路径）
     [Fact]
     public void Should_Detect_Avif_From_Ftyp_Brands()
     {
@@ -79,7 +78,6 @@ public class MediaFileTypesTests
         Assert.Equal(".avif", ext);
     }
 
-    // S4: DetectVideoExtension 的纯 ftyp box 分支（品牌不在 MovBrands/Mp4Brands，但符合 ftyp box 特征）
     [Fact]
     public void DetectVideoExtension_Should_Fallback_To_Mp4_For_Generic_Ftyp_Box()
     {
@@ -87,6 +85,14 @@ public class MediaFileTypesTests
         byte[] genericFtyp = [0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70, 0x61, 0x76, 0x69, 0x66];
         var ext = MediaFileTypes.DetectVideoExtension(genericFtyp);
         Assert.Equal(".mp4", ext);
+    }
+
+    [Fact]
+    public void DetectPhotoExtension_Ignores_Bytes_After_Ftyp_Box()
+    {
+        // 16 字节的 ftyp（主品牌 mp42）之后紧跟类型为 heic 的下一个 box，它不是兼容品牌
+        byte[] header = [0, 0, 0, 16, .. "ftypmp42"u8, 0, 0, 0, 0, 0, 0, 0, 8, .. "heic"u8];
+        Assert.Equal(string.Empty, MediaFileTypes.DetectPhotoExtension(header, string.Empty));
     }
 
     [Fact]
@@ -104,7 +110,7 @@ public class MediaFileTypesTests
     }
 
     [Fact]
-    public void IsValidVideoPayload_Should_Return_Fake_For_RandomGarbage()
+    public void IsValidVideoPayload_Should_Return_False_For_RandomGarbage()
     {
         byte[] garbage = [0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0, 0x00, 0x00, 0x00, 0x00];
         Assert.False(MediaFileTypes.IsValidVideoPayload(garbage));

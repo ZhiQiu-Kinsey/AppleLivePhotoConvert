@@ -44,6 +44,18 @@ public sealed record StripCandidate(string ImagePath, long ImageBytes, EmbeddedV
     /// <summary>分析失败的异常，瘦身时据此归类失败原因。</summary>
     internal Exception? AnalysisException { get; init; }
 
+    /// <summary>
+    /// 分析失败的原因码，供界面按语言显示；分析成功时为 <c>null</c>。
+    /// 分析只读取源文件，找不到文件即源文件已消失，其余未归类的异常都视为源文件无法读取。
+    /// </summary>
+    public OutcomeCause? AnalysisCause => AnalysisError is null ? null : AnalysisException switch
+    {
+        FileNotFoundException and not ToolNotFoundException or DirectoryNotFoundException =>
+            new OutcomeCause(OutcomeReason.SourceMissingOrEmpty, Path.GetFileName(ImagePath)),
+        { } exception when OutcomeCause.FromException(exception) is { Reason: not OutcomeReason.Unexpected } known => known,
+        _ => new OutcomeCause(OutcomeReason.SourceUnreadable, Path.GetFileName(ImagePath))
+    };
+
     public long OriginalBytes => ImageBytes + CompanionBytes;
 
     /// <summary>剥离后减少的字节：截断点之后的全部内容（含视频外层的容器头）加上配对视频。</summary>
@@ -76,16 +88,6 @@ public sealed record StripCandidate(string ImagePath, long ImageBytes, EmbeddedV
 public sealed class MotionPhotoStripper(IMetadataService metadata, IImageConverter imageConverter)
 {
     private static readonly FrozenSet<string> CompanionExtensions = FrozenSet.Create(StringComparer.OrdinalIgnoreCase, ".mov", ".mp4");
-
-    /// <summary>
-    /// 列出目录中（不含子目录）可能需要瘦身的照片。
-    /// </summary>
-    public static IReadOnlyList<string> FindCandidates(string directory) =>
-    [
-        .. Directory.EnumerateFiles(directory, "*", new EnumerationOptions { IgnoreInaccessible = true })
-                    .Where(path => MediaFileTypes.MotionPhotoExtensions.Contains(Path.GetExtension(path)))
-                    .Order(StringComparer.OrdinalIgnoreCase)
-    ];
 
     /// <summary>
     /// 只读分析：定位内嵌视频、校验同名视频是否确属同一张实况照片。
@@ -175,7 +177,7 @@ public sealed class MotionPhotoStripper(IMetadataService metadata, IImageConvert
         var candidates = await AnalyzeAsync(request.Files, cancellationToken);
         var protectedPaths = candidates.SelectMany(candidate => candidate.CompanionVideo is null ? [candidate.ImagePath] : (string[])[candidate.ImagePath, candidate.CompanionVideo]);
         var committer = new OutputCommitter(request.Output?.Conflict ?? ConflictPolicy.AppendIndex, protectedPaths);
-        var companionDisposition = new SourceDisposition(SourceFileAction.Recycle, string.Empty);
+        var companionDisposition = new SourceDisposition(SourceFileAction.Recycle);
         if (request.Output is not null)
         {
             OutputCommitter.DeleteStaleStagingFiles(request.Output.Directory, ConversionDefaults.StaleStagingAge);
@@ -200,16 +202,9 @@ public sealed class MotionPhotoStripper(IMetadataService metadata, IImageConvert
         CancellationToken cancellationToken)
     {
         var source = candidate.ImagePath;
-        if (candidate.AnalysisError is { } analysisError)
+        if (candidate.AnalysisCause is { } analysisCause)
         {
-            return candidate.AnalysisException switch
-            {
-                // 分析只读取源文件，找不到文件即源文件已消失
-                FileNotFoundException and not ToolNotFoundException or DirectoryNotFoundException =>
-                    ItemOutcome.Failed(source, new OutcomeCause(OutcomeReason.SourceMissingOrEmpty, Path.GetFileName(source)), analysisError),
-                { } exception => ItemOutcome.Failed(source, exception),
-                null => ItemOutcome.Failed(source, OutcomeReason.Unexpected, analysisError)
-            };
+            return ItemOutcome.Failed(source, analysisCause, candidate.AnalysisError);
         }
 
         var convert = candidate.WillConvert(request.ConvertToHeic);
