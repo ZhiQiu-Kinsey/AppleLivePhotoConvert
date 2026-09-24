@@ -226,7 +226,7 @@
 
   <!-- Settings Dialog Redesign -->
   <sys:String x:Key="CancelBtn">Cancel</sys:String>
-  <sys:String x:Key="SettingsConcurrencyDesc">Number of Live Photo pairs processed in parallel (1~16). Higher values are faster but consume more memory and disk IO.</sys:String>
+  <sys:String x:Key="SettingsConcurrencyDesc">Number of Live Photo pairs processed in parallel (1~8). Higher values are faster but consume more memory and disk IO.</sys:String>
   <sys:String x:Key="SettingsPageDesc">Global preferences such as theme, language and conversion performance. Changes apply immediately and are saved automatically.</sys:String>
   <sys:String x:Key="SettingsSavedHint">Saved automatically</sys:String>
   <sys:String x:Key="NotifyOnCompleteTitle">Completion Notification</sys:String>

@@ -98,7 +98,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
         var current = settings.Current;
         _theme = current.Theme;
         _language = current.Language;
-        _concurrency = current.Concurrency;
+        _concurrency = Math.Clamp(current.Concurrency, 1, ConversionDefaults.MaxParallelism);
         _notifyOnComplete = current.NotifyOnComplete;
         _autoOpenOutput = current.AutoOpenOutput;
         _autoCleanTemp = current.AutoCleanTemp;
@@ -121,6 +121,8 @@ public sealed partial class SettingsViewModel : ViewModelBase
             }
         };
     }
+
+    public int MaxConcurrency => ConversionDefaults.MaxParallelism;
 
     public int MinThumbnailBudgetMb => GalleryPreferences.MinThumbnailBudgetMb;
 

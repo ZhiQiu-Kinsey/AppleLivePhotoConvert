@@ -128,7 +128,7 @@ public static class JobFactory
         return new ConversionJob(action, options, inputs)
         {
             Tools = ToolPaths.From(settings),
-            Parallelism = Math.Clamp(settings.Concurrency, 1, 8)
+            Parallelism = Math.Clamp(settings.Concurrency, 1, ConversionDefaults.MaxParallelism)
         };
     }
 

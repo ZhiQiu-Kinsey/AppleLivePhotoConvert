@@ -226,7 +226,7 @@
 
   <!-- Settings Dialog Redesign -->
   <sys:String x:Key="CancelBtn">取消</sys:String>
-  <sys:String x:Key="SettingsConcurrencyDesc">并行处理的实况照片对数（1~16），数值越高速度越快，同时占用的内存与磁盘 IO 也越多。</sys:String>
+  <sys:String x:Key="SettingsConcurrencyDesc">并行处理的实况照片对数（1~8），数值越高速度越快，同时占用的内存与磁盘 IO 也越多。</sys:String>
   <sys:String x:Key="SettingsPageDesc">主题、语言与转换性能等全局偏好，修改即时生效并自动保存。</sys:String>
   <sys:String x:Key="SettingsSavedHint">已自动保存</sys:String>
   <sys:String x:Key="NotifyOnCompleteTitle">转换完成提醒</sys:String>

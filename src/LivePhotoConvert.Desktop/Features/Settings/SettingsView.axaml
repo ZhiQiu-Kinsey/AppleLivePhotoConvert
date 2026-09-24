@@ -121,7 +121,7 @@
                   <TextBlock Text="{DynamicResource ConcurrencyTitle}" Classes="settings-card-title" />
                   <TextBlock Text="{DynamicResource SettingsConcurrencyDesc}" Classes="settings-card-caption" />
                 </StackPanel>
-                <NumericUpDown Grid.Column="2" Value="{CompiledBinding Concurrency, Mode=TwoWay}" Minimum="1" Maximum="16" Increment="1"
+                <NumericUpDown Grid.Column="2" Value="{CompiledBinding Concurrency, Mode=TwoWay}" Minimum="1" Maximum="{CompiledBinding MaxConcurrency}" Increment="1"
                                Width="112" Height="34" Padding="8,0" TextAlignment="Center" VerticalAlignment="Center" VerticalContentAlignment="Center" />
               </Grid>
               <Border Classes="settings-divider" />

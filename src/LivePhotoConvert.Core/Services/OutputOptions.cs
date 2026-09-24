@@ -37,6 +37,9 @@ public static class ConversionDefaults
     /// <summary>CPU 核心数的一半，限制在 1~4：解码与转码同时进行时内存占用较高。</summary>
     public static int Parallelism => Math.Clamp(Environment.ProcessorCount / 2, 1, 4);
 
+    /// <summary>用户可设置的并行数上限：并发的 HEIC 编解码与视频转码各自占用数百 MB 内存。</summary>
+    public const int MaxParallelism = 8;
+
     public const int HeicQuality = 90;
 
     /// <summary>超过此时间的暂存文件视为异常退出的残留。</summary>
