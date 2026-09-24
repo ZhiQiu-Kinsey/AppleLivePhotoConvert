@@ -354,6 +354,10 @@
   <sys:String x:Key="CurtainPositionFormat">对比位置: {0:F0}% / {1:F0}%</sys:String>
   <sys:String x:Key="PingTesting">测试中...</sys:String>
   <sys:String x:Key="PingFailedFormat">连接失败 ({0})</sys:String>
+  <sys:String x:Key="PingResultFormat">{0} ms (HTTP {1})</sys:String>
+  <sys:String x:Key="PingDnsFailed">域名解析失败</sys:String>
+  <sys:String x:Key="PingTlsFailed">安全连接失败</sys:String>
+  <sys:String x:Key="PingUnreachable">无法连接</sys:String>
   <sys:String x:Key="ToolNotDetectedFormat">未检测到 {0}</sys:String>
   <sys:String x:Key="ToolMissingFormat">未找到 {0}，请在「依赖引擎」页面下载或指定路径。</sys:String>
   <sys:String x:Key="ReportTimestampFormat">批次完成时间：{0:yyyy-MM-dd HH:mm:ss}</sys:String>

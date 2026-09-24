@@ -222,7 +222,7 @@ public sealed partial class ToolsViewModel : ViewModelBase
             stopwatch.Stop();
 
             var status = (int)response.StatusCode;
-            PingLatencyText = $"{stopwatch.ElapsedMilliseconds}ms (HTTP {status})";
+            PingLatencyText = _localizer.Format("PingResultFormat", stopwatch.ElapsedMilliseconds, status);
             // 代理对 HEAD 根路径常回 4xx，只要不是服务端错误就说明节点可达
             IsPingHealthy = status < 500;
         }
@@ -232,9 +232,18 @@ public sealed partial class ToolsViewModel : ViewModelBase
         }
         catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or NotSupportedException)
         {
-            PingLatencyText = _localizer.Format("PingFailedFormat", ex.Message);
+            // 运行时的异常消息不随界面语言变化，按原因归类显示
+            PingLatencyText = _localizer.Format("PingFailedFormat", _localizer[PingFailureKey(ex)]);
         }
     }
+
+    private static string PingFailureKey(Exception ex) => ex switch
+    {
+        HttpRequestException { HttpRequestError: HttpRequestError.NameResolutionError } => "PingDnsFailed",
+        HttpRequestException { HttpRequestError: HttpRequestError.SecureConnectionError } => "PingTlsFailed",
+        HttpRequestException => "PingUnreachable",
+        _ => "PingInvalidAddress"
+    };
 
     [RelayCommand]
     private void CancelInstall() => _installCts?.Cancel();

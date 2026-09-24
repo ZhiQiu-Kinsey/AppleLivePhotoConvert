@@ -1,6 +1,5 @@
-using System.ComponentModel;
 using LivePhotoConvert.Core.External.Tools;
-using LivePhotoConvert.Desktop.Features.Tasks;
+using LivePhotoConvert.Desktop.Infrastructure;
 
 namespace LivePhotoConvert.Desktop.Features.Tools;
 
@@ -22,31 +21,17 @@ public interface IToolUsage
 /// ExifTool 会话只在任务与空间预估期间存在（用完即释放），因此任务运行期间禁止安装即可覆盖长期占用；
 /// 预估的短暂占用若撞上替换，安装器会回滚到旧版本并报告替换失败。
 /// </summary>
-public sealed class TaskCenterToolUsage : IToolUsage
+/// <param name="tasks">任务中心</param>
+/// <param name="releaseIdle">结束可中断的工具进程并等待退出</param>
+public sealed class TaskCenterToolUsage(IBackgroundWork tasks, Func<ToolId, Task> releaseIdle) : IToolUsage
 {
-    private readonly TaskCenter _tasks;
-    private readonly Func<ToolId, Task> _releaseIdle;
+    public bool IsBusy => tasks.IsBusy;
 
-    /// <param name="tasks">任务中心</param>
-    /// <param name="releaseIdle">结束可中断的工具进程并等待退出</param>
-    public TaskCenterToolUsage(TaskCenter tasks, Func<ToolId, Task> releaseIdle)
+    public event EventHandler? BusyChanged
     {
-        _tasks = tasks;
-        _releaseIdle = releaseIdle;
-        _tasks.PropertyChanged += OnTasksChanged;
+        add => tasks.BusyChanged += value;
+        remove => tasks.BusyChanged -= value;
     }
 
-    public bool IsBusy => _tasks.IsRunning;
-
-    public event EventHandler? BusyChanged;
-
-    public Task ReleaseIdleProcessesAsync(ToolId tool) => _releaseIdle(tool);
-
-    private void OnTasksChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(TaskCenter.IsRunning))
-        {
-            BusyChanged?.Invoke(this, EventArgs.Empty);
-        }
-    }
+    public Task ReleaseIdleProcessesAsync(ToolId tool) => releaseIdle(tool);
 }

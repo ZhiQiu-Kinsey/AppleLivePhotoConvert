@@ -242,6 +242,22 @@ public class ToolsViewModelTests
         Assert.Equal(f.Localizer.Format("PingFailedFormat", f.Localizer["PingInvalidAddress"]), f.ViewModel.PingLatencyText);
     }
 
+    [Theory]
+    [InlineData(HttpRequestError.NameResolutionError, "PingDnsFailed")]
+    [InlineData(HttpRequestError.SecureConnectionError, "PingTlsFailed")]
+    [InlineData(HttpRequestError.ConnectionError, "PingUnreachable")]
+    public async Task TestMirrorSpeed_ConnectionFailure_ShowsLocalizedReason(HttpRequestError error, string reasonKey)
+    {
+        var handler = new ScriptedHandler((_, _) => throw new HttpRequestException(error, "runtime message"));
+        using var f = new ToolsFixture(http: handler);
+        f.ViewModel.CustomMirrorUrl = "ghproxy.net";
+
+        await f.ViewModel.TestMirrorSpeedAsync();
+
+        Assert.False(f.ViewModel.IsPingHealthy);
+        Assert.Equal(f.Localizer.Format("PingFailedFormat", f.Localizer[reasonKey]), f.ViewModel.PingLatencyText);
+    }
+
     [Fact]
     public async Task TestMirrorSpeed_NoResponse_TimesOut()
     {
@@ -270,7 +286,8 @@ public class ToolsViewModelTests
         await f.ViewModel.TestMirrorSpeedAsync();
 
         Assert.False(f.ViewModel.IsPingHealthy);
-        Assert.Equal(f.Localizer.Format("PingFailedFormat", "refused"), f.ViewModel.PingLatencyText);
+        // 运行时的英文异常消息不直接显示
+        Assert.Equal(f.Localizer.Format("PingFailedFormat", f.Localizer["PingUnreachable"]), f.ViewModel.PingLatencyText);
     }
 
     [Theory]

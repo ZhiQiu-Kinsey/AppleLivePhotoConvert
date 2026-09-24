@@ -66,6 +66,23 @@ public class ToolDirectoriesTests
     }
 
     [Fact]
+    public void Migrate_RemovesStaleStagingLeftByInterruptedRun_KeepsFreshOne()
+    {
+        using var temp = new TempDirectory();
+        var target = temp.Combine("data", "tools");
+        var stale = Path.GetDirectoryName(temp.CreateFile(Path.Combine("data", "tools", ".migrate-old", "ffmpeg", "ffmpeg.exe"), [1]))!;
+        var staleRoot = Path.GetDirectoryName(stale)!;
+        Directory.SetLastWriteTimeUtc(staleRoot, DateTime.UtcNow.AddDays(-2));
+        // 另一个实例刚创建、仍在复制的暂存目录不能被删
+        var fresh = Path.GetDirectoryName(temp.CreateFile(Path.Combine("data", "tools", ".migrate-new", "exiftool.exe"), [2]))!;
+
+        ToolDirectories.MigrateLegacyTools([temp.Combine("missing")], target);
+
+        Assert.False(Directory.Exists(staleRoot));
+        Assert.True(Directory.Exists(fresh));
+    }
+
+    [Fact]
     public void Migrate_Failure_IsReportedAndSkipped()
     {
         using var temp = new TempDirectory();

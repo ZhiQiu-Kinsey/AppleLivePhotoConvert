@@ -60,8 +60,8 @@
                   WindowDecorationProperties.ElementRole="MaximizeButton">
             <Panel Width="10" Height="10" HorizontalAlignment="Center" VerticalAlignment="Center">
               <Border Width="10" Height="10" BorderBrush="{DynamicResource TextSecondaryBrush}" BorderThickness="1"
-                      IsVisible="{Binding !IsWindowMaximized}" />
-              <Grid Width="10" Height="10" IsVisible="{Binding IsWindowMaximized}">
+                      IsVisible="{CompiledBinding !IsWindowMaximized}" />
+              <Grid Width="10" Height="10" IsVisible="{CompiledBinding IsWindowMaximized}">
                 <Border Width="7.5" Height="7.5" Margin="2.5,0,0,2.5" BorderBrush="{DynamicResource TextSecondaryBrush}" BorderThickness="1" />
                 <Border Width="7.5" Height="7.5" Margin="0,2.5,2.5,0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource TextSecondaryBrush}" BorderThickness="1" />
               </Grid>
@@ -69,7 +69,7 @@
           </Button>
           <Button Classes="caption-close-btn" Click="Close_Click"
                   WindowDecorationProperties.ElementRole="CloseButton">
-            <ic:SymbolIcon Symbol="Dismiss" FontSize="11" Foreground="{Binding $parent[Button].Foreground}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            <ic:SymbolIcon Symbol="Dismiss" FontSize="11" Foreground="{CompiledBinding $parent[Button].Foreground}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
           </Button>
         </StackPanel>
       </Grid>
@@ -81,37 +81,37 @@
       <Border Grid.Column="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,1,0" Padding="12">
         <Grid RowDefinitions="Auto,*,Auto">
           <StackPanel Grid.Row="0" Spacing="4">
-            <Button Classes="nav-btn" Classes.selected="{Binding IsLibrarySelected}" Command="{Binding NavigateCommand}" CommandParameter="Library"
+            <Button Classes="nav-btn" Classes.selected="{CompiledBinding IsLibrarySelected}" Command="{CompiledBinding NavigateCommand}" CommandParameter="Library"
                     controls:ShortcutTip.Label="{DynamicResource NavLibrary}" controls:ShortcutTip.Shortcut="{x:Static infra:AppShortcuts.NavigateLibrary}">
               <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
                 <ic:SymbolIcon Grid.Column="0" Symbol="ImageMultiple" FontSize="16" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
                 <TextBlock Grid.Column="1" Text="{DynamicResource NavLibrary}" FontSize="12" Margin="10,0,0,0" VerticalAlignment="Center" />
-                <Border Grid.Column="2" Classes="nav-badge" IsVisible="{Binding Library.HasPhotos}">
-                  <TextBlock Text="{Binding Library.AllCards.Count}" />
+                <Border Grid.Column="2" Classes="nav-badge" IsVisible="{CompiledBinding Library.HasPhotos}">
+                  <TextBlock Text="{CompiledBinding Library.AllCards.Count}" />
                 </Border>
               </Grid>
             </Button>
 
-            <Button Classes="nav-btn" Classes.selected="{Binding IsTasksSelected}" Command="{Binding NavigateCommand}" CommandParameter="Tasks"
+            <Button Classes="nav-btn" Classes.selected="{CompiledBinding IsTasksSelected}" Command="{CompiledBinding NavigateCommand}" CommandParameter="Tasks"
                     controls:ShortcutTip.Label="{DynamicResource NavTasks}" controls:ShortcutTip.Shortcut="{x:Static infra:AppShortcuts.NavigateTasks}">
               <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
                 <ic:SymbolIcon Grid.Column="0" Symbol="DocumentBulletListClock" FontSize="16" Foreground="{DynamicResource VioletBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
                 <TextBlock Grid.Column="1" Text="{DynamicResource NavTasks}" FontSize="12" Margin="10,0,0,0" VerticalAlignment="Center" />
-                <Border Grid.Column="2" Classes="nav-badge" IsVisible="{Binding Tasks.Center.IsRunning}">
-                  <TextBlock Text="{Binding Tasks.Center.Current?.PercentText}" FontFamily="Consolas" />
+                <Border Grid.Column="2" Classes="nav-badge" IsVisible="{CompiledBinding Tasks.Center.IsRunning}">
+                  <TextBlock Text="{CompiledBinding Tasks.Center.Current?.PercentText}" FontFamily="Consolas" />
                 </Border>
               </Grid>
             </Button>
 
-            <Button Classes="nav-btn" Classes.selected="{Binding IsToolsSelected}" Command="{Binding NavigateCommand}" CommandParameter="Tools"
+            <Button Classes="nav-btn" Classes.selected="{CompiledBinding IsToolsSelected}" Command="{CompiledBinding NavigateCommand}" CommandParameter="Tools"
                     controls:ShortcutTip.Label="{DynamicResource NavTools}" controls:ShortcutTip.Shortcut="{x:Static infra:AppShortcuts.NavigateTools}">
               <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
                 <ic:SymbolIcon Grid.Column="0" Symbol="Wrench" FontSize="16" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
                 <TextBlock Grid.Column="1" Text="{DynamicResource NavTools}" FontSize="12" Margin="10,0,0,0" VerticalAlignment="Center" />
-                <Border Grid.Column="2" Classes="status-dot ok" IsVisible="{Binding AreToolsReady}" />
-                <Border Grid.Column="2" Classes="status-dot warn" IsVisible="{Binding DoToolsNeedAttention}" />
-                <Border Grid.Column="2" Classes="status-dot bad" IsVisible="{Binding AreToolsMissing}" />
-                <Border Grid.Column="2" Classes="status-dot probing" IsVisible="{Binding AreToolsProbing}" />
+                <Border Grid.Column="2" Classes="status-dot ok" IsVisible="{CompiledBinding AreToolsReady}" />
+                <Border Grid.Column="2" Classes="status-dot warn" IsVisible="{CompiledBinding DoToolsNeedAttention}" />
+                <Border Grid.Column="2" Classes="status-dot bad" IsVisible="{CompiledBinding AreToolsMissing}" />
+                <Border Grid.Column="2" Classes="status-dot probing" IsVisible="{CompiledBinding AreToolsProbing}" />
               </Grid>
             </Button>
           </StackPanel>
@@ -121,7 +121,7 @@
             <Border Classes="sidebar-tools">
               <StackPanel Spacing="6">
                 <TextBlock Classes="sidebar-tools-title" Text="{DynamicResource ToolsTitle}" />
-                <ItemsControl ItemsSource="{Binding ToolStatuses}">
+                <ItemsControl ItemsSource="{CompiledBinding ToolStatuses}">
                   <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                       <StackPanel Spacing="4" />
@@ -131,25 +131,25 @@
                     <DataTemplate x:DataType="shell:ToolStatusItem">
                       <Grid Classes="sidebar-tool-row" ColumnDefinitions="Auto,*">
                         <Panel Grid.Column="0">
-                          <ic:SymbolIcon Classes="tool-status ok" Symbol="CheckmarkCircle" IsVisible="{Binding IsReady}" ToolTip.Tip="{DynamicResource ShellToolReady}" />
-                          <ic:SymbolIcon Classes="tool-status warn" Symbol="Warning" IsVisible="{Binding NeedsAttention}" ToolTip.Tip="{DynamicResource ShellToolAttention}" />
-                          <ic:SymbolIcon Classes="tool-status bad" Symbol="DismissCircle" IsVisible="{Binding IsMissing}" ToolTip.Tip="{DynamicResource ShellToolMissing}" />
-                          <ic:SymbolIcon Classes="tool-status probing" Symbol="HourglassHalf" IsVisible="{Binding IsProbing}" ToolTip.Tip="{DynamicResource ShellToolProbing}" />
+                          <ic:SymbolIcon Classes="tool-status ok" Symbol="CheckmarkCircle" IsVisible="{CompiledBinding IsReady}" ToolTip.Tip="{DynamicResource ShellToolReady}" />
+                          <ic:SymbolIcon Classes="tool-status warn" Symbol="Warning" IsVisible="{CompiledBinding NeedsAttention}" ToolTip.Tip="{DynamicResource ShellToolAttention}" />
+                          <ic:SymbolIcon Classes="tool-status bad" Symbol="DismissCircle" IsVisible="{CompiledBinding IsMissing}" ToolTip.Tip="{DynamicResource ShellToolMissing}" />
+                          <ic:SymbolIcon Classes="tool-status probing" Symbol="HourglassHalf" IsVisible="{CompiledBinding IsProbing}" ToolTip.Tip="{DynamicResource ShellToolProbing}" />
                         </Panel>
-                        <TextBlock Grid.Column="1" Text="{Binding Name}" />
+                        <TextBlock Grid.Column="1" Text="{CompiledBinding Name}" />
                       </Grid>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
               </StackPanel>
             </Border>
-            <Button Classes="nav-btn" Classes.selected="{Binding IsSettingsSelected}" Command="{Binding NavigateCommand}" CommandParameter="Settings"
+            <Button Classes="nav-btn" Classes.selected="{CompiledBinding IsSettingsSelected}" Command="{CompiledBinding NavigateCommand}" CommandParameter="Settings"
                     controls:ShortcutTip.Label="{DynamicResource NavSettings}" controls:ShortcutTip.Shortcut="{x:Static infra:AppShortcuts.NavigateSettings}">
               <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
                 <ic:SymbolIcon Grid.Column="0" Symbol="Settings" FontSize="16" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
                 <TextBlock Grid.Column="1" Text="{DynamicResource NavSettings}" FontSize="12" Margin="10,0,0,0" VerticalAlignment="Center" />
-                <Border Grid.Column="2" x:Name="UpdateAvailableDot" Classes="status-dot update" IsVisible="{Binding Updates.HasUpdate}"
-                        ToolTip.Tip="{Binding Updates.AvailableUpdateTip}" />
+                <Border Grid.Column="2" x:Name="UpdateAvailableDot" Classes="status-dot update" IsVisible="{CompiledBinding Updates.HasUpdate}"
+                        ToolTip.Tip="{CompiledBinding Updates.AvailableUpdateTip}" />
               </Grid>
             </Button>
           </StackPanel>
@@ -158,25 +158,25 @@
 
       <!-- 页面内容：各页面常驻，切换只改可见性，保留滚动位置与画廊状态 -->
       <Panel Grid.Column="1">
-        <Grid IsVisible="{Binding IsLibrarySelected}" ColumnDefinitions="*,Auto">
-          <library:LibraryView Grid.Column="0" DataContext="{Binding Library}" />
-          <library:InspectorView Grid.Column="1" DataContext="{Binding Inspector}" />
+        <Grid IsVisible="{CompiledBinding IsLibrarySelected}" ColumnDefinitions="*,Auto">
+          <library:LibraryView Grid.Column="0" DataContext="{CompiledBinding Library}" />
+          <library:InspectorView Grid.Column="1" DataContext="{CompiledBinding Inspector}" />
         </Grid>
-        <Panel IsVisible="{Binding IsTasksSelected}">
-          <tasks:TasksView DataContext="{Binding Tasks}" />
+        <Panel IsVisible="{CompiledBinding IsTasksSelected}">
+          <tasks:TasksView DataContext="{CompiledBinding Tasks}" />
         </Panel>
-        <Panel IsVisible="{Binding IsToolsSelected}">
-          <tools:ToolsView DataContext="{Binding Tools}" />
+        <Panel IsVisible="{CompiledBinding IsToolsSelected}">
+          <tools:ToolsView DataContext="{CompiledBinding Tools}" />
         </Panel>
-        <Panel IsVisible="{Binding IsSettingsSelected}">
-          <settings:SettingsView DataContext="{Binding Settings}" />
+        <Panel IsVisible="{CompiledBinding IsSettingsSelected}">
+          <settings:SettingsView DataContext="{CompiledBinding Settings}" />
         </Panel>
       </Panel>
 
       <!-- 弹窗宿主：遮罩点击与 Esc 都走当前弹窗的 CancelCommand -->
-      <Panel Grid.Column="0" Grid.ColumnSpan="2" IsVisible="{Binding HasActiveDialog}">
+      <Panel Grid.Column="0" Grid.ColumnSpan="2" IsVisible="{CompiledBinding HasActiveDialog}">
         <Border x:Name="DialogOverlay" Background="{DynamicResource OverlayBrush}" PointerPressed="DialogOverlay_PointerPressed" />
-        <ContentControl Content="{Binding ActiveDialog}">
+        <ContentControl Content="{CompiledBinding ActiveDialog}">
           <ContentControl.DataTemplates>
             <DataTemplate DataType="dialogs:ConfirmDialogViewModel">
               <dialogs:ConfirmDialog />

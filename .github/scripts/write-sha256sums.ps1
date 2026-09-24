@@ -19,7 +19,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$outPath = [IO.Path]::GetFullPath($OutFile)
+# 按 PowerShell 当前位置解析相对路径（[IO.Path]::GetFullPath 用的是进程工作目录，Set-Location 后两者不同）
+$outPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutFile)
 $files = @(Get-ChildItem -LiteralPath $Directory -Filter $Filter -File |
     Where-Object { $_.FullName -ne $outPath } |
     Sort-Object Name)
