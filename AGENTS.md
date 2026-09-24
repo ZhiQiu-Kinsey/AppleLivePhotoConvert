@@ -205,6 +205,21 @@ dotnet publish src/LivePhotoConvert.Desktop/LivePhotoConvert.Desktop.csproj -r w
 > ```
 > `global.json` 已固定 SDK `10.0.400`（机器同时装有 11 preview），不要删除。
 
+**真实工具集成测试**：机器上没有 ExifTool / FFmpeg / heif-enc / heif-dec（或 heif-convert）时对应用例自动跳过。`ultrahdr_app`（libultrahdr）通常不在 PATH，用 `LPC_ULTRAHDR_APP` 指定；`LPC_HDR_SAMPLES` 指向私有 HDR 样片目录；`LPC_TOOL_PACKAGE_DIR` 指向按包 id 命名的依赖下载包目录（供 `ToolManifestPackageTests`）。
+
+### CI（GitHub Actions）
+
+| 工作流 | 触发 | 内容 |
+| :--- | :--- | :--- |
+| [`ci.yml`](.github/workflows/ci.yml) | push `main`、PR、手动、被 `release.yml` 调用 | **Linux 真实工具测试**：apt 安装 ExifTool / FFmpeg / libheif（x265 插件）/ bsdtar / Noto CJK，源码编译固定版本的 libultrahdr（缓存编译产物），全部测试收集 Cobertura 覆盖率；跳过数超过阈值（当前 3 条，见工作流注释）即失败。**Windows 构建与测试**（未装外部工具，集成用例按设计跳过）。**Windows Native AOT 发布**。编译与 AOT 均为警告视为错误。 |
+| [`tools-manifest.yml`](.github/workflows/tools-manifest.yml) | 每周一、手动、PR 改动 `External/Tools/**` | 在 Linux 与 Windows 下载 `tools.json` 的每个依赖包，用 `ToolManifestPackageTests`（Core 的 `ToolInstaller`）校验 SHA256 / integrity 与包结构，不允许跳过。 |
+| [`release.yml`](.github/workflows/release.yml) | 推送版本 tag | 见第 7 节。 |
+
+- 每个任务把各测试工程的通过 / 失败 / 跳过数与跳过原因写入 Job Summary（`.github/scripts/test-summary.ps1` 解析 trx），并上传 trx；覆盖率与界面截图作为产物上传（截图只在失败或改动桌面端 / E2E 时上传），不设覆盖率门槛。
+- 新增按环境跳过的用例时，同步调整 `ci.yml` 中的跳过阈值与注释；需要事先准备数据的用例（如 `ToolManifestPackageTests`）从 Linux 任务中过滤，放到专门的工作流。
+- NuGet 包用 `actions/cache` 按 `*.csproj` / `Directory.Build.props` / `global.json` 的哈希缓存（不用 `packages.lock.json`：锁文件会记录随 SDK 补丁号变化的 ILCompiler / ILLink 隐式包与按宿主 RID 生成的段，锁定还原会随 runner 升级失败）。
+- 官方 Action 使用最新大版本标签，第三方 Action 固定到提交 SHA 并注释版本号；工作流默认 `permissions: contents: read`，写权限只授予需要的任务。Dependabot（`.github/dependabot.yml`）每周更新 NuGet 与 Actions。
+
 ---
 
 ## 6. 改动工作流
@@ -220,11 +235,15 @@ dotnet publish src/LivePhotoConvert.Desktop/LivePhotoConvert.Desktop.csproj -r w
 
 ## 7. 版本发布（自动发布依赖 Git Tag）
 
-GitHub Actions 的 [`release.yml`](.github/workflows/release.yml) 监听 **git tag**（匹配 `v*` 或 `[0-9]+.*`）自动执行：跑测试 → 发布 Native AOT → 打包 `LivePhotoConvert-<tag>-win-x64.zip` → 创建 GitHub Release。
+GitHub Actions 的 [`release.yml`](.github/workflows/release.yml) 只由推送的 **git tag**（匹配 `v*` 或 `[0-9]*.[0-9]*.*`）触发，工作流不会自己打 tag（也可在 Actions 页面对**已有** tag 手动重跑）。流程：
 
-**版本更新时必须依次完成（缺一不会触发发版）：**
+1. **校验**：tag 去掉 `v` 后必须等于 `Directory.Build.props` 的 `<Version>`；`CHANGELOG.md` 必须有对应的 `## [x.y.z]` 段落，缺失即失败。
+2. **发布前检查**：以 `workflow_call` 复用 `ci.yml` 的全部任务（Linux 真实工具测试、Windows 构建与测试、AOT 发布且警告视为错误），检出的是该 tag。
+3. **打包发布**（唯一拥有 `contents: write`、`id-token: write`、`attestations: write` 的任务）：把 CI 中通过检查的 AOT 产物打包为 `LivePhotoConvert-<tag>-win-x64.zip`，生成 `SHA256SUMS.txt`，用 `actions/attest` 生成构建来源证明（可用 `gh attestation verify <zip> -R <owner>/<repo>` 验证），以 CHANGELOG 对应段落为说明创建 GitHub Release；版本号含 `-` 时标记为预发布。
 
-1. **写更新日志**：在 `CHANGELOG.md` 顶部新增 `## [x.y.z] - YYYY-MM-DD` 条目；
+**版本更新时必须依次完成（缺一会导致发版失败或不触发）：**
+
+1. **写更新日志**：在 `CHANGELOG.md` 顶部新增 `## [x.y.z] - YYYY-MM-DD` 条目（该段落即 Release 说明）；
 2. **升版本号**：同步 `Directory.Build.props` 的 `<Version>`（`<AssemblyVersion>` / `<FileVersion>` 保持一致）；
 3. **打 tag 并推送**：
    ```bash

@@ -1,49 +1,288 @@
-name: CI Build & Test
+name: CI
 
 on:
   push:
     branches: [ main ]
   pull_request:
+  workflow_dispatch:
+  # release.yml 在发布前复用本工作流的全部检查
+  workflow_call:
+    inputs:
+      ref:
+        description: 要检出的 git 引用（发布时传入 tag）；为空时使用触发事件的提交
+        type: string
+        required: false
+        default: ''
+      upload-aot:
+        description: 是否把 Native AOT 发布目录作为产物上传，供发布流程打包
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+# 同一分支 / PR 的新提交会取消仍在运行的旧检查。
+# 被 release.yml 调用时 github.workflow 是调用方的名字、inputs.ref 是发布的 tag，
+# 发布流程因此不会与普通 CI 或其它 tag 的发布互相取消。
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ inputs.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  NUGET_XMLDOC_MODE: skip
+  # libultrahdr 固定到 tag 及其提交（tag 可被移动，编译前核对提交）
+  LIBULTRAHDR_TAG: v2.0.2
+  LIBULTRAHDR_COMMIT: e5f5a022fe96fc4dc2ee35c19f733a50df807abe
 
 jobs:
-  test-and-build:
-    runs-on: windows-latest
+  linux:
+    name: Linux · 真实工具测试
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: 检出代码
-        uses: actions/checkout@v4
-
-      - name: 配置 .NET 10 环境
-        uses: actions/setup-dotnet@v4
+        uses: actions/checkout@v7
         with:
-          dotnet-version: '10.0.x'
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
 
-      - name: 编译解决方案
-        run: dotnet build LivePhotoConvert.slnx -c Release
+      - name: 检测桌面端改动
+        id: changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: bash .github/scripts/desktop-changed.sh
 
-      # 含 Avalonia Headless 界面冒烟测试：Skia 离屏渲染，不需要显示器
-      - name: 运行全部测试
-        run: dotnet test LivePhotoConvert.slnx -c Release --no-build --verbosity normal
+      - name: 配置 .NET（版本取自 global.json）
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      # 不用 packages.lock.json + setup-dotnet 的 cache：锁文件会记录 SDK 隐式引用的
+      # Microsoft.DotNet.ILCompiler / ILLink.Tasks（版本随 SDK 补丁号变化）和按宿主 RID 生成的
+      # net10.0/<rid> 段（Linux 与 Windows 不同），锁定还原会随 runner 镜像升级而失败。
+      - name: 缓存 NuGet 包
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props', 'global.json') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: 安装外部工具（ExifTool / FFmpeg / libheif / 中日韩字体）
+        id: tools
+        run: |
+          sudo apt-get update -q
+          # libheif-plugin-x265 用于 heif-enc 编码 HEIC，libde265 用于解码；
+          # libarchive-tools 提供 bsdtar，覆盖依赖包"系统 tar 解 7z"的路径；
+          # fonts-noto-cjk 让 Headless 截图中的中文正常显示
+          sudo apt-get install -y -q --no-install-recommends \
+            libimage-exiftool-perl ffmpeg \
+            libheif-examples libheif-plugin-x265 libheif-plugin-libde265 \
+            libjpeg-turbo8 libarchive-tools fonts-noto-cjk
+          echo "image=${ImageOS:-unknown}-${ImageVersion:-0}" >> "$GITHUB_OUTPUT"
+
+      - name: 缓存 libultrahdr
+        id: uhdr-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/libultrahdr
+          # 编译产物动态链接系统 libjpeg，按 runner 镜像区分
+          key: libultrahdr-${{ steps.tools.outputs.image }}-${{ env.LIBULTRAHDR_COMMIT }}-xmp
+
+      - name: 编译 libultrahdr（ultrahdr_app）
+        if: steps.uhdr-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get install -y -q --no-install-recommends cmake ninja-build libjpeg-turbo8-dev
+          src="$RUNNER_TEMP/libultrahdr"
+          git clone --quiet --depth 1 --branch "$LIBULTRAHDR_TAG" https://github.com/google/libultrahdr.git "$src"
+          actual="$(git -C "$src" rev-parse HEAD)"
+          if [ "$actual" != "$LIBULTRAHDR_COMMIT" ]; then
+            echo "::error::libultrahdr $LIBULTRAHDR_TAG 指向 $actual，与固定的 $LIBULTRAHDR_COMMIT 不符。"
+            exit 1
+          fi
+          cmake -S "$src" -B "$src/build" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DUHDR_BUILD_EXAMPLES=ON -DUHDR_BUILD_TESTS=OFF -DUHDR_BUILD_DEPS=OFF \
+            -DUHDR_WRITE_XMP=ON
+          cmake --build "$src/build" --target ultrahdr_app
+          install -D -m 755 "$src/build/ultrahdr_app" "$HOME/.cache/libultrahdr/ultrahdr_app"
+
+      # 先取完整输出再筛选：runner 的 bash 带 pipefail，head / grep -q 提前关闭管道会让上游以 SIGPIPE 失败
+      - name: 登记并检查外部工具
+        run: |
+          app="$HOME/.cache/libultrahdr/ultrahdr_app"
+          echo "LPC_ULTRAHDR_APP=$app" >> "$GITHUB_ENV"
+          echo "ExifTool $(exiftool -ver)"
+          ffmpeg_version="$(ffmpeg -hide_banner -version)"
+          echo "${ffmpeg_version%%$'\n'*}"
+          ffmpeg_encoders="$(ffmpeg -hide_banner -encoders)"
+          grep -q libx265 <<< "$ffmpeg_encoders" || { echo "::error::FFmpeg 不带 libx265。"; exit 1; }
+          heif_enc="$(heif-enc --version)"
+          echo "heif-enc ${heif_enc%%$'\n'*}"
+          if command -v heif-dec > /dev/null; then decoder=heif-dec; else decoder=heif-convert; fi
+          heif_dec="$("$decoder" --version)"
+          echo "$decoder ${heif_dec%%$'\n'*}"
+          # 不带参数时打印用法（含库版本）并返回非 0
+          usage="$("$app" 2>&1 || true)"
+          grep -m 1 'lib version' <<< "$usage" || { echo "::error::ultrahdr_app 无法运行。"; exit 1; }
+
+      - name: 编译解决方案（警告视为错误）
+        run: dotnet build LivePhotoConvert.slnx -c Release -p:TreatWarningsAsErrors=true
+
+      # -m:1 让三个测试工程依次运行：覆盖率插桩叠加三个测试进程并行时，
+      # 桌面端性能用例（1 万张卡片切换动作 < 1s）会因 CPU 争用超时；串行总耗时几乎不变。
+      # ToolManifestPackageTests 需要事先下载的依赖包，由 tools-manifest.yml 每周单独运行。
+      - name: 运行全部测试（真实工具集成 + E2E，收集覆盖率）
+        run: >-
+          dotnet test LivePhotoConvert.slnx -c Release --no-build -m:1
+          --filter "FullyQualifiedName!~ToolManifestPackageTests"
+          --logger trx --results-directory TestResults
+          --collect "XPlat Code Coverage"
+
+      # 允许的跳过共 3 条：
+      #   - WindowsShellThumbnailSourceTests 的 2 条用例：Windows Shell 缩略图仅在 Windows 上可用；
+      #   - UltraHdrMergeIntegrationTests.ExternalSamples_ReportSizeTimeAndError：需要 LPC_HDR_SAMPLES 私有样片集。
+      # 两条"无权限子目录"用例只在 root 下跳过；托管 runner 以普通用户 runner 运行，应实际执行。
+      # 外部工具或 LPC_ULTRAHDR_APP 失效时会多出 70 余条跳过（本地去掉工具实测 76 条），在这里直接失败。
+      - name: 汇总测试结果并检查跳过数
+        if: ${{ !cancelled() }}
+        shell: pwsh
+        run: >-
+          ./.github/scripts/test-summary.ps1 -ResultsDirectory TestResults -Title 'Linux · 真实工具测试'
+          -MaxSkipped 3
+          -ExpectedProjects LivePhotoConvert.Core.Tests, LivePhotoConvert.Desktop.Tests, LivePhotoConvert.E2E
+
+      - name: 上传测试结果（trx）
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results-linux
+          path: TestResults/**/*.trx
+          if-no-files-found: warn
+
+      - name: 上传覆盖率（Cobertura）
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-linux
+          # 每个测试工程一份，位于 TestResults/<guid>/；In/<机器名>/ 下是 trx 附件的重复副本
+          path: TestResults/*/coverage.cobertura.xml
+          if-no-files-found: warn
 
       - name: 上传界面截图
-        if: always()
-        uses: actions/upload-artifact@v4
+        if: ${{ failure() || steps.changes.outputs.desktop == 'true' }}
+        uses: actions/upload-artifact@v7
         with:
-          name: ui-screenshots
+          name: ui-screenshots-linux
           path: tests/LivePhotoConvert.Desktop.Tests/bin/Release/net10.0/screenshots/
           if-no-files-found: warn
 
-  aot-publish:
+  windows:
+    name: Windows · 构建与测试
     runs-on: windows-latest
+    timeout-minutes: 30
 
     steps:
       - name: 检出代码
-        uses: actions/checkout@v4
-
-      - name: 配置 .NET 10 环境
-        uses: actions/setup-dotnet@v4
+        uses: actions/checkout@v7
         with:
-          dotnet-version: '10.0.x'
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - name: 检测桌面端改动
+        id: changes
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: bash .github/scripts/desktop-changed.sh
+
+      - name: 配置 .NET（版本取自 global.json）
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: 缓存 NuGet 包
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props', 'global.json') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: 编译解决方案（警告视为错误）
+        run: dotnet build LivePhotoConvert.slnx -c Release -p:TreatWarningsAsErrors=true
+
+      # 含 Avalonia Headless 界面冒烟测试：Skia 离屏渲染，不需要显示器。
+      # Windows runner 未安装外部工具，真实工具集成用例按设计跳过（由 Linux 任务覆盖）；
+      # 依赖包的下载、校验与解压链路由 tools-manifest.yml 每周在 Windows 上验证。
+      - name: 运行全部测试
+        run: dotnet test LivePhotoConvert.slnx -c Release --no-build --logger trx --results-directory TestResults
+
+      - name: 汇总测试结果
+        if: ${{ !cancelled() }}
+        shell: pwsh
+        run: >-
+          ./.github/scripts/test-summary.ps1 -ResultsDirectory TestResults -Title 'Windows · 构建与测试'
+          -ExpectedProjects LivePhotoConvert.Core.Tests, LivePhotoConvert.Desktop.Tests
+
+      - name: 上传测试结果（trx）
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results-windows
+          path: TestResults/**/*.trx
+          if-no-files-found: warn
+
+      - name: 上传界面截图
+        if: ${{ failure() || steps.changes.outputs.desktop == 'true' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: ui-screenshots-windows
+          path: tests/LivePhotoConvert.Desktop.Tests/bin/Release/net10.0/screenshots/
+          if-no-files-found: warn
+
+  aot:
+    name: Windows · Native AOT 发布
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - name: 配置 .NET（版本取自 global.json）
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      # AOT 另存一份缓存（多出 ILCompiler 运行时包）；首次未命中时回退到构建任务的缓存
+      - name: 缓存 NuGet 包
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-aot-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props', 'global.json') }}
+          restore-keys: |
+            nuget-aot-${{ runner.os }}-
+            nuget-${{ runner.os }}-
 
       - name: Native AOT 发布（裁剪与 AOT 警告视为错误）
         run: dotnet publish src/LivePhotoConvert.Desktop/LivePhotoConvert.Desktop.csproj -r win-x64 -c Release -o dist/aot -p:TreatWarningsAsErrors=true
+
+      - name: 移除调试符号
+        shell: pwsh
+        run: Remove-Item -Path dist/aot/*.pdb -Force -ErrorAction SilentlyContinue
+
+      - name: 上传 AOT 发布目录（仅发布流程）
+        if: ${{ inputs.upload-aot }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: aot-win-x64
+          path: dist/aot/
+          if-no-files-found: error
+          retention-days: 3
