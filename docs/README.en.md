@@ -29,6 +29,7 @@
 
 - [Features](#features)
 - [Compared with other approaches](#compared-with-other-approaches)
+- [Installation and updates](#installation-and-updates)
 - [Getting started](#getting-started)
 - [Keyboard shortcuts](#keyboard-shortcuts)
 - [Safety and data protection](#safety-and-data-protection)
@@ -92,9 +93,25 @@ Conversions rely on three command-line tools: [ExifTool](https://exiftool.org/) 
 | Browsing and preview | Gallery, hover playback, QuickLook, slim-down comparison | None | In the phone's gallery |
 | Runs on | A Windows PC | Any system with the tools | The phone, no PC needed |
 
+## Installation and updates
+
+Download one of the following from [Releases](https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert/releases). The app is compiled with Native AOT and needs no .NET runtime.
+
+| File | Description |
+| :--- | :--- |
+| `LivePhotoConvert-v<version>-win-x64-Setup.exe` | **Recommended.** Installs for the current user into `%LocalAppData%\LivePhotoConvert.App` without admin rights, adds Start menu and desktop shortcuts, can be removed from Settings → Apps, and updates itself. |
+| `LivePhotoConvert-v<version>-win-x64-Portable.zip` | Portable edition: unzip and run; also updates itself. |
+| `LivePhotoConvert-v<version>-win-x64.zip` | Plain ZIP without automatic updates; download new versions manually. |
+
+- **Automatic updates**: the app checks in the background about 10 seconds after launch, at most once a day; turn it off or check manually under Preferences → Updates. When a new version is available, a dialog shows the version, release notes and download size (delta updates supported), with Update now, Remind me later or Skip this version. After downloading, choose Restart and update or Install on next launch. If a task is running, update when it finishes or cancel it and update now.
+- **Download source and verification**: the release list always comes straight from GitHub. Update packages may be downloaded through the GitHub mirror configured on the Engines page; the manifest and packages are verified by SHA256, so a mirror cannot change their contents.
+- **Uninstall** removes only the program. Settings (`%AppData%\LivePhotoConvert`), logs, the thumbnail cache and dependencies (`%LocalAppData%\LivePhotoConvert`) are kept; delete them manually if you want.
+- **Verifying downloads**: each release includes `SHA256SUMS.txt`; you can also verify build provenance with `gh attestation verify <file> -R ZhiQiu-Kinsey/AppleLivePhotoConvert`.
+- The app is not code-signed yet, so Windows SmartScreen may warn about an unknown publisher on first run; choose Run anyway. Users of the 3.x ZIP need to install 4.0.0 once manually; later versions update automatically.
+
 ## Getting started
 
-1. **Download**: get `LivePhotoConvert-v<version>-win-x64.zip` from [Releases](https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert/releases), extract it to any writable folder and run `LivePhotoConvert.exe`. The app is compiled with Native AOT and needs no .NET runtime; keep the extracted files together.
+1. **Install**: run the installer, or unzip the portable edition and run `LivePhotoConvert.exe` (see [Installation and updates](#installation-and-updates)).
 2. **Install engines**: open the Engines page (Ctrl+3) and install whatever is missing. Tools needed per action:
 
    | Action | ExifTool | FFmpeg | heif-enc |
@@ -274,6 +291,7 @@ Frameworks and specifications used to build it:
 - [Avalonia UI](https://avaloniaui.net/): cross-platform desktop UI framework
 - [CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet): MVVM source generators
 - [FluentIcons.Avalonia](https://github.com/davidxuang/FluentIcons): Fluent icons
+- [Velopack](https://velopack.io/): installer and automatic updates
 - [Google Motion Photo format](https://developer.android.com/media/platform/motion-photo-format)
 
 External tools are distributed under their own licenses; one-click installs download them from their official or mirror sources, and they are not bundled with this app.

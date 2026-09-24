@@ -29,6 +29,7 @@
 
 - [功能概览](#功能概览)
 - [与其它方式的对比](#与其它方式的对比)
+- [安装与更新](#安装与更新)
 - [快速上手](#快速上手)
 - [快捷键](#快捷键)
 - [安全与数据保护](#安全与数据保护)
@@ -92,9 +93,25 @@
 | 浏览与预览 | 画廊、悬浮播放、QuickLook、瘦身对比 | 无 | 在手机相册中查看 |
 | 运行环境 | Windows 电脑 | 任意装有工具的系统 | 手机，无需电脑 |
 
+## 安装与更新
+
+从 [Releases](https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert/releases) 下载，三种形式任选其一。程序为 Native AOT 编译，不需要安装 .NET 运行时。
+
+| 文件 | 说明 |
+| :--- | :--- |
+| `LivePhotoConvert-v<版本>-win-x64-Setup.exe` | **推荐**。按当前用户安装到 `%LocalAppData%\LivePhotoConvert.App`，无需管理员权限；创建开始菜单与桌面快捷方式，可在「设置 → 应用」中卸载；自动更新。 |
+| `LivePhotoConvert-v<版本>-win-x64-Portable.zip` | 便携版，解压即用，同样支持自动更新。 |
+| `LivePhotoConvert-v<版本>-win-x64.zip` | 纯解压版，不自动更新，需要时手动下载新版本。 |
+
+- **自动更新**：启动约 10 秒后在后台检查，每天最多一次，可在「偏好设置 → 更新」中关闭或手动检查。发现新版本时弹窗显示版本、更新说明与下载大小（支持增量更新），可以立即更新、稍后提醒或跳过此版本；下载完成后选择「重启并更新」或「下次启动时安装」。有任务运行时，可等任务完成后自动更新，或取消任务立即更新。
+- **下载来源与校验**：发布列表始终直连 GitHub；更新包可经依赖页设置的 GitHub 加速镜像下载，清单与更新包逐级校验 SHA256，镜像无法篡改内容。
+- **卸载**：只删除程序本身。设置（`%AppData%\LivePhotoConvert`）、日志、缩略图缓存与依赖工具（`%LocalAppData%\LivePhotoConvert`）会保留，需要时可手动删除。
+- **校验下载文件**：Release 附带 `SHA256SUMS.txt`，也可以用 `gh attestation verify <文件> -R ZhiQiu-Kinsey/AppleLivePhotoConvert` 验证构建来源。
+- 程序暂无代码签名，首次运行时 Windows SmartScreen 可能提示「未知发布者」，选择「仍要运行」即可。3.x 解压版用户需要手动安装一次 4.0.0，之后即可自动更新。
+
 ## 快速上手
 
-1. **下载**：从 [Releases](https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert/releases) 下载 `LivePhotoConvert-v<版本>-win-x64.zip`，解压到任意可写目录，运行 `LivePhotoConvert.exe`。程序为 Native AOT 编译，不需要安装 .NET 运行时；解压后请保持目录内文件在一起。
+1. **安装**：运行安装包，或解压便携版后运行 `LivePhotoConvert.exe`（见[安装与更新](#安装与更新)）。
 2. **安装依赖**：首次启动后打开「依赖引擎」页（Ctrl+3），为缺失的工具点击安装。各动作需要的工具如下：
 
    | 动作 | ExifTool | FFmpeg | heif-enc |
@@ -274,6 +291,7 @@ LPC_DOCS_SCREENSHOTS=docs/screenshots dotnet test tests/LivePhotoConvert.Desktop
 - [Avalonia UI](https://avaloniaui.net/)：跨平台桌面界面框架
 - [CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet)：MVVM 源生成器
 - [FluentIcons.Avalonia](https://github.com/davidxuang/FluentIcons)：Fluent 图标
+- [Velopack](https://velopack.io/)：安装包与自动更新
 - [Google Motion Photo 格式规范](https://developer.android.com/media/platform/motion-photo-format)
 
 外部工具按各自的许可证分发，一键安装时从其官方或镜像来源下载，不随本程序打包。

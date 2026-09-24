@@ -11,8 +11,8 @@
 - **定位**：实况照片工作台——浏览相册，在苹果实况与安卓动态照片之间互转、解包、瘦身，并保留 HDR（Ultra HDR 增益图、HDR 视频色调映射预览与 10-bit 转码）。不向通用相册工具扩展。
 - **形态**：.NET 10 + Avalonia 12 桌面应用，Native AOT 单文件发布（`TrimMode=full`）。命令行入口已移除，**不要恢复 CLI 或为新功能加命令行分支**；可复用能力放 Core，交互放 Desktop。
 - **名称**：工程、可执行文件（`LivePhotoConvert.exe`）、设置与缓存目录都叫 `LivePhotoConvert`，不要改名。
-- **平台**：正式支持 Windows x64（发布包 `win-x64`）；Linux 可从源码运行（依赖自行安装、无回收站）；macOS 未适配；安卓 / iOS 不支持（依赖外部命令行进程）。
-- **技术栈**：Avalonia 12.1.2（Desktop / Themes.Fluent / Fonts.Inter）、CommunityToolkit.Mvvm 8.4.0、FluentIcons.Avalonia、Microsoft.Extensions.DependencyInjection；Core 只引用 `Magick.NET-Q8-x64`（图像解码）与 `SharpCompress`（7z 解压）。外部工具：ExifTool、FFmpeg、heif-enc / heif-dec。
+- **平台**：正式支持 Windows x64（安装版、可更新便携版与纯解压版，均为 `win-x64`）；Linux 可从源码运行（依赖自行安装、无回收站）；macOS 未适配；安卓 / iOS 不支持（依赖外部命令行进程）。
+- **技术栈**：Avalonia 12.1.2（Desktop / Themes.Fluent / Fonts.Inter）、CommunityToolkit.Mvvm 8.4.0、FluentIcons.Avalonia、Microsoft.Extensions.DependencyInjection、Velopack（安装与更新，vpk CLI 版本由 `.github/scripts/velopack-pack.ps1` 从 csproj 读取，始终与库同版本）；Core 只引用 `Magick.NET-Q8-x64`（图像解码）与 `SharpCompress`（7z 解压）。外部工具：ExifTool、FFmpeg、heif-enc / heif-dec。
 - **测试**：xunit.v3。`LivePhotoConvert.Core.Tests`（引擎）、`LivePhotoConvert.Desktop.Tests`（VM / 服务单元测试 + Avalonia Headless 界面测试）、`LivePhotoConvert.E2E`（真实外壳 + 真实工具的黑盒流程）。
 
 ## 2. 架构速览
@@ -40,7 +40,8 @@ src/LivePhotoConvert.Desktop/         Avalonia 桌面端（程序集名 LivePhot
                      Thumbnails/（ThumbnailPipeline、ByteBudget、GalleryThumbnailBinder、GalleryMetrics）
   Features/Playback/ LivePhotoPlayer（RawVideoDecoder、FrameStore、SurfacePair）、PlaybackService
   Features/Tasks/    TaskCenter、ConversionRunner、TasksView/VM、TaskReportView/VM、OutcomeTexts、CsvWriter
-  Features/Tools/ Settings/ Dialogs/   依赖页；偏好设置与关于；各弹窗（DialogViewModel<TResult>）
+  Features/Updates/  IUpdateService、VelopackUpdateService、GithubReleaseSource、UpdateCenter、ReleaseNotes、UpdateTexts
+  Features/Tools/ Settings/ Dialogs/   依赖页；偏好设置与关于；各弹窗（DialogViewModel<TResult>，含 UpdateDialog）
   Controls/ Converters/ Assets/        GalleryList / GalleryRowPresenter（卡片复用）、PhotoCardControl、CurtainCompareControl、ShortcutTip 等；Styles.axaml 与两份 Strings
 
 tests/  Core.Tests（按 Media / Metadata / Pairing / Pipeline / Services / External / Io 分目录，Support/ 为替身与合成媒体）
@@ -79,6 +80,14 @@ tests/  Core.Tests（按 Media / Metadata / Pairing / Pipeline / Services / Exte
 - 设置只经 `SettingsStore.Update(...)`（防抖、原子写入、坏文件改名为 `.corrupt`）。`DesktopSettings` 新增字段缺失时取默认值即可；**重命名、删除或改变含义时提升 `SettingsStore.CurrentSchemaVersion` 并在 `Migrate` 中补迁移**。
 - 文件选择、打开目录与链接只经 `IFilePicker` / `IShellLauncher`，不直接 `Process.Start`。
 - 快捷键只在 `AppShortcuts` 定义；界面提示用 `ShortcutTip` 附加属性由定义合成，文案资源里不手写按键。
+
+### 3.4.1 安装与自动更新
+
+- `Program.Main` 第一句必须是 `VelopackApp.Build().Run()`（仅 Windows），前面不能加任何代码：安装、更新、卸载的钩子参数由它处理后直接退出。
+- packId 固定为 `LivePhotoConvert.App`，**不得改成 `LivePhotoConvert`**：卸载会整体删除 `%LocalAppData%\<packId>`，而日志、缩略图缓存与依赖工具在 `%LocalAppData%\LivePhotoConvert`。
+- 程序目录由更新器管理时（`IUpdateService.IsSupported`），持久文件一律不写进程序目录；依赖工具经 `ToolDirectories.GetWritableToolDirectory(true)` 装到 `%LocalAppData%\LivePhotoConvert\tools`。
+- 信任链：发布列表只直连 api.github.com → 附件 `digest` → `releases.win.json` → 清单中的 SHA256 → 更新包。镜像只用于下载，没有 digest 的清单不得走镜像。
+- 更新失败一律抛 `UpdateException(UpdateFailureKind)`，界面经 `UpdateTexts` 本地化；自动检查失败只记日志。退出更新经 `IAppShutdown.ShutdownForUpdateAsync`（先完成正常收尾再启动更新程序）；`IBackgroundWork` 实现必须触发 `BusyChanged`。
 
 ### 3.5 本地化
 
@@ -164,7 +173,7 @@ LPC_DOCS_SCREENSHOTS=docs/screenshots dotnet test tests/LivePhotoConvert.Desktop
 
 | 工作流 | 触发 | 内容 |
 | :--- | :--- | :--- |
-| [`ci.yml`](.github/workflows/ci.yml) | push `main`、所有 PR、手动、被 `release.yml` 调用 | **Linux**：安装 ExifTool / FFmpeg / libheif / Noto CJK 并编译固定版本的 libultrahdr，全部测试（`-m:1` 串行、排除 `ToolManifestPackageTests`）并收集覆盖率；**跳过数超过 3 即失败**（允许的 3 条见工作流注释）。**Windows**：构建与测试（未装外部工具，集成用例按设计跳过）。**AOT**：`win-x64` 发布。编译与发布均以警告为错误。 |
+| [`ci.yml`](.github/workflows/ci.yml) | push `main`、所有 PR、手动、被 `release.yml` 调用（不接受外部指定检出引用） | **Linux**：安装 ExifTool / FFmpeg / libheif / Noto CJK 并编译固定版本的 libultrahdr，全部测试（`-m:1` 串行、排除 `ToolManifestPackageTests`）并收集覆盖率；**跳过数超过 3 即失败**（允许的 3 条见工作流注释）。**Windows**：构建与测试（未装外部工具，集成用例按设计跳过）。**AOT 与安装包**：`win-x64` 发布，并用同一产物打两个测试版本，静默安装、启动、增量升级、卸载（不联网）。编译与发布均以警告为错误。 |
 | [`tools-manifest.yml`](.github/workflows/tools-manifest.yml) | 每周一、手动、PR 改动 `External/Tools/**` | 在 Linux 与 Windows 下载 `tools.json` 的每个包并用 `ToolInstaller` 校验哈希与结构。 |
 | [`release.yml`](.github/workflows/release.yml) | 推送版本 tag | 见 5.3。 |
 
@@ -174,7 +183,7 @@ LPC_DOCS_SCREENSHOTS=docs/screenshots dotnet test tests/LivePhotoConvert.Desktop
 
 ### 5.3 发版
 
-`release.yml` 只由推送的 tag（`v*` 或 `[0-9]*.[0-9]*.*`）触发：校验 tag 去掉 `v` 后等于 `Directory.Build.props` 的 `<Version>`、`CHANGELOG.md` 有对应段落 → 复用 `ci.yml` 全部检查 → 打包 `LivePhotoConvert-<tag>-win-x64.zip`、生成 `SHA256SUMS.txt` 与构建来源证明 → 以 CHANGELOG 段落（`.github/scripts/get-changelog-section.ps1` 提取到下一个二级标题为止）为说明创建 Release，版本含 `-` 时为预发布。
+`release.yml` 只由推送的 tag（`v*` 或 `[0-9]*.[0-9]*.*`）触发：校验 tag 去掉 `v` 后等于 `Directory.Build.props` 的 `<Version>`、`CHANGELOG.md` 有对应段落 → 复用 `ci.yml` 全部检查 → Windows 上用 vpk 打包（先下载上一正式版的完整包生成增量包）：Setup、Portable、full / delta nupkg、`releases.win.json`，另附纯解压版 `LivePhotoConvert-<tag>-win-x64.zip` → 全部文件计入 `SHA256SUMS.txt` 并生成构建来源证明 → 以 CHANGELOG 段落（`.github/scripts/get-changelog-section.ps1` 提取到下一个二级标题为止）为说明创建 Release，版本含 `-` 时为预发布。
 
 发版步骤（由维护者决定时机，助手不要自行打 tag 或推送）：
 
@@ -182,4 +191,4 @@ LPC_DOCS_SCREENSHOTS=docs/screenshots dotnet test tests/LivePhotoConvert.Desktop
 2. 同步 `Directory.Build.props` 的 `<Version>`、`<AssemblyVersion>`、`<FileVersion>`；
 3. 提交后打带注释的 tag 并推送：`git tag -a vx.y.z -m "LivePhotoConvert x.y.z"`、`git push origin main`、`git push origin vx.y.z`。
 
-已推送的发布 tag 不得改写，热修复递增 patch 版本。「关于」页的版本号来自程序集属性，无需手工维护。
+发布失败时对原运行 Re-run，不提供手动输入 tag 的入口。已推送的发布 tag 不得改写，热修复递增 patch 版本。「关于」页的版本号来自程序集属性，无需手工维护。
