@@ -41,7 +41,7 @@ src/LivePhotoConvert.Desktop/         Avalonia 桌面端（程序集名 LivePhot
   Features/Playback/ LivePhotoPlayer（RawVideoDecoder、FrameStore、SurfacePair）、PlaybackService
   Features/Tasks/    TaskCenter、ConversionRunner、TasksView/VM、TaskReportView/VM、OutcomeTexts、CsvWriter
   Features/Tools/ Settings/ Dialogs/   依赖页；偏好设置与关于；各弹窗（DialogViewModel<TResult>）
-  Controls/ Converters/ Assets/        PhotoCardControl、CurtainCompareControl、ShortcutTip 等；Styles.axaml 与两份 Strings
+  Controls/ Converters/ Assets/        GalleryList / GalleryRowPresenter（卡片复用）、PhotoCardControl、CurtainCompareControl、ShortcutTip 等；Styles.axaml 与两份 Strings
 
 tests/  Core.Tests（按 Media / Metadata / Pairing / Pipeline / Services / External / Io 分目录，Support/ 为替身与合成媒体）
         Desktop.Tests（目录与产品一致，Harness/ 为 ShellSession 等测试宿主，Docs/ 为 README 截图生成）
@@ -97,6 +97,7 @@ tests/  Core.Tests（按 Media / Metadata / Pairing / Pipeline / Services / Exte
 细节与取舍见 [phase2-gallery.md](docs/design/phase2-gallery.md)、[phase3-playback-hdr.md](docs/design/phase3-playback-hdr.md)。必须保持的不变式：
 
 - 排版只用 `JustifiedLayoutEngine`（完整行铺满、行高 ≤ 目标 × 1.3），比例取扫描得到的转正后宽高，缩略图到达不触发重排；几何常量只来自 `GalleryMetrics`。
+- 卡片控件复用：`GalleryList` 以 `GalleryRowPresenter` 作行容器，`PhotoCardControl` 的逻辑父级固定为列表（卡片池），行回收时卡片只进出可视树、换数据上下文；不要改回"行模板 + 内层 ItemsControl"（控件重新挂上逻辑树要重新套用全部样式，每张数毫秒）。卡片内不绘制的容器用 `Panel` / `Decorator`，不用 `Border`。
 - 位图是非托管内存，**严禁无界缓存**：缩略图按字节计入 `ByteBudget`（设置 64～1024MB），已实例化卡片经 `GalleryThumbnailBinder` 钉住、永不驱逐，满足 `ResidentBytes ≤ 预算 + 钉住字节`；驱逐先放开绑定再延迟释放像素。解码或像素分配失败降级为占位图，异常不得穿透界面线程。**界面线程零 I/O**。
 - 播放只走 `LivePhotoPlayer`（`ILivePhotoPlayer`，由 `PlaybackService` 创建）：安卓内嵌视频用 FFmpeg `subfile` 直读，不切临时文件、不把路径写回卡片；`rawvideo` BGRA 输出、按 PTS 换帧；帧按字节预算（悬浮 96MB、QuickLook 256MB）；HDR 源缺 zscale / tonemap 时报 `HdrToneMapUnavailable`，不得静默显示发灰画面。
 - **播放单实例**：整窗一个悬浮播放器，QuickLook 独占一个；新播放先结束旧 FFmpeg；退出与替换 FFmpeg 前经 `IPlaybackControl.StopAllAsync` 等待播放进程退出。

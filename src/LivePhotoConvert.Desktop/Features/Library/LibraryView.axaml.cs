@@ -34,7 +34,7 @@ public partial class LibraryView : UserControl
         // 画廊自身接收焦点，Ctrl+A / Esc / 空格才能在点击卡片后生效
         Focusable = true;
         AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
-        GalleryListBox.AddHandler(PointerPressedEvent, (_, _) => Focus(NavigationMethod.Pointer), RoutingStrategies.Bubble, handledEventsToo: true);
+        GalleryListBox.AddHandler(PointerPressedEvent, OnGalleryPointerPressed, RoutingStrategies.Bubble, handledEventsToo: true);
         DragDrop.SetAllowDrop(this, true);
         AddHandler(DragDrop.DragEnterEvent, OnDragOver);
         AddHandler(DragDrop.DragOverEvent, OnDragOver);
@@ -250,6 +250,17 @@ public partial class LibraryView : UserControl
         if (GalleryListBox.ContainerFromIndex(index) is { } container && container.TranslatePoint(default, scroll) is { } top)
         {
             scroll.Offset = new Vector(scroll.Offset.X, Math.Max(0, scroll.Offset.Y + top.Y + delta));
+        }
+    }
+
+    /// <summary>
+    /// 点在卡片上时画廊取得焦点；按钮（人工裁决、组标题）自己保留焦点：按钮失去焦点即取消按下，抬起时不会触发点击。
+    /// </summary>
+    private void OnGalleryPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if ((e.Source as Visual)?.FindAncestorOfType<Button>(includeSelf: true) is null)
+        {
+            Focus(NavigationMethod.Pointer);
         }
     }
 

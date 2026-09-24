@@ -107,20 +107,20 @@
         </StackPanel>
       </Border>
 
-      <!-- 画廊滚动视口：虚拟化单流排版，仅为可视区域生成视觉元素 -->
-      <ListBox Grid.Row="3"
-               x:Name="GalleryListBox"
-               ItemsSource="{Binding Layout.Items}"
-               Background="Transparent"
-               BorderThickness="0"
-               Padding="0"
-               ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-        <ListBox.ItemsPanel>
+      <!-- 画廊滚动视口：虚拟化单流排版，仅为可视区域生成视觉元素；等高行的容器与卡片控件由列表自己复用 -->
+      <controls:GalleryList Grid.Row="3"
+                            x:Name="GalleryListBox"
+                            ItemsSource="{Binding Layout.Items}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="0"
+                            ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+        <controls:GalleryList.ItemsPanel>
           <ItemsPanelTemplate>
             <VirtualizingStackPanel />
           </ItemsPanelTemplate>
-        </ListBox.ItemsPanel>
-        <ListBox.Styles>
+        </controls:GalleryList.ItemsPanel>
+        <controls:GalleryList.Styles>
           <Style Selector="ListBoxItem">
             <Setter Property="Padding" Value="0" />
             <Setter Property="Margin" Value="{x:Static thumbs:GalleryMetrics.ItemMargin}" />
@@ -132,9 +132,9 @@
           <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="Transparent" />
           </Style>
-        </ListBox.Styles>
-        <ListBox.DataTemplates>
-          <!-- 1. 组头项：独占整行；命令属于画廊，经列表的数据上下文绑定 -->
+        </controls:GalleryList.Styles>
+        <controls:GalleryList.DataTemplates>
+          <!-- 组头项：独占整行；命令属于画廊，经列表的数据上下文绑定 -->
           <DataTemplate DataType="models:TimelineHeaderItemViewModel">
             <Border Background="{DynamicResource HoverBrush}" CornerRadius="12" Padding="12,0"
                     Height="{x:Static thumbs:GalleryMetrics.GroupHeaderHeight}">
@@ -172,24 +172,8 @@
               </Grid>
             </Border>
           </DataTemplate>
-
-          <!-- 2. 等高自适应行：按原图比例分配宽度，行高在目标值附近调整并预先测量 -->
-          <DataTemplate DataType="models:PhotoGridRowViewModel">
-            <ItemsControl ItemsSource="{Binding Cards}">
-              <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                  <StackPanel Orientation="Horizontal" Spacing="{x:Static thumbs:GalleryMetrics.CardSpacing}" />
-                </ItemsPanelTemplate>
-              </ItemsControl.ItemsPanel>
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="models:PhotoCardItemViewModel">
-                  <controls:PhotoCardControl Width="{CompiledBinding DisplayWidth}" />
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-          </DataTemplate>
-        </ListBox.DataTemplates>
-      </ListBox>
+        </controls:GalleryList.DataTemplates>
+      </controls:GalleryList>
 
       <!-- 空状态 -->
       <Panel Grid.Row="3" IsVisible="{Binding !HasPhotos}">

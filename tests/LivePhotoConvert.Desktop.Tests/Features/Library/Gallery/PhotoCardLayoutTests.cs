@@ -33,7 +33,7 @@ public sealed class PhotoCardLayoutTests : IDisposable
         Assert.NotEmpty(cards);
         foreach (var card in cards)
         {
-            var infoBar = card.GetVisualDescendants().OfType<Border>().Single(b => b.Height == GalleryMetrics.InfoBarHeight);
+            var infoBar = card.GetVisualDescendants().OfType<Decorator>().Single(b => b.Height == GalleryMetrics.InfoBarHeight);
             var content = (Control)infoBar.Child!;
             var available = infoBar.Bounds.Width - infoBar.Padding.Left - infoBar.Padding.Right;
             content.Measure(new Size(available, double.PositiveInfinity));

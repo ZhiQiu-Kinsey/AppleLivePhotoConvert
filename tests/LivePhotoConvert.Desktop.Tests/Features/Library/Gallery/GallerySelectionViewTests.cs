@@ -62,8 +62,7 @@ public sealed class GallerySelectionViewTests : IDisposable
         var display = library.Layout.DisplayedCards;
         ClickCard(session, display[0]);
 
-        var status = CardControl(session, display[1]).GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("card-status") && b.IsEffectivelyVisible);
-        session.Click(status);
+        session.Click(StatusBadge(CardControl(session, display[1])));
         Assert.Equal([display[0]], Selected(library));
 
         var check = Check(CardControl(session, display[2]));
@@ -153,6 +152,10 @@ public sealed class GallerySelectionViewTests : IDisposable
         session.Descendants<PhotoCardControl>().Where(c => ReferenceEquals(c.DataContext, card)).ToList() is [var single] ? single : throw new InvalidOperationException(
             $"{card.FileName}: 滚动 {session.Descendants<ListBox>().Single(l => l.Name == "GalleryListBox").GetVisualDescendants().OfType<ScrollViewer>().First().Offset} 控件 " +
             string.Join(",", session.Descendants<PhotoCardControl>().Select(c => (c.DataContext as PhotoCardItemViewModel)?.FileName + "@" + c.TranslatePoint(default, session.Window))));
+
+    /// <summary>信息栏右上角的配对状态徽章（已锁定或待裁决，二者只显示其一）。</summary>
+    internal static Control StatusBadge(PhotoCardControl control) =>
+        control.GetVisualDescendants().OfType<Control>().Single(c => c.Classes.Contains("card-status") && c.IsVisible);
 
     private static Border Ring(PhotoCardControl control) =>
         control.GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("card-selection-ring"));

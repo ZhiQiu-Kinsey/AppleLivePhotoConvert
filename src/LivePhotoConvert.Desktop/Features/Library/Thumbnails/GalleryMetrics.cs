@@ -55,7 +55,7 @@ public static class GalleryMetrics
     /// <summary>列表项右侧留给悬浮滚动条的宽度：滚动条展开时不遮挡组标题右端的计数与行尾卡片。</summary>
     public const double ScrollBarGutter = 14;
 
-    /// <summary>低于此宽度（含卡片边距）的卡片收起状态文字与设备信息。</summary>
+    /// <summary>低于此宽度（含卡片边距）的卡片收起实况徽章文字、时长角标与设备信息；配对状态按信息栏实际宽度另行取舍。</summary>
     public const double CompactCardWidth = 230;
 
     /// <summary>低于此宽度的卡片再隐藏分辨率。</summary>
