@@ -125,13 +125,15 @@ public sealed class GalleryRecyclingTests
         using var session = SyntheticGallery.Open(store, budgetMb: 64, 40, services => services.AddSingleton(_ => players.CreateService()));
         await SyntheticGallery.ScanAsync(session, 40);
         var library = session.Shell.Library;
+        // 等排版与缩略图稳定后再悬停，否则随后到达的重排会回收这张卡片并停止播放
+        await SyntheticGallery.PumpUntilLoadedAsync(session, new Gallery(session).List);
         var control = session.Descendants<PhotoCardControl>().First(c => c.IsEffectivelyVisible);
         var preview = control.GetVisualDescendants().OfType<Panel>().Single(p => p.Name == "PreviewArea");
         session.Window.MouseMove(preview.TranslatePoint(new Point(preview.Bounds.Width / 2, preview.Bounds.Height / 2), session.Window)!.Value);
         session.Pump();
         var hover = players.Created[0];
-        await session.WaitUntilAsync(() => hover.State.Status == PlayerStatus.Playing);
-        Assert.NotNull(control.PlaybackFrame);
+        // 首帧在下一个渲染节拍才赋给卡片，状态变为 Playing 时可能还没有
+        await session.WaitUntilAsync(() => hover.State.Status == PlayerStatus.Playing && control.PlaybackFrame is not null);
 
         var items = library.Layout.Items.ToList();
         library.Layout.Items.Reset([]);
