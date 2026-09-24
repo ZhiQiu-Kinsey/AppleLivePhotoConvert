@@ -81,8 +81,7 @@ public sealed class MotionPhotoSplitter(IMetadataService metadata, IImageConvert
 
     private async Task<IReadOnlyList<string>> ExtractAsync(string path, EmbeddedVideo video, string directory, OutputCommitter committer, CancellationToken cancellationToken)
     {
-        var photoExtension = ImageInspector.SniffExtension(path, 0, header => MediaFileTypes.DetectPhotoExtension(header, Path.GetExtension(path)));
-        var videoExtension = ImageInspector.SniffExtension(path, video.Offset, header => MediaFileTypes.DetectVideoExtension(header));
+        var (photoExtension, videoExtension) = DetectExtensions(path, video);
         var stagedPhoto = OutputCommitter.CreateStagingPath(directory, photoExtension);
         var stagedVideo = OutputCommitter.CreateStagingPath(directory, videoExtension);
         try
@@ -115,8 +114,7 @@ public sealed class MotionPhotoSplitter(IMetadataService metadata, IImageConvert
         TempWorkspace workspace,
         CancellationToken cancellationToken)
     {
-        var photoExtension = ImageInspector.SniffExtension(path, 0, header => MediaFileTypes.DetectPhotoExtension(header, Path.GetExtension(path)));
-        var videoExtension = ImageInspector.SniffExtension(path, video.Offset, header => MediaFileTypes.DetectVideoExtension(header));
+        var (photoExtension, videoExtension) = DetectExtensions(path, video);
         var cover = workspace.NewFile(photoExtension);
         var embeddedVideo = workspace.NewFile(videoExtension);
         var stagedPhoto = OutputCommitter.CreateStagingPath(directory, ".HEIC");
@@ -159,4 +157,9 @@ public sealed class MotionPhotoSplitter(IMetadataService metadata, IImageConvert
             FileHelper.TryDeleteFile(embeddedVideo);
         }
     }
+
+    /// <summary>按魔数嗅探封面与内嵌视频的真实扩展名，避免与原扩展名不符。</summary>
+    private static (string Photo, string Video) DetectExtensions(string path, EmbeddedVideo video) => (
+        ImageInspector.SniffExtension(path, 0, header => MediaFileTypes.DetectPhotoExtension(header, Path.GetExtension(path))),
+        ImageInspector.SniffExtension(path, video.Offset, header => MediaFileTypes.DetectVideoExtension(header)));
 }

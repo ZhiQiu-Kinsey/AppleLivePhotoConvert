@@ -39,16 +39,13 @@ public static class MediaPairMatcher
 
         var videosByKey = videos.Where(video => !used.Contains(video))
                                 .GroupBy(GroupKey, KeyComparer)
-                                .ToDictionary(group => group.Key, group => group.OrderBy(MediaFileTypes.VideoRank).ThenBy(path => path, StringComparer.OrdinalIgnoreCase).ToList(), KeyComparer);
+                                .ToDictionary(group => group.Key, group => ByVideoRank(group).ToList(), KeyComparer);
 
         foreach (var photoGroup in photos.Where(photo => !used.Contains(photo)).GroupBy(GroupKey, KeyComparer))
         {
             if (videosByKey.TryGetValue(photoGroup.Key, out var sameNameVideos))
             {
-                pairs.AddRange(
-                    from photo in photoGroup.OrderBy(MediaFileTypes.PhotoRank).ThenBy(path => path, StringComparer.OrdinalIgnoreCase)
-                    from video in sameNameVideos
-                    select new MediaPair(photo, video));
+                pairs.AddRange(from photo in ByPhotoRank(photoGroup) from video in sameNameVideos select new MediaPair(photo, video));
             }
         }
 
@@ -71,7 +68,7 @@ public static class MediaPairMatcher
     {
         var videosById = videos.Where(video => HasIdentifier(identifiers, video))
                                .GroupBy(video => identifiers[video], StringComparer.OrdinalIgnoreCase)
-                               .ToDictionary(group => group.Key, group => group.OrderBy(MediaFileTypes.VideoRank).ThenBy(path => path, StringComparer.OrdinalIgnoreCase).ToList(), StringComparer.OrdinalIgnoreCase);
+                               .ToDictionary(group => group.Key, group => ByVideoRank(group).ToList(), StringComparer.OrdinalIgnoreCase);
 
         foreach (var photoGroup in photos.Where(photo => HasIdentifier(identifiers, photo)).GroupBy(photo => identifiers[photo], StringComparer.OrdinalIgnoreCase))
         {
@@ -80,7 +77,7 @@ public static class MediaPairMatcher
                 continue;
             }
 
-            var photo = photoGroup.OrderBy(MediaFileTypes.PhotoRank).ThenBy(path => path, StringComparer.OrdinalIgnoreCase).First();
+            var photo = ByPhotoRank(photoGroup).First();
             pairs.Add(new MediaPair(photo, candidates[0], IsContentIdentifierMatched: true));
             used.UnionWith(photoGroup);
             used.UnionWith(candidates);
@@ -89,6 +86,12 @@ public static class MediaPairMatcher
 
     private static bool HasIdentifier(IReadOnlyDictionary<string, string> identifiers, string path) =>
         identifiers.TryGetValue(path, out var value) && !string.IsNullOrWhiteSpace(value);
+
+    private static IOrderedEnumerable<string> ByPhotoRank(IEnumerable<string> paths) =>
+        paths.OrderBy(MediaFileTypes.PhotoRank).ThenBy(path => path, StringComparer.OrdinalIgnoreCase);
+
+    private static IOrderedEnumerable<string> ByVideoRank(IEnumerable<string> paths) =>
+        paths.OrderBy(MediaFileTypes.VideoRank).ThenBy(path => path, StringComparer.OrdinalIgnoreCase);
 
     private static string GroupKey(string path) =>
         Path.Combine(Path.GetDirectoryName(Path.GetFullPath(path)) ?? string.Empty, Path.GetFileNameWithoutExtension(path));
