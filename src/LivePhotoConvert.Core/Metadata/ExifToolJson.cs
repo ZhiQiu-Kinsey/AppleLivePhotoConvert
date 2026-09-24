@@ -76,7 +76,11 @@ internal static class ExifToolJson
             Location = ReadLocation(tags),
             Make = First(tags, "Make", "IFD0", "Keys"),
             Model = First(tags, "Model", "IFD0", "Keys"),
-            Software = First(tags, "Software", "IFD0", "Keys")
+            Software = First(tags, "Software", "IFD0", "Keys"),
+            AppleHdrHeadroom = ReadDouble(First(tags, "HDRHeadroom")),
+            AppleHdrGain = ReadDouble(First(tags, "HDRGain")),
+            HasAppleGainMap = tags.Any(IsAppleGainMapAuxiliary),
+            HdrGainMapVersion = ReadDouble(First(tags, "HDRGainMapVersion")) is { } version ? (long)version : null
         };
     }
 
@@ -123,6 +127,15 @@ internal static class ExifToolJson
 
         return null;
     }
+
+    /// <summary>
+    /// 同一文件可能有多个辅助图像（深度、人像遮罩等），ExifTool 对重复标签追加序号后缀。
+    /// </summary>
+    private static bool IsAppleGainMapAuxiliary(Tag tag) =>
+        tag.Name.StartsWith("AuxiliaryImageType", StringComparison.Ordinal)
+        && tag.Value.Contains(AppleGainMapAuxiliaryType, StringComparison.OrdinalIgnoreCase);
+
+    internal const string AppleGainMapAuxiliaryType = "urn:com:apple:photo:2020:aux:hdrgainmap";
 
     private static GeoLocation? ReadLocation(List<Tag> tags)
     {

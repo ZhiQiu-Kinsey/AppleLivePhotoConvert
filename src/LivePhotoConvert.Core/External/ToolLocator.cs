@@ -71,7 +71,7 @@ public static class ToolLocator
         var name = Path.GetFileName(path);
         var versionArgument = name.Contains("exiftool", StringComparison.OrdinalIgnoreCase) ? "-ver"
             : name.Contains("ffmpeg", StringComparison.OrdinalIgnoreCase) || name.Contains("ffprobe", StringComparison.OrdinalIgnoreCase) ? "-version"
-            : name.Contains("heif-enc", StringComparison.OrdinalIgnoreCase) ? "-v"
+            : name.StartsWith("heif-", StringComparison.OrdinalIgnoreCase) ? "-v"
             : null;
         if (versionArgument is null)
         {

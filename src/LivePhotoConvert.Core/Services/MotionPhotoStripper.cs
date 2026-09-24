@@ -2,6 +2,7 @@ using System.Collections.Frozen;
 using LivePhotoConvert.Core.Abstractions;
 using LivePhotoConvert.Core.Io;
 using LivePhotoConvert.Core.Media;
+using LivePhotoConvert.Core.Media.UltraHdr;
 using LivePhotoConvert.Core.Metadata;
 using LivePhotoConvert.Core.Pairing;
 using LivePhotoConvert.Core.Pipeline;
@@ -220,6 +221,12 @@ public sealed class MotionPhotoStripper(IMetadataService metadata, IImageConvert
                 clean = workspace.NewFile(Path.GetExtension(source));
                 await BinaryFile.CopySegmentAsync(source, clean, 0, embedded.ImageEnd, cancellationToken);
                 await metadata.RemoveMotionPhotoAsync(clean, cancellationToken);
+                if (candidate.HasGainMap)
+                {
+                    // 改写 XMP 后 MPF 中的主图长度会过时，增益图本身不受影响
+                    UltraHdrJpegWriter.RefreshPrimaryLength(clean);
+                }
+
                 photo = clean;
             }
 

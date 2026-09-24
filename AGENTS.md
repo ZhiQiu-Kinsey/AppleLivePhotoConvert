@@ -80,7 +80,14 @@ global.json                         # 固定 SDK 10.0.400（避免误用 11 prev
 - **读取与编辑一律走 `MotionPhotoXmp`（托管 XDocument），不依赖 ExifTool 标签表**：ExifTool 12.x 不认识 Container 命名空间，13.x 又把组名改成 `XMP-GContainer`，按标签名读写会随版本失效。写入时在原有 XMP 上合并后整包回写（`-xmp<=`），不得丢弃封面原有的其它命名空间。
 - 定位视频一律走 `MotionPhotoLayout`：候选偏移处必须是 `ftyp`，否则视为非动态照片；只有 GainMap 没有 MotionPhoto 项的 Ultra HDR 照片不是动态照片。HEIC 动态照片无需 XMP：遍历顶层 box（支持 64 位长度与 size 0），内容以 `ftyp` 开头的 `mpvd` 即为视频。
 - `EmbeddedVideo` 区分两个位置：`Offset`/`Length` 是视频数据（切片、播放用），`ImageEnd` 是照片部分的结束位置（剥离、拆分截断用）。视频包在 `mpvd` box 或三星 SEF 数据块中时 `ImageEnd < Offset`，截断必须用 `ImageEnd`，否则会残留容器头。
-- 剥离视频时只删除 MotionPhoto 目录项，保留 GainMap 项；带增益图的照片不转码 HEIC（会丢失 HDR）。
+- 剥离视频时只删除 MotionPhoto 目录项，保留 GainMap 项；带增益图的照片不转码 HEIC（会丢失 HDR）。ExifTool 改写 XMP 后 MPF 中的主图长度会过时，截断后用 `UltraHdrJpegWriter.RefreshPrimaryLength` 修正。
+- **iPhone HDR → Ultra HDR（合成时，`MergeRequest.PreserveHdr` 默认开启）**：
+  - 元数据：`Apple:HDRHeadroom`（maker33）、`Apple:HDRGain`（maker48）、`AuxiliaryImageType`、`HDRGainMapVersion` 由批量 JSON 读取；余量 H 只能用 `AppleHdrHeadroom.Compute` 按 Apple 公式计算。
+  - 解码：主图与增益图必须由同一次 `heif-dec --with-aux`（旧版名 `heif-convert`，经 `HeifDecoder`）解码，方向才一致；主图直接作封面（不再经 Magick 转码），增益图比例偏差由 `HeifDecoder` 统一为主图的整数分之一，方向不一致则放弃。
+  - 像素：Apple 增益为 `1 + (H−1)·L(v)`（L 为 **Rec.709 反 OETF**），ISO 为 `log2(增益)` 的线性插值，必须经 `AppleGainMapConverter` 的 256 项查表重编码，不能只改 Gamma；增益图写灰度 JPEG（Q90）。
+  - 两套元数据都要写：主图段顺序 APP0 → Exif → XMP(`hdrgm:Version` + Container 目录) → ICC → ISO 21496-1(仅版本) → MPF；增益图 JPEG 段 XMP(hdrgm 参数) → ISO 21496-1(完整参数，分数按 libultrahdr 的连分数算法，与其字节一致)。参数：GainMapMin 0、GainMapMax log2 H、Gamma 1、Offset 0、HDRCapacityMin 0、HDRCapacityMax log2 H、useBaseColorSpace 1（保留 Display P3 ICC）。
+  - 目录：Container 中 GainMap 的 `Item:Length` 必须等于 MPF 中的增益图长度；写入动态照片声明后目录依次为 Primary / GainMap / MotionPhoto，与文件中的物理顺序一致。
+  - 回读校验：组装后、写 MotionPhoto XMP 后（先 `RefreshPrimaryLength`）、拼接后都要 `UltraHdrJpegWriter.Verify`/`Inspect`（MPF 主图长度 = 增益图位置、目录长度一致、两套元数据齐全、`MotionPhotoLayout.Inspect` 得到 HasGainMap）。任一步失败或源无增益图（含 iOS 18 只写 ISO `tmap` 的情况）都降级为 SDR，原因写入 `ItemOutcome.Notes`，不得让条目失败。
 - 拼接/拆分由 `BinaryFile.ConcatAsync` / `CopySegmentAsync` 流式完成，**严禁整文件读入堆内存**。
 
 ### 3.2 小米澎湃 OS `0x8897`

@@ -26,6 +26,9 @@ public sealed record ItemOutcome(string Source, OutcomeKind Kind)
     /// <summary>输出已成功，但按所选方式处理源文件时出错。</summary>
     public string? CleanupError { get; init; }
 
+    /// <summary>处理过程中值得告知用户的情况（如 HDR 未能保留的原因），由界面本地化展示。</summary>
+    public IReadOnlyList<OutcomeNote> Notes { get; init; } = [];
+
     public static ItemOutcome Succeeded(string source, params IReadOnlyList<string> outputs) =>
         new(source, OutcomeKind.Succeeded) { Outputs = outputs };
 
@@ -33,6 +36,37 @@ public sealed record ItemOutcome(string Source, OutcomeKind Kind)
 
     public static ItemOutcome Failed(string source, string message) => new(source, OutcomeKind.Failed) { Message = message };
 }
+
+/// <summary>
+/// 条目附注的类别；界面按类别本地化，<see cref="OutcomeNote.Detail"/> 只作为技术细节展示。
+/// </summary>
+public enum OutcomeNoteKind
+{
+    /// <summary>已把 Apple HDR 增益图转换为 Ultra HDR 增益图写入封面。</summary>
+    UltraHdrWritten,
+
+    /// <summary>源 HEIC 没有 Apple HDR 增益图，按 SDR 输出。</summary>
+    HdrGainMapMissing,
+
+    /// <summary>源 HEIC 只有 ISO tmap 增益图（iOS 18 起可能出现），暂不支持读取，按 SDR 输出。</summary>
+    HdrToneMapNotSupported,
+
+    /// <summary>源带增益图但缺少 heif-dec，按 SDR 输出。</summary>
+    HdrDecoderUnavailable,
+
+    /// <summary>源带增益图但缺少 HDRHeadroom / HDRGain，或余量不足以产生 HDR 效果，按 SDR 输出。</summary>
+    HdrMetadataMissing,
+
+    /// <summary>增益图解码、换算、组装或校验失败，已降级为 SDR 输出。</summary>
+    HdrConversionFailed
+}
+
+/// <summary>
+/// 条目附注。
+/// </summary>
+/// <param name="Kind">类别</param>
+/// <param name="Detail">技术细节（如底层错误信息），可为 <c>null</c></param>
+public sealed record OutcomeNote(OutcomeNoteKind Kind, string? Detail = null);
 
 /// <summary>
 /// 一次批处理的结果。取消时只包含已经完成的条目。

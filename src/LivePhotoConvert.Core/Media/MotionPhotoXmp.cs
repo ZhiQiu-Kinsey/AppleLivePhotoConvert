@@ -162,7 +162,7 @@ public sealed record MotionPhotoXmp
         }
     }
 
-    private static ContainerItem ToContainerItem(XElement item) => new(
+    internal static ContainerItem ToContainerItem(XElement item) => new(
         XmpDocument.ReadValue(item, XmpDocument.Item + "Semantic") ?? string.Empty,
         XmpDocument.ReadValue(item, XmpDocument.Item + "Mime"),
         ParseLong(XmpDocument.ReadValue(item, XmpDocument.Item + "Length")) ?? 0,
@@ -291,7 +291,7 @@ internal static class XmpDocument
     public static string Serialize(XDocument document) =>
         (document.Root ?? throw new InvalidOperationException("XMP 缺少根元素。")).ToString(SaveOptions.DisableFormatting);
 
-    private static void EnsurePrefix(XElement element, string prefix, XNamespace ns)
+    public static void EnsurePrefix(XElement element, string prefix, XNamespace ns)
     {
         if (element.GetPrefixOfNamespace(ns) is null)
         {

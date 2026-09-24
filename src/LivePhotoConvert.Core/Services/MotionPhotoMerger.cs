@@ -2,6 +2,7 @@ using System.Globalization;
 using LivePhotoConvert.Core.Abstractions;
 using LivePhotoConvert.Core.Io;
 using LivePhotoConvert.Core.Media;
+using LivePhotoConvert.Core.Media.UltraHdr;
 using LivePhotoConvert.Core.Metadata;
 using LivePhotoConvert.Core.Pairing;
 using LivePhotoConvert.Core.Pipeline;
@@ -39,14 +40,31 @@ public sealed record MergeRequest
     public bool SkipValidation { get; init; }
 
     public int Parallelism { get; init; } = ConversionDefaults.Parallelism;
+
+    /// <summary>
+    /// 源 HEIC 带 Apple HDR 增益图时把封面组装为 Ultra HDR（需要 heif-dec）；无法保留时输出 SDR 封面，
+    /// 原因记录在 <see cref="ItemOutcome.Notes"/> 中。
+    /// </summary>
+    public bool PreserveHdr { get; init; } = true;
 }
 
 /// <summary>
 /// 把 iPhone 实况照片（照片 + 视频）合成为 Google 规范的单文件动态照片（JPEG + 追加的 MP4），
-/// 并写入小米相册需要的 EXIF 0x8897 标记。
+/// 并写入小米相册需要的 EXIF 0x8897 标记。源 HEIC 带 Apple HDR 增益图时，封面组装为 Ultra HDR（主图 + 增益图 + 视频）。
 /// </summary>
-public sealed class MotionPhotoMerger(IMetadataService metadata, IImageConverter imageConverter, IVideoConverter videoConverter)
+/// <param name="metadata">元数据读写</param>
+/// <param name="imageConverter">SDR 封面转码</param>
+/// <param name="videoConverter">视频转码</param>
+/// <param name="gainMapDecoder">HEIC 主图与增益图解码；为 <c>null</c> 时带增益图的照片也输出 SDR 封面</param>
+public sealed class MotionPhotoMerger(
+    IMetadataService metadata,
+    IImageConverter imageConverter,
+    IVideoConverter videoConverter,
+    IAppleGainMapDecoder? gainMapDecoder = null)
 {
+    /// <summary>余量低于此值时增益图几乎不产生 HDR 效果，不值得增加体积与兼容性风险。</summary>
+    private const double MinimumHeadroom = 1.01;
+
     public async Task<BatchReport> MergeAsync(MergeRequest request, IProgress<BatchProgress>? progress = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -70,7 +88,7 @@ public sealed class MotionPhotoMerger(IMetadataService metadata, IImageConverter
         return await BatchRunner.RunAsync(
             chosen,
             pair => pair.PhotoPath,
-            (pair, token) => MergeOneAsync(pair, names[pair], tags, request.Output, committer, disposition, workspace, token),
+            (pair, token) => MergeOneAsync(pair, names[pair], tags, request, committer, disposition, workspace, token),
             request.Parallelism,
             progress,
             skipped,
@@ -128,7 +146,7 @@ public sealed class MotionPhotoMerger(IMetadataService metadata, IImageConverter
         MediaPair pair,
         string baseName,
         IReadOnlyDictionary<string, MediaMetadata> tags,
-        OutputOptions output,
+        MergeRequest request,
         OutputCommitter committer,
         SourceDisposition disposition,
         TempWorkspace workspace,
@@ -137,58 +155,207 @@ public sealed class MotionPhotoMerger(IMetadataService metadata, IImageConverter
         EnsureNotEmpty(pair.PhotoPath, "照片");
         EnsureNotEmpty(pair.VideoPath, "视频");
         var videoTags = tags[pair.VideoPath];
+        var notes = new List<OutcomeNote>();
 
         // 安卓动态照片规范要求封面为 JPEG；复制一份是因为接下来要改写封面的 XMP
         var cover = workspace.NewFile(".jpg");
-        if (MediaFileTypes.IsJpeg(pair.PhotoPath))
-        {
-            File.Copy(pair.PhotoPath, cover);
-        }
-        else
-        {
-            await imageConverter.ConvertToJpegAsync(pair.PhotoPath, cover, cancellationToken);
-            await metadata.CopyCoverMetadataAsync(pair.PhotoPath, cover, cancellationToken);
-        }
-
+        string? decodeDirectory = null;
+        string? ultraHdrCover = null;
         string? convertedVideo = null;
-        if (!MediaFileTypes.IsMp4(pair.VideoPath) || videoTags.IsMirrored)
-        {
-            convertedVideo = workspace.NewFile(".mp4");
-            // 安卓相册普遍忽略镜像矩阵，前置镜像视频必须把方向烧录进像素
-            var options = videoTags.IsMirrored ? new VideoConversionOptions { BakeOrientation = true } : null;
-            await videoConverter.ConvertToMp4Async(pair.VideoPath, convertedVideo, options, cancellationToken);
-        }
-
-        var video = convertedVideo ?? pair.VideoPath;
-
-        var videoLength = new FileInfo(video).Length;
-        // Apple 的封面帧不一定在 1.5 秒处，必须用视频中记录的真实时间；没有记录时按小米约定写 0
-        await metadata.WriteMotionPhotoAsync(cover, videoLength, videoTags.StillImageTimeUs ?? 0, cancellationToken);
-
-        var directory = output.DirectoryFor(pair.PhotoPath);
-        var staging = OutputCommitter.CreateStagingPath(directory, ".jpg");
+        string? staging = null;
         try
         {
-            var (photoLength, _) = await BinaryFile.ConcatAsync(cover, video, staging, cancellationToken);
+            if (MediaFileTypes.IsJpeg(pair.PhotoPath))
+            {
+                File.Copy(pair.PhotoPath, cover);
+            }
+            else
+            {
+                (string GainMap, double Headroom)? hdr = null;
+                if (request.PreserveHdr && MediaFileTypes.IsHeic(pair.PhotoPath))
+                {
+                    decodeDirectory = workspace.NewFile(string.Empty);
+                    if (await TryDecodeGainMapAsync(pair.PhotoPath, tags[pair.PhotoPath], decodeDirectory, notes, cancellationToken) is { } decoded)
+                    {
+                        // 主图与增益图出自同一次解码，方向一致；主图直接作为封面，不再另行转码
+                        File.Move(decoded.Images.PrimaryPath, cover);
+                        hdr = (decoded.Images.GainMapPath, decoded.Headroom);
+                    }
+                }
+
+                if (hdr is null)
+                {
+                    await imageConverter.ConvertToJpegAsync(pair.PhotoPath, cover, cancellationToken);
+                }
+
+                await metadata.CopyCoverMetadataAsync(pair.PhotoPath, cover, cancellationToken);
+                if (hdr is { } gainMap)
+                {
+                    ultraHdrCover = await TryAssembleUltraHdrAsync(cover, gainMap.GainMap, gainMap.Headroom, workspace, notes, cancellationToken);
+                }
+            }
+
+            if (!MediaFileTypes.IsMp4(pair.VideoPath) || videoTags.IsMirrored)
+            {
+                convertedVideo = workspace.NewFile(".mp4");
+                // 安卓相册普遍忽略镜像矩阵，前置镜像视频必须把方向烧录进像素
+                var options = videoTags.IsMirrored ? new VideoConversionOptions { BakeOrientation = true } : null;
+                await videoConverter.ConvertToMp4Async(pair.VideoPath, convertedVideo, options, cancellationToken);
+            }
+
+            var video = convertedVideo ?? pair.VideoPath;
+            var videoLength = new FileInfo(video).Length;
+            // Apple 的封面帧不一定在 1.5 秒处，必须用视频中记录的真实时间；没有记录时按小米约定写 0
+            var timestampUs = videoTags.StillImageTimeUs ?? 0;
+            var finalCover = ultraHdrCover is not null && await TryWriteUltraHdrMotionPhotoAsync(ultraHdrCover, videoLength, timestampUs, notes, cancellationToken)
+                ? ultraHdrCover
+                : cover;
+            if (finalCover == cover)
+            {
+                await metadata.WriteMotionPhotoAsync(cover, videoLength, timestampUs, cancellationToken);
+            }
+
+            var directory = request.Output.DirectoryFor(pair.PhotoPath);
+            staging = OutputCommitter.CreateStagingPath(directory, ".jpg");
+            var (photoLength, _) = await BinaryFile.ConcatAsync(finalCover, video, staging, cancellationToken);
             if (MotionPhotoLayout.Locate(staging) is not { } located || located.ImageEnd != photoLength || located.Offset != photoLength || located.Length != videoLength)
             {
                 throw new InvalidDataException("合成结果校验失败：无法在输出文件中按声明的位置定位到内嵌视频。");
             }
 
+            if (finalCover == ultraHdrCover)
+            {
+                if (UltraHdrJpegWriter.Inspect(staging) is not { IsPrimaryLengthConsistent: true } layout || layout.ImageEnd != photoLength || !MotionPhotoLayout.Inspect(staging).HasGainMap)
+                {
+                    throw new InvalidDataException("合成结果校验失败：增益图位置与声明不一致。");
+                }
+
+                notes.Add(new OutcomeNote(OutcomeNoteKind.UltraHdrWritten));
+            }
+
             var final = committer.Commit(staging, directory, $"MVIMG_{baseName}.jpg", FileTimestamp.Earliest(pair.PhotoPath, pair.VideoPath));
-            return ItemOutcome.Succeeded(pair.PhotoPath, final) with { CleanupError = disposition.Apply(pair.PhotoPath, pair.VideoPath) };
-        }
-        catch
-        {
-            FileHelper.TryDeleteFile(staging);
-            throw;
+            staging = null;
+            return ItemOutcome.Succeeded(pair.PhotoPath, final) with { CleanupError = disposition.Apply(pair.PhotoPath, pair.VideoPath), Notes = notes };
         }
         finally
         {
+            FileHelper.TryDeleteFile(staging);
             FileHelper.TryDeleteFile(cover);
+            FileHelper.TryDeleteFile(ultraHdrCover);
             FileHelper.TryDeleteFile(convertedVideo);
+            FileHelper.TryDeleteDirectory(decodeDirectory);
         }
     }
+
+    /// <summary>
+    /// 判断能否保留 HDR 并解码主图与增益图；不能时记录原因并返回 <c>null</c>，调用方改走 SDR 流程。
+    /// </summary>
+    private async Task<(AppleGainMapImages Images, double Headroom)?> TryDecodeGainMapAsync(
+        string photoPath,
+        MediaMetadata photoTags,
+        string outputDirectory,
+        List<OutcomeNote> notes,
+        CancellationToken cancellationToken)
+    {
+        if (!photoTags.HasAppleGainMap && photoTags.HdrGainMapVersion is null)
+        {
+            notes.Add(MissingGainMapNote(photoPath));
+            return null;
+        }
+
+        if (photoTags.AppleHdrHeadroom is not { } maker33 || photoTags.AppleHdrGain is not { } maker48)
+        {
+            notes.Add(new OutcomeNote(OutcomeNoteKind.HdrMetadataMissing, "HDRHeadroom / HDRGain"));
+            return null;
+        }
+
+        var headroom = AppleHdrHeadroom.Compute(maker33, maker48);
+        if (headroom < MinimumHeadroom)
+        {
+            notes.Add(new OutcomeNote(OutcomeNoteKind.HdrMetadataMissing, string.Create(CultureInfo.InvariantCulture, $"headroom={headroom:0.####}")));
+            return null;
+        }
+
+        if (gainMapDecoder is null)
+        {
+            notes.Add(new OutcomeNote(OutcomeNoteKind.HdrDecoderUnavailable));
+            return null;
+        }
+
+        try
+        {
+            if (await gainMapDecoder.DecodeAsync(photoPath, outputDirectory, cancellationToken) is { } images)
+            {
+                return (images, headroom);
+            }
+
+            notes.Add(MissingGainMapNote(photoPath));
+        }
+        catch (Exception ex) when (!IsCancellation(ex, cancellationToken))
+        {
+            notes.Add(new OutcomeNote(OutcomeNoteKind.HdrConversionFailed, ex.Message));
+        }
+
+        FileHelper.TryDeleteDirectory(outputDirectory);
+        return null;
+    }
+
+    /// <summary>
+    /// 换算增益图并组装 Ultra HDR 封面；失败时记录原因并返回 <c>null</c>，SDR 封面保持不变。
+    /// </summary>
+    private static async Task<string?> TryAssembleUltraHdrAsync(
+        string cover,
+        string appleGainMap,
+        double headroom,
+        TempWorkspace workspace,
+        List<OutcomeNote> notes,
+        CancellationToken cancellationToken)
+    {
+        var gainMap = workspace.NewFile(".jpg");
+        var output = workspace.NewFile(".jpg");
+        try
+        {
+            await AppleGainMapConverter.ConvertAsync(appleGainMap, gainMap, headroom, cancellationToken);
+            await UltraHdrJpegWriter.WriteAsync(cover, gainMap, GainMapMetadata.FromAppleHeadroom(headroom), output, cancellationToken);
+            return output;
+        }
+        catch (Exception ex) when (!IsCancellation(ex, cancellationToken))
+        {
+            FileHelper.TryDeleteFile(output);
+            notes.Add(new OutcomeNote(OutcomeNoteKind.HdrConversionFailed, ex.Message));
+            return null;
+        }
+        finally
+        {
+            FileHelper.TryDeleteFile(gainMap);
+        }
+    }
+
+    /// <summary>
+    /// 在 Ultra HDR 封面上写入动态照片声明（目录依次为 Primary、GainMap、MotionPhoto），修正 ExifTool 改写后过时的
+    /// MPF 主图长度并回读校验；失败时记录原因，调用方改用 SDR 封面。
+    /// </summary>
+    private async Task<bool> TryWriteUltraHdrMotionPhotoAsync(string cover, long videoLength, long timestampUs, List<OutcomeNote> notes, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await metadata.WriteMotionPhotoAsync(cover, videoLength, timestampUs, cancellationToken);
+            UltraHdrJpegWriter.RefreshPrimaryLength(cover);
+            UltraHdrJpegWriter.Verify(cover);
+            return true;
+        }
+        catch (Exception ex) when (!IsCancellation(ex, cancellationToken))
+        {
+            notes.Add(new OutcomeNote(OutcomeNoteKind.HdrConversionFailed, ex.Message));
+            return false;
+        }
+    }
+
+    private static OutcomeNote MissingGainMapNote(string photoPath) =>
+        new(HeifItems.HasToneMapItem(photoPath) ? OutcomeNoteKind.HdrToneMapNotSupported : OutcomeNoteKind.HdrGainMapMissing);
+
+    private static bool IsCancellation(Exception exception, CancellationToken cancellationToken) =>
+        exception is OperationCanceledException && cancellationToken.IsCancellationRequested;
 
     private static string ResolveBaseName(MediaPair pair, IReadOnlyDictionary<string, MediaMetadata> tags, MergeNamingFormat naming)
     {
