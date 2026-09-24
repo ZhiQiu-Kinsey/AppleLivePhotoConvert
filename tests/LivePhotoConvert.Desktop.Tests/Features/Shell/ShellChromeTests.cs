@@ -6,9 +6,12 @@ using Avalonia.Headless.XUnit;
 using Avalonia.Media;
 using Avalonia.VisualTree;
 using FluentIcons.Avalonia;
+using LivePhotoConvert.Core.External.Tools;
 using LivePhotoConvert.Desktop.Features.Shell;
 using LivePhotoConvert.Desktop.Infrastructure;
+using LivePhotoConvert.Desktop.Tests.Features.Tools;
 using LivePhotoConvert.Desktop.Tests.Harness;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace LivePhotoConvert.Desktop.Tests.Features.Shell;
 
@@ -110,6 +113,43 @@ public sealed class ShellChromeTests
         Assert.True(shell.AreToolsMissing);
         Assert.Equal(["bad"], VisibleNavDots(session));
         Assert.Equal(["ok", "warn", "bad"], VisibleStatusIcons(session));
+        session.Log.AssertNoBindingErrors();
+    }
+
+    [AvaloniaFact]
+    public async Task SidebarToolStatus_FollowsToolCardReadinessAndWarnings()
+    {
+        var registry = new FakeToolRegistry();
+        registry.Infos[ToolId.ExifTool] = FakeToolRegistry.Found(ToolId.ExifTool, "/tools/exiftool", "13.59");
+        // FFmpeg 可用但缺 HDR 能力，依赖页卡片显示警告
+        registry.Infos[ToolId.Ffmpeg] = FakeToolRegistry.Found(ToolId.Ffmpeg, "/tools/ffmpeg", "7.0", ToolCapabilities.Libx264);
+        using var session = new ShellSession(configure: services => services.AddSingleton<IToolRegistry>(registry));
+        var shell = session.Shell;
+        await shell.Tools.RescanToolsAsync();
+        session.Pump();
+
+        Assert.True(shell.Tools.Ffmpeg.HasWarning);
+        Assert.Equal([ToolHealth.Ready, ToolHealth.Attention, ToolHealth.Missing], shell.ToolStatuses.Select(s => s.Health));
+        Assert.True(shell.AreToolsMissing);
+        Assert.Equal(["ok", "warn", "bad"], VisibleStatusIcons(session));
+        Screenshots.Save(session, "shell-sidebar-tools-live");
+
+        // 卡片状态变化（例如装好新版本后重新探测）立即反映到侧栏
+        registry.Infos[ToolId.Ffmpeg] = FakeToolRegistry.Found(ToolId.Ffmpeg, "/tools/ffmpeg", "8.1.2", ToolCapabilities.Hdr | ToolCapabilities.Libx264);
+        registry.Infos[ToolId.HeifEnc] = FakeToolRegistry.Found(ToolId.HeifEnc, "/tools/heif-enc", "1.23.4", recommended: "1.24.0");
+        await shell.Tools.RescanToolsAsync();
+        session.Pump();
+
+        Assert.Equal([ToolHealth.Ready, ToolHealth.Ready, ToolHealth.Attention], shell.ToolStatuses.Select(s => s.Health));
+        Assert.True(shell.DoToolsNeedAttention);
+        Assert.Equal(["warn"], VisibleNavDots(session));
+
+        registry.Infos[ToolId.HeifEnc] = FakeToolRegistry.Found(ToolId.HeifEnc, "/tools/heif-enc", "1.24.0");
+        await shell.Tools.RescanToolsAsync();
+        session.Pump();
+
+        Assert.True(shell.AreToolsReady);
+        Assert.Equal(["ok", "ok", "ok"], VisibleStatusIcons(session));
         session.Log.AssertNoBindingErrors();
     }
 

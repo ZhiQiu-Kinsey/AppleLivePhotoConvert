@@ -49,8 +49,8 @@
           <!-- 实况徽章；窄卡片只显示图标 -->
           <Border Classes="card-media-badge" IsVisible="{CompiledBinding !RequiresPairReview}">
             <StackPanel Orientation="Horizontal" Spacing="4">
-              <ic:SymbolIcon Symbol="Live" FontSize="12" Foreground="#38BDF8"/>
-              <TextBlock Text="{DynamicResource CardLiveBadge}" Foreground="{DynamicResource OnAccentBrush}" FontSize="10" FontWeight="Bold"
+              <ic:SymbolIcon Symbol="Live" FontSize="12" Foreground="{DynamicResource MediaAccentBrush}"/>
+              <TextBlock Text="{DynamicResource CardLiveBadge}" Foreground="{DynamicResource OnMediaBrush}" FontSize="11" FontWeight="Bold"
                          IsVisible="{CompiledBinding !IsCompact}" />
             </StackPanel>
           </Border>
@@ -60,7 +60,7 @@
                   ToolTip.Tip="{CompiledBinding WarningReason}">
             <StackPanel Orientation="Horizontal" Spacing="4">
               <ic:SymbolIcon Symbol="Warning" FontSize="12" Foreground="{DynamicResource OnAccentBrush}"/>
-              <TextBlock Text="{DynamicResource CardTimeMismatch}" Foreground="{DynamicResource OnAccentBrush}" FontSize="10" FontWeight="Bold"
+              <TextBlock Text="{DynamicResource CardTimeMismatch}" Foreground="{DynamicResource OnAccentBrush}" FontSize="11" FontWeight="Bold"
                          IsVisible="{CompiledBinding !IsCompact}" />
             </StackPanel>
           </Border>
@@ -72,22 +72,22 @@
           </Border>
 
           <!-- 时长角标 -->
-          <Border Background="#99000000" CornerRadius="6" Padding="6,2"
+          <Border Background="{DynamicResource MediaBadgeBrush}" CornerRadius="6" Padding="6,2"
                   HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="8"
                   IsVisible="{CompiledBinding !IsCompact}">
-            <TextBlock Text="{DynamicResource CardDurationLive}" Foreground="{DynamicResource OnAccentBrush}" FontSize="10" FontWeight="SemiBold" />
+            <TextBlock Text="{DynamicResource CardDurationLive}" Foreground="{DynamicResource OnMediaBrush}" FontSize="11" FontWeight="SemiBold" />
           </Border>
 
         </Panel>
 
         <!-- 信息面板固定高度，保证同一行的卡片底部对齐；窄卡片把状态收成图标，文件名保持可读 -->
-        <Border Grid.Row="1" Height="{x:Static thumbs:GalleryMetrics.InfoBarHeight}" Padding="12,10" Background="{DynamicResource SurfaceBrush}">
+        <Border Grid.Row="1" Height="{x:Static thumbs:GalleryMetrics.InfoBarHeight}" Padding="12,8" Background="{DynamicResource SurfaceBrush}">
           <StackPanel Spacing="6">
             <Grid ColumnDefinitions="*,Auto">
               <StackPanel Grid.Column="0" Spacing="2">
                 <TextBlock Text="{CompiledBinding FileName}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}"
                            TextTrimming="CharacterEllipsis" ToolTip.Tip="{CompiledBinding FileName}" />
-                <TextBlock Text="{CompiledBinding SizeSummary}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{CompiledBinding SizeSummary}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" TextTrimming="CharacterEllipsis" />
               </StackPanel>
 
               <Panel Grid.Column="1" Margin="6,0,0,0">
@@ -112,20 +112,20 @@
             </Grid>
 
             <!-- 分隔线 -->
-            <Border Height="1" Background="{DynamicResource HoverBrush}" Margin="0,2" />
+            <Border Height="1" Background="{DynamicResource HoverBrush}" Margin="0,1" />
 
             <Grid ColumnDefinitions="Auto,*,Auto">
               <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4">
                 <ic:SymbolIcon Symbol="Clock" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"/>
-                <TextBlock Text="{CompiledBinding FormattedTime}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
+                <TextBlock Text="{CompiledBinding FormattedTime}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
               </StackPanel>
 
-              <TextBlock Grid.Column="1" Text="{CompiledBinding DeviceInfo}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}"
+              <TextBlock Grid.Column="1" Text="{CompiledBinding DeviceInfo}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"
                          TextAlignment="Center" TextTrimming="CharacterEllipsis" Margin="4,0" VerticalAlignment="Center"
                          IsVisible="{CompiledBinding !IsCompact}" />
 
-              <TextBlock Grid.Column="2" Text="{CompiledBinding ResolutionText}" FontSize="10" FontWeight="SemiBold"
-                         Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"
+              <TextBlock Grid.Column="2" Text="{CompiledBinding ResolutionText}" FontSize="11" FontWeight="SemiBold"
+                         Foreground="{DynamicResource AccentTextBrush}" VerticalAlignment="Center"
                          IsVisible="{CompiledBinding !IsTiny}" />
             </Grid>
           </StackPanel>

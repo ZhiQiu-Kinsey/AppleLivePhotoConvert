@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
+using LivePhotoConvert.Core.External.Tools;
 using LivePhotoConvert.Core.Media.Thumbnails;
 using LivePhotoConvert.Core.Platform;
 using LivePhotoConvert.Desktop.Features.Library;
@@ -39,6 +40,19 @@ public static class AppServices
             sp.GetRequiredService<IShellLauncher>()));
         services.AddSingleton(sp => new PlaybackService(sp.GetRequiredService<SettingsStore>()));
         services.AddSingleton<IPlaybackControl>(sp => sp.GetRequiredService<PlaybackService>());
+
+        services.AddSingleton(sp => new ToolPathSettings(sp.GetRequiredService<SettingsStore>()));
+        services.AddSingleton(_ => ToolManifest.Embedded);
+        services.AddSingleton<IToolRegistry>(sp =>
+        {
+            var paths = sp.GetRequiredService<ToolPathSettings>();
+            var registry = new ToolRegistry(paths.Get, sp.GetRequiredService<ToolManifest>());
+            paths.InvalidateOnChange(registry);
+            return registry;
+        });
+        services.AddSingleton<IToolInstaller>(sp => new ToolInstaller(
+            sp.GetRequiredService<ToolManifest>(),
+            ToolDirectories.GetWritableToolDirectory()));
 
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IConversionEngines>(_ => ExternalToolEngines.Instance);
@@ -96,11 +110,20 @@ public static class AppServices
             sp.GetRequiredService<IStripEstimator>(),
             sp.GetRequiredService<IDiskSpaceGuard>(),
             sp.GetRequiredService<TimeProvider>()));
+        services.AddSingleton<IToolUsage>(sp => new TaskCenterToolUsage(
+            sp.GetRequiredService<TaskCenter>(),
+            // 悬浮与 QuickLook 播放随时可停，且运行中的 ffmpeg 在 Windows 上占用安装目录，必须等它退出；
+            // 其它工具的进程只存在于任务期间，由任务中心的运行状态把关
+            tool => tool == ToolId.Ffmpeg ? sp.GetRequiredService<IPlaybackControl>().StopAllAsync() : Task.CompletedTask));
         services.AddSingleton(sp => new ToolsViewModel(
             sp.GetRequiredService<SettingsStore>(),
+            sp.GetRequiredService<ToolPathSettings>(),
             sp.GetRequiredService<ILocalizer>(),
             sp.GetRequiredService<IFilePicker>(),
-            sp.GetRequiredService<IPlaybackControl>()));
+            sp.GetRequiredService<IToolRegistry>(),
+            sp.GetRequiredService<IToolInstaller>(),
+            sp.GetRequiredService<IToolUsage>(),
+            sp.GetRequiredService<TimeProvider>()));
         services.AddSingleton(sp => new SettingsViewModel(
             sp.GetRequiredService<SettingsStore>(),
             sp.GetRequiredService<ILocalizer>(),
@@ -124,7 +147,8 @@ public static class AppServices
             sp.GetRequiredService<IDialogService>(),
             sp.GetRequiredService<ILocalizer>(),
             sp.GetRequiredService<IPlaybackControl>(),
-            [sp.GetRequiredService<TaskCenter>()]));
+            [sp.GetRequiredService<TaskCenter>()],
+            () => sp.GetRequiredService<ToolsViewModel>().FlushMirror()));
 
         configure?.Invoke(services);
         return services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = false, ValidateScopes = false });

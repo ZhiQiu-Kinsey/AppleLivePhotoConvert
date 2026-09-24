@@ -15,6 +15,9 @@ public sealed partial class ShellViewModel : ViewModelBase
     private readonly INavigator _navigator;
     private readonly IDialogService _dialogs;
 
+    /// <summary>与 <see cref="ToolStatuses"/> 一一对应的依赖页卡片。</summary>
+    private readonly ToolCardViewModel[] _toolCards;
+
     public ShellViewModel(
         INavigator navigator,
         IDialogService dialogs,
@@ -32,16 +35,22 @@ public sealed partial class ShellViewModel : ViewModelBase
         Tools = tools;
         Settings = settings;
 
-        ToolStatuses = [new("ExifTool"), new("FFmpeg"), new("heif-enc")];
+        _toolCards = [Tools.ExifTool, Tools.Ffmpeg, Tools.HeifEnc];
+        ToolStatuses = [.. _toolCards.Select(card => new ToolStatusItem(card.DisplayName))];
         foreach (var status in ToolStatuses)
         {
             status.PropertyChanged += OnToolStatusChanged;
         }
+
+        foreach (var card in _toolCards)
+        {
+            card.PropertyChanged += OnToolCardChanged;
+        }
+
         SyncToolStatuses();
 
         _navigator.PropertyChanged += OnNavigatorChanged;
         _dialogs.PropertyChanged += OnDialogsChanged;
-        Tools.PropertyChanged += (_, _) => SyncToolStatuses();
     }
 
     public LibraryViewModel Library { get; }
@@ -108,12 +117,21 @@ public sealed partial class ShellViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsSettingsSelected));
     }
 
-    // 依赖页目前只报告就绪与否；它能给出升级建议或能力缺失时，把判定接到 needsAttention 上
+    /// <summary>"需要注意"取依赖页卡片的警告：建议升级、指定路径无效、FFmpeg 缺 HDR 能力或版本探测失败。</summary>
     private void SyncToolStatuses()
     {
-        ToolStatuses[0].Health = ToolStatusItem.Evaluate(Tools.IsExifToolReady, needsAttention: false);
-        ToolStatuses[1].Health = ToolStatusItem.Evaluate(Tools.IsFfmpegReady, needsAttention: false);
-        ToolStatuses[2].Health = ToolStatusItem.Evaluate(Tools.IsHeifEncReady, needsAttention: false);
+        for (var i = 0; i < _toolCards.Length; i++)
+        {
+            ToolStatuses[i].Health = ToolStatusItem.Evaluate(_toolCards[i].IsReady, _toolCards[i].HasWarning);
+        }
+    }
+
+    private void OnToolCardChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(ToolCardViewModel.IsReady) or nameof(ToolCardViewModel.HasWarning))
+        {
+            SyncToolStatuses();
+        }
     }
 
     private void OnToolStatusChanged(object? sender, PropertyChangedEventArgs e)

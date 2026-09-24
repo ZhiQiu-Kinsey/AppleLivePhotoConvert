@@ -320,7 +320,17 @@
                  Button.caption-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter,
                  Button.caption-btn:pressed /template/ ContentPresenter#PART_ContentPresenter,
                  Button.caption-close-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter,
-                 Button.caption-close-btn:pressed /template/ ContentPresenter#PART_ContentPresenter">
+                 Button.caption-close-btn:pressed /template/ ContentPresenter#PART_ContentPresenter,
+                 Button.capsule-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter,
+                 Button.capsule-btn:pressed /template/ ContentPresenter#PART_ContentPresenter,
+                 Button.capsule-icon-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter,
+                 Button.capsule-icon-btn:pressed /template/ ContentPresenter#PART_ContentPresenter,
+                 Button.action-tile:pointerover /template/ ContentPresenter#PART_ContentPresenter,
+                 Button.action-tile:pressed /template/ ContentPresenter#PART_ContentPresenter,
+                 Button.engine-install-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter,
+                 Button.engine-install-btn:pressed /template/ ContentPresenter#PART_ContentPresenter,
+                 Button.engine-secondary-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter,
+                 Button.engine-secondary-btn:pressed /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="{Binding $parent[Button].Background}" />
     <Setter Property="BorderBrush" Value="{Binding $parent[Button].BorderBrush}" />
     <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}" />
@@ -384,7 +394,7 @@
 
   <!-- 下拉选项中的危险项（例如永久删除原片） -->
   <Style Selector="TextBlock.danger-option">
-    <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource DangerTextBrush}" />
   </Style>
 
   <Style Selector="ComboBox.engine-select">
@@ -411,22 +421,118 @@
     <Setter Property="Padding" Value="9,7" />
   </Style>
 
-  <Style Selector="Button.engine-path-btn">
-    <Setter Property="Height" Value="32" />
-    <Setter Property="Padding" Value="10,0" />
-    <Setter Property="CornerRadius" Value="8" />
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+  <!-- 依赖卡片的次要按钮（自定义路径、取消）：与安装按钮同高同圆角，只是不填充强调色 -->
+  <Style Selector="Button.engine-secondary-btn">
+    <Setter Property="Height" Value="36" />
+    <Setter Property="Padding" Value="12,0" />
+    <Setter Property="CornerRadius" Value="9" />
+    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="FontWeight" Value="Bold" />
     <Setter Property="HorizontalContentAlignment" Value="Center" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="Cursor" Value="Hand" />
   </Style>
 
-  <Style Selector="Button.engine-path-btn:pointerover">
-    <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+  <Style Selector="Button.engine-secondary-btn:pointerover">
+    <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource LineStrongBrush}" />
+  </Style>
+
+  <!-- 页头下方的说明条：安装方式与安装位置 -->
+  <Style Selector="Border.tools-note">
+    <Setter Property="Background" Value="{DynamicResource CanvasBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Padding" Value="12,9" />
+  </Style>
+
+  <Style Selector="Border.tools-note.warning">
+    <Setter Property="Background" Value="{DynamicResource WarningSoftBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource WarningBorderBrush}" />
+  </Style>
+
+  <Style Selector="Border.tools-note.warning TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource WarningTextBrush}" />
+  </Style>
+
+  <Style Selector="Border.tools-note.danger">
+    <Setter Property="Background" Value="{DynamicResource DangerSoftBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource DangerBorderBrush}" />
+  </Style>
+
+  <Style Selector="Border.tools-note.danger TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource DangerTextBrush}" />
+  </Style>
+
+  <!-- 卡片内的一行提示（图标 + 可换行文字） -->
+  <Style Selector="Grid.tool-hint > TextBlock">
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+    <Setter Property="Margin" Value="6,0,0,0" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <Style Selector="Grid.tool-hint.warning > TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource WarningTextBrush}" />
+  </Style>
+
+  <Style Selector="Grid.tool-hint.warning ic|SymbolIcon">
+    <Setter Property="Foreground" Value="{DynamicResource WarningBrush}" />
+  </Style>
+
+  <Style Selector="Grid.tool-hint.accent > TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+  </Style>
+
+  <Style Selector="Grid.tool-hint.accent ic|SymbolIcon">
+    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+  </Style>
+
+  <!-- 能力徽章：支持为绿色，不支持为灰色 -->
+  <Style Selector="Border.capability-badge">
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Padding" Value="7,3" />
+    <Setter Property="Margin" Value="0,0,6,6" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+  </Style>
+
+  <Style Selector="Border.capability-badge TextBlock">
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}" />
+  </Style>
+
+  <Style Selector="Border.capability-badge ic|SymbolIcon">
+    <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+  </Style>
+
+  <Style Selector="Border.capability-badge.supported">
+    <Setter Property="Background" Value="{DynamicResource SuccessSoftBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource SuccessBorderBrush}" />
+  </Style>
+
+  <Style Selector="Border.capability-badge.supported TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource SuccessTextBrush}" />
+  </Style>
+
+  <Style Selector="Border.capability-badge.supported ic|SymbolIcon">
+    <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}" />
+  </Style>
+
+  <Style Selector="TextBlock.ping-result">
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}" />
+  </Style>
+
+  <Style Selector="TextBlock.ping-result.ok">
+    <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}" />
   </Style>
 
   <Style Selector="Border.status-pill">
@@ -442,7 +548,7 @@
   </Style>
 
   <Style Selector="Border.status-pill.success TextBlock">
-    <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource SuccessTextBrush}" />
   </Style>
 
   <Style Selector="Border.status-pill.danger">
@@ -451,7 +557,25 @@
   </Style>
 
   <Style Selector="Border.status-pill.danger TextBlock">
-    <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource DangerTextBrush}" />
+  </Style>
+
+  <Style Selector="Border.status-pill.warning">
+    <Setter Property="Background" Value="{DynamicResource WarningSoftBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource WarningBorderBrush}" />
+  </Style>
+
+  <Style Selector="Border.status-pill.warning TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource WarningTextBrush}" />
+  </Style>
+
+  <Style Selector="Border.status-pill.muted">
+    <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+  </Style>
+
+  <Style Selector="Border.status-pill.muted TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}" />
   </Style>
 
   <Style Selector="Button.engine-install-btn">
@@ -469,6 +593,11 @@
 
   <Style Selector="Button.engine-install-btn:pointerover">
     <Setter Property="Background" Value="{DynamicResource AccentPressedBrush}" />
+  </Style>
+
+  <Style Selector="Button.engine-install-btn:disabled /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
   </Style>
 
   <!-- 精致胶囊分段控制器 (Segmented Control) 样式规范 -->
@@ -824,16 +953,22 @@
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
 
+  <Style Selector="Border.status-dot.large">
+    <Setter Property="Width" Value="9" />
+    <Setter Property="Height" Value="9" />
+    <Setter Property="CornerRadius" Value="4.5" />
+  </Style>
+
   <Style Selector="Border.status-dot.ok">
     <Setter Property="Background" Value="{DynamicResource SuccessBrush}" />
   </Style>
 
-  <Style Selector="Border.status-dot.bad">
-    <Setter Property="Background" Value="{DynamicResource DangerBrush}" />
-  </Style>
-
   <Style Selector="Border.status-dot.warn">
     <Setter Property="Background" Value="{DynamicResource WarningBrush}" />
+  </Style>
+
+  <Style Selector="Border.status-dot.bad">
+    <Setter Property="Background" Value="{DynamicResource DangerBrush}" />
   </Style>
 
   <!-- 侧栏依赖状态：用不同形状的图标区分就绪 / 需要注意 / 缺失，不单靠颜色 -->
@@ -1028,7 +1163,7 @@
   </Style>
 
   <Style Selector="Border.card-media-badge.warning">
-    <Setter Property="Background" Value="{DynamicResource WarningBrush}" />
+    <Setter Property="Background" Value="{DynamicResource WarningFillBrush}" />
   </Style>
 
   <!-- 画廊卡片选中态：叠加描边与右上角勾选角标，均不参与布局 -->
@@ -1086,7 +1221,7 @@
   </Style>
 
   <Style Selector="Border.card-status.locked TextBlock">
-    <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource SuccessTextBrush}" />
   </Style>
 
   <Style Selector="Button.card-status.pending">
@@ -1096,12 +1231,52 @@
   </Style>
 
   <Style Selector="Button.card-status.pending TextBlock">
-    <Setter Property="Foreground" Value="{DynamicResource WarningBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource WarningTextBrush}" />
   </Style>
 
   <Style Selector="Border.card-status TextBlock, Button.card-status TextBlock">
     <Setter Property="FontSize" Value="11" />
     <Setter Property="FontWeight" Value="Bold" />
+  </Style>
+
+  <!-- 瘦身对比：卷帘对比控件的配色全部取主题语义画刷；媒体画布在两种主题下都保持深色以衬托照片 -->
+  <Style Selector="controls|CurtainCompareControl">
+    <Setter Property="Background" Value="{DynamicResource MediaCanvasBrush}" />
+    <Setter Property="DividerBrush" Value="{DynamicResource OnMediaBrush}" />
+    <Setter Property="HandleForeground" Value="{DynamicResource MediaCanvasBrush}" />
+    <Setter Property="BadgeBackground" Value="{DynamicResource MediaBadgeBrush}" />
+    <Setter Property="AfterBadgeBackground" Value="{DynamicResource SuccessFillBrush}" />
+    <Setter Property="BadgeForeground" Value="{DynamicResource OnMediaBrush}" />
+    <Setter Property="MagnifierBorderBrush" Value="{DynamicResource MediaAccentBrush}" />
+  </Style>
+
+  <Style Selector="Border.compare-frame">
+    <Setter Property="CornerRadius" Value="16" />
+    <Setter Property="ClipToBounds" Value="True" />
+    <Setter Property="Background" Value="{DynamicResource MediaCanvasBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+
+  <Style Selector="Border.compare-status">
+    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+  </Style>
+
+  <Style Selector="Border.compare-zoom-readout">
+    <Setter Property="MinWidth" Value="52" />
+    <Setter Property="Height" Value="32" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Padding" Value="8,0" />
+    <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+  </Style>
+
+  <Style Selector="Border.compare-zoom-readout > TextBlock">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="FontFamily" Value="Consolas" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
 
 </Styles>

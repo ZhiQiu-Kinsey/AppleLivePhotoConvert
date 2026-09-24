@@ -1,3 +1,4 @@
+using LivePhotoConvert.Core.External.Tools;
 using LivePhotoConvert.Desktop.Features.Dialogs;
 using LivePhotoConvert.Desktop.Features.Library;
 using LivePhotoConvert.Desktop.Features.Settings;
@@ -7,6 +8,7 @@ using LivePhotoConvert.Desktop.Features.Tools;
 using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Features.Playback;
 using LivePhotoConvert.Desktop.Tests.Harness;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace LivePhotoConvert.Desktop.Tests.Infrastructure;
 
@@ -24,6 +26,42 @@ public class AppServicesTests
             IsBusy = false;
             return Task.CompletedTask;
         }
+    }
+
+    /// <summary>记录停止调用；停止在 <see cref="Release"/> 完成前一直挂起。</summary>
+    private sealed class PendingPlayback : IPlaybackControl
+    {
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public int StopAllAsyncCalls { get; private set; }
+
+        public void StopAll()
+        {
+        }
+
+        public Task StopAllAsync()
+        {
+            StopAllAsyncCalls++;
+            return Release.Task;
+        }
+    }
+
+    [Fact]
+    public async Task ToolUsage_ReleasingFfmpeg_WaitsForPlaybackToStop()
+    {
+        var playback = new PendingPlayback();
+        using var host = new DesktopTestHost(services => services.AddSingleton<IPlaybackControl>(playback));
+        var usage = host.Get<IToolUsage>();
+
+        await usage.ReleaseIdleProcessesAsync(ToolId.ExifTool);
+        Assert.Equal(0, playback.StopAllAsyncCalls);
+
+        var release = usage.ReleaseIdleProcessesAsync(ToolId.Ffmpeg);
+        Assert.Equal(1, playback.StopAllAsyncCalls);
+        Assert.False(release.IsCompleted);
+
+        playback.Release.SetResult();
+        await release.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -129,5 +167,20 @@ public class AppServicesTests
 
         Assert.True(await lifetime.PrepareShutdownAsync().WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
         Assert.Null(host.Get<IDialogService>().Current);
+    }
+
+    [Fact]
+    public async Task AppLifetime_Shutdown_SavesMirrorStillInDebounce()
+    {
+        using var host = new DesktopTestHost();
+        host.Settings.Update(s => s.AutoCleanTemp = false);
+        var tools = host.Get<ToolsViewModel>();
+        tools.CustomMirrorUrl = "https://mirror.example/";
+        Assert.NotEqual("https://mirror.example/", host.Settings.Current.CustomMirrorUrl);
+
+        Assert.True(await host.Get<AppLifetime>().PrepareShutdownAsync().WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+
+        Assert.Equal("https://mirror.example/", host.Settings.Current.CustomMirrorUrl);
+        Assert.Contains("https://mirror.example/", File.ReadAllText(host.SettingsPath));
     }
 }
