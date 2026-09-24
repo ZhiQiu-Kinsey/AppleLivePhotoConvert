@@ -1,3 +1,4 @@
+using LivePhotoConvert.Core.Media;
 using LivePhotoConvert.Core.Pairing;
 using LivePhotoConvert.Core.Pipeline;
 using LivePhotoConvert.Core.Services;
@@ -26,31 +27,28 @@ public static class JobFactory
 
     public static string DefaultStripDirectory => DefaultUnderPictures("LivePhotoStripped", "stripped");
 
-    /// <summary>卡片能否参与该动作：合成只接受苹果实况对，还原与解包只接受安卓动态照片，瘦身两者都接受。</summary>
-    public static bool IsApplicable(ConversionAction action, PhotoCardItemViewModel card) => action switch
+    /// <summary>条目能否参与该动作：合成只接受苹果实况对，还原与解包只接受安卓动态照片，瘦身两者都接受。</summary>
+    public static bool IsApplicable(ConversionAction action, LibraryItemKind kind) => action switch
     {
-        ConversionAction.ToAndroid => IsApplePair(card),
-        ConversionAction.ToApple or ConversionAction.Extract => card.IsMotionPhoto,
-        ConversionAction.Strip => card.IsMotionPhoto || IsApplePair(card),
+        ConversionAction.ToAndroid => kind == LibraryItemKind.ApplePair,
+        ConversionAction.ToApple or ConversionAction.Extract => kind == LibraryItemKind.MotionPhoto,
+        ConversionAction.Strip => kind is LibraryItemKind.MotionPhoto or LibraryItemKind.ApplePair,
         _ => false
     };
+
+    /// <summary>按扫描确定的类型判断；播放时切出的临时视频不影响类型。</summary>
+    public static bool IsApplicable(ConversionAction action, PhotoCardItemViewModel card) => IsApplicable(action, card.Kind);
 
     public static List<PhotoCardItemViewModel> Applicable(ConversionAction action, IEnumerable<PhotoCardItemViewModel> cards) =>
         [.. cards.Where(c => IsApplicable(action, c))];
 
-    /// <summary>
-    /// 卡片源文件的磁盘字节数。动态照片只计照片本身：播放时切出的临时视频不属于源文件。
-    /// </summary>
+    /// <summary>源文件字节数，取自扫描结果，不访问磁盘；动态照片的视频已包含在照片内。</summary>
     public static long SourceBytes(IEnumerable<PhotoCardItemViewModel> cards)
     {
         long sum = 0;
         foreach (var card in cards)
         {
-            sum += SafeFileLength(card.PhotoPath);
-            if (!card.IsMotionPhoto)
-            {
-                sum += SafeFileLength(card.VideoPath);
-            }
+            sum += card.Item.SourceBytes;
         }
 
         return sum;
@@ -98,11 +96,11 @@ public static class JobFactory
         ConversionInputs inputs;
         if (action == ConversionAction.ToAndroid)
         {
-            var pairs = applicable.Select(c => (Card: c, Pair: c.Pair ?? new MediaPair(c.PhotoPath, c.VideoPath!))).ToList();
+            // 同主干的全部候选交给合成引擎逐个校验择优；人工确认的是扫描选定的那一组
             inputs = new ConversionInputs
             {
-                Pairs = [.. pairs.Select(x => x.Pair)],
-                ForceAccepted = [.. pairs.Where(x => x.Card.IsForceAccepted).Select(x => x.Pair)]
+                Pairs = [.. applicable.SelectMany(Candidates)],
+                ForceAccepted = [.. applicable.Where(c => c.IsForceAccepted).Select(SelectedPair)]
             };
         }
         else
@@ -123,7 +121,8 @@ public static class JobFactory
                 Output = Output(ResolveOutputDirectory(settings)),
                 Naming = (MergeNamingFormat)settings.NamingFormat,
                 SourceAction = (SourceFileAction)settings.SourceAction,
-                HeicQuality = heicQuality
+                HeicQuality = heicQuality,
+                PreserveHdr = settings.PreserveHdr
             };
 
         return new ConversionJob(action, options, inputs)
@@ -133,18 +132,14 @@ public static class JobFactory
         };
     }
 
-    private static bool IsApplePair(PhotoCardItemViewModel card) => !card.IsMotionPhoto && !string.IsNullOrEmpty(card.VideoPath);
+    private static IReadOnlyList<MediaPair> Candidates(PhotoCardItemViewModel card) =>
+        card.Item.PairCandidates.Count > 0 ? card.Item.PairCandidates : [SelectedPair(card)];
 
-    private static long SafeFileLength(string? path)
+    private static MediaPair SelectedPair(PhotoCardItemViewModel card)
     {
-        try
-        {
-            return !string.IsNullOrEmpty(path) && File.Exists(path) ? new FileInfo(path).Length : 0;
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
-        {
-            return 0;
-        }
+        var video = card.Item.Video?.Path ?? string.Empty;
+        return card.Item.PairCandidates.FirstOrDefault(p => p.PhotoPath == card.PhotoPath && p.VideoPath == video)
+            ?? new MediaPair(card.PhotoPath, video);
     }
 
     private static string DefaultUnderPictures(string folder, string fallback)

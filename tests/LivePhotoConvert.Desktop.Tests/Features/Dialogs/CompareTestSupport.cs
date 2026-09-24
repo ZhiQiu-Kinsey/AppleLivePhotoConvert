@@ -76,6 +76,8 @@ internal sealed class CountingEngines(IImageConverter images) : IConversionEngin
 
     public IVideoConverter CreateVideoConverter(ToolPaths tools) => throw new NotSupportedException();
 
+    public IAppleGainMapDecoder? CreateGainMapDecoder(ToolPaths tools) => null;
+
     private sealed class Tracked(FakeMetadataService inner, Action onDispose) : IMetadataService
     {
         public Task<IReadOnlyDictionary<string, MediaMetadata>> ReadAsync(IReadOnlyCollection<string> paths, MetadataScope scope = MetadataScope.Standard, CancellationToken cancellationToken = default) =>

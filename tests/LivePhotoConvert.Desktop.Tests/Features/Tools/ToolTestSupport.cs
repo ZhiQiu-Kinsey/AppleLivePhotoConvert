@@ -94,7 +94,11 @@ public sealed class FakeToolUsage : IToolUsage
 
     public event EventHandler? BusyChanged;
 
-    public void ReleaseIdleProcesses(ToolId tool) => Released.Add(tool);
+    public Task ReleaseIdleProcessesAsync(ToolId tool)
+    {
+        Released.Add(tool);
+        return Task.CompletedTask;
+    }
 }
 
 /// <summary>按请求返回预设响应的处理器。</summary>

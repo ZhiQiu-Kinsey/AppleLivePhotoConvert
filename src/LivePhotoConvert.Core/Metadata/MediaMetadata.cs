@@ -30,6 +30,18 @@ public sealed record MediaMetadata
 
     public string? Software { get; init; }
 
+    /// <summary>Apple MakerNote 0x21（HDRHeadroom，Apple 文档中的 maker33），与 <see cref="AppleHdrGain"/> 一起决定增益图的 HDR 余量。</summary>
+    public double? AppleHdrHeadroom { get; init; }
+
+    /// <summary>Apple MakerNote 0x30（HDRGain，Apple 文档中的 maker48）。</summary>
+    public double? AppleHdrGain { get; init; }
+
+    /// <summary>HEIC 带 Apple HDR 增益图辅助图像（urn:com:apple:photo:2020:aux:hdrgainmap）。</summary>
+    public bool HasAppleGainMap { get; init; }
+
+    /// <summary>XMP-HDRGainMap:HDRGainMapVersion；Apple 用它声明文件带增益图。</summary>
+    public long? HdrGainMapVersion { get; init; }
+
     public static MediaMetadata Empty(string path) => new() { Path = path };
 }
 

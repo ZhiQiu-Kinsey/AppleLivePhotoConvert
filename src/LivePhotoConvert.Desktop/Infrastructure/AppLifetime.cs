@@ -1,7 +1,8 @@
 using Avalonia.Controls;
 using LivePhotoConvert.Core.Services;
-using LivePhotoConvert.Desktop.Services;
 using LivePhotoConvert.Desktop.Features.Dialogs;
+using LivePhotoConvert.Desktop.Features.Playback;
+using LivePhotoConvert.Desktop.Services;
 
 namespace LivePhotoConvert.Desktop.Infrastructure;
 
@@ -12,11 +13,14 @@ public sealed class AppLifetime(
     SettingsStore settings,
     IDialogService dialogs,
     ILocalizer localizer,
-    PlaybackHost playback,
+    IPlaybackControl playback,
     IReadOnlyList<IBackgroundWork> backgroundWork,
     Action? flushPendingEdits = null)
 {
     public static readonly TimeSpan CancelTimeout = TimeSpan.FromSeconds(10);
+
+    /// <summary>播放器的 FFmpeg 被结束后通常立即退出；卡住时不阻止关窗。</summary>
+    public static readonly TimeSpan PlaybackStopTimeout = TimeSpan.FromSeconds(5);
 
     private bool _shutdownPrepared;
     private bool _closing;
@@ -49,7 +53,15 @@ public sealed class AppLifetime(
         }
 
         dialogs.CancelAll();
-        playback.StopAll();
+        try
+        {
+            await playback.StopAllAsync().WaitAsync(PlaybackStopTimeout);
+        }
+        catch (TimeoutException)
+        {
+            // 进程树已被结束，只是未确认退出
+        }
+
         // 页面上尚在防抖中的输入先写入设置，再落盘
         flushPendingEdits?.Invoke();
         settings.Flush();

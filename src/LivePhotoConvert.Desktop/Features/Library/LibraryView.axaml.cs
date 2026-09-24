@@ -1,84 +1,272 @@
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
+using LivePhotoConvert.Desktop.Controls;
+using LivePhotoConvert.Desktop.Features.Library.Thumbnails;
+using LivePhotoConvert.Desktop.Features.Playback;
+using LivePhotoConvert.Desktop.Models;
 
 namespace LivePhotoConvert.Desktop.Features.Library;
 
+/// <summary>
+/// 画廊视图：把视口宽度交给排版，把列表容器接到缩略图引用计数，并在重排前后按锚点保持滚动位置；
+/// 指针停在卡片预览区时经 <see cref="GalleryHoverPlayback"/> 悬浮播放。
+/// </summary>
 public partial class LibraryView : UserControl
 {
-    private double _lastMeasuredWidth;
-    private ScrollViewer? _galleryScrollViewer;
-    private double _savedScrollOffsetY;
+    private LibraryViewModel? _vm;
+    private ScrollViewer? _scroll;
+    private GalleryThumbnailBinder? _thumbnailBinder;
+    private GalleryHoverPlayback? _hover;
+    private TopLevel? _topLevel;
+    private (string Key, double Delta)? _anchor;
+    private List<Visual> _visibilityChain = [];
 
     public LibraryView()
     {
         InitializeComponent();
-        // 单层扁平化流：监听视口宽度变化，动态计算卡片宽度
-        Loaded += (_, _) =>
-        {
-            var listBox = this.FindControl<ListBox>("GalleryListBox");
-            if (listBox is not null && DataContext is LibraryViewModel vm)
-            {
-                _lastMeasuredWidth = listBox.Bounds.Width;
-                vm.UpdateCardWidth(_lastMeasuredWidth);
-
-                vm.OnBeforeStreamRebuild = () =>
-                {
-                    if (_galleryScrollViewer is not null)
-                    {
-                        _savedScrollOffsetY = _galleryScrollViewer.Offset.Y;
-                    }
-                };
-
-                vm.OnAfterStreamRebuild = () =>
-                {
-                    if (_galleryScrollViewer is not null && _savedScrollOffsetY > 0)
-                    {
-                        double targetY = _savedScrollOffsetY;
-                        Dispatcher.UIThread.Post(() =>
-                        {
-                            if (_galleryScrollViewer is not null)
-                            {
-                                double maxY = Math.Max(0, _galleryScrollViewer.Extent.Height - _galleryScrollViewer.Viewport.Height);
-                                _galleryScrollViewer.Offset = new Avalonia.Vector(_galleryScrollViewer.Offset.X, Math.Min(targetY, maxY));
-                            }
-                        }, DispatcherPriority.Render);
-                    }
-                };
-
-                listBox.AddHandler(ScrollViewer.ScrollChangedEvent, (_, args) =>
-                {
-                    if (DataContext is not LibraryViewModel currentVm)
-                    {
-                        return;
-                    }
-                    if (_galleryScrollViewer is null && args.Source is ScrollViewer sv)
-                    {
-                        _galleryScrollViewer = sv;
-                    }
-                    var scroll = args.Source as ScrollViewer ?? _galleryScrollViewer;
-                    if (scroll is null) return;
-                    currentVm.OnViewportScrolled(scroll.Offset.Y, scroll.Viewport.Height);
-                }, RoutingStrategies.Bubble);
-
-                // 首次布局完成后主动预热首屏，不能依赖鼠标经过才触发加载。
-                Dispatcher.UIThread.Post(() =>
-                {
-                    if (DataContext is LibraryViewModel currentVm && listBox.Bounds.Height > 0)
-                    {
-                        currentVm.OnViewportScrolled(0, listBox.Bounds.Height);
-                    }
-                });
-                listBox.PropertyChanged += (_, e) =>
-                {
-                    if (e.Property.Name == "Bounds" && DataContext is LibraryViewModel vm2 &&
-                        Math.Abs(listBox.Bounds.Width - _lastMeasuredWidth) > 2)
-                    {
-                        _lastMeasuredWidth = listBox.Bounds.Width;
-                        vm2.UpdateCardWidth(listBox.Bounds.Width);
-                    }
-                };
-            }
-        };
+        Loaded += (_, _) => Attach();
+        Unloaded += (_, _) => Detach();
     }
+
+    /// <summary>供界面测试检查已实例化容器持有的卡片；页面隐藏时为 null。</summary>
+    internal GalleryThumbnailBinder? ThumbnailBinder => _thumbnailBinder;
+
+    /// <summary>供界面测试检查悬浮播放；视图未挂到窗口时为 null。</summary>
+    internal GalleryHoverPlayback? HoverPlayback => _hover;
+
+    private void Attach()
+    {
+        Detach();
+        if (DataContext is not LibraryViewModel vm)
+        {
+            return;
+        }
+
+        _vm = vm;
+        GalleryListBox.SizeChanged += OnListSizeChanged;
+        GalleryListBox.AddHandler(ScrollViewer.ScrollChangedEvent, OnScrollChanged, RoutingStrategies.Bubble);
+        // 卡片自身处理按下与双击，悬浮只需旁听移动，已处理的事件也要收到
+        GalleryListBox.AddHandler(PointerMovedEvent, OnGalleryPointerMoved, RoutingStrategies.Bubble, handledEventsToo: true);
+        GalleryListBox.PointerExited += OnGalleryPointerExited;
+        vm.Layout.LayoutChanging += OnLayoutChanging;
+        vm.Layout.LayoutChanged += OnLayoutChanged;
+        _topLevel = TopLevel.GetTopLevel(this);
+        if (_topLevel is not null)
+        {
+            _topLevel.ScalingChanged += OnScalingChanged;
+            vm.SetRenderScaling(_topLevel.RenderScaling);
+            var topLevel = _topLevel;
+            _hover = new GalleryHoverPlayback(vm.Playback, new TopLevelFrameScheduler(topLevel), () => topLevel.RenderScaling);
+        }
+
+        // 页面切换只改祖先的 IsVisible，视图本身不会卸载
+        _visibilityChain = [this, .. this.GetVisualAncestors()];
+        foreach (var visual in _visibilityChain)
+        {
+            visual.PropertyChanged += OnAncestorPropertyChanged;
+        }
+
+        UpdateThumbnailBinding();
+        ReportViewportWidth();
+    }
+
+    private void Detach()
+    {
+        _hover?.Dispose();
+        _hover = null;
+        ReleaseThumbnails();
+        foreach (var visual in _visibilityChain)
+        {
+            visual.PropertyChanged -= OnAncestorPropertyChanged;
+        }
+
+        _visibilityChain = [];
+        GalleryListBox.SizeChanged -= OnListSizeChanged;
+        GalleryListBox.RemoveHandler(ScrollViewer.ScrollChangedEvent, OnScrollChanged);
+        GalleryListBox.RemoveHandler(PointerMovedEvent, OnGalleryPointerMoved);
+        GalleryListBox.PointerExited -= OnGalleryPointerExited;
+        if (_vm is not null)
+        {
+            _vm.Layout.LayoutChanging -= OnLayoutChanging;
+            _vm.Layout.LayoutChanged -= OnLayoutChanged;
+            _vm = null;
+        }
+
+        if (_topLevel is not null)
+        {
+            _topLevel.ScalingChanged -= OnScalingChanged;
+            _topLevel = null;
+        }
+    }
+
+    /// <summary>
+    /// 页面切走（不可见）时放开全部卡片的钉住，位图回到预算内按 LRU 驱逐；切回时从已实例化的容器重新钉住。
+    /// 看不见的画廊也不再悬浮播放。
+    /// </summary>
+    private void UpdateThumbnailBinding()
+    {
+        if (_vm is null)
+        {
+            return;
+        }
+
+        if (IsShown)
+        {
+            _thumbnailBinder ??= new GalleryThumbnailBinder(GalleryListBox, _vm.Thumbnails);
+        }
+        else
+        {
+            _hover?.Stop();
+            ReleaseThumbnails();
+        }
+    }
+
+    private bool IsShown => _visibilityChain.Count > 0 && _visibilityChain.TrueForAll(v => v.IsVisible);
+
+    private void OnAncestorPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (e.Property == IsVisibleProperty)
+        {
+            UpdateThumbnailBinding();
+        }
+    }
+
+    private void ReleaseThumbnails()
+    {
+        _thumbnailBinder?.Dispose();
+        _thumbnailBinder = null;
+    }
+
+    private void OnScalingChanged(object? sender, EventArgs e)
+    {
+        if (_topLevel is not null)
+        {
+            _vm?.SetRenderScaling(_topLevel.RenderScaling);
+        }
+    }
+
+    private void OnListSizeChanged(object? sender, SizeChangedEventArgs e) => ReportViewportWidth();
+
+    private void ReportViewportWidth()
+    {
+        _scroll ??= GalleryListBox.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
+        var width = _scroll is { Viewport.Width: > 0 } scroll ? scroll.Viewport.Width : GalleryListBox.Bounds.Width;
+        _vm?.Layout.SetViewportWidth(width);
+    }
+
+    private void OnScrollChanged(object? sender, ScrollChangedEventArgs e)
+    {
+        if (e.Source is ScrollViewer scroll)
+        {
+            _scroll ??= scroll;
+            if (e.ViewportDelta.X != 0)
+            {
+                ReportViewportWidth();
+            }
+
+            // 滚轮滚动时指针不动，卡片却从指针下移走，必须主动停止
+            if (e.OffsetDelta.Y != 0)
+            {
+                _hover?.Stop();
+            }
+
+            _vm?.OnViewportScrolled(scroll.Offset.Y, scroll.Viewport.Height);
+        }
+    }
+
+    /// <summary>记录视口顶部的列表项与已滚过它的距离；取实际容器位置，不依赖虚拟化面板对未实例化项的估算。</summary>
+    private void OnLayoutChanging(object? sender, EventArgs e)
+    {
+        // 重排会改变卡片尺寸与位置，正在播放的解码尺寸随之失效
+        _hover?.Stop();
+        _anchor = null;
+        if (_scroll is not { Offset.Y: > 0.5 } scroll || !IsShown)
+        {
+            return;
+        }
+
+        foreach (var container in GalleryListBox.GetRealizedContainers().OrderBy(GalleryListBox.IndexFromContainer))
+        {
+            if (container.TranslatePoint(default, scroll) is not { } top || top.Y + container.Bounds.Height <= 0)
+            {
+                continue;
+            }
+
+            if (GalleryListBox.ItemFromContainer(container) is { } item && KeyOf(item) is { } key)
+            {
+                _anchor = (key, -top.Y);
+            }
+
+            return;
+        }
+    }
+
+    /// <summary>重排后把锚点项滚回原处；锚点已不在列表中（例如被筛掉）时回到顶部。</summary>
+    private void OnLayoutChanged(object? sender, EventArgs e)
+    {
+        if (_anchor is not { } anchor || _vm is null)
+        {
+            return;
+        }
+
+        _anchor = null;
+        var index = _vm.Layout.IndexOf(anchor.Key);
+        Dispatcher.UIThread.Post(() => RestoreAnchor(index, anchor.Delta), DispatcherPriority.Loaded);
+    }
+
+    private void RestoreAnchor(int index, double delta)
+    {
+        if (_scroll is not { } scroll || !IsShown)
+        {
+            return;
+        }
+
+        if (index < 0 || index >= GalleryListBox.ItemCount)
+        {
+            scroll.Offset = default;
+            return;
+        }
+
+        GalleryListBox.ScrollIntoView(index);
+        GalleryListBox.UpdateLayout();
+        if (GalleryListBox.ContainerFromIndex(index) is { } container && container.TranslatePoint(default, scroll) is { } top)
+        {
+            scroll.Offset = new Vector(scroll.Offset.X, Math.Max(0, scroll.Offset.Y + top.Y + delta));
+        }
+    }
+
+    private void OnGalleryPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (_hover is null || !IsShown)
+        {
+            return;
+        }
+
+        if ((e.Source as Visual)?.FindAncestorOfType<PhotoCardControl>(includeSelf: true) is { } control && control.IsInPreview(e))
+        {
+            if (control.DataContext is PhotoCardItemViewModel card && _vm is { } vm && !ReferenceEquals(vm.FocusedCard, card))
+            {
+                vm.FocusedCard = card;
+            }
+
+            _hover.Hover(control);
+        }
+        else
+        {
+            _hover.Leave();
+        }
+    }
+
+    private void OnGalleryPointerExited(object? sender, PointerEventArgs e) => _hover?.Leave();
+
+    private static string? KeyOf(object item) => item switch
+    {
+        PhotoGridRowViewModel { Cards.Count: > 0 } row => row.Cards[0].Key,
+        IGalleryDisplayItem other => other.Key,
+        _ => null
+    };
 }

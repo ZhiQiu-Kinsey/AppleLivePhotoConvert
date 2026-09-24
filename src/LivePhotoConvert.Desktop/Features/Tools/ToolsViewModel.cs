@@ -21,6 +21,9 @@ public sealed partial class ToolsViewModel : ViewModelBase
     /// <summary>镜像地址停止输入多久后才写入设置。</summary>
     public static readonly TimeSpan MirrorSaveDelay = TimeSpan.FromMilliseconds(600);
 
+    /// <summary>预览进程被结束后通常立即退出；卡住时照常安装，替换失败由安装器回滚。</summary>
+    public static readonly TimeSpan ReleaseIdleTimeout = TimeSpan.FromSeconds(5);
+
     private static readonly HttpClient SharedPingClient = new() { Timeout = TimeSpan.FromSeconds(30) };
 
     // 镜像名称的资源键与地址；空地址表示手动输入
@@ -255,7 +258,6 @@ public sealed partial class ToolsViewModel : ViewModelBase
         }
 
         FlushMirror();
-        _usage.ReleaseIdleProcesses(tool);
         IsInstallingAny = true;
         card.BeginInstall();
         ShowMessage(() => _localizer.Format("InstallStartingFormat", card.DisplayName), isError: false);
@@ -264,6 +266,7 @@ public sealed partial class ToolsViewModel : ViewModelBase
         _installCts = cts;
         try
         {
+            await ReleaseIdleProcessesAsync(tool, cts.Token);
             var progress = new PostingProgress(this, card);
             var result = await _installer.InstallAsync(tool, CustomMirrorUrl, progress, cts.Token);
             await AdoptInstalledAsync(tool, result.ExecutablePath);
@@ -322,6 +325,18 @@ public sealed partial class ToolsViewModel : ViewModelBase
         _paths.Set(tool, file);
         ShowMessage(() => _localizer.Format("ToolPathAppliedFormat", card.DisplayName), isError: false);
         await RefreshAsync(tool);
+    }
+
+    private async Task ReleaseIdleProcessesAsync(ToolId tool, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _usage.ReleaseIdleProcessesAsync(tool).WaitAsync(ReleaseIdleTimeout, cancellationToken);
+        }
+        catch (TimeoutException)
+        {
+            ErrorLogger.Log(new TimeoutException($"等待 {tool} 的预览进程退出超时"), "安装前释放工具进程");
+        }
     }
 
     /// <summary>

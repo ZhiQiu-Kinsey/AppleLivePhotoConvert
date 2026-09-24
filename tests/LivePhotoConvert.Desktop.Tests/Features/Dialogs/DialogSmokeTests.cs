@@ -1,3 +1,4 @@
+using LivePhotoConvert.Core.Pipeline;
 using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
@@ -6,8 +7,11 @@ using Avalonia.Headless.XUnit;
 using LivePhotoConvert.Core.Tests.Support;
 using LivePhotoConvert.Desktop.Features.Dialogs;
 using LivePhotoConvert.Desktop.Features.Library;
+using LivePhotoConvert.Desktop.Features.Library.Thumbnails;
 using LivePhotoConvert.Desktop.Features.Tasks;
 using LivePhotoConvert.Desktop.Infrastructure;
+using LivePhotoConvert.Core.Media;
+using LivePhotoConvert.Core.Pairing;
 using LivePhotoConvert.Desktop.Models;
 using LivePhotoConvert.Desktop.Tests.Harness;
 
@@ -206,7 +210,7 @@ public sealed class DialogSmokeTests : IDisposable
             }
             case "Arbitrate" or "ArbitrateReject":
             {
-                var vm = new ArbitrateDialogViewModel(loc) { TargetCard = ArbitrationCard() };
+                var vm = new ArbitrateDialogViewModel(loc) { TargetCard = ArbitrationCard(loc) };
                 return name == "Arbitrate"
                     ? new DialogCase(vm, typeof(ArbitrateDialog), ArbitrationVerdict.Dismiss, vm.ConfirmWhitelistCommand, ArbitrationVerdict.Accept)
                     : new DialogCase(vm, typeof(ArbitrateDialog), ArbitrationVerdict.Dismiss, vm.RejectSplitCommand, ArbitrationVerdict.Reject);
@@ -230,10 +234,10 @@ public sealed class DialogSmokeTests : IDisposable
                 // 静态卡片（无视频）：不启动 FFmpeg 播放，只验证弹窗、导航与大图加载
                 PhotoCardItemViewModel[] cards =
                 [
-                    StillCard("IMG_0101", 1),
-                    StillCard("IMG_0102", 2)
+                    StillCard("IMG_0101", 1, loc),
+                    StillCard("IMG_0102", 2, loc)
                 ];
-                var vm = new QuickLookDialogViewModel(loc, i => i >= 0 && i < cards.Length ? cards[i] : null, cards.Length, 0);
+                var vm = new QuickLookDialogViewModel(loc, session.Host.Get<IThumbnailPipeline>(), i => i >= 0 && i < cards.Length ? cards[i] : null, cards.Length, 0);
                 return new DialogCase(vm, typeof(QuickLookDialog), false)
                 {
                     Ready = s => s.WaitUntilAsync(() => vm.CurrentDisplayImage is not null)
@@ -244,29 +248,38 @@ public sealed class DialogSmokeTests : IDisposable
         }
     }
 
-    private PhotoCardItemViewModel StillCard(string stem, int color) => new()
+    private PhotoCardItemViewModel StillCard(string stem, int color, ILocalizer localizer)
     {
-        Key = stem,
-        PhotoPath = SampleAlbum.WriteJpeg(Path.Combine(_sandbox.InputDirectory, stem + ".jpg"), color, 1200, 900),
-        FileName = stem + ".jpg"
-    };
+        var path = SampleAlbum.WriteJpeg(Path.Combine(_sandbox.InputDirectory, stem + ".jpg"), color, 1200, 900);
+        FastImageHeaderReader.TryReadHeader(path, out var header);
+        return new PhotoCardItemViewModel(new LibraryItem(LibraryItemKind.Still, Scanned(path))
+        {
+            Header = header,
+            CaptureTimeLocal = new DateTime(2026, 9, 1, 10, 0, 0)
+        }, localizer);
+    }
 
     /// <summary>照片与视频修改时间相差 12 秒，裁决弹窗显示真实时间差。</summary>
-    private PhotoCardItemViewModel ArbitrationCard()
+    private PhotoCardItemViewModel ArbitrationCard(ILocalizer localizer)
     {
         var photo = SampleAlbum.WriteJpeg(Path.Combine(_sandbox.InputDirectory, "IMG_0200.jpg"), 3);
         var video = _sandbox.CreateInputFile("IMG_0200.mov", SyntheticMedia.Mov(4096));
         var taken = new DateTime(2026, 9, 1, 10, 0, 0, DateTimeKind.Local);
         File.SetLastWriteTime(photo, taken);
         File.SetLastWriteTime(video, taken.AddSeconds(12));
-        return new PhotoCardItemViewModel
+        return new PhotoCardItemViewModel(new LibraryItem(LibraryItemKind.ApplePair, Scanned(photo))
         {
-            Key = "IMG_0200",
-            PhotoPath = photo,
-            VideoPath = video,
-            FileName = "IMG_0200.jpg",
-            HasSuspiciousWarning = true
-        };
+            Video = Scanned(video),
+            PairCandidates = [new MediaPair(photo, video)],
+            PairValidation = PairValidationResult.Reject(new OutcomeCause(OutcomeReason.PairCaptureTimeTooFar, 12.0, 3.0)),
+            CaptureTimeLocal = taken
+        }, localizer);
+    }
+
+    private static LibraryFile Scanned(string path)
+    {
+        var info = new FileInfo(path);
+        return new LibraryFile(info.FullName, info.Length, info.LastWriteTimeUtc, info.CreationTimeUtc);
     }
 
     private static Task<object?> Show(ShellSession session, DialogViewModel dialog) => dialog switch

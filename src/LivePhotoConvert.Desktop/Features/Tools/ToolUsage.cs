@@ -14,8 +14,8 @@ public interface IToolUsage
 
     event EventHandler? BusyChanged;
 
-    /// <summary>结束随时可中断的进程（悬浮预览等）。</summary>
-    void ReleaseIdleProcesses(ToolId tool);
+    /// <summary>结束随时可中断的进程（悬浮预览等），并等待它们退出。</summary>
+    Task ReleaseIdleProcessesAsync(ToolId tool);
 }
 
 /// <summary>
@@ -25,11 +25,11 @@ public interface IToolUsage
 public sealed class TaskCenterToolUsage : IToolUsage
 {
     private readonly TaskCenter _tasks;
-    private readonly Action<ToolId> _releaseIdle;
+    private readonly Func<ToolId, Task> _releaseIdle;
 
     /// <param name="tasks">任务中心</param>
-    /// <param name="releaseIdle">结束可中断的工具进程</param>
-    public TaskCenterToolUsage(TaskCenter tasks, Action<ToolId> releaseIdle)
+    /// <param name="releaseIdle">结束可中断的工具进程并等待退出</param>
+    public TaskCenterToolUsage(TaskCenter tasks, Func<ToolId, Task> releaseIdle)
     {
         _tasks = tasks;
         _releaseIdle = releaseIdle;
@@ -40,7 +40,7 @@ public sealed class TaskCenterToolUsage : IToolUsage
 
     public event EventHandler? BusyChanged;
 
-    public void ReleaseIdleProcesses(ToolId tool) => _releaseIdle(tool);
+    public Task ReleaseIdleProcessesAsync(ToolId tool) => _releaseIdle(tool);
 
     private void OnTasksChanged(object? sender, PropertyChangedEventArgs e)
     {

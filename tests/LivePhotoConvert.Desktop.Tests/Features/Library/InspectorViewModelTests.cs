@@ -13,18 +13,18 @@ namespace LivePhotoConvert.Desktop.Tests.Features.Library;
 public class InspectorViewModelTests
 {
     [Fact]
-    public void Action_SwitchesScanModeAndIsPersisted()
+    public void Action_SwitchesGalleryFilterAndIsPersisted()
     {
         using var fixture = new InspectorFixture();
         var inspector = fixture.Inspector;
         Assert.Equal(ConversionAction.ToAndroid, inspector.Action);
-        Assert.Equal(ScanModes.ApplePairs, fixture.Library.ScanMode);
+        Assert.Equal(ConversionAction.ToAndroid, fixture.Library.ActionFilter);
 
         foreach (var action in Enum.GetValues<ConversionAction>())
         {
             inspector.SetActionCommand.Execute(action.ToString());
             Assert.Equal(action, inspector.Action);
-            Assert.Equal(ScanModes.For(action), fixture.Library.ScanMode);
+            Assert.Equal(action, fixture.Library.ActionFilter);
             Assert.Equal(action, fixture.Host.Settings.Current.Action);
         }
 
@@ -33,11 +33,11 @@ public class InspectorViewModelTests
     }
 
     [Fact]
-    public void StartupAction_ComesFromSettingsAndDrivesInitialScanMode()
+    public void StartupAction_ComesFromSettingsAndDrivesInitialGalleryFilter()
     {
         using var fixture = new InspectorFixture(s => s.Action = ConversionAction.ToApple);
 
-        Assert.Equal(ScanModes.MotionPhotos, fixture.Library.ScanMode);
+        Assert.Equal(ConversionAction.ToApple, fixture.Library.ActionFilter);
         Assert.Equal(ConversionAction.ToApple, fixture.Inspector.Action);
     }
 
@@ -135,7 +135,7 @@ public class InspectorViewModelTests
             using var reloaded = new InspectorFixture(settingsPath: path);
             var inspector = reloaded.Inspector;
             Assert.Equal(ConversionAction.ToApple, inspector.Action);
-            Assert.Equal(ScanModes.MotionPhotos, reloaded.Library.ScanMode);
+            Assert.Equal(ConversionAction.ToApple, reloaded.Library.ActionFilter);
             Assert.Equal(72, inspector.HeicQuality);
             Assert.False(inspector.AutoAppendIndex);
             Assert.Equal(2, inspector.NamingFormat);
@@ -165,7 +165,7 @@ public class InspectorViewModelTests
         Assert.Equal(3, inspector.ApplicableCount);
         Assert.Equal(3000 + 5000 + 3000 + 5000 + new FileInfo(Path.Combine(fixture.Album.InputDirectory, "MVIMG_0003.jpg")).Length, inspector.ApplicableBytes);
 
-        // 解包与瘦身共用扫描结果，只有动态照片适用
+        // 解包只列出动态照片：切换动作只筛选同一份扫描结果
         inspector.Action = ConversionAction.Extract;
         Assert.Equal(1, inspector.ApplicableCount);
         Assert.Equal(fixture.Host.Localizer.Format("PrimaryBtnExtractFormat", 1), inspector.PrimaryButtonText);
@@ -182,7 +182,14 @@ public class InspectorViewModelTests
         Assert.Equal(fixture.Host.Localizer.Format("ApplicableScopeSelectedFormat", 1), inspector.ApplicableScopeText);
         Assert.Equal(fixture.Host.Localizer.Format("PrimaryBtnStripFormat", 1), inspector.PrimaryButtonText);
 
+        // 选中的实况对不在解包范围内：范围内没有选中项时作用于范围内全部动态照片
         inspector.Action = ConversionAction.Extract;
+        Assert.Equal(1, inspector.ApplicableCount);
+        Assert.Equal(fixture.Host.Localizer["ApplicableScopeAll"], inspector.ApplicableScopeText);
+
+        // 范围内没有任何适用项时不能开始
+        fixture.Library.AlbumDirectory = fixture.Album.OutputDirectory;
+        await fixture.Library.RefreshAlbumAsync();
         Assert.Equal(0, inspector.ApplicableCount);
         Assert.Equal(fixture.Host.Localizer["PrimaryBtnNone"], inspector.PrimaryButtonText);
         Assert.False(inspector.StartCommand.CanExecute(null), "没有适用项时不能开始");
@@ -440,6 +447,29 @@ public class InspectorViewModelTests
 
         Assert.False(inspector.HasEstimate);
         Assert.Equal(fixture.Host.Localizer.Format("EstimateFailedFormat", "exiftool missing"), inspector.EstimateStatusText);
+    }
+
+    /// <summary>HEIC 质量影响瘦身结果，改动后与选择变化走同一防抖路径重新预估。</summary>
+    [Fact]
+    public async Task Estimate_RerunsWhenHeicQualityChanges()
+    {
+        using var fixture = new InspectorFixture(s => s.Action = ConversionAction.Strip);
+        fixture.AddMotionPhoto("MVIMG_0001");
+        var inspector = fixture.Inspector;
+        await fixture.ScanAsync();
+        fixture.Time.Advance(InspectorViewModel.EstimateDebounce);
+        await inspector.EstimateTask.Within();
+        var baseline = fixture.Estimator.Calls;
+
+        inspector.HeicQuality = 70;
+        inspector.HeicQuality = 60;
+        Assert.True(inspector.IsEstimating);
+        fixture.Time.Advance(InspectorViewModel.EstimateDebounce);
+        await inspector.EstimateTask.Within();
+
+        Assert.Equal(baseline + 1, fixture.Estimator.Calls);
+        Assert.False(inspector.IsEstimating);
+        Assert.True(inspector.HasEstimate);
     }
 
     [Fact]

@@ -38,6 +38,21 @@ public class ExifToolJsonTests
         Assert.True(metadata.IsMirrored);
     }
 
+    [Theory]
+    [InlineData("1904:01:01 00:00:00+00:00")]
+    [InlineData("1904:01:01 08:00:00+08:00")]
+    [InlineData("1903:12:31 19:00:00-05:00")]
+    [InlineData("1904:01:01 05:21:10+05:21")]
+    [InlineData("1904:01:01 00:00:00")]
+    public void ParseMetadata_ZeroQuickTimeDate_IsTreatedAsMissing(string zero)
+    {
+        var json = $$"""
+                     [{"SourceFile":"a.mov","QuickTime:CreateDate":"{{zero}}","Track1:MediaCreateDate":"{{zero}}","QuickTime:Duration":1}]
+                     """;
+
+        Assert.Null(Assert.Single(ExifToolJson.ParseMetadata(json)).CaptureTime);
+    }
+
     [Fact]
     public void ParseMetadata_StillImageTime_SubtractsSampleDuration()
     {
@@ -46,6 +61,37 @@ public class ExifToolJsonTests
                             """;
 
         Assert.Equal(1_500_000, Assert.Single(ExifToolJson.ParseMetadata(json)).StillImageTimeUs);
+    }
+
+    [Fact]
+    public void ParseMetadata_AppleHdrTags()
+    {
+        const string json = """
+                            [{"SourceFile":"a.heic","Apple:HDRHeadroom":1.0255059,"Apple:HDRGain":0.001685693743,
+                              "QuickTime:AuxiliaryImageType":"urn:com:apple:photo:2019:aux:semanticskinmatte",
+                              "QuickTime:AuxiliaryImageType (1)":"urn:com:apple:photo:2020:aux:hdrgainmap",
+                              "XMP-HDRGainMap:HDRGainMapVersion":65536}]
+                            """;
+
+        var metadata = Assert.Single(ExifToolJson.ParseMetadata(json));
+
+        Assert.Equal(1.0255059, metadata.AppleHdrHeadroom);
+        Assert.Equal(0.001685693743, metadata.AppleHdrGain);
+        Assert.True(metadata.HasAppleGainMap);
+        Assert.Equal(65536, metadata.HdrGainMapVersion);
+    }
+
+    [Fact]
+    public void ParseMetadata_SdrHeic_HasNoGainMap()
+    {
+        const string json = """[{"SourceFile":"a.heic","Apple:HDRHeadroom":0,"QuickTime:AuxiliaryImageType":"urn:com:apple:photo:2019:aux:semanticskinmatte"}]""";
+
+        var metadata = Assert.Single(ExifToolJson.ParseMetadata(json));
+
+        Assert.Equal(0, metadata.AppleHdrHeadroom);
+        Assert.Null(metadata.AppleHdrGain);
+        Assert.False(metadata.HasAppleGainMap);
+        Assert.Null(metadata.HdrGainMapVersion);
     }
 
     [Theory]

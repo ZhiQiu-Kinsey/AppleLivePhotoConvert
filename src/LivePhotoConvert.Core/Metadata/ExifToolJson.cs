@@ -76,7 +76,11 @@ internal static class ExifToolJson
             Location = ReadLocation(tags),
             Make = First(tags, "Make", "IFD0", "Keys"),
             Model = First(tags, "Model", "IFD0", "Keys"),
-            Software = First(tags, "Software", "IFD0", "Keys")
+            Software = First(tags, "Software", "IFD0", "Keys"),
+            AppleHdrHeadroom = ReadDouble(First(tags, "HDRHeadroom")),
+            AppleHdrGain = ReadDouble(First(tags, "HDRGain")),
+            HasAppleGainMap = tags.Any(IsAppleGainMapAuxiliary),
+            HdrGainMapVersion = ReadDouble(First(tags, "HDRGainMapVersion")) is { } version ? (long)version : null
         };
     }
 
@@ -123,6 +127,15 @@ internal static class ExifToolJson
 
         return null;
     }
+
+    /// <summary>
+    /// 同一文件可能有多个辅助图像（深度、人像遮罩等），ExifTool 对重复标签追加序号后缀。
+    /// </summary>
+    private static bool IsAppleGainMapAuxiliary(Tag tag) =>
+        tag.Name.StartsWith("AuxiliaryImageType", StringComparison.Ordinal)
+        && tag.Value.Contains(AppleGainMapAuxiliaryType, StringComparison.OrdinalIgnoreCase);
+
+    internal const string AppleGainMapAuxiliaryType = "urn:com:apple:photo:2020:aux:hdrgainmap";
 
     private static GeoLocation? ReadLocation(List<Tag> tags)
     {
@@ -179,10 +192,19 @@ internal static class ExifToolJson
         return preferredGroups.IsEmpty ? tags.FirstOrDefault(tag => tag.Name == name).Value : null;
     }
 
+    /// <summary>
+    /// QuickTime 时间为 0 表示未知；ExifTool 在 -n 下把它输出为按本机时区换算的 1904 纪元，不能当成真实拍摄时间。
+    /// 1904 年各地多用地方平时，输出的偏移会截掉秒数，因此按 1 分钟容差判断。
+    /// </summary>
+    private static readonly DateTimeOffset QuickTimeEpoch = new(1904, 1, 1, 0, 0, 0, TimeSpan.Zero);
+
     private static bool TryParse(string? text, out CaptureTime value)
     {
         value = default;
-        return text is not null && CaptureTime.TryParse(text, out value);
+        return text is not null && CaptureTime.TryParse(text, out value)
+               && (value.Offset is { } offset
+                   ? (new DateTimeOffset(value.LocalTime, offset) - QuickTimeEpoch).Duration() >= TimeSpan.FromMinutes(1)
+                   : value.LocalTime != QuickTimeEpoch.DateTime);
     }
 
     private static double? ReadDouble(string? text) =>

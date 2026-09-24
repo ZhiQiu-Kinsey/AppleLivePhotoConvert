@@ -27,6 +27,11 @@ internal sealed class FakeMetadataService : IMetadataService
     /// <summary>对匹配的文件读取 XMP 时抛出异常，模拟 ExifTool 读取失败。</summary>
     public Func<string, bool> FailXmpReads { get; set; } = _ => false;
 
+    /// <summary>预设的 XMP（按完整路径），模拟 ExifTool 读取非 JPEG 文件的 XMP。</summary>
+    public ConcurrentDictionary<string, string> Xmp { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    public ConcurrentBag<string> XmpReads { get; } = [];
+
     /// <summary>批量读取前同步执行：可抛出异常模拟整批读取失败，或阻塞以模拟耗时的读取。</summary>
     public Action<IReadOnlyCollection<string>>? BeforeRead { get; set; }
 
@@ -50,6 +55,12 @@ internal sealed class FakeMetadataService : IMetadataService
         if (FailXmpReads(path))
         {
             throw new InvalidOperationException($"模拟 ExifTool 读取失败：{Path.GetFileName(path)}");
+        }
+
+        XmpReads.Add(path);
+        if (Xmp.TryGetValue(Path.GetFullPath(path), out var preset))
+        {
+            return Task.FromResult<string?>(preset);
         }
 
         using var stream = File.OpenRead(path);
@@ -128,18 +139,31 @@ internal sealed class FakeImageConverter : IImageConverter
 
 internal sealed class FakeVideoConverter : IVideoConverter
 {
-    public ConcurrentBag<(string Source, bool ForceTranscode)> Mp4Conversions { get; } = [];
+    public ConcurrentBag<(string Source, VideoConversionOptions Options)> Mp4Conversions { get; } = [];
 
     public ConcurrentBag<string> MovRemuxes { get; } = [];
 
-    public Task ConvertToMp4Async(string sourcePath, string destinationPath, bool forceTranscode = false, CancellationToken cancellationToken = default)
+    /// <summary>不为 <c>null</c> 时每次转换都抛出该异常。</summary>
+    public Exception? Failure { get; set; }
+
+    public Task ConvertToMp4Async(string sourcePath, string destinationPath, VideoConversionOptions? options = null, CancellationToken cancellationToken = default)
     {
-        Mp4Conversions.Add((sourcePath, forceTranscode));
+        if (Failure is not null)
+        {
+            return Task.FromException(Failure);
+        }
+
+        Mp4Conversions.Add((sourcePath, options ?? VideoConversionOptions.Default));
         return File.WriteAllBytesAsync(destinationPath, SyntheticMedia.Mp4((int)new FileInfo(sourcePath).Length), cancellationToken);
     }
 
-    public Task RemuxToMovAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken = default)
+    public Task RemuxToMovAsync(string sourcePath, string destinationPath, VideoConversionOptions? options = null, CancellationToken cancellationToken = default)
     {
+        if (Failure is not null)
+        {
+            return Task.FromException(Failure);
+        }
+
         MovRemuxes.Add(sourcePath);
         return File.WriteAllBytesAsync(destinationPath, SyntheticMedia.Mov((int)new FileInfo(sourcePath).Length), cancellationToken);
     }

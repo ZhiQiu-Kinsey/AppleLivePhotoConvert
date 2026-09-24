@@ -15,7 +15,11 @@ public class TaskCenterToolUsageTests
         var release = new TaskCompletionSource<BatchReport>(TaskCreationOptions.RunContinuationsAsynchronously);
         using var fixture = new TaskCenterFixture(new ScriptedRunner((_, _, _) => release.Task));
         var released = new List<ToolId>();
-        var usage = new TaskCenterToolUsage(fixture.Center, released.Add);
+        var usage = new TaskCenterToolUsage(fixture.Center, tool =>
+        {
+            released.Add(tool);
+            return Task.CompletedTask;
+        });
         var changes = 0;
         usage.BusyChanged += (_, _) => changes++;
 
@@ -29,7 +33,7 @@ public class TaskCenterToolUsageTests
         Assert.False(usage.IsBusy);
         Assert.Equal(2, changes);
 
-        usage.ReleaseIdleProcesses(ToolId.Ffmpeg);
+        await usage.ReleaseIdleProcessesAsync(ToolId.Ffmpeg);
         Assert.Equal([ToolId.Ffmpeg], released);
     }
 }

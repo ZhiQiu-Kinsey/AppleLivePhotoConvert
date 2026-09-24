@@ -18,6 +18,7 @@ public static class ToolLocator
     /// 按「指定路径 → 程序目录及其 tools/、tools/&lt;工具&gt;/ 子目录 → 本地应用数据目录 → PATH」顺序查找。
     /// 指定了路径时只检查该路径。
     /// </summary>
+    /// <param name="subDirectories">额外的子目录，同时在 tools/ 下按安装布局查找（例如 heif-dec 随 heif-enc 装在 tools/heif-enc/）</param>
     public static string? Find(string fileName, string? explicitPath = null, params ReadOnlySpan<string> subDirectories)
     {
         if (!string.IsNullOrWhiteSpace(explicitPath))
@@ -40,11 +41,17 @@ public static class ToolLocator
             foreach (var subDirectory in subDirectories)
             {
                 candidates.Add(Path.Combine(directory!, subDirectory, fileName));
+                candidates.Add(Path.Combine(directory!, "tools", subDirectory, fileName));
             }
         }
 
         candidates.Add(Path.Combine(ToolDirectories.LocalAppDataToolDirectory, fileName));
         candidates.Add(Path.Combine(ToolDirectories.LocalAppDataToolDirectory, installDirectory, fileName));
+        foreach (var subDirectory in subDirectories)
+        {
+            candidates.Add(Path.Combine(ToolDirectories.LocalAppDataToolDirectory, subDirectory, fileName));
+        }
+
         var found = candidates.FirstOrDefault(IsValidTool) ?? FindOnPath(fileName);
         return found is null ? null : Path.GetFullPath(found);
     }
@@ -76,7 +83,7 @@ public static class ToolLocator
         var name = Path.GetFileName(path);
         var versionArgument = name.Contains("exiftool", StringComparison.OrdinalIgnoreCase) ? "-ver"
             : name.Contains("ffmpeg", StringComparison.OrdinalIgnoreCase) || name.Contains("ffprobe", StringComparison.OrdinalIgnoreCase) ? "-version"
-            : name.Contains("heif-enc", StringComparison.OrdinalIgnoreCase) ? "-v"
+            : name.StartsWith("heif-", StringComparison.OrdinalIgnoreCase) ? "-v"
             : null;
         if (versionArgument is null)
         {

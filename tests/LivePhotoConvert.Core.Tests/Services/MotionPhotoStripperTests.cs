@@ -106,7 +106,9 @@ public class MotionPhotoStripperTests
 
         var report = await StripAsync([source]);
 
-        Assert.Equal(OutcomeKind.Skipped, Assert.Single(report.Items).Kind);
+        var item = Assert.Single(report.Items);
+        Assert.Equal(OutcomeKind.Skipped, item.Kind);
+        Assert.Equal(OutcomeReason.GainMapPreserved, item.Reason);
         Assert.Equal(original, await File.ReadAllBytesAsync(source, Token));
         Assert.Empty(_images.HeicConversions);
     }
@@ -264,7 +266,10 @@ public class MotionPhotoStripperTests
 
         var report = await stripper.StripAsync(new StripRequest { Files = [source] }, cancellationToken: Token);
 
-        Assert.Equal(OutcomeKind.Failed, Assert.Single(report.Items).Kind);
+        var item = Assert.Single(report.Items);
+        Assert.Equal(OutcomeKind.Failed, item.Kind);
+        Assert.Equal(OutcomeReason.VerificationFailed, item.Reason);
+        Assert.NotNull(item.Detail);
         Assert.Equal(original, await File.ReadAllBytesAsync(source, Token));
         Assert.Equal(["MVIMG.jpg"], temp.FileNames());
     }
@@ -277,7 +282,9 @@ public class MotionPhotoStripperTests
 
         var report = await StripAsync([source]);
 
-        Assert.Equal(OutcomeKind.Failed, Assert.Single(report.Items).Kind);
+        var item = Assert.Single(report.Items);
+        Assert.Equal(OutcomeKind.Failed, item.Kind);
+        Assert.Equal([new OutcomeCause(OutcomeReason.SourceMissingOrEmpty, "empty.jpg")], item.Causes);
         Assert.True(File.Exists(source));
     }
 
@@ -325,7 +332,9 @@ public class MotionPhotoStripperTests
         Assert.Null(Assert.Single(candidates).CompanionVideo);
         Assert.Null(candidates[0].AnalysisError);
         Assert.True(File.Exists(video));
-        Assert.Equal(OutcomeKind.Skipped, Assert.Single(report.Items).Kind);
+        var item = Assert.Single(report.Items);
+        Assert.Equal(OutcomeKind.Skipped, item.Kind);
+        Assert.Equal(OutcomeReason.NothingToStrip, item.Reason);
     }
 
     [Fact]
@@ -370,7 +379,23 @@ public class MotionPhotoStripperTests
         var report = await StripAsync([temp.Combine("gone.jpg"), motion], convert: false);
 
         Assert.Equal(1, report.Succeeded);
-        Assert.Single(report.Items, item => item.Kind == OutcomeKind.Failed);
+        var failed = Assert.Single(report.Items, item => item.Kind == OutcomeKind.Failed);
+        Assert.Equal([new OutcomeCause(OutcomeReason.SourceMissingOrEmpty, "gone.jpg")], failed.Causes);
+        Assert.NotNull(failed.Detail);
+    }
+
+    [Fact]
+    public async Task StripAsync_AnalysisReadFails_ReportsUnexpectedWithDetail()
+    {
+        using var temp = new TempDirectory();
+        var broken = temp.CreateFile("broken.heic", SyntheticMedia.Heic());
+        _metadata.FailXmpReads = _ => true;
+
+        var report = await StripAsync([broken]);
+
+        var failed = Assert.Single(report.Items);
+        Assert.Equal(OutcomeReason.Unexpected, failed.Reason);
+        Assert.Contains("broken.heic", failed.Detail);
     }
 
     [Fact]

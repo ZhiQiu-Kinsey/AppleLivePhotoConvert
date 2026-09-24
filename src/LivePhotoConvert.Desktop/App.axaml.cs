@@ -5,6 +5,8 @@ using Avalonia.Threading;
 using LivePhotoConvert.Core.External.Tools;
 using LivePhotoConvert.Core.Services;
 using LivePhotoConvert.Desktop.Features.Dialogs;
+using LivePhotoConvert.Desktop.Features.Library.Thumbnails;
+using LivePhotoConvert.Desktop.Features.Playback;
 using LivePhotoConvert.Desktop.Features.Shell;
 using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Services;
@@ -44,6 +46,8 @@ public class App : Application
 
             _ = Task.Run(SafetyGuard.CleanOrphanTempDirectories);
             _ = Task.Run(() => RecoverToolInstalls(services.GetRequiredService<IToolInstaller>()));
+            _ = Task.Run(LegacyThumbnailCache.TryDelete);
+            _ = Task.Run(LegacyMotionCache.TryDelete);
         }
 
         base.OnFrameworkInitializationCompleted();

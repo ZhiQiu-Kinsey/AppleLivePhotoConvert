@@ -1,7 +1,12 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using LivePhotoConvert.Core.External.Tools;
+using LivePhotoConvert.Core.Media.Thumbnails;
+using LivePhotoConvert.Core.Platform;
 using LivePhotoConvert.Desktop.Features.Library;
+using LivePhotoConvert.Desktop.Features.Library.Gallery;
+using LivePhotoConvert.Desktop.Features.Library.Thumbnails;
+using LivePhotoConvert.Desktop.Features.Playback;
 using LivePhotoConvert.Desktop.Features.Settings;
 using LivePhotoConvert.Desktop.Features.Shell;
 using LivePhotoConvert.Desktop.Features.Tasks;
@@ -33,14 +38,8 @@ public static class AppServices
         services.AddSingleton(sp => new CompletionEffects(
             sp.GetRequiredService<SettingsStore>(),
             sp.GetRequiredService<IShellLauncher>()));
-        services.AddSingleton(sp =>
-        {
-            // 播放宿主本阶段仍是静态实例，只在这里接上设置中的 FFmpeg 路径
-            var settings = sp.GetRequiredService<SettingsStore>();
-            var host = PlaybackHost.Instance;
-            host.CustomFfmpegPathProvider = () => settings.Current.FfmpegPath;
-            return host;
-        });
+        services.AddSingleton(sp => new PlaybackService(sp.GetRequiredService<SettingsStore>()));
+        services.AddSingleton<IPlaybackControl>(sp => sp.GetRequiredService<PlaybackService>());
 
         services.AddSingleton(sp => new ToolPathSettings(sp.GetRequiredService<SettingsStore>()));
         services.AddSingleton(_ => ToolManifest.Embedded);
@@ -73,12 +72,31 @@ public static class AppServices
         services.AddSingleton<IToolAvailability>(_ => ToolAvailability.Instance);
         services.AddSingleton<IStripEstimator>(sp => new StripEstimator(sp.GetRequiredService<IConversionEngines>()));
         services.AddSingleton<IDiskSpaceGuard>(_ => DiskSpaceGuard.Instance);
+        services.AddSingleton(sp => new ThumbnailDiskCache(
+            ThumbnailDiskCache.DefaultRoot,
+            sp.GetRequiredService<SettingsStore>().Current.Gallery.ThumbnailDiskCacheBytes));
+        services.AddSingleton(sp => new ThumbnailGenerator(
+            sp.GetRequiredService<ThumbnailDiskCache>(),
+            WindowsShellThumbnailSource.TryCreate()));
+        services.AddSingleton<IThumbnailPipeline>(sp => new ThumbnailPipeline(
+            sp.GetRequiredService<ThumbnailGenerator>(),
+            sp.GetRequiredService<SettingsStore>().Current.Gallery.ThumbnailBudgetBytes));
+        services.AddSingleton<ILibraryEnricher>(sp => new ExifToolLibraryEnricher(
+            sp.GetRequiredService<SettingsStore>(),
+            sp.GetRequiredService<IToolAvailability>(),
+            sp.GetRequiredService<IConversionEngines>()));
+        services.AddSingleton(sp => new LibraryCatalog(
+            sp.GetRequiredService<ILocalizer>(),
+            sp.GetRequiredService<ILibraryEnricher>()));
         services.AddSingleton(sp => new LibraryViewModel(
             sp.GetRequiredService<SettingsStore>(),
             sp.GetRequiredService<ILocalizer>(),
             sp.GetRequiredService<IDialogService>(),
             sp.GetRequiredService<IFilePicker>(),
-            sp.GetRequiredService<PlaybackHost>()));
+            sp.GetRequiredService<INavigator>(),
+            sp.GetRequiredService<PlaybackService>(),
+            sp.GetRequiredService<IThumbnailPipeline>(),
+            sp.GetRequiredService<LibraryCatalog>()));
         services.AddSingleton(sp => new InspectorViewModel(
             sp.GetRequiredService<LibraryViewModel>(),
             sp.GetRequiredService<SettingsStore>(),
@@ -94,14 +112,9 @@ public static class AppServices
             sp.GetRequiredService<TimeProvider>()));
         services.AddSingleton<IToolUsage>(sp => new TaskCenterToolUsage(
             sp.GetRequiredService<TaskCenter>(),
-            // 悬浮预览随时可停；其它工具的进程只存在于任务期间，由任务中心的运行状态把关
-            tool =>
-            {
-                if (tool == ToolId.Ffmpeg)
-                {
-                    sp.GetRequiredService<PlaybackHost>().StopAll();
-                }
-            }));
+            // 悬浮与 QuickLook 播放随时可停，且运行中的 ffmpeg 在 Windows 上占用安装目录，必须等它退出；
+            // 其它工具的进程只存在于任务期间，由任务中心的运行状态把关
+            tool => tool == ToolId.Ffmpeg ? sp.GetRequiredService<IPlaybackControl>().StopAllAsync() : Task.CompletedTask));
         services.AddSingleton(sp => new ToolsViewModel(
             sp.GetRequiredService<SettingsStore>(),
             sp.GetRequiredService<ToolPathSettings>(),
@@ -130,7 +143,7 @@ public static class AppServices
             sp.GetRequiredService<SettingsStore>(),
             sp.GetRequiredService<IDialogService>(),
             sp.GetRequiredService<ILocalizer>(),
-            sp.GetRequiredService<PlaybackHost>(),
+            sp.GetRequiredService<IPlaybackControl>(),
             [sp.GetRequiredService<TaskCenter>()],
             () => sp.GetRequiredService<ToolsViewModel>().FlushMirror()));
 

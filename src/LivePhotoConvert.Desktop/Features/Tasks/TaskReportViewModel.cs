@@ -21,15 +21,33 @@ public enum TaskItemStatus
     Cleanup
 }
 
+/// <summary>报告条目上的信息标签（如 HDR 处理结果）。</summary>
+/// <param name="Text">本地化文案</param>
+/// <param name="Detail">技术细节，悬停显示</param>
+/// <param name="IsPositive">正面结果用强调色</param>
+public sealed record TaskReportTag(string Text, string? Detail, bool IsPositive);
+
 /// <summary>报告明细中的一行。</summary>
+/// <param name="Detail">本地化的结果说明</param>
+/// <param name="TechnicalDetail">异常原文等技术细节，展开后显示</param>
 public sealed record TaskReportItem(
     TaskItemStatus Status,
     string StatusText,
     string SourcePath,
     string? OutputPath,
     string Detail,
-    string TargetFormat)
+    string TargetFormat,
+    string? TechnicalDetail = null)
 {
+    public IReadOnlyList<TaskReportTag> Tags { get; init; } = [];
+
+    public bool HasTags => Tags.Count > 0;
+
+    public bool HasTechnicalDetail => !string.IsNullOrWhiteSpace(TechnicalDetail);
+
+    /// <summary>有标签或可展开的细节时才占用说明下方的一行。</summary>
+    public bool HasExtras => HasTags || HasTechnicalDetail;
+
     public string FileName => string.IsNullOrEmpty(SourcePath) ? "—" : Path.GetFileName(SourcePath);
 
     public string SourceFormat => Path.GetExtension(SourcePath).TrimStart('.').ToUpperInvariant();
@@ -67,7 +85,8 @@ public sealed partial class TaskReportViewModel : ViewModelBase
     /// <param name="center">重试时提交新任务</param>
     /// <param name="job">产生本报告的任务</param>
     /// <param name="report">Core 批处理结果；整批无法开始时为 null</param>
-    /// <param name="errorMessage">整批无法开始的原因</param>
+    /// <param name="failure">整批无法开始的原因</param>
+    /// <param name="plannedCount">计划处理的条目数（取消时与已处理数对照显示）</param>
     /// <param name="startedAt">开始时间</param>
     /// <param name="finishedAt">结束时间</param>
     /// <param name="localizer">文案</param>
@@ -78,7 +97,8 @@ public sealed partial class TaskReportViewModel : ViewModelBase
         TaskCenter center,
         ConversionJob job,
         BatchReport? report,
-        string? errorMessage,
+        TaskFailure? failure,
+        int plannedCount,
         DateTimeOffset startedAt,
         DateTimeOffset finishedAt,
         ILocalizer localizer,
@@ -94,12 +114,13 @@ public sealed partial class TaskReportViewModel : ViewModelBase
         Job = job;
         Report = report ?? BatchReport.Empty;
         IsFatal = report is null;
-        ErrorMessage = errorMessage ?? string.Empty;
+        Failure = failure;
         StartedAt = startedAt;
         FinishedAt = finishedAt;
 
         var fatalCount = Math.Max(1, job.ItemCount);
         TotalCount = IsFatal ? fatalCount : Report.Items.Count;
+        PlannedCount = IsFatal ? fatalCount : Math.Max(plannedCount, TotalCount);
         SuccessCount = Report.Succeeded;
         FailedCount = IsFatal ? fatalCount : Report.Failed;
         SkippedCount = Report.Skipped;
@@ -124,7 +145,7 @@ public sealed partial class TaskReportViewModel : ViewModelBase
 
     public bool IsFatal { get; }
 
-    public string ErrorMessage { get; }
+    public TaskFailure? Failure { get; }
 
     public bool WasCanceled => Report.Canceled;
 
@@ -140,7 +161,15 @@ public sealed partial class TaskReportViewModel : ViewModelBase
 
     public TimeSpan Elapsed { get; }
 
+    /// <summary>已处理（有结果）的条目数。</summary>
     public int TotalCount { get; }
+
+    public int PlannedCount { get; }
+
+    /// <summary>"处理总量"指标：取消时显示 已处理 / 计划。</summary>
+    public string TotalText => WasCanceled
+        ? string.Create(CultureInfo.InvariantCulture, $"{TotalCount} / {PlannedCount}")
+        : TotalCount.ToString(CultureInfo.InvariantCulture);
 
     public int SuccessCount { get; }
 
@@ -150,11 +179,8 @@ public sealed partial class TaskReportViewModel : ViewModelBase
 
     public int CleanupCount { get; }
 
-    /// <summary>失败与清理失败都需要用户处理。</summary>
+    /// <summary>"异常"：失败与清理失败，都需要用户处理；跳过的项单独统计。</summary>
     public int ProblemCount => FailedCount + CleanupCount;
-
-    /// <summary>"异常/跳过"指标：需要处理的项加上被跳过的项。</summary>
-    public int AttentionCount => ProblemCount + SkippedCount;
 
     public long SavedBytes { get; }
 
@@ -197,6 +223,15 @@ public sealed partial class TaskReportViewModel : ViewModelBase
     private string _summaryText = string.Empty;
 
     [ObservableProperty]
+    private string _errorMessage = string.Empty;
+
+    [ObservableProperty]
+    private string _totalSubText = string.Empty;
+
+    [ObservableProperty]
+    private string _problemSubText = string.Empty;
+
+    [ObservableProperty]
     private string _durationText = string.Empty;
 
     [ObservableProperty]
@@ -231,8 +266,11 @@ public sealed partial class TaskReportViewModel : ViewModelBase
         StatusText = _localizer[IsFatal ? "TaskStatusFailed" : WasCanceled ? "TaskStatusCanceled" : "TaskStatusCompleted"];
         TimeText = FinishedAt.ToLocalTime().ToString(_localizer["TaskHistoryTimeFormat"], culture);
         TimestampText = _localizer.Format("ReportTimestampFormat", FinishedAt.LocalDateTime);
-        SummaryText = _localizer.Format("ReportSummaryFormat", SuccessCount, ProblemCount)
+        SummaryText = _localizer.Format("ReportSummaryFormat", SuccessCount, ProblemCount, SkippedCount)
                       + (WasCanceled ? _localizer["ReportCanceledSuffix"] : string.Empty);
+        ErrorMessage = Failure?.Describe(_localizer) ?? string.Empty;
+        TotalSubText = _localizer[WasCanceled ? "ReportKpiTotalCanceledSub" : "ReportKpiTotalSub"];
+        ProblemSubText = _localizer.Format("ReportKpiProblemsSubFormat", FailedCount, CleanupCount);
         DurationText = Elapsed.TotalSeconds >= 1
             ? string.Create(culture, $"{Elapsed.TotalSeconds:F1}s")
             : "< 1s";
@@ -321,11 +359,12 @@ public sealed partial class TaskReportViewModel : ViewModelBase
                 _localizer["ReportCsvSourceFormat"],
                 _localizer["ReportCsvTargetFormat"],
                 _localizer["ReportCsvDetail"],
+                _localizer["ReportCsvTechnicalDetail"],
                 _localizer["ReportCsvSourcePath"],
                 _localizer["ReportCsvOutputPath"]
             ]
         ];
-        rows.AddRange(_items.Select(i => new[] { i.StatusText, i.FileName, i.SourceFormat, i.TargetFormat, i.Detail, i.SourcePath, i.OutputPath }));
+        rows.AddRange(_items.Select(i => new[] { i.StatusText, i.FileName, i.SourceFormat, i.TargetFormat, DetailWithTags(i), i.TechnicalDetail, i.SourcePath, i.OutputPath }));
         return rows;
     }
 
@@ -334,7 +373,8 @@ public sealed partial class TaskReportViewModel : ViewModelBase
         var failedText = _localizer["ReportStatusFailed"];
         if (IsFatal)
         {
-            return [new TaskReportItem(TaskItemStatus.Failed, failedText, string.Empty, null, ErrorMessage, string.Empty)];
+            var detail = Failure?.Detail;
+            return [new TaskReportItem(TaskItemStatus.Failed, failedText, string.Empty, null, ErrorMessage, string.Empty, detail == ErrorMessage ? null : detail)];
         }
 
         var successText = _localizer["ReportStatusSuccess"];
@@ -359,26 +399,52 @@ public sealed partial class TaskReportViewModel : ViewModelBase
                 _ => splitTarget
             };
 
-            items.Add(outcome.Kind switch
+            var (status, statusText, detail) = outcome.Kind switch
             {
-                OutcomeKind.Succeeded => new TaskReportItem(TaskItemStatus.Success, successText, outcome.Source, output, SuccessDetail(outcome, splitTarget), target),
-                OutcomeKind.Skipped => new TaskReportItem(TaskItemStatus.Skipped, skippedText, outcome.Source, output, outcome.Message ?? string.Empty, target),
-                _ => new TaskReportItem(TaskItemStatus.Failed, failedText, outcome.Source, output, outcome.Message ?? string.Empty, target)
-            });
+                OutcomeKind.Succeeded => (TaskItemStatus.Success, successText, SuccessDetail(outcome, splitTarget)),
+                OutcomeKind.Skipped => (TaskItemStatus.Skipped, skippedText, CauseText(outcome)),
+                _ => (TaskItemStatus.Failed, failedText, CauseText(outcome))
+            };
+            items.Add(new TaskReportItem(status, statusText, outcome.Source, output, detail, target, TechnicalDetail(outcome, detail)) { Tags = Tags(outcome) });
 
             if (outcome.CleanupError is not null)
             {
-                items.Add(new TaskReportItem(TaskItemStatus.Cleanup, cleanupText, outcome.Source, output, outcome.CleanupError, string.Empty));
+                items.Add(new TaskReportItem(TaskItemStatus.Cleanup, cleanupText, outcome.Source, output, _localizer["ReportCleanupFailedDesc"], string.Empty, outcome.CleanupError));
             }
         }
 
         return items;
     }
 
+    /// <summary>没有原因码时退回显示技术细节，避免说明为空。</summary>
+    private string CauseText(ItemOutcome outcome) =>
+        outcome.Causes.Count > 0 ? OutcomeTexts.Describe(_localizer, outcome.Causes)
+        : outcome.Detail ?? OutcomeTexts.Describe(_localizer, OutcomeReason.Unexpected);
+
+    /// <summary>异常原文与附注细节合并到展开区；与说明相同的内容不再重复。</summary>
+    private string? TechnicalDetail(ItemOutcome outcome, string detail)
+    {
+        IEnumerable<string> lines =
+        [
+            .. outcome.Detail is { } raw && raw != detail ? [raw] : Array.Empty<string>(),
+            .. outcome.Notes.Where(n => !string.IsNullOrWhiteSpace(n.Detail)).Select(n => $"{OutcomeTexts.Describe(_localizer, n.Kind)}: {n.Detail}")
+        ];
+        var text = string.Join(Environment.NewLine, lines);
+        return text.Length == 0 ? null : text;
+    }
+
+    private List<TaskReportTag> Tags(ItemOutcome outcome) =>
+    [
+        .. outcome.Notes.Select(n => new TaskReportTag(OutcomeTexts.Describe(_localizer, n.Kind), n.Detail, n.Kind == OutcomeNoteKind.UltraHdrWritten))
+    ];
+
+    private static string DetailWithTags(TaskReportItem item) =>
+        item.HasTags ? $"{item.Detail} [{string.Join(", ", item.Tags.Select(t => t.Text))}]" : item.Detail;
+
     private string SuccessDetail(ItemOutcome outcome, string splitTarget) => Action switch
     {
         ConversionAction.ToAndroid => _localizer["MergeSuccessDesc"],
-        ConversionAction.Strip => _localizer.Format(outcome.KeptOriginalFormat ? "StripItemKeptFormatFormat" : "StripItemSavedFormat", FormatBytes(outcome.BytesSaved)),
+        ConversionAction.Strip => _localizer.Format("StripItemSavedFormat", FormatBytes(outcome.BytesSaved)),
         _ => _localizer.Format("SplitSuccessDescFormat", splitTarget)
     };
 

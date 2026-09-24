@@ -39,9 +39,14 @@
                        HorizontalAlignment="Center" VerticalAlignment="Center" />
           </Border>
           <TextBlock Text="{DynamicResource AppTitle}" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
-          <Border Width="1" Height="12" Background="{DynamicResource LineStrongBrush}" VerticalAlignment="Center" />
-          <TextBlock Text="{DynamicResource AppSubtitle}" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" MaxWidth="160" TextTrimming="CharacterEllipsis" />
         </StackPanel>
+
+        <shell:FitOrHidePanel x:Name="SubtitlePanel" Grid.Column="1" Margin="8,0" VerticalAlignment="Center">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Border Width="1" Height="12" Background="{DynamicResource LineStrongBrush}" VerticalAlignment="Center" />
+            <TextBlock x:Name="SubtitleText" Classes="title-subtitle" Text="{DynamicResource AppSubtitle}" />
+          </StackPanel>
+        </shell:FitOrHidePanel>
 
         <!-- 窗口系统控制按钮（贴合最右上角，无内边距，标准 Fluent/Windows 样式） -->
         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="0" VerticalAlignment="Stretch" HorizontalAlignment="Right">
@@ -98,34 +103,37 @@
               <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
                 <ic:SymbolIcon Grid.Column="0" Symbol="Wrench" FontSize="16" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
                 <TextBlock Grid.Column="1" Text="{DynamicResource NavTools}" FontSize="12" Margin="10,0,0,0" VerticalAlignment="Center" />
-                <Border Grid.Column="2" Classes="status-dot ok" IsVisible="{Binding Tools.AllToolsReady}" />
-                <Border Grid.Column="2" Classes="status-dot bad" IsVisible="{Binding !Tools.AllToolsReady}" />
+                <Border Grid.Column="2" Classes="status-dot ok" IsVisible="{Binding AreToolsReady}" />
+                <Border Grid.Column="2" Classes="status-dot warn" IsVisible="{Binding DoToolsNeedAttention}" />
+                <Border Grid.Column="2" Classes="status-dot bad" IsVisible="{Binding AreToolsMissing}" />
               </Grid>
             </Button>
           </StackPanel>
 
           <!-- 左下角：引擎状态 + 设置入口 -->
           <StackPanel Grid.Row="2" Spacing="6">
-            <Border Background="{DynamicResource HoverBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="10" Padding="9,7">
-              <StackPanel Spacing="5">
-                <TextBlock Text="{DynamicResource ToolsTitle}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                  <StackPanel Orientation="Horizontal" Spacing="4">
-                    <Border Classes="status-dot ok" IsVisible="{Binding Tools.IsExifToolReady}" />
-                    <Border Classes="status-dot bad" IsVisible="{Binding !Tools.IsExifToolReady}" />
-                    <TextBlock Text="ExifTool" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" />
-                  </StackPanel>
-                  <StackPanel Orientation="Horizontal" Spacing="4">
-                    <Border Classes="status-dot ok" IsVisible="{Binding Tools.IsFfmpegReady}" />
-                    <Border Classes="status-dot bad" IsVisible="{Binding !Tools.IsFfmpegReady}" />
-                    <TextBlock Text="FFmpeg" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" />
-                  </StackPanel>
-                  <StackPanel Orientation="Horizontal" Spacing="4">
-                    <Border Classes="status-dot ok" IsVisible="{Binding Tools.IsHeifEncReady}" />
-                    <Border Classes="status-dot bad" IsVisible="{Binding !Tools.IsHeifEncReady}" />
-                    <TextBlock Text="heif-enc" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" />
-                  </StackPanel>
-                </StackPanel>
+            <Border Classes="sidebar-tools">
+              <StackPanel Spacing="6">
+                <TextBlock Classes="sidebar-tools-title" Text="{DynamicResource ToolsTitle}" />
+                <ItemsControl ItemsSource="{Binding ToolStatuses}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <StackPanel Spacing="4" />
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="shell:ToolStatusItem">
+                      <Grid Classes="sidebar-tool-row" ColumnDefinitions="Auto,*">
+                        <Panel Grid.Column="0">
+                          <ic:SymbolIcon Classes="tool-status ok" Symbol="CheckmarkCircle" IsVisible="{Binding IsReady}" ToolTip.Tip="{DynamicResource ShellToolReady}" />
+                          <ic:SymbolIcon Classes="tool-status warn" Symbol="Warning" IsVisible="{Binding NeedsAttention}" ToolTip.Tip="{DynamicResource ShellToolAttention}" />
+                          <ic:SymbolIcon Classes="tool-status bad" Symbol="DismissCircle" IsVisible="{Binding IsMissing}" ToolTip.Tip="{DynamicResource ShellToolMissing}" />
+                        </Panel>
+                        <TextBlock Grid.Column="1" Text="{Binding Name}" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
               </StackPanel>
             </Border>
             <Button Classes="nav-btn" Classes.selected="{Binding IsSettingsSelected}" Command="{Binding NavigateCommand}" CommandParameter="Settings">

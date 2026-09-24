@@ -58,7 +58,7 @@ public class RealToolsRoundTripTests
             new SplitRequest { Files = [motionPhoto], Output = new OutputOptions(temp.Combine("apple")), Target = SplitTarget.Apple },
             cancellationToken: Token);
         var outcome = Assert.Single(restored.Items);
-        Assert.True(outcome.Kind == OutcomeKind.Succeeded, outcome.Message);
+        Assert.True(outcome.Kind == OutcomeKind.Succeeded, outcome.Detail);
 
         var tags = await metadata.ReadAsync(outcome.Outputs, cancellationToken: Token);
         var photoId = tags[outcome.Outputs[0]].ContentIdentifier;

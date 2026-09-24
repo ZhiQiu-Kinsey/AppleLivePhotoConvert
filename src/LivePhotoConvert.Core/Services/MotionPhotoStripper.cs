@@ -1,7 +1,9 @@
 using System.Collections.Frozen;
 using LivePhotoConvert.Core.Abstractions;
+using LivePhotoConvert.Core.External;
 using LivePhotoConvert.Core.Io;
 using LivePhotoConvert.Core.Media;
+using LivePhotoConvert.Core.Media.UltraHdr;
 using LivePhotoConvert.Core.Metadata;
 using LivePhotoConvert.Core.Pairing;
 using LivePhotoConvert.Core.Pipeline;
@@ -39,6 +41,9 @@ public sealed record StripCandidate(string ImagePath, long ImageBytes, EmbeddedV
     /// <summary>分析失败的原因（文件消失、无法读取等）；不为 <c>null</c> 时该文件不做任何处理。</summary>
     public string? AnalysisError { get; init; }
 
+    /// <summary>分析失败的异常，瘦身时据此归类失败原因。</summary>
+    internal Exception? AnalysisException { get; init; }
+
     public long OriginalBytes => ImageBytes + CompanionBytes;
 
     /// <summary>剥离后减少的字节：截断点之后的全部内容（含视频外层的容器头）加上配对视频。</summary>
@@ -61,8 +66,8 @@ public sealed record StripCandidate(string ImagePath, long ImageBytes, EmbeddedV
         return WillConvert(convertToHeic) ? (long)(PhotoBytes * heicSizeRatio) : PhotoBytes;
     }
 
-    internal static StripCandidate Unavailable(string imagePath, string error) =>
-        new(imagePath, 0, null, null, 0, false) { AnalysisError = error };
+    internal static StripCandidate Unavailable(string imagePath, Exception error) =>
+        new(imagePath, 0, null, null, 0, false) { AnalysisError = error.Message, AnalysisException = error };
 }
 
 /// <summary>
@@ -135,7 +140,7 @@ public sealed class MotionPhotoStripper(IMetadataService metadata, IImageConvert
         }
         catch (Exception ex) when (!(ex is OperationCanceledException && cancellationToken.IsCancellationRequested))
         {
-            return StripCandidate.Unavailable(file, ex.Message);
+            return StripCandidate.Unavailable(file, ex);
         }
     }
 
@@ -197,18 +202,25 @@ public sealed class MotionPhotoStripper(IMetadataService metadata, IImageConvert
         var source = candidate.ImagePath;
         if (candidate.AnalysisError is { } analysisError)
         {
-            return ItemOutcome.Failed(source, analysisError);
+            return candidate.AnalysisException switch
+            {
+                // 分析只读取源文件，找不到文件即源文件已消失
+                FileNotFoundException and not ToolNotFoundException or DirectoryNotFoundException =>
+                    ItemOutcome.Failed(source, new OutcomeCause(OutcomeReason.SourceMissingOrEmpty, Path.GetFileName(source)), analysisError),
+                { } exception => ItemOutcome.Failed(source, exception),
+                null => ItemOutcome.Failed(source, OutcomeReason.Unexpected, analysisError)
+            };
         }
 
         var convert = candidate.WillConvert(request.ConvertToHeic);
         if (!candidate.HasVideo && !convert)
         {
-            return ItemOutcome.Skipped(source, candidate.HasGainMap ? "带 HDR 增益图且无内嵌视频，为保留 HDR 不转码" : "无内嵌视频，且无需转换格式");
+            return ItemOutcome.Skipped(source, candidate.HasGainMap ? OutcomeReason.GainMapPreserved : OutcomeReason.NothingToStrip);
         }
 
         if (candidate.ImageBytes == 0)
         {
-            throw new InvalidDataException("文件为空。");
+            return ItemOutcome.Failed(source, new OutcomeCause(OutcomeReason.SourceMissingOrEmpty, Path.GetFileName(source)));
         }
 
         var inPlace = request.Output is null;
@@ -225,6 +237,12 @@ public sealed class MotionPhotoStripper(IMetadataService metadata, IImageConvert
                 clean = workspace.NewFile(Path.GetExtension(source));
                 await BinaryFile.CopySegmentAsync(source, clean, 0, embedded.ImageEnd, cancellationToken);
                 await metadata.RemoveMotionPhotoAsync(clean, cancellationToken);
+                if (candidate.HasGainMap)
+                {
+                    // 改写 XMP 后 MPF 中的主图长度会过时，增益图本身不受影响
+                    UltraHdrJpegWriter.RefreshPrimaryLength(clean);
+                }
+
                 photo = clean;
             }
 
@@ -271,7 +289,7 @@ public sealed class MotionPhotoStripper(IMetadataService metadata, IImageConvert
             {
                 BytesSaved = Math.Max(0, before - new FileInfo(final).Length),
                 CleanupError = companionError,
-                KeptOriginalFormat = keptOriginalFormat
+                Notes = keptOriginalFormat ? [new OutcomeNote(OutcomeNoteKind.KeptOriginalFormat)] : []
             };
         }
         catch
@@ -356,7 +374,7 @@ public sealed class MotionPhotoStripper(IMetadataService metadata, IImageConvert
         var read = stream.ReadAtLeast(header, header.Length, throwOnEndOfStream: false);
         if (MediaFileTypes.DetectPhotoExtension(header[..read], string.Empty).Length == 0)
         {
-            throw new InvalidDataException("生成的图片格式无效，已放弃替换。");
+            throw new OutcomeException(OutcomeReason.VerificationFailed, "生成的图片格式无效，已放弃替换。");
         }
     }
 }

@@ -1,0 +1,9 @@
+Input #0, matroska,webm, from 'interlaced.mkv':
+  Metadata:
+    ENCODER         : Lavf60.16.100
+  Duration: 00:00:00.40, start: 0.000000, bitrate: 396 kb/s
+  Stream #0:0: Video: h264 (High 4:2:2), yuv422p10le(tv, top coded first (swapped)), 320x240 [SAR 1:1 DAR 4:3], 25 fps, 25 tbr, 1k tbn
+    Metadata:
+      ENCODER         : Lavc60.31.102 libx264
+      DURATION        : 00:00:00.400000000
+At least one output file must be specified

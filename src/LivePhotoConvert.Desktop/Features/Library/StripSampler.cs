@@ -97,7 +97,7 @@ public sealed class StripSampler(IConversionEngines engines, MetadataSessionPool
                 OutcomeKind.Succeeded => outcome.Outputs.Single(),
                 // 没有视频且无需转码：任务不会改动这张照片
                 OutcomeKind.Skipped => photoPath,
-                _ => throw new InvalidOperationException(outcome.Message)
+                _ => throw FailureOf(outcome)
             };
 
             return new StripSample(
@@ -118,6 +118,12 @@ public sealed class StripSampler(IConversionEngines engines, MetadataSessionPool
             throw;
         }
     }
+
+    /// <summary>带原因码的失败抛出 <see cref="OutcomeException"/>，界面经 ErrorMessages 按当前语言显示。</summary>
+    private static Exception FailureOf(ItemOutcome outcome) =>
+        outcome.Causes is [var cause, ..] && cause.Reason != OutcomeReason.Unexpected
+            ? new OutcomeException(cause, outcome.Detail ?? cause.Reason.ToString())
+            : new InvalidOperationException(outcome.Detail ?? nameof(OutcomeReason.Unexpected));
 
     private static string EncoderName(IImageConverter images) => images switch
     {

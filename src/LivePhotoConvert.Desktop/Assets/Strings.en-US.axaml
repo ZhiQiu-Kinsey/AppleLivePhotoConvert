@@ -8,15 +8,15 @@
   <sys:String x:Key="AppSubtitle">Professional Live Photo Studio</sys:String>
   <sys:String x:Key="NavTools">Engines</sys:String>
   <sys:String x:Key="NavSettings">Preferences</sys:String>
+  <sys:String x:Key="ShellToolReady">Ready</sys:String>
+  <sys:String x:Key="ShellToolAttention">Available, but needs attention. See Engines.</sys:String>
+  <sys:String x:Key="ShellToolMissing">Not found; related features are unavailable</sys:String>
 
   <!-- Funnel & Direction -->
   <sys:String x:Key="SelectedSummaryFormat">{0} Live Photos · {1}</sys:String>
 
   <!-- Toolbar & Gallery -->
   <sys:String x:Key="ToolbarAlbumTitle">Album Live Roll</sys:String>
-  <sys:String x:Key="ToolbarSelect">Select</sys:String>
-  <sys:String x:Key="ToolbarSelectActive">Done</sys:String>
-  <sys:String x:Key="ToolbarPlayTip">Continuously preview live videos in viewport</sys:String>
   <sys:String x:Key="SortDateTaken">Date Taken</sys:String>
   <sys:String x:Key="SortDateCreated">Date Created</sys:String>
   <sys:String x:Key="SortDateModified">Date Modified</sys:String>
@@ -56,6 +56,8 @@
   <sys:String x:Key="DeleteWarningDesc">Source files are permanently deleted after conversion; you must type a confirmation word to start.</sys:String>
   <sys:String x:Key="AutoAppendIndexTitle">Append a number on name clashes</sys:String>
   <sys:String x:Key="AutoAppendIndexDesc">When off, files with the same name in the output folder are overwritten.</sys:String>
+  <sys:String x:Key="PreserveHdrTitle">Keep HDR (Ultra HDR)</sys:String>
+  <sys:String x:Key="PreserveHdrDesc">Writes the gain map of iPhone HDR photos into an Ultra HDR cover that supporting galleries show in HDR. Requires heif-dec (part of libheif); without it a standard cover is written and the report says why.</sys:String>
   <sys:String x:Key="HeicQualityTitle">HEIC quality</sys:String>
   <sys:String x:Key="HeicQualityDesc">Quality used when encoding HEIC; higher means better quality and larger files.</sys:String>
   <sys:String x:Key="ChangeOutputDirBtn">Change</sys:String>
@@ -281,22 +283,29 @@
   <sys:String x:Key="QuickLookLoop">Loop Playback</sys:String>
   <sys:String x:Key="QuickLookPaused">Live Paused</sys:String>
 
+  <!-- Live playback failures -->
+  <sys:String x:Key="PlaybackErrorFfmpegMissing">FFmpeg was not found, so the live video cannot play.</sys:String>
+  <sys:String x:Key="PlaybackErrorSourceMissing">The video file no longer exists.</sys:String>
+  <sys:String x:Key="PlaybackErrorNoVideoStream">The file has no playable video stream.</sys:String>
+  <sys:String x:Key="PlaybackErrorHdrToneMap">This is an HDR video and the current FFmpeg lacks the zscale / tonemap filters needed to show it correctly. Switch to an FFmpeg build with libzimg on the Engines page.</sys:String>
+  <sys:String x:Key="PlaybackErrorDecodeFailed">The video could not be decoded.</sys:String>
+
   <!-- Report / Curtain / Dialog Supplemental Strings -->
   <sys:String x:Key="ReportEmptyTitle">No task reports yet</sys:String>
   <sys:String x:Key="ReportEmptyDesc">Reports of tasks started from the Library stay here until the app exits.</sys:String>
   <sys:String x:Key="ReportKpiTotal">Total Processed</sys:String>
-  <sys:String x:Key="ReportKpiTotalSub">Scanned &amp; paired</sys:String>
+  <sys:String x:Key="ReportKpiTotalSub">Items in this task</sys:String>
   <sys:String x:Key="ReportKpiSuccess">Succeeded</sys:String>
   <sys:String x:Key="ReportKpiSuccessRate">Success Rate</sys:String>
-  <sys:String x:Key="ReportKpiFailed">Errors / Skipped</sys:String>
-  <sys:String x:Key="ReportKpiFailedSub">Needs attention or retry</sys:String>
+  <sys:String x:Key="ReportKpiProblems">Issues</sys:String>
+  <sys:String x:Key="ReportKpiProblemsSubFormat">Failed {0} · Cleanup {1}</sys:String>
   <sys:String x:Key="ReportKpiDuration">Total Batch Time</sys:String>
   <sys:String x:Key="ReportDistTitle">Result Distribution</sys:String>
   <sys:String x:Key="ReportLegendSuccess">Success:</sys:String>
   <sys:String x:Key="ReportLegendSkipped">Skipped:</sys:String>
-  <sys:String x:Key="ReportLegendFailed">Failed:</sys:String>
+  <sys:String x:Key="ReportLegendProblems">Issues:</sys:String>
   <sys:String x:Key="ReportDetailAll">All Details</sys:String>
-  <sys:String x:Key="ReportDetailFailedOnly">Errors / Skipped Only</sys:String>
+  <sys:String x:Key="ReportDetailProblems">Issues &amp; Skipped</sys:String>
   <sys:String x:Key="ReportDetailSuccessOnly">Succeeded Only</sys:String>
   <sys:String x:Key="ReportDetailTitle">Detailed Execution Log</sys:String>
   <sys:String x:Key="ReportCsvStatus">Status</sys:String>
@@ -343,7 +352,7 @@
   <sys:String x:Key="ToolNotDetectedFormat">{0} not detected</sys:String>
   <sys:String x:Key="ToolMissingFormat">{0} was not found. Download it or set its path on the Engines page.</sys:String>
   <sys:String x:Key="ReportTimestampFormat">Batch completed: {0:yyyy-MM-dd HH:mm:ss}</sys:String>
-  <sys:String x:Key="ReportSummaryFormat">Succeeded {0} · Issues {1}</sys:String>
+  <sys:String x:Key="ReportSummaryFormat">Succeeded {0} · Issues {1} · Skipped {2}</sys:String>
   <sys:String x:Key="ReportStatusSuccess">Success</sys:String>
   <sys:String x:Key="ReportStatusFailed">Failed</sys:String>
   <sys:String x:Key="ReportStatusSkipped">Skipped</sys:String>
@@ -399,7 +408,6 @@
   <sys:String x:Key="ReportCsvSourcePath">Source File</sys:String>
   <sys:String x:Key="ReportCsvOutputPath">Output File</sys:String>
   <sys:String x:Key="StripItemSavedFormat">Freed {0}</sys:String>
-  <sys:String x:Key="StripItemKeptFormatFormat">Freed {0}; kept original format (HEIC was larger)</sys:String>
   <sys:String x:Key="ReportSavedFormat">Freed {0} in total</sys:String>
 
   <!-- 图库工作台与检查器 -->
@@ -432,6 +440,13 @@
   <sys:String x:Key="MissingToolsGoBtn">Open Tools</sys:String>
   <sys:String x:Key="ToolNameHeicEncoder">HEIC encoder (heif-enc)</sys:String>
   <sys:String x:Key="LibraryScanning">Scanning…</sys:String>
+  <sys:String x:Key="CardMotionPhotoLabel">Motion Photo</sys:String>
+  <sys:String x:Key="GroupSelectTip">Select all photos in this group</sys:String>
+  <sys:String x:Key="ScanErrorTitle">Cannot read the album folder</sys:String>
+  <sys:String x:Key="ScanErrorNotFoundFormat">The folder does not exist or was removed: {0}</sys:String>
+  <sys:String x:Key="ScanErrorAccessDeniedFormat">No permission to read the folder: {0}</sys:String>
+  <sys:String x:Key="ScanErrorFailedFormat">Scan failed: {0}</sys:String>
+  <sys:String x:Key="ScanSkippedInaccessibleFormat">Skipped {0} subfolder(s) without read permission</sys:String>
   <sys:String x:Key="DialogCloseTip">Close (Esc)</sys:String>
   <sys:String x:Key="CompareLoading">Decoding the comparison…</sys:String>
   <sys:String x:Key="CompareBeforeSizeLabel">Original (with paired video)</sys:String>
@@ -452,5 +467,38 @@
   <sys:String x:Key="SettingsAppearanceTitle">Appearance &amp; language</sys:String>
   <sys:String x:Key="SettingsBehaviorTitle">Tasks &amp; performance</sys:String>
   <sys:String x:Key="ReportGoLibraryBtn">Go to Library</sys:String>
+
+  <!-- Task report: outcome reasons and notes (Core reason codes) -->
+  <sys:String x:Key="ReportKpiTotalCanceledSub">Processed / planned</sys:String>
+  <sys:String x:Key="ReportDetailToggle">Details</sys:String>
+  <sys:String x:Key="ReportCsvTechnicalDetail">Technical details</sys:String>
+  <sys:String x:Key="ReportCleanupFailedDesc">Output saved, but the source file could not be handled as selected</sys:String>
+  <sys:String x:Key="OutcomeReasonNotMotionPhoto">Not a motion photo (no embedded video found)</sys:String>
+  <sys:String x:Key="OutcomeReasonNothingToStrip">No embedded video and no format conversion needed</sys:String>
+  <sys:String x:Key="OutcomeReasonGainMapPreserved">Has an HDR gain map and no embedded video; kept as is to preserve HDR</sys:String>
+  <sys:String x:Key="OutcomeReasonPairIdMatchedFormat">ContentIdentifier matches: {0}</sys:String>
+  <sys:String x:Key="OutcomeReasonPairIdMismatchFormat">ContentIdentifier mismatch: photo {0}, video {1}</sys:String>
+  <sys:String x:Key="OutcomeReasonPairIdPhotoOnly">Only the photo has a ContentIdentifier; unlikely to be the same Live Photo</sys:String>
+  <sys:String x:Key="OutcomeReasonPairIdVideoOnly">Only the video has a ContentIdentifier; unlikely to be the same Live Photo</sys:String>
+  <sys:String x:Key="OutcomeReasonPairTimeCloseFormat">Capture times differ by {0:F1} s</sys:String>
+  <sys:String x:Key="OutcomeReasonPairTimeTooFarFormat">Capture times differ by {0:F0} s, over the {1:F0} s limit</sys:String>
+  <sys:String x:Key="OutcomeReasonPairTimePhotoOnly">Only the photo has a capture time; unlikely to be the same Live Photo</sys:String>
+  <sys:String x:Key="OutcomeReasonPairTimeVideoOnly">Only the video has a capture time; unlikely to be the same Live Photo</sys:String>
+  <sys:String x:Key="OutcomeReasonPairDurationFormat">Video length {0:F1} s</sys:String>
+  <sys:String x:Key="OutcomeReasonPairVideoTooLongFormat">Video is {0:F1} s long, over {1:F0} s; not a Live Photo video</sys:String>
+  <sys:String x:Key="OutcomeReasonPairNameOnly">No metadata to verify; matched by file name</sys:String>
+  <sys:String x:Key="OutcomeReasonPairManual">Pair confirmed manually</sys:String>
+  <sys:String x:Key="OutcomeReasonSourceMissingFormat">Source file is missing or empty: {0}</sys:String>
+  <sys:String x:Key="OutcomeReasonVideoConversionFailed">Video conversion failed</sys:String>
+  <sys:String x:Key="OutcomeReasonHdrEncoderUnavailable">The source video is HDR, but FFmpeg lacks the 10-bit HEVC encoder (libx265); not converted to avoid quality loss</sys:String>
+  <sys:String x:Key="OutcomeReasonVerificationFailed">Output verification failed; nothing was written</sys:String>
+  <sys:String x:Key="OutcomeReasonUnexpected">Processing failed; expand details for the cause</sys:String>
+  <sys:String x:Key="OutcomeNoteUltraHdrWritten">Ultra HDR</sys:String>
+  <sys:String x:Key="OutcomeNoteHdrGainMapMissing">No HDR gain map</sys:String>
+  <sys:String x:Key="OutcomeNoteHdrToneMapNotSupported">HDR format not supported yet · SDR</sys:String>
+  <sys:String x:Key="OutcomeNoteHdrDecoderUnavailable">heif-dec missing · SDR</sys:String>
+  <sys:String x:Key="OutcomeNoteHdrMetadataMissing">HDR metadata insufficient · SDR</sys:String>
+  <sys:String x:Key="OutcomeNoteHdrConversionFailed">HDR conversion failed · SDR</sys:String>
+  <sys:String x:Key="OutcomeNoteKeptOriginalFormat">Kept original format (HEIC was larger)</sys:String>
 
 </ResourceDictionary>

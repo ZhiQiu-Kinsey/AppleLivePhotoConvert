@@ -2,6 +2,12 @@
 
 分支：`…-phase5`。本文件是设计要点与已知问题清单，开工前由主控细化为工作包。
 
+## 产品定位（用户已确定）
+
+- 保持**实况照片专精**：README 与界面文案定位为"实况照片工作台"——浏览、互转、瘦身，并保留 HDR 画质；不往通用相册工具方向扩展。
+- **不改名**：工程名、可执行文件、设置与缓存目录保持 `LivePhotoConvert`；改名以后单独评估。
+- 平台：正式支持 Windows；Linux/macOS 的现状与缺口（回收站、依赖包、Apple Silicon、签名）写进 README 的平台说明，暂不实现。
+
 ## 内容
 
 - **快捷键**（`KeyBindings`）：Ctrl+A 全选、Esc 取消选择/关闭弹窗、Ctrl+O 选择相册、F5 重新扫描、Enter 开始当前动作、Space 预览（QuickLook）、方向键在 QuickLook 中切换。工具栏上的快捷键提示与实际绑定保持一致。
@@ -22,3 +28,13 @@
 - 合成时配对校验阶段跳过的项一开始就计入已完成，前几秒吞吐偏高。
 - Core 返回的跳过/失败原因是中文字面量（如"不是动态照片"），英文界面原样显示：Core 改为返回原因码 + 参数（`OutcomeReason` 枚举），由桌面端本地化；`TaskReportViewModel` 整批失败原因在创建时固化，改为显示时本地化。
 - 截图审查：英文标题栏副标题被 `MaxWidth=160` 截断；竖图卡片文件名被"Pair Locked"徽章挤压；关于页深色副标题对比度偏低；QuickLook 无缩略图时弹窗尺寸随大图到达变化导致导航按钮跳动。
+
+## 合流后待处理（WP5.2 范围外清单）
+
+- 写死颜色：`Controls/CurtainCompareControl`（阶段 4 已重写，合流后复查）、`Controls/PhotoCardControl.axaml` 第 40/44/60 行。
+- 小于 11px：`PhotoCardControl.axaml` 多处 10px；`Features/Tools/ToolsView.axaml` 的 status-pill 文字。
+- 对比度：`Border.status-pill.success/danger TextBlock` 改用 TextBrush；检查器 `TextBlock.danger-option` 改用 `DangerTextBrush`；卡片时间不一致徽章改用 `WarningFillBrush`；QuickLook 与瘦身对比弹窗中用 Success/Accent 色的正文改用对应 TextBrush。
+- 悬停修复规则补上 `capsule-btn`、`capsule-icon-btn`、`action-tile`、`engine-path-btn`、`engine-install-btn`、`engine-secondary-btn`。
+- `ViewStyleRulesTests` 的豁免名单（Controls/、Features/Library/、Features/Tools/）清理后移除。
+- 合入阶段 4 后在 `ShellViewModel.SyncToolStatuses` 接上"需要注意"（`Tools.*.HasWarning`），并订阅工具卡片的 PropertyChanged。
+- 窄窗口下检查器占位偏大：可折叠或按宽度自动收起。

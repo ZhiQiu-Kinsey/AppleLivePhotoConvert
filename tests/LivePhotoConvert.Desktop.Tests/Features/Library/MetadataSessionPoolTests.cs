@@ -107,5 +107,7 @@ public class MetadataSessionPoolTests
         public IImageConverter CreateImageConverter(ToolPaths tools) => _inner.CreateImageConverter(tools);
 
         public IVideoConverter CreateVideoConverter(ToolPaths tools) => throw new NotSupportedException();
+
+        public IAppleGainMapDecoder? CreateGainMapDecoder(ToolPaths tools) => null;
     }
 }

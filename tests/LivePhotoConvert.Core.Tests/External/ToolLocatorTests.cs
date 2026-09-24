@@ -60,4 +60,25 @@ public class ToolLocatorTests
             Directory.Delete(installDirectory, recursive: true);
         }
     }
+
+    [Fact]
+    public void ToolLocator_Find_DiscoversCompanionInSiblingInstallDirectory()
+    {
+        // heif-dec 随 heif-enc 的发行包一起装在 tools/heif-enc/ 下，按子目录名查找
+        var fileName = $"dummy_tool_{Guid.NewGuid():N}.exe";
+        var sibling = $"dummy_pkg_{Guid.NewGuid():N}";
+        var installDirectory = Path.Combine(AppContext.BaseDirectory, "tools", sibling);
+        Directory.CreateDirectory(installDirectory);
+        var path = Path.Combine(installDirectory, fileName);
+        File.WriteAllText(path, "test");
+        try
+        {
+            Assert.Null(ToolLocator.Find(fileName));
+            Assert.Equal(Path.GetFullPath(path), ToolLocator.Find(fileName, null, sibling));
+        }
+        finally
+        {
+            Directory.Delete(installDirectory, recursive: true);
+        }
+    }
 }

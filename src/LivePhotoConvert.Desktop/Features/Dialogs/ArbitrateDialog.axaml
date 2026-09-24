@@ -28,13 +28,13 @@
           <StackPanel Spacing="8">
             <Grid ColumnDefinitions="*,Auto">
               <TextBlock Grid.Column="0" Text="{DynamicResource ArbitratePhotoTitle}" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
-              <TextBlock Grid.Column="1" Text="{CompiledBinding PhotoTimeText}" FontSize="10" Foreground="{DynamicResource AccentBrush}" FontFamily="Consolas" />
+              <TextBlock Grid.Column="1" Text="{CompiledBinding PhotoTimeText}" FontSize="11" Foreground="{DynamicResource AccentTextBrush}" FontFamily="Consolas" />
             </Grid>
             <Border Background="{DynamicResource MediaCanvasBrush}" CornerRadius="12" Height="140">
               <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="4">
                 <ic:SymbolIcon Symbol="Camera" FontSize="28" Foreground="{DynamicResource MediaAccentBrush}" />
                 <TextBlock Text="{DynamicResource ArbitratePhotoDesc}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource OnMediaBrush}" HorizontalAlignment="Center" />
-                <TextBlock Text="{CompiledBinding TargetCard.FileName}" TextTrimming="CharacterEllipsis" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" />
+                <TextBlock Text="{CompiledBinding TargetCard.FileName}" TextTrimming="CharacterEllipsis" FontSize="11" Foreground="{DynamicResource OnMediaMutedBrush}" HorizontalAlignment="Center" />
               </StackPanel>
             </Border>
           </StackPanel>
@@ -45,13 +45,13 @@
           <StackPanel Spacing="8">
             <Grid ColumnDefinitions="*,Auto">
               <TextBlock Grid.Column="0" Text="{DynamicResource ArbitrateVideoTitle}" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
-              <TextBlock Grid.Column="1" Text="{CompiledBinding VideoTimeText}" FontSize="10" Foreground="{DynamicResource WarningBrush}" FontFamily="Consolas" />
+              <TextBlock Grid.Column="1" Text="{CompiledBinding VideoTimeText}" FontSize="11" Foreground="{DynamicResource WarningTextBrush}" FontFamily="Consolas" />
             </Grid>
             <Border Background="{DynamicResource MediaCanvasBrush}" CornerRadius="12" Height="140">
               <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="4">
                 <ic:SymbolIcon Symbol="Video" FontSize="28" Foreground="{DynamicResource MediaWarningBrush}" />
                 <TextBlock Text="{DynamicResource ArbitrateVideoDesc}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource OnMediaBrush}" HorizontalAlignment="Center" />
-                <TextBlock Text="{CompiledBinding TargetCard.VideoSizeText}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" />
+                <TextBlock Text="{CompiledBinding TargetCard.VideoSizeText}" FontSize="11" Foreground="{DynamicResource OnMediaMutedBrush}" HorizontalAlignment="Center" />
               </StackPanel>
             </Border>
           </StackPanel>
@@ -71,7 +71,7 @@
         <Button Grid.Column="0" Classes="nav-btn" Command="{CompiledBinding RejectSplitCommand}" HorizontalAlignment="Left">
           <TextBlock Text="{DynamicResource ArbitrateReject}" FontSize="11" FontWeight="SemiBold" />
         </Button>
-        <Button Grid.Column="1" Classes="primary-btn" Background="{DynamicResource SuccessBrush}" Command="{CompiledBinding ConfirmWhitelistCommand}">
+        <Button Grid.Column="1" Classes="primary-btn" Background="{DynamicResource SuccessFillBrush}" Command="{CompiledBinding ConfirmWhitelistCommand}">
           <StackPanel Orientation="Horizontal" Spacing="6">
             <ic:SymbolIcon Symbol="Checkmark" FontSize="12" Foreground="{DynamicResource OnAccentBrush}" />
             <TextBlock Text="{DynamicResource ArbitrateConfirm}" FontSize="11" FontWeight="Bold" />

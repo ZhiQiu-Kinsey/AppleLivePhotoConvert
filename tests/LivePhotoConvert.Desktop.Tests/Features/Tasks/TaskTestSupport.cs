@@ -56,6 +56,17 @@ internal sealed class FakeEngines : IConversionEngines
         VideoConvertersCreated++;
         return Videos;
     }
+
+    /// <summary>合成时交给引擎的增益图解码器；默认没有，与缺 heif-dec 的环境一致。</summary>
+    public IAppleGainMapDecoder? GainMapDecoder { get; set; }
+
+    public int GainMapDecodersCreated { get; private set; }
+
+    public IAppleGainMapDecoder? CreateGainMapDecoder(ToolPaths tools)
+    {
+        GainMapDecodersCreated++;
+        return GainMapDecoder;
+    }
 }
 
 /// <summary>桌面测试宿主 + 同步投递进度的任务中心 + 可控时钟。</summary>

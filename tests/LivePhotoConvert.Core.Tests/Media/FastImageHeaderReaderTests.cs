@@ -1,5 +1,7 @@
 using System.Buffers.Binary;
+using LivePhotoConvert.Core.External;
 using LivePhotoConvert.Core.Media;
+using LivePhotoConvert.Core.Metadata;
 
 namespace LivePhotoConvert.Core.Tests.Media;
 
@@ -177,5 +179,248 @@ public class FastImageHeaderReaderTests
 
         bool successFile = FastImageHeaderReader.TryReadDimensions("non_existent_file.heic", out _);
         Assert.False(successFile);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ReadHeader_JpegExif_ParsesOrientationAndCaptureTime(bool bigEndian)
+    {
+        var jpeg = SyntheticImages.Jpeg(4032, 3024, orientation: 6, dateTimeOriginal: "2024:05:06 07:08:09", offsetTimeOriginal: "+08:00", bigEndian: bigEndian);
+
+        Assert.True(FastImageHeaderReader.TryReadHeader(new MemoryStream(jpeg), ".jpg", out var header));
+
+        Assert.Equal(new ImageHeader(3024, 4032, 6, new DateTime(2024, 5, 6, 7, 8, 9), TimeSpan.FromHours(8)), header);
+        Assert.True(header.IsTransposed);
+    }
+
+    [Theory]
+    [InlineData(5)]
+    [InlineData(7)]
+    [InlineData(8)]
+    public void ReadHeader_TransposingOrientations_SwapDimensions(int orientation)
+    {
+        Assert.True(FastImageHeaderReader.TryReadHeader(new MemoryStream(SyntheticImages.Jpeg(400, 300, orientation)), ".jpg", out var header));
+
+        Assert.Equal((300, 400, orientation), (header.Width, header.Height, header.Orientation));
+    }
+
+    [Fact]
+    public void ReadHeader_Orientation3_KeepsDimensions()
+    {
+        Assert.True(FastImageHeaderReader.TryReadHeader(new MemoryStream(SyntheticImages.Jpeg(400, 300, 3)), ".jpg", out var header));
+
+        Assert.Equal((400, 300, 3), (header.Width, header.Height, header.Orientation));
+    }
+
+    [Fact]
+    public void ReadHeader_CaptureTimeBeyondInitialWindow_ReadsRestOfSegment()
+    {
+        // 字符串值被 MakerNote 之类的大块数据推到 16KB 窗口之外
+        var jpeg = SyntheticImages.Jpeg(640, 480, dateTimeOriginal: "2023:01:02 03:04:05", valuePadding: 30_000);
+
+        Assert.True(FastImageHeaderReader.TryReadHeader(new MemoryStream(jpeg), ".jpg", out var header));
+
+        Assert.Equal(new DateTime(2023, 1, 2, 3, 4, 5), header.DateTimeOriginal);
+        Assert.Null(header.OffsetTimeOriginal);
+    }
+
+    [Fact]
+    public void ReadHeader_XmpSegmentBeforeExif_StillFindsExif()
+    {
+        var jpeg = SyntheticImages.Jpeg(640, 480, orientation: 8, dateTimeOriginal: "2023:01:02 03:04:05", xmpFirst: true);
+
+        Assert.True(FastImageHeaderReader.TryReadHeader(new MemoryStream(jpeg), ".jpg", out var header));
+
+        Assert.Equal((480, 640, 8), (header.Width, header.Height, header.Orientation));
+        Assert.NotNull(header.DateTimeOriginal);
+    }
+
+    [Fact]
+    public void ReadHeader_BlankOrMalformedCaptureTime_IsNull()
+    {
+        var blank = SyntheticImages.Jpeg(640, 480, dateTimeOriginal: "    :  :     :  :  ");
+        var invalid = SyntheticImages.Jpeg(640, 480, dateTimeOriginal: "2023:13:40 25:00:00", offsetTimeOriginal: "garbage");
+
+        Assert.True(FastImageHeaderReader.TryReadHeader(new MemoryStream(blank), ".jpg", out var blankHeader));
+        Assert.True(FastImageHeaderReader.TryReadHeader(new MemoryStream(invalid), ".jpg", out var invalidHeader));
+
+        Assert.Null(blankHeader.DateTimeOriginal);
+        Assert.Null(invalidHeader.DateTimeOriginal);
+        Assert.Null(invalidHeader.OffsetTimeOriginal);
+    }
+
+    [Fact]
+    public void ReadHeader_TruncatedExif_DoesNotThrow()
+    {
+        var jpeg = SyntheticImages.Jpeg(640, 480, orientation: 6, dateTimeOriginal: "2023:01:02 03:04:05");
+        for (var length = 0; length < jpeg.Length; length++)
+        {
+            FastImageHeaderReader.TryReadHeader(new MemoryStream(jpeg[..length]), ".jpg", out _);
+        }
+
+        // 把 IFD 偏移改到段外：只丢失 EXIF，尺寸仍然可读
+        var corrupted = (byte[])jpeg.Clone();
+        corrupted[4 + 2 + 6 + 4] = 0xF0;
+        Assert.True(FastImageHeaderReader.TryReadHeader(new MemoryStream(corrupted), ".jpg", out var header));
+        Assert.Equal((640, 480, 1), (header.Width, header.Height, header.Orientation));
+    }
+
+    [Fact]
+    public void ReadHeader_HeifExifItem_ParsesCaptureTimeAndRotation()
+    {
+        // irot 3 = 逆时针 270°，等价于 EXIF 方向 6
+        var heif = SyntheticImages.Heif(4032, 3024, rotation: 3, dateTimeOriginal: "2024:05:06 07:08:09", offsetTimeOriginal: "-05:00");
+
+        Assert.True(FastImageHeaderReader.TryReadHeader(new MemoryStream(heif), ".heic", out var header));
+
+        Assert.Equal(new ImageHeader(3024, 4032, 6, new DateTime(2024, 5, 6, 7, 8, 9), TimeSpan.FromHours(-5)), header);
+    }
+
+    [Theory]
+    [InlineData(null, 1)]
+    [InlineData(1, 8)]
+    [InlineData(2, 3)]
+    public void ReadHeader_HeifRotation_MapsToExifOrientation(int? rotation, int expected)
+    {
+        Assert.True(FastImageHeaderReader.TryReadHeader(new MemoryStream(SyntheticImages.Heif(400, 300, rotation)), ".heic", out var header));
+
+        Assert.Equal(expected, header.Orientation);
+        Assert.Equal(expected == 8 ? (300, 400) : (400, 300), (header.Width, header.Height));
+        Assert.Null(header.DateTimeOriginal);
+    }
+
+    [Fact]
+    public void ReadHeader_Heif_UsesPrimaryItemPropertiesRatherThanLargestExtent()
+    {
+        var heif = SyntheticImages.Heif(400, 300, thumbnailWidth: 5000, thumbnailHeight: 5000);
+
+        Assert.True(FastImageHeaderReader.TryReadHeader(new MemoryStream(heif), ".heic", out var header));
+        Assert.Equal((400, 300), (header.Width, header.Height));
+
+        // 没有 ipma 时退化为面积最大的 ispe
+        Assert.True(FastImageHeaderReader.TryReadHeader(new MemoryStream(SyntheticImages.Heif(400, 300, thumbnailWidth: 5000, thumbnailHeight: 5000, withIpma: false)), ".heic", out var fallback));
+        Assert.Equal((5000, 5000), (fallback.Width, fallback.Height));
+    }
+
+    [Fact]
+    public void ReadHeader_UnknownExtension_SniffsMagic()
+    {
+        Assert.True(FastImageHeaderReader.TryReadHeader(new MemoryStream(SyntheticImages.Heif(400, 300)), ".bin", out var heif));
+        Assert.True(FastImageHeaderReader.TryReadHeader(new MemoryStream(SyntheticImages.Jpeg(640, 480)), "", out var jpeg));
+
+        Assert.Equal(400, heif.Width);
+        Assert.Equal(640, jpeg.Width);
+    }
+
+    [Fact]
+    public void ReadHeader_TruncatedHeif_DoesNotThrow()
+    {
+        var heif = SyntheticImages.Heif(4032, 3024, rotation: 1, dateTimeOriginal: "2024:05:06 07:08:09");
+        for (var length = 0; length < heif.Length; length++)
+        {
+            FastImageHeaderReader.TryReadHeader(new MemoryStream(heif[..length]), ".heic", out _);
+        }
+    }
+
+    [Fact]
+    public void ReadDimensions_WrapsHeader()
+    {
+        using var temp = new TempDirectory();
+        var path = temp.CreateFile("IMG_0001.JPG", SyntheticImages.Jpeg(4000, 3000, orientation: 6));
+
+        Assert.True(FastImageHeaderReader.TryReadDimensions(path, out var dimensions));
+        Assert.True(FastImageHeaderReader.TryReadHeader(path, out var header));
+
+        Assert.Equal(new ImageDimensions(3000, 4000), dimensions);
+        Assert.Equal(dimensions, header.Dimensions);
+    }
+
+    [Fact]
+    public async Task ReadHeader_RealJpegAndHeic_MatchesExifTool()
+    {
+        var exiftool = ExternalTools.RequireExifTool();
+        var heifEnc = ExternalTools.RequireHeifEnc();
+        var ffmpeg = ExternalTools.RequireFfmpeg();
+        var token = TestContext.Current.CancellationToken;
+        using var temp = new TempDirectory();
+        var jpeg = temp.Combine("sample.jpg");
+        var heic = temp.Combine("sample.heic");
+
+        var generated = await ProcessRunner.RunAsync(ffmpeg, ["-nostdin", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=size=640x480", "-frames:v", "1", jpeg], token);
+        Assert.True(generated.Success, generated.StandardError);
+        var tagged = await ProcessRunner.RunAsync(exiftool, ["-q", "-overwrite_original", "-DateTimeOriginal=2024:05:06 07:08:09", "-OffsetTimeOriginal=+08:00", "-Orientation#=6", jpeg], token);
+        Assert.True(tagged.Success, tagged.StandardError);
+        var encoded = await ProcessRunner.RunAsync(heifEnc, ["-q", "60", jpeg, "-o", heic], token);
+        Assert.True(encoded.Success, encoded.StandardError);
+
+        var expected = new ImageHeader(480, 640, 6, new DateTime(2024, 5, 6, 7, 8, 9), TimeSpan.FromHours(8));
+        Assert.True(FastImageHeaderReader.TryReadHeader(jpeg, out var jpegHeader));
+        Assert.Equal(expected, jpegHeader);
+        Assert.True(FastImageHeaderReader.TryReadHeader(heic, out var heicHeader));
+        Assert.Equal(expected, heicHeader);
+    }
+
+    [Fact]
+    public void ReadHeader_AppleMakerNote_ReadsContentIdentifier()
+    {
+        var jpeg = SyntheticImages.Jpeg(64, 48, dateTimeOriginal: "2024:05:06 07:08:09", contentIdentifier: "5B1C0A9E-1111-2222-3333-444455556666");
+        var heif = SyntheticImages.Heif(64, 48, contentIdentifier: "ID-HEIF");
+
+        Assert.True(FastImageHeaderReader.TryReadHeader(new MemoryStream(jpeg), ".jpg", out var jpegHeader));
+        Assert.True(FastImageHeaderReader.TryReadHeader(new MemoryStream(heif), ".heic", out var heifHeader));
+
+        Assert.Equal("5B1C0A9E-1111-2222-3333-444455556666", jpegHeader.ContentIdentifier);
+        Assert.Equal("ID-HEIF", heifHeader.ContentIdentifier);
+    }
+
+    [Fact]
+    public void ReadHeader_ProductMakerNoteTemplate_RoundTrips()
+    {
+        // 合成流程写入配对标识用的模板：TIFF 位于 SOI + APP1 头 + "Exif\0\0" 之后
+        var template = AppleMakerNote.BuildTemplateJpeg("TEMPLATE-ID");
+        byte[] tiff = template[12..^2];
+        var jpeg = SyntheticImages.Jpeg(64, 48);
+        var app1Length = BinaryPrimitives.ReadUInt16BigEndian(jpeg.AsSpan(4));
+        byte[] payload = [.. "Exif\0\0"u8, .. tiff];
+        var length = new byte[2];
+        BinaryPrimitives.WriteUInt16BigEndian(length, (ushort)(payload.Length + 2));
+        byte[] patched = [0xFF, 0xD8, 0xFF, 0xE1, .. length, .. payload, .. jpeg.AsSpan(4 + app1Length)];
+
+        Assert.True(FastImageHeaderReader.TryReadHeader(new MemoryStream(patched), ".jpg", out var header));
+        Assert.Equal("TEMPLATE-ID", header.ContentIdentifier);
+    }
+
+    [Fact]
+    public void CaptureTime_FollowsExifToolPrecedence()
+    {
+        Assert.True(FastImageHeaderReader.TryReadHeader(new MemoryStream(SyntheticImages.Jpeg(64, 48, dateTimeDigitized: "2020:01:02 03:04:05")), ".jpg", out var digitizedOnly));
+        Assert.True(FastImageHeaderReader.TryReadHeader(
+            new MemoryStream(SyntheticImages.Jpeg(64, 48, dateTimeOriginal: "2021:01:02 03:04:05+09:00", offsetTimeOriginal: "+08:00", dateTimeDigitized: "2020:01:02 03:04:05")),
+            ".jpg", out var both));
+
+        Assert.Equal(new CaptureTime(new DateTime(2020, 1, 2, 3, 4, 5), null), digitizedOnly.CaptureTime);
+        // 时间字符串自带偏移时优先于 OffsetTimeOriginal
+        Assert.Equal(new CaptureTime(new DateTime(2021, 1, 2, 3, 4, 5), TimeSpan.FromHours(9)), both.CaptureTime);
+    }
+
+    [Fact]
+    public async Task ReadHeader_ContentIdentifierWrittenByExifTool_IsRead()
+    {
+        var exiftool = ExternalTools.RequireExifTool();
+        var ffmpeg = ExternalTools.RequireFfmpeg();
+        var token = TestContext.Current.CancellationToken;
+        using var temp = new TempDirectory();
+        var jpeg = temp.Combine("sample.jpg");
+        var generated = await ProcessRunner.RunAsync(ffmpeg, ["-nostdin", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=size=64x48", "-frames:v", "1", jpeg], token);
+        Assert.True(generated.Success, generated.StandardError);
+
+        await using var metadata = ExifToolMetadataService.Create(exiftool, maxSessions: 1);
+        await metadata.WriteApplePhotoIdentifierAsync(jpeg, "0A1B2C3D-AAAA-BBBB-CCCC-DDDDEEEEFFFF", token);
+        var expected = (await metadata.ReadAsync([jpeg], cancellationToken: token))[jpeg].ContentIdentifier;
+
+        Assert.True(FastImageHeaderReader.TryReadHeader(jpeg, out var header));
+        Assert.Equal("0A1B2C3D-AAAA-BBBB-CCCC-DDDDEEEEFFFF", expected);
+        Assert.Equal(expected, header.ContentIdentifier);
     }
 }

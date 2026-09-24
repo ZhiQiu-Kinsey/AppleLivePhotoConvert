@@ -117,10 +117,10 @@
                   <StackPanel Grid.Column="1" Spacing="2">
                     <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                      <TextBlock Text="{Binding TimeText}" FontSize="10" FontFamily="Consolas" Foreground="{DynamicResource TextTertiaryBrush}" />
-                      <TextBlock Text="{Binding StatusText}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" />
+                      <TextBlock Text="{Binding TimeText}" FontSize="11" FontFamily="Consolas" Foreground="{DynamicResource TextTertiaryBrush}" />
+                      <TextBlock Text="{Binding StatusText}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" />
                     </StackPanel>
-                    <TextBlock Text="{Binding SummaryText}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding SummaryText}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" />
                   </StackPanel>
                 </Grid>
               </DataTemplate>
