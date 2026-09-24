@@ -29,12 +29,14 @@ public class InspectorViewSmokeTests
             s.Action = action == ConversionAction.Extract ? ConversionAction.ToAndroid : ConversionAction.Extract;
             s.StripConvertToHeic = stripToHeic;
             s.InPlaceStrip = inPlace;
+            // 输出分组默认收起，这里展开以检查目录按钮随动作切换
+            s.Inspector.IsOutputExpanded = true;
         });
         var inspector = session.Shell.Inspector;
         var view = session.Descendants<InspectorView>().Single();
 
         var tile = view.GetVisualDescendants().OfType<Button>()
-            .Single(b => ReferenceEquals(b.Command, inspector.SetActionCommand) && (string?)b.CommandParameter == action.ToString());
+            .Single(b => b.Classes.Contains("action-tile") && ReferenceEquals(b.Command, inspector.SetActionCommand) && (string?)b.CommandParameter == action.ToString());
         session.Click(tile);
 
         Assert.Equal(action, inspector.Action);

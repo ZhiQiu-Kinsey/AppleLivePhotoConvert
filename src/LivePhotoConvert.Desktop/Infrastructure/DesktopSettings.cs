@@ -42,6 +42,9 @@ public sealed class DesktopSettings
     public string StripOutputDirectory { get; set; } = string.Empty;
     public bool StripConvertToHeic { get; set; } = true;
 
+    /// <summary>文件中写成 null 时同样回退默认值，调用方不必判空。</summary>
+    public InspectorPreferences Inspector { get; set => field = value ?? new(); } = new();
+
     // 图库：唯一的相册目录，所有动作共用
     public string LastScanDirectory { get; set; } = string.Empty;
     /// <summary>文件中写成 null 时同样回退默认值，调用方不必判空。</summary>
@@ -85,6 +88,16 @@ public sealed class GalleryPreferences
 
     [JsonIgnore]
     public long ThumbnailDiskCacheBytes => Math.Clamp(ThumbnailDiskCacheMb, MinThumbnailDiskCacheMb, MaxThumbnailDiskCacheMb) * 1024L * 1024;
+}
+
+/// <summary>检查器布局；缺少字段时取默认值（展开、输出分组收起），无需迁移。</summary>
+public sealed class InspectorPreferences
+{
+    /// <summary>最近一次手动收起或展开的选择；窗口过窄时的自动收起不写入这里。</summary>
+    public bool IsCollapsed { get; set; }
+
+    /// <summary>"输出位置"分组是否展开。</summary>
+    public bool IsOutputExpanded { get; set; }
 }
 
 /// <summary>窗口位置为物理像素，宽高为与缩放无关的逻辑单位（与 Avalonia 的 Position / Width 一致）。</summary>

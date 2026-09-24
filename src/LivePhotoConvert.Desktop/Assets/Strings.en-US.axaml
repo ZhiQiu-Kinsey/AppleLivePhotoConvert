@@ -11,6 +11,7 @@
   <sys:String x:Key="ShellToolReady">Ready</sys:String>
   <sys:String x:Key="ShellToolAttention">Available, but needs attention. See Engines.</sys:String>
   <sys:String x:Key="ShellToolMissing">Not found; related features are unavailable</sys:String>
+  <sys:String x:Key="ShellToolProbing">Checking</sys:String>
 
   <!-- Funnel & Direction -->
   <sys:String x:Key="SelectedSummaryFormat">{0} Live Photos · {1}</sys:String>
@@ -295,6 +296,7 @@
   <sys:String x:Key="ReportEmptyDesc">Reports of tasks started from the Library stay here until the app exits.</sys:String>
   <sys:String x:Key="ReportKpiTotal">Total Processed</sys:String>
   <sys:String x:Key="ReportKpiTotalSub">Items in this task</sys:String>
+  <sys:String x:Key="ReportKpiTotalCanceledSubFormat">Processed {0} · {1} left</sys:String>
   <sys:String x:Key="ReportKpiSuccess">Succeeded</sys:String>
   <sys:String x:Key="ReportKpiSuccessRate">Success Rate</sys:String>
   <sys:String x:Key="ReportKpiProblems">Issues</sys:String>
@@ -416,6 +418,8 @@
   <!-- 图库工作台与检查器 -->
   <sys:String x:Key="NavLibrary">Library</sys:String>
   <sys:String x:Key="InspectorTitle">Action &amp; options</sys:String>
+  <sys:String x:Key="InspectorCollapseTip">Collapse panel</sys:String>
+  <sys:String x:Key="InspectorExpandTip">Expand panel</sys:String>
   <sys:String x:Key="ActionToAndroid">To Android</sys:String>
   <sys:String x:Key="ActionToApple">To Apple</sys:String>
   <sys:String x:Key="ActionExtract">Extract</sys:String>
@@ -427,7 +431,7 @@
   <sys:String x:Key="ApplicableFormat">{0} applicable · {1}</sys:String>
   <sys:String x:Key="ApplicableScopeSelectedFormat">Counted from {0} selected items</sys:String>
   <sys:String x:Key="ApplicableScopeAll">Nothing selected, counting all ready photos</sys:String>
-  <sys:String x:Key="InspectorOutputTitle">Output</sys:String>
+  <sys:String x:Key="InspectorOutputTitle">Output location</sys:String>
   <sys:String x:Key="KeepSubfoldersDesc">Recreate the album subfolders in the output to avoid name clashes.</sys:String>
   <sys:String x:Key="StripConvertHeicTitle">Also convert to HEIC</sys:String>
   <sys:String x:Key="StripConvertHeicDesc">Saves more space; photos with an HDR gain map keep their format.</sys:String>
@@ -481,7 +485,6 @@
   <sys:String x:Key="ClearThumbnailCacheBtn">Clear cache</sys:String>
 
   <!-- Task report: outcome reasons and notes (Core reason codes) -->
-  <sys:String x:Key="ReportKpiTotalCanceledSub">Processed / planned</sys:String>
   <sys:String x:Key="ReportDetailToggle">Details</sys:String>
   <sys:String x:Key="ReportCsvTechnicalDetail">Technical details</sys:String>
   <sys:String x:Key="ReportCleanupFailedDesc">Output saved, but the source file could not be handled as selected</sys:String>
@@ -501,6 +504,7 @@
   <sys:String x:Key="OutcomeReasonPairNameOnly">No metadata to verify; matched by file name</sys:String>
   <sys:String x:Key="OutcomeReasonPairManual">Pair confirmed manually</sys:String>
   <sys:String x:Key="OutcomeReasonSourceMissingFormat">Source file is missing or empty: {0}</sys:String>
+  <sys:String x:Key="OutcomeReasonSourceUnreadableFormat">Cannot read the source file (it may be damaged or access is denied): {0}</sys:String>
   <sys:String x:Key="OutcomeReasonVideoConversionFailed">Video conversion failed</sys:String>
   <sys:String x:Key="OutcomeReasonHdrEncoderUnavailable">The source video is HDR, but FFmpeg lacks the 10-bit HEVC encoder (libx265); not converted to avoid quality loss</sys:String>
   <sys:String x:Key="OutcomeReasonVerificationFailed">Output verification failed; nothing was written</sys:String>

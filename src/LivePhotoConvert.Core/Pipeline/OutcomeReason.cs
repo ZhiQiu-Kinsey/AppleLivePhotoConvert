@@ -56,6 +56,9 @@ public enum OutcomeReason
     /// <summary>源文件不存在或为空。参数：文件名。</summary>
     SourceMissingOrEmpty,
 
+    /// <summary>源文件无法读取或解析（权限不足、文件损坏等）。参数：文件名。</summary>
+    SourceUnreadable,
+
     /// <summary>视频流复制与重新编码都失败。</summary>
     VideoConversionFailed,
 

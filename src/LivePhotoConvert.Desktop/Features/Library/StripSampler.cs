@@ -41,7 +41,8 @@ public sealed record StripSample(
 public interface IStripSampler
 {
     /// <exception cref="FileNotFoundException">找不到 ExifTool 或 HEIC 编码器</exception>
-    /// <exception cref="InvalidOperationException">样张处理失败</exception>
+    /// <exception cref="OutcomeException">样张分析或处理失败，原因码见 <see cref="OutcomeException.Cause"/></exception>
+    /// <exception cref="InvalidOperationException">样张处理失败且无法归类</exception>
     Task<StripSample> SampleAsync(string photoPath, StripSampleOptions options, CancellationToken cancellationToken);
 }
 
@@ -64,9 +65,10 @@ public sealed class StripSampler(IConversionEngines engines, MetadataSessionPool
         using var lease = sessions.Acquire(options.Tools);
         var stripper = new MotionPhotoStripper(lease.Service, images);
         var candidate = (await stripper.AnalyzeAsync([photoPath], cancellationToken))[0];
-        if (candidate.AnalysisError is { } error)
+        if (candidate.AnalysisCause is { } cause)
         {
-            throw new InvalidOperationException(error);
+            // 原因码让界面按当前语言显示，异常原文只进日志
+            throw new OutcomeException(cause, candidate.AnalysisError ?? cause.Reason.ToString());
         }
 
         var converts = candidate.WillConvert(options.ConvertToHeic);

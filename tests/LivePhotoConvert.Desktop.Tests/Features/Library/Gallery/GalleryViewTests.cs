@@ -64,8 +64,10 @@ public sealed class GalleryViewTests : IDisposable
         var card = library.Layout.DisplayedCards.First(c => c.Key == key);
         var widthBefore = library.Layout.ViewportWidth;
 
-        session.Window.Width -= 260;
+        // 保持在检查器自动收起的阈值之上，只让画廊变窄
+        session.Window.Width -= 180;
         session.Pump();
+        Assert.False(session.Shell.Inspector.IsCollapsed);
         await session.WaitUntilAsync(() => Math.Abs(library.Layout.ViewportWidth - widthBefore) > 100);
         session.Pump();
         session.Pump();

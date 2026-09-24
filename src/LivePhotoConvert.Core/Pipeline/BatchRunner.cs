@@ -26,8 +26,9 @@ public static class BatchRunner
     {
         var stopwatch = Stopwatch.StartNew();
         var outcomes = new ConcurrentQueue<ItemOutcome>(resolvedOutcomes ?? []);
-        var total = items.Count + outcomes.Count;
-        var completed = outcomes.Count;
+        var preresolved = outcomes.Count;
+        var total = items.Count + preresolved;
+        var completed = preresolved;
         var canceled = false;
 
         try
@@ -53,7 +54,7 @@ public static class BatchRunner
                     }
 
                     outcomes.Enqueue(outcome);
-                    progress?.Report(new BatchProgress(Interlocked.Increment(ref completed), total, Path.GetFileName(source)));
+                    progress?.Report(new BatchProgress(Interlocked.Increment(ref completed), total, Path.GetFileName(source), preresolved));
                 });
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

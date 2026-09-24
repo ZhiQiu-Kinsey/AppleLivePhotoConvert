@@ -98,6 +98,63 @@ public partial class ViewStyleRulesTests
         Assert.True(missing.Count == 0, "悬停底色不会生效的按钮类:\n" + string.Join('\n', missing));
     }
 
+    /// <summary>显式豁免：由框架或第三方控件自行添加、源码里看不到的样式类。目前没有。</summary>
+    private static readonly Dictionary<string, string> ExternallyAppliedClasses = new(StringComparer.Ordinal);
+
+    /// <summary>样式选择器里的类名都要有视图或代码使用，删掉控件时一并删掉样式，避免死样式堆积。</summary>
+    [Fact]
+    public void StyleSelectorClasses_AreAllUsedByViewsOrCode()
+    {
+        var declared = new SortedDictionary<string, SortedSet<string>>(StringComparer.Ordinal);
+        var used = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var (file, doc) in CheckedViews())
+        {
+            foreach (var element in doc.Descendants())
+            {
+                if (element.Name.LocalName == "Style" && (string?)element.Attribute("Selector") is { } selector)
+                {
+                    foreach (Match m in SelectorClass().Matches(selector))
+                    {
+                        var name = m.Groups["cls"].Value;
+                        if (!declared.TryGetValue(name, out var files))
+                        {
+                            declared[name] = files = [];
+                        }
+
+                        files.Add(file);
+                    }
+                }
+
+                foreach (var attribute in element.Attributes())
+                {
+                    if (attribute.Name.LocalName == "Classes")
+                    {
+                        used.UnionWith(attribute.Value.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+                    }
+                    else if (attribute.Name.LocalName.StartsWith("Classes.", StringComparison.Ordinal))
+                    {
+                        used.Add(attribute.Name.LocalName["Classes.".Length..]);
+                    }
+                }
+            }
+        }
+
+        foreach (var file in DesktopSources.Files("*.cs"))
+        {
+            foreach (Match m in CodeClass().Matches(File.ReadAllText(file)))
+            {
+                used.Add(m.Groups["cls"].Value);
+            }
+        }
+
+        Assert.Contains("nav-btn", declared.Keys);
+        var unused = declared
+            .Where(kv => !used.Contains(kv.Key) && !ExternallyAppliedClasses.ContainsKey(kv.Key))
+            .Select(kv => $"{kv.Key} ({string.Join(", ", kv.Value)})")
+            .ToList();
+        Assert.True(unused.Count == 0, "样式中没有任何视图或代码使用的类:\n" + string.Join('\n', unused));
+    }
+
     private static IEnumerable<(string File, XDocument Doc)> CheckedViews() =>
         DesktopSources.Files("*.axaml")
             .Where(p => !DesktopSources.IsStringsDictionary(p))
@@ -136,6 +193,14 @@ public partial class ViewStyleRulesTests
 
     private static string SelectorOf(XElement setter) =>
         (string?)setter.Ancestors().FirstOrDefault(a => a.Name.LocalName == "Style")?.Attribute("Selector") ?? string.Empty;
+
+    /// <summary>选择器中的 ".类名"；"#名称"、":伪类" 与 "/template/" 不是类。</summary>
+    [GeneratedRegex(@"\.(?<cls>[A-Za-z][\w-]*)")]
+    private static partial Regex SelectorClass();
+
+    /// <summary>代码里增删或设置样式类：Classes.Add("x")、Classes.Set("x", …)、Classes.Contains("x") 等。</summary>
+    [GeneratedRegex(@"Classes\.\w+\(\s*""(?<cls>[\w-]+)""")]
+    private static partial Regex CodeClass();
 
     [GeneratedRegex(@"^Button\.(?<cls>[\w-]+):pointerover$")]
     private static partial Regex HoverButton();

@@ -44,6 +44,18 @@ public sealed record StripCandidate(string ImagePath, long ImageBytes, EmbeddedV
     /// <summary>分析失败的异常，瘦身时据此归类失败原因。</summary>
     internal Exception? AnalysisException { get; init; }
 
+    /// <summary>
+    /// 分析失败的原因码，供界面按语言显示；分析成功时为 <c>null</c>。
+    /// 分析只读取源文件，找不到文件即源文件已消失，其余未归类的异常都视为源文件无法读取。
+    /// </summary>
+    public OutcomeCause? AnalysisCause => AnalysisError is null ? null : AnalysisException switch
+    {
+        FileNotFoundException and not ToolNotFoundException or DirectoryNotFoundException =>
+            new OutcomeCause(OutcomeReason.SourceMissingOrEmpty, Path.GetFileName(ImagePath)),
+        { } exception when OutcomeCause.FromException(exception) is { Reason: not OutcomeReason.Unexpected } known => known,
+        _ => new OutcomeCause(OutcomeReason.SourceUnreadable, Path.GetFileName(ImagePath))
+    };
+
     public long OriginalBytes => ImageBytes + CompanionBytes;
 
     /// <summary>剥离后减少的字节：截断点之后的全部内容（含视频外层的容器头）加上配对视频。</summary>
@@ -200,16 +212,9 @@ public sealed class MotionPhotoStripper(IMetadataService metadata, IImageConvert
         CancellationToken cancellationToken)
     {
         var source = candidate.ImagePath;
-        if (candidate.AnalysisError is { } analysisError)
+        if (candidate.AnalysisCause is { } analysisCause)
         {
-            return candidate.AnalysisException switch
-            {
-                // 分析只读取源文件，找不到文件即源文件已消失
-                FileNotFoundException and not ToolNotFoundException or DirectoryNotFoundException =>
-                    ItemOutcome.Failed(source, new OutcomeCause(OutcomeReason.SourceMissingOrEmpty, Path.GetFileName(source)), analysisError),
-                { } exception => ItemOutcome.Failed(source, exception),
-                null => ItemOutcome.Failed(source, OutcomeReason.Unexpected, analysisError)
-            };
+            return ItemOutcome.Failed(source, analysisCause, candidate.AnalysisError);
         }
 
         var convert = candidate.WillConvert(request.ConvertToHeic);

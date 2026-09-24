@@ -341,8 +341,10 @@ public class TaskReportViewModelTests
         Assert.True(report.WasCanceled);
         Assert.Equal(2, report.TotalCount);
         Assert.Equal(50, report.PlannedCount);
-        Assert.Equal("2 / 50", report.TotalText);
-        Assert.Equal(fixture.Host.Localizer["ReportKpiTotalCanceledSub"], report.TotalSubText);
+        // 主数字是计划总数，已处理与未处理分列在副标题
+        Assert.Equal("50", report.TotalText);
+        Assert.Equal(48, report.UnprocessedCount);
+        Assert.Equal(fixture.Host.Localizer.Format("ReportKpiTotalCanceledSubFormat", 2, 48), report.TotalSubText);
     }
 
     [Fact]
@@ -353,7 +355,8 @@ public class TaskReportViewModelTests
 
         var report = await fixture.Center.RunAsync(Jobs.Files(ConversionAction.Extract, "/out", "/in/a.jpg", "/in/b.jpg", "/in/c.jpg")).Within();
 
-        Assert.Equal("0 / 3", report.TotalText);
+        Assert.Equal("3", report.TotalText);
+        Assert.Equal(fixture.Host.Localizer.Format("ReportKpiTotalCanceledSubFormat", 0, 3), report.TotalSubText);
     }
 
     [Fact]
