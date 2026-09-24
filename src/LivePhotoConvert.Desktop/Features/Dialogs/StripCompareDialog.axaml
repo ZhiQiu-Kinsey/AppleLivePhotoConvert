@@ -103,8 +103,8 @@
         </StackPanel>
         <TextBlock Grid.Column="1" Text="{CompiledBinding CurtainPercentageText}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
         <StackPanel Grid.Column="2" Spacing="2" HorizontalAlignment="Right">
-          <TextBlock Text="{DynamicResource CompareAfterSizeLabel}" FontSize="11" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Right" />
-          <TextBlock Text="{CompiledBinding AfterSizeText}" FontSize="13" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Right" />
+          <TextBlock Text="{DynamicResource CompareAfterSizeLabel}" FontSize="11" Foreground="{DynamicResource SuccessTextBrush}" HorizontalAlignment="Right" />
+          <TextBlock Text="{CompiledBinding AfterSizeText}" FontSize="13" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource SuccessTextBrush}" HorizontalAlignment="Right" />
         </StackPanel>
       </Grid>
     </Grid>

@@ -320,7 +320,17 @@
                  Button.caption-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter,
                  Button.caption-btn:pressed /template/ ContentPresenter#PART_ContentPresenter,
                  Button.caption-close-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter,
-                 Button.caption-close-btn:pressed /template/ ContentPresenter#PART_ContentPresenter">
+                 Button.caption-close-btn:pressed /template/ ContentPresenter#PART_ContentPresenter,
+                 Button.capsule-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter,
+                 Button.capsule-btn:pressed /template/ ContentPresenter#PART_ContentPresenter,
+                 Button.capsule-icon-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter,
+                 Button.capsule-icon-btn:pressed /template/ ContentPresenter#PART_ContentPresenter,
+                 Button.action-tile:pointerover /template/ ContentPresenter#PART_ContentPresenter,
+                 Button.action-tile:pressed /template/ ContentPresenter#PART_ContentPresenter,
+                 Button.engine-install-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter,
+                 Button.engine-install-btn:pressed /template/ ContentPresenter#PART_ContentPresenter,
+                 Button.engine-secondary-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter,
+                 Button.engine-secondary-btn:pressed /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="{Binding $parent[Button].Background}" />
     <Setter Property="BorderBrush" Value="{Binding $parent[Button].BorderBrush}" />
     <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}" />
@@ -384,7 +394,7 @@
 
   <!-- 下拉选项中的危险项（例如永久删除原片） -->
   <Style Selector="TextBlock.danger-option">
-    <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource DangerTextBrush}" />
   </Style>
 
   <Style Selector="ComboBox.engine-select">
@@ -538,7 +548,7 @@
   </Style>
 
   <Style Selector="Border.status-pill.success TextBlock">
-    <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource SuccessTextBrush}" />
   </Style>
 
   <Style Selector="Border.status-pill.danger">
@@ -547,7 +557,7 @@
   </Style>
 
   <Style Selector="Border.status-pill.danger TextBlock">
-    <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource DangerTextBrush}" />
   </Style>
 
   <Style Selector="Border.status-pill.warning">
@@ -1153,7 +1163,7 @@
   </Style>
 
   <Style Selector="Border.card-media-badge.warning">
-    <Setter Property="Background" Value="{DynamicResource WarningBrush}" />
+    <Setter Property="Background" Value="{DynamicResource WarningFillBrush}" />
   </Style>
 
   <!-- 画廊卡片选中态：叠加描边与右上角勾选角标，均不参与布局 -->
@@ -1211,7 +1221,7 @@
   </Style>
 
   <Style Selector="Border.card-status.locked TextBlock">
-    <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource SuccessTextBrush}" />
   </Style>
 
   <Style Selector="Button.card-status.pending">
@@ -1221,7 +1231,7 @@
   </Style>
 
   <Style Selector="Button.card-status.pending TextBlock">
-    <Setter Property="Foreground" Value="{DynamicResource WarningBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource WarningTextBrush}" />
   </Style>
 
   <Style Selector="Border.card-status TextBlock, Button.card-status TextBlock">
@@ -1235,7 +1245,7 @@
     <Setter Property="DividerBrush" Value="{DynamicResource OnMediaBrush}" />
     <Setter Property="HandleForeground" Value="{DynamicResource MediaCanvasBrush}" />
     <Setter Property="BadgeBackground" Value="{DynamicResource MediaBadgeBrush}" />
-    <Setter Property="AfterBadgeBackground" Value="{DynamicResource SuccessBrush}" />
+    <Setter Property="AfterBadgeBackground" Value="{DynamicResource SuccessFillBrush}" />
     <Setter Property="BadgeForeground" Value="{DynamicResource OnMediaBrush}" />
     <Setter Property="MagnifierBorderBrush" Value="{DynamicResource MediaAccentBrush}" />
   </Style>

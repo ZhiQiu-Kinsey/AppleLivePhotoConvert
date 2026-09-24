@@ -24,7 +24,7 @@
             <TextBlock Grid.Column="1" Text="{Binding DisplayName}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
             <Border Grid.Column="2" Classes="status-pill" Classes.success="{Binding IsHealthy}" Classes.warning="{Binding HasWarning}" Classes.danger="{Binding IsMissing}" Classes.muted="{Binding IsProbing}"
                     ToolTip.Tip="{Binding VersionDetail}">
-              <TextBlock Text="{Binding StatusText}" FontSize="10" FontWeight="Bold" FontFamily="Consolas" TextTrimming="CharacterEllipsis" />
+              <TextBlock Text="{Binding StatusText}" FontSize="11" FontWeight="Bold" FontFamily="Consolas" TextTrimming="CharacterEllipsis" />
             </Border>
           </Grid>
 
@@ -54,11 +54,11 @@
           </Grid>
 
           <Border Classes="engine-path">
-            <TextBlock Text="{Binding PathText}" FontSize="10" FontFamily="Consolas" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding PathText}" Foreground="{DynamicResource TextSecondaryBrush}" />
+            <TextBlock Text="{Binding PathText}" FontSize="11" FontFamily="Consolas" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding PathText}" Foreground="{DynamicResource TextSecondaryBrush}" />
           </Border>
 
           <StackPanel Spacing="6" IsVisible="{Binding IsInstalling}">
-            <TextBlock Text="{Binding ProgressText}" FontSize="10" Foreground="{DynamicResource AccentTextBrush}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding ProgressText}" />
+            <TextBlock Text="{Binding ProgressText}" FontSize="11" Foreground="{DynamicResource AccentTextBrush}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding ProgressText}" />
             <ProgressBar Minimum="0" Maximum="100" Value="{Binding ProgressValue}" IsIndeterminate="{Binding IsProgressIndeterminate}" Height="4" MinHeight="4" />
           </StackPanel>
 
@@ -106,8 +106,8 @@
           <StackPanel Grid.Column="1" Margin="10,0,0,0" Spacing="3">
             <TextBlock Text="{DynamicResource ToolsIntegrityNote}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
             <Grid ColumnDefinitions="Auto,*" ColumnSpacing="4">
-              <TextBlock Text="{DynamicResource ToolsInstallRootLabel}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" />
-              <TextBlock Grid.Column="1" Text="{Binding InstallRoot}" FontSize="10" FontFamily="Consolas" Foreground="{DynamicResource TextTertiaryBrush}" TextTrimming="LeadingCharacterEllipsis" ToolTip.Tip="{Binding InstallRoot}" />
+              <TextBlock Text="{DynamicResource ToolsInstallRootLabel}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" />
+              <TextBlock Grid.Column="1" Text="{Binding InstallRoot}" FontSize="11" FontFamily="Consolas" Foreground="{DynamicResource TextTertiaryBrush}" TextTrimming="LeadingCharacterEllipsis" ToolTip.Tip="{Binding InstallRoot}" />
             </Grid>
           </StackPanel>
         </Grid>
