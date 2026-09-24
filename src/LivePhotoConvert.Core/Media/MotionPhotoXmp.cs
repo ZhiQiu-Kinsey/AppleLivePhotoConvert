@@ -162,11 +162,12 @@ public sealed record MotionPhotoXmp
         }
     }
 
+    /// <remarks>负的长度与填充不合规范，按 0 处理，避免推算出越过文件末尾的视频位置。</remarks>
     internal static ContainerItem ToContainerItem(XElement item) => new(
         XmpDocument.ReadValue(item, XmpDocument.Item + "Semantic") ?? string.Empty,
         XmpDocument.ReadValue(item, XmpDocument.Item + "Mime"),
-        ParseLong(XmpDocument.ReadValue(item, XmpDocument.Item + "Length")) ?? 0,
-        ParseLong(XmpDocument.ReadValue(item, XmpDocument.Item + "Padding")) ?? 0);
+        Math.Max(0, ParseLong(XmpDocument.ReadValue(item, XmpDocument.Item + "Length")) ?? 0),
+        Math.Max(0, ParseLong(XmpDocument.ReadValue(item, XmpDocument.Item + "Padding")) ?? 0));
 
     private static long? ReadLong(IEnumerable<XElement> descriptions, XName name) =>
         descriptions.Select(description => ParseLong(XmpDocument.ReadValue(description, name))).FirstOrDefault(value => value.HasValue);
@@ -201,7 +202,7 @@ internal static class XmpDocument
 
         try
         {
-            var document = XDocument.Parse(xmp.TrimStart('﻿').Trim('\0'), LoadOptions.PreserveWhitespace);
+            var document = XDocument.Parse(xmp.TrimStart('\uFEFF').Trim('\0'), LoadOptions.PreserveWhitespace);
             return document.Descendants(Rdf + "RDF").Any() ? document : null;
         }
         catch (XmlException)

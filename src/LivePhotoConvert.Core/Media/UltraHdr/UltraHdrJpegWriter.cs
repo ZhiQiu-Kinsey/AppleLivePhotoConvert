@@ -393,8 +393,9 @@ public static class UltraHdrJpegWriter
         uint U32(ReadOnlySpan<byte> s) => littleEndian ? BinaryPrimitives.ReadUInt32LittleEndian(s) : BinaryPrimitives.ReadUInt32BigEndian(s);
         ushort U16(ReadOnlySpan<byte> s) => littleEndian ? BinaryPrimitives.ReadUInt16LittleEndian(s) : BinaryPrimitives.ReadUInt16BigEndian(s);
 
+        // 偏移与长度都是文件里的无符号数，先转 long 再相加，避免 uint 回绕后通过越界检查
         var ifd = U32(tiff[4..]);
-        if (ifd + 2 > tiff.Length)
+        if ((long)ifd + 2 > tiff.Length)
         {
             return null;
         }
@@ -416,7 +417,7 @@ public static class UltraHdrJpegWriter
 
             var size = U32(entry[4..]);
             var offset = U32(entry[8..]);
-            if (size < 32 || offset + size > tiff.Length)
+            if (size < 32 || (long)offset + size > tiff.Length)
             {
                 return null;
             }

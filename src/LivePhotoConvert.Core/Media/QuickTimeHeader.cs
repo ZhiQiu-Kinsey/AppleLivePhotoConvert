@@ -41,7 +41,6 @@ internal static class QuickTimeHeader
 {
     private const uint Moov = 0x6D6F6F76; // "moov"
     private const uint Mvhd = 0x6D766864; // "mvhd"
-    private const uint Meta = 0x6D657461; // "meta"
     private const uint Udta = 0x75647461; // "udta"
     private const uint Hdlr = 0x68646C72; // "hdlr"
     private const uint Keys = 0x6B657973; // "keys"
@@ -82,8 +81,8 @@ internal static class QuickTimeHeader
 
         var (created, duration) = FindChild(stream, moov.Start, moov.End, Mvhd) is { } mvhd ? ReadMovieHeader(stream, mvhd.Start) : default;
         // Apple 写在 moov/meta，FFmpeg（use_metadata_tags）写在 moov/udta/meta，ExifTool 两处都读
-        var meta = FindChild(stream, moov.Start, moov.End, Meta)
-                   ?? (FindChild(stream, moov.Start, moov.End, Udta) is { } udta ? FindChild(stream, udta.Start, udta.End, Meta) : null);
+        var meta = FindChild(stream, moov.Start, moov.End, IsoBox.Meta)
+                   ?? (FindChild(stream, moov.Start, moov.End, Udta) is { } udta ? FindChild(stream, udta.Start, udta.End, IsoBox.Meta) : null);
         var (creationDate, identifier) = meta is { } found && found.End - found.Start <= MaxMetaBytes
             ? ReadKeys(stream, found.Start, (int)(found.End - found.Start))
             : default;
@@ -249,90 +248,27 @@ internal static class QuickTimeHeader
         return CaptureTime.TryParse(text, out var time) ? time : null;
     }
 
-    private static BoxEnumerator Children(ReadOnlySpan<byte> data) => new(data);
+    private static IsoBoxEnumerator Children(ReadOnlySpan<byte> data) => new(data);
 
     /// <returns>子 box 负载的 [Start, End)</returns>
     private static (long Start, long End)? FindChild(Stream stream, long start, long end, uint type)
     {
-        Span<byte> header = stackalloc byte[16];
         var offset = start;
         for (var i = 0; i < MaxBoxes && offset + 8 <= end; i++)
         {
-            stream.Position = offset;
-            if (stream.ReadAtLeast(header[..8], 8, throwOnEndOfStream: false) < 8)
+            if (IsoBox.ReadBounded(stream, offset, end) is not { } box)
             {
                 return null;
             }
 
-            long size = BinaryPrimitives.ReadUInt32BigEndian(header);
-            var headerLength = 8;
-            if (size == 1)
+            if (box.Type == type)
             {
-                if (stream.ReadAtLeast(header[8..], 8, throwOnEndOfStream: false) < 8 || BinaryPrimitives.ReadUInt64BigEndian(header[8..]) > long.MaxValue)
-                {
-                    return null;
-                }
-
-                size = (long)BinaryPrimitives.ReadUInt64BigEndian(header[8..]);
-                headerLength = 16;
-            }
-            else if (size == 0)
-            {
-                size = end - offset;
+                return (offset + box.HeaderLength, offset + box.Size);
             }
 
-            if (size < headerLength || size > end - offset)
-            {
-                return null;
-            }
-
-            if (BinaryPrimitives.ReadUInt32BigEndian(header[4..]) == type)
-            {
-                return (offset + headerLength, offset + size);
-            }
-
-            offset += size;
+            offset += box.Size;
         }
 
         return null;
-    }
-
-    private ref struct BoxEnumerator(ReadOnlySpan<byte> data)
-    {
-        private readonly ReadOnlySpan<byte> _data = data;
-        private int _next;
-
-        public Box Current { get; private set; }
-
-        public readonly BoxEnumerator GetEnumerator() => this;
-
-        public bool MoveNext()
-        {
-            if (_next > _data.Length - 8)
-            {
-                return false;
-            }
-
-            var size = BinaryPrimitives.ReadUInt32BigEndian(_data[_next..]);
-            if (size < 8 || size > (uint)(_data.Length - _next))
-            {
-                return false;
-            }
-
-            Current = new Box(BinaryPrimitives.ReadUInt32BigEndian(_data[(_next + 4)..]), _data.Slice(_next + 8, (int)size - 8));
-            _next += (int)size;
-            return true;
-        }
-    }
-
-    private readonly ref struct Box(uint type, ReadOnlySpan<byte> body)
-    {
-        private readonly ReadOnlySpan<byte> _body = body;
-
-        public void Deconstruct(out uint boxType, out ReadOnlySpan<byte> boxBody)
-        {
-            boxType = type;
-            boxBody = _body;
-        }
     }
 }

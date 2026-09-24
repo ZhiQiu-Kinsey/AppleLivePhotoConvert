@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Collections.Frozen;
 using System.Text;
 
@@ -21,17 +22,15 @@ public static class MediaFileTypes
     /// <summary>可能内嵌视频的动态照片扩展名。</summary>
     public static readonly FrozenSet<string> MotionPhotoExtensions = FrozenSet.Create(StringComparer.OrdinalIgnoreCase, ".jpg", ".jpeg", ".heic");
 
-    public static readonly FrozenDictionary<string, int> PhotoExtensionRanks = ToRanks(PhotoPriority);
+    private static readonly FrozenDictionary<string, int> PhotoExtensionRanks = ToRanks(PhotoPriority);
 
-    public static readonly FrozenDictionary<string, int> VideoExtensionRanks = ToRanks(VideoPriority);
+    private static readonly FrozenDictionary<string, int> VideoExtensionRanks = ToRanks(VideoPriority);
 
     private static ReadOnlySpan<byte> HeicBrands => "heicheixhevchevxmif1msf1heismiaf"u8;
 
     private static ReadOnlySpan<byte> AvifBrands => "avifavis"u8;
 
     private static ReadOnlySpan<byte> MovBrands => "qt  "u8;
-
-    private static ReadOnlySpan<byte> Mp4Brands => "mp41mp42isomiso2avc1MSNVhevchvc1"u8;
 
     public static bool IsPhoto(string path) => PhotoExtensions.Contains(Path.GetExtension(path));
 
@@ -95,7 +94,7 @@ public static class MediaFileTypes
 
     private static bool IsFtypBox(ReadOnlySpan<byte> header) => header.Length >= 8 && header[4..8].SequenceEqual("ftyp"u8);
 
-    /// <summary>主品牌（偏移 8）或兼容品牌（偏移 16 起每 4 字节）命中任一 FourCC 即视为匹配。</summary>
+    /// <summary>主品牌（偏移 8）或兼容品牌（偏移 16 起每 4 字节，止于 ftyp box 末尾）命中任一 FourCC 即视为匹配。</summary>
     private static bool HasFtypBrand(ReadOnlySpan<byte> header, ReadOnlySpan<byte> brands)
     {
         if (header.Length < 12 || !IsFtypBox(header))
@@ -108,7 +107,9 @@ public static class MediaFileTypes
             return true;
         }
 
-        for (var i = 16; i + 4 <= header.Length; i += 4)
+        // 其后的字节属于下一个 box，不能当作品牌
+        var end = (int)Math.Min(header.Length, BinaryPrimitives.ReadUInt32BigEndian(header));
+        for (var i = 16; i + 4 <= end; i += 4)
         {
             if (ContainsFourCc(brands, header.Slice(i, 4)))
             {

@@ -97,7 +97,8 @@ public sealed class ExifToolMetadataService : IMetadataService
 
     public async Task<string?> ReadXmpAsync(string path, CancellationToken cancellationToken = default)
     {
-        if (MediaFileTypes.HasJpegExtension(path))
+        // 扩展名是 .jpg 但内容不是 JPEG（改过扩展名的 HEIC 等）时交给 ExifTool，托管读取器只认 JPEG
+        if (MediaFileTypes.IsJpeg(path))
         {
             await using var stream = OpenRead(path);
             return MotionPhotoLayout.ReadJpegXmp(stream);

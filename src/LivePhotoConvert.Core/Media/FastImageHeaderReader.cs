@@ -33,7 +33,7 @@ public readonly record struct ImageHeader(int Width, int Height, int Orientation
         : DateTimeDigitized is { } digitized ? new CaptureTime(digitized, null)
         : null;
 
-    public double AspectRatio => Height > 0 ? (double)Width / Height : 4.0 / 3.0;
+    public double AspectRatio => Dimensions.AspectRatio;
 
     public ImageDimensions Dimensions => new(Width, Height);
 
@@ -50,8 +50,14 @@ public readonly record struct ImageHeader(int Width, int Height, int Orientation
 /// </remarks>
 public static class FastImageHeaderReader
 {
-    /// <summary>JPEG 段与 HEIC 顶层 box 的扫描上限，防止畸形文件拖慢扫描。</summary>
+    /// <summary>HEIC 顶层 box 的扫描上限，防止畸形文件拖慢扫描。</summary>
     private const int MaxScanBytes = 512 * 1024;
+
+    /// <summary>
+    /// JPEG 帧头（SOF）之前的扫描上限。人像模式等照片把深度图放在扩展 XMP 里，SOF 前可能有数 MB 的 APP 段；
+    /// 各段按长度直接跳过，上限只防畸形文件逐字节找标记。
+    /// </summary>
+    private const int MaxJpegHeaderBytes = 16 * 1024 * 1024;
 
     /// <summary>JPEG APP1 首次读取量：IFD0 与 ExifIFD 通常位于段首几 KB，MakerNote 与内嵌缩略图在后部，不必读满 64KB。</summary>
     private const int InitialExifWindow = 16 * 1024;
@@ -62,10 +68,8 @@ public static class FastImageHeaderReader
     /// <summary>HEIC Exif 项读取上限：拍摄时间位于 IFD 前部，MakerNote 可以截断。</summary>
     private const int MaxHeifExifBytes = 64 * 1024;
 
-    private const uint BoxMeta = 0x6D657461; // "meta"
     private const uint BoxPitm = 0x7069746D; // "pitm"
     private const uint BoxIinf = 0x69696E66; // "iinf"
-    private const uint BoxInfe = 0x696E6665; // "infe"
     private const uint BoxIloc = 0x696C6F63; // "iloc"
     private const uint BoxIprp = 0x69707270; // "iprp"
     private const uint BoxIpco = 0x6970636F; // "ipco"
@@ -196,7 +200,7 @@ public static class FastImageHeaderReader
         var exif = ExifFields.Default;
         var exifParsed = false;
         int width = 0, height = 0;
-        while (stream.Position < MaxScanBytes)
+        while (stream.Position < MaxJpegHeaderBytes)
         {
             var b = stream.ReadByte();
             if (b < 0)
@@ -304,46 +308,22 @@ public static class FastImageHeaderReader
     {
         header = default;
         var length = stream.Length;
-        Span<byte> box = stackalloc byte[16];
         long offset = 0;
         while (offset + 8 <= length && offset < MaxScanBytes)
         {
-            stream.Position = offset;
-            if (stream.ReadAtLeast(box[..8], 8, throwOnEndOfStream: false) < 8)
+            if (IsoBox.ReadBounded(stream, offset, length) is not { } box)
             {
                 return false;
             }
 
-            long size = BinaryPrimitives.ReadUInt32BigEndian(box);
-            var type = BinaryPrimitives.ReadUInt32BigEndian(box[4..]);
-            var headerLength = 8;
-            if (size == 1)
+            if (box.Type == IsoBox.Meta)
             {
-                if (stream.ReadAtLeast(box[8..], 8, throwOnEndOfStream: false) < 8 || BinaryPrimitives.ReadUInt64BigEndian(box[8..]) > long.MaxValue)
-                {
-                    return false;
-                }
-
-                size = (long)BinaryPrimitives.ReadUInt64BigEndian(box[8..]);
-                headerLength = 16;
-            }
-            else if (size == 0)
-            {
-                size = length - offset;
-            }
-
-            if (size < headerLength || size > length - offset)
-            {
-                return false;
-            }
-
-            if (type == BoxMeta)
-            {
-                var payloadLength = size - headerLength;
+                var payloadLength = box.Size - box.HeaderLength;
+                stream.Position = offset + box.HeaderLength;
                 return payloadLength is >= 4 and <= MaxHeifMetaBytes && TryReadHeifMeta(stream, (int)payloadLength, out header);
             }
 
-            offset += size;
+            offset += box.Size;
         }
 
         return false;
@@ -657,7 +637,7 @@ public static class FastImageHeaderReader
 
         public HeifMeta(ReadOnlySpan<byte> children)
         {
-            foreach (var (type, body) in new BoxEnumerator(children))
+            foreach (var (type, body) in new IsoBoxEnumerator(children))
             {
                 switch (type)
                 {
@@ -665,7 +645,7 @@ public static class FastImageHeaderReader
                     case BoxIinf: _iinf = body; break;
                     case BoxIloc: _iloc = body; break;
                     case BoxIprp:
-                        foreach (var (childType, childBody) in new BoxEnumerator(body))
+                        foreach (var (childType, childBody) in new IsoBoxEnumerator(body))
                         {
                             switch (childType)
                             {
@@ -700,7 +680,7 @@ public static class FastImageHeaderReader
             width = height = rotation = 0;
             var index = 0;
             long bestArea = 0;
-            foreach (var (type, body) in new BoxEnumerator(_ipco))
+            foreach (var (type, body) in new IsoBoxEnumerator(_ipco))
             {
                 // ipma 中的属性序号从 1 开始
                 index++;
@@ -783,40 +763,7 @@ public static class FastImageHeaderReader
         public bool TryGetExifExtent(out long offset, out long length)
         {
             offset = length = 0;
-            return FindExifItemId() is { } itemId && TryGetItemExtent(itemId, out offset, out length);
-        }
-
-        private uint? FindExifItemId()
-        {
-            var iinf = _iinf;
-            if (iinf.Length < 6)
-            {
-                return null;
-            }
-
-            var entries = iinf[(iinf[0] == 0 ? 6 : 8)..];
-            foreach (var (type, infe) in new BoxEnumerator(entries))
-            {
-                // infe 版本 2 用 16 位项 ID，版本 3 用 32 位；更早的版本没有 item_type
-                if (type != BoxInfe || infe.Length < 4 || infe[0] is not (2 or 3))
-                {
-                    continue;
-                }
-
-                var idLength = infe[0] == 2 ? 2 : 4;
-                if (infe.Length < 4 + idLength + 2 + 4)
-                {
-                    continue;
-                }
-
-                var itemType = BinaryPrimitives.ReadUInt32BigEndian(infe[(4 + idLength + 2)..]);
-                if (itemType == ItemExif)
-                {
-                    return idLength == 2 ? BinaryPrimitives.ReadUInt16BigEndian(infe[4..]) : BinaryPrimitives.ReadUInt32BigEndian(infe[4..]);
-                }
-            }
-
-            return null;
+            return HeifItems.FindItemId(_iinf, ItemExif) is { } itemId && TryGetItemExtent(itemId, out offset, out length);
         }
 
         private bool TryGetItemExtent(uint itemId, out long offset, out long length)
@@ -900,49 +847,6 @@ public static class FastImageHeaderReader
 
             position += size;
             return true;
-        }
-    }
-
-    /// <summary>
-    /// 在内存中依次枚举 ISOBMFF box（32 位长度，不支持延续到末尾的 0 长度）。
-    /// </summary>
-    private ref struct BoxEnumerator(ReadOnlySpan<byte> data)
-    {
-        private readonly ReadOnlySpan<byte> _data = data;
-        private int _next;
-
-        public Box Current { get; private set; }
-
-        public readonly BoxEnumerator GetEnumerator() => this;
-
-        public bool MoveNext()
-        {
-            if (_next > _data.Length - 8)
-            {
-                return false;
-            }
-
-            var size = BinaryPrimitives.ReadUInt32BigEndian(_data[_next..]);
-            var type = BinaryPrimitives.ReadUInt32BigEndian(_data[(_next + 4)..]);
-            if (size < 8 || size > (uint)(_data.Length - _next))
-            {
-                return false;
-            }
-
-            Current = new Box(type, _data.Slice(_next + 8, (int)size - 8));
-            _next += (int)size;
-            return true;
-        }
-    }
-
-    private readonly ref struct Box(uint type, ReadOnlySpan<byte> body)
-    {
-        private readonly ReadOnlySpan<byte> _body = body;
-
-        public void Deconstruct(out uint boxType, out ReadOnlySpan<byte> boxBody)
-        {
-            boxType = type;
-            boxBody = _body;
         }
     }
 }

@@ -30,6 +30,29 @@ public class FastImageHeaderReaderTests
     }
 
     [Fact]
+    public void ReadJpeg_MegabytesOfAppSegmentsBeforeSof_StillReadsDimensions()
+    {
+        // 人像模式照片的深度图放在扩展 XMP 中，SOF 之前有十几个 64KB 的 APP1 段
+        var jpeg = SyntheticImages.Jpeg(64, 48);
+        using var ms = new MemoryStream();
+        ms.Write(jpeg.AsSpan(0, 2));
+        var segment = new byte[4 + 65533];
+        segment[0] = 0xFF;
+        segment[1] = 0xE1;
+        BinaryPrimitives.WriteUInt16BigEndian(segment.AsSpan(2), 65535);
+        "http://ns.adobe.com/xmp/extension/\0"u8.CopyTo(segment.AsSpan(4));
+        for (var i = 0; i < 16; i++)
+        {
+            ms.Write(segment);
+        }
+
+        ms.Write(jpeg.AsSpan(2));
+
+        Assert.True(FastImageHeaderReader.TryReadDimensions(ms, ".jpg", out var dims));
+        Assert.Equal((64, 48), (dims.Width, dims.Height));
+    }
+
+    [Fact]
     public void ReadJpeg_BaselineSof0_ExtractsDimensionsAccurately()
     {
         using var ms = new MemoryStream();

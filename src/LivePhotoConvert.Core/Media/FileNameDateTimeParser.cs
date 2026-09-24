@@ -1,13 +1,14 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace LivePhotoConvert.Core.Media;
 
 /// <summary>
-/// 全格式文件名拍摄时间解析引擎
+/// 从文件名推断拍摄时间，作为 EXIF 缺失时的后备。
 /// </summary>
 /// <remarks>
-/// 广泛适配苹果、小米、华为、三星、OPPO、vivo、Google Pixel 等各大品牌手机，
-/// 以及微信、QQ、WhatsApp、Telegram 等社交软件和各类网盘、相册备份工具导出的各种时间戳与日期命名格式。
+/// 覆盖手机相机（年月日时分秒）、WhatsApp（IMG-yyyyMMdd-WA）、微信与 QQ 导出（Unix 毫秒 / 秒时间戳）等常见命名，
+/// 按可信度从高到低依次尝试；解析出的是当地时间。
 /// </remarks>
 public static partial class FileNameDateTimeParser
 {
@@ -18,7 +19,7 @@ public static partial class FileNameDateTimeParser
     private const long MaxUnixEpochSec = 2524608000L;    // 2050-01-01 00:00:00 UTC
 
     /// <summary>
-    /// 尝试从文件名（包含或不包含路径与扩展名）中全通道解析拍摄时间
+    /// 从文件名（可带路径与扩展名）解析拍摄时间。
     /// </summary>
     /// <param name="fileNameOrPath">文件名或完整路径</param>
     /// <param name="result">解析出的本地拍摄时间</param>
@@ -39,7 +40,7 @@ public static partial class FileNameDateTimeParser
             return true;
         }
 
-        // 通道 2：年月日 + 时分（无秒，如用户样本 2026_05_05_11_20_IMG_0277）
+        // 通道 2：年月日 + 时分（无秒，如 2026_05_05_11_20_IMG_0277）
         if (TryExtractYearMonthDayHourMinute(fileName, out result))
         {
             return true;
@@ -72,9 +73,6 @@ public static partial class FileNameDateTimeParser
         return false;
     }
 
-    /// <summary>
-    /// 通道 1：提取完整年月日时分秒（涵盖连续紧凑型与以 - _ . 空格等分隔的格式）
-    /// </summary>
     private static bool TryExtractFullDateTime(string text, out DateTime result)
     {
         result = default;
@@ -96,9 +94,6 @@ public static partial class FileNameDateTimeParser
         return false;
     }
 
-    /// <summary>
-    /// 通道 2：提取年月日 + 时分（秒数自动补 00）
-    /// </summary>
     private static bool TryExtractYearMonthDayHourMinute(string text, out DateTime result)
     {
         result = default;
@@ -120,9 +115,6 @@ public static partial class FileNameDateTimeParser
         return false;
     }
 
-    /// <summary>
-    /// 通道 3：提取 WhatsApp 日期格式（如 IMG-20260905-WA0001）
-    /// </summary>
     private static bool TryExtractWhatsAppDate(string text, out DateTime result)
     {
         result = default;
@@ -140,59 +132,36 @@ public static partial class FileNameDateTimeParser
         return false;
     }
 
-    /// <summary>
-    /// 通道 4：提取 13 位毫秒 Unix 时间戳（如微信 mmexport1683256803123、QQ_1683256803123）
-    /// </summary>
     private static bool TryExtractUnixTimestampMilliseconds(string text, out DateTime result)
     {
         result = default;
         foreach (Match match in UnixMsRegex().Matches(text))
         {
-            if (long.TryParse(match.Groups[1].ValueSpan, out var ms) && ms is >= MinUnixEpochMs and <= MaxUnixEpochMs)
+            if (long.TryParse(match.Groups[1].ValueSpan, NumberStyles.None, CultureInfo.InvariantCulture, out var ms) && ms is >= MinUnixEpochMs and <= MaxUnixEpochMs)
             {
-                try
-                {
-                    result = DateTimeOffset.FromUnixTimeMilliseconds(ms).LocalDateTime;
-                    return true;
-                }
-                catch (ArgumentOutOfRangeException)
-                {
-                    // 忽略无效时间戳
-                }
+                result = DateTimeOffset.FromUnixTimeMilliseconds(ms).LocalDateTime;
+                return true;
             }
         }
 
         return false;
     }
 
-    /// <summary>
-    /// 通道 5：提取 10 位秒级 Unix 时间戳（如 1683256803）
-    /// </summary>
     private static bool TryExtractUnixTimestampSeconds(string text, out DateTime result)
     {
         result = default;
         foreach (Match match in UnixSecRegex().Matches(text))
         {
-            if (long.TryParse(match.Groups[1].ValueSpan, out var sec) && sec is >= MinUnixEpochSec and <= MaxUnixEpochSec)
+            if (long.TryParse(match.Groups[1].ValueSpan, NumberStyles.None, CultureInfo.InvariantCulture, out var sec) && sec is >= MinUnixEpochSec and <= MaxUnixEpochSec)
             {
-                try
-                {
-                    result = DateTimeOffset.FromUnixTimeSeconds(sec).LocalDateTime;
-                    return true;
-                }
-                catch (ArgumentOutOfRangeException)
-                {
-                    // 忽略无效时间戳
-                }
+                result = DateTimeOffset.FromUnixTimeSeconds(sec).LocalDateTime;
+                return true;
             }
         }
 
         return false;
     }
 
-    /// <summary>
-    /// 通道 6：提取纯年月日（8位）
-    /// </summary>
     private static bool TryExtractDateOnly(string text, out DateTime result)
     {
         result = default;
@@ -213,7 +182,7 @@ public static partial class FileNameDateTimeParser
     }
 
     /// <summary>
-    /// 校验并构建合法的 DateTime（包含闰年与月份边界检查）
+    /// 校验各分量范围（含闰年与月末）后构造当地时间。
     /// </summary>
     private static bool TryBuildDateTime(
         ReadOnlySpan<char> yearSpan,
@@ -243,9 +212,7 @@ public static partial class FileNameDateTimeParser
     }
 
     private static bool TryParseComponent(ReadOnlySpan<char> span, int min, int max, out int value) =>
-        int.TryParse(span, out value) && value >= min && value <= max;
-
-    // ── 正则表达式（基于 .NET 10 GeneratedRegex 源生成器，完全 AOT 兼容且零分配） ──
+        int.TryParse(span, NumberStyles.None, CultureInfo.InvariantCulture, out value) && value >= min && value <= max;
 
     /// <summary>
     /// 完整年月日时分秒（支持分隔符如 2026-09-05-12-41-44、2026-09-05 12.41.44，或连写 20260905_124144，允许带毫秒如 PXL_20260905_124144123）
