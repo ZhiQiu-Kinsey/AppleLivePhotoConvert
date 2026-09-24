@@ -2,8 +2,10 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.VisualTree;
+using LivePhotoConvert.Desktop.Controls;
 using LivePhotoConvert.Desktop.Features.Library;
 using LivePhotoConvert.Desktop.Infrastructure;
+using LivePhotoConvert.Desktop.Models;
 using LivePhotoConvert.Desktop.Tests.Harness;
 
 namespace LivePhotoConvert.Desktop.Tests.Features.Library;
@@ -123,7 +125,9 @@ public sealed class InspectorLayoutTests : IDisposable
         // 画廊宽度变化经防抖后触发重排
         var narrowGallery = session.Descendants<LibraryView>().Single().Bounds.Width;
         await session.WaitUntilAsync(() => Math.Abs(library.Layout.ViewportWidth - ExpectedViewport(session)) < 1);
-        await session.WaitUntilAsync(() => library.AllCards.All(c => c.DisplayImage is not null));
+        // 变窄后行数增加，视口外的卡片不会实例化，只要求已显示的卡片都有缩略图
+        await session.WaitUntilAsync(() => session.Descendants<PhotoCardControl>().Select(c => c.DataContext).OfType<PhotoCardItemViewModel>().ToList()
+            is { Count: > 0 } shown && shown.All(c => c.DisplayImage is not null));
         Screenshots.Save(session, $"inspector-narrow-{language}");
 
         session.Click(Named(view, "ExpandButton"));
