@@ -75,8 +75,10 @@ public sealed class QuickLookPlaybackTests : IDisposable
 
         player.NextError = PlaybackError.HdrToneMapUnavailable;
         quickLook.NextItemCommand.Execute(null);
+        // 按钮要等失败提示布局可见后才能命中；点击后弹窗经异步延续关闭，慢机器上不能立即断言
+        await session.WaitUntilAsync(() => toolsButton.IsEffectivelyVisible && toolsButton.Bounds.Width > 0);
         session.Click(toolsButton);
-        Assert.True(quickLook.IsClosed);
+        await session.WaitUntilAsync(() => quickLook.IsClosed);
         Assert.Null(session.Dialogs.Current);
         Assert.Equal(AppPage.Tools, session.Shell.CurrentPage);
         session.Log.AssertNoBindingErrors();
