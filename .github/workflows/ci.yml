@@ -8,11 +8,6 @@ on:
   # release.yml 在发布前复用本工作流的全部检查
   workflow_call:
     inputs:
-      ref:
-        description: 要检出的 git 引用（发布时传入 tag）；为空时使用触发事件的提交
-        type: string
-        required: false
-        default: ''
       upload-aot:
         description: 是否把 Native AOT 发布目录作为产物上传，供发布流程打包
         type: boolean
@@ -23,10 +18,10 @@ permissions:
   contents: read
 
 # 同一分支 / PR 的新提交会取消仍在运行的旧检查。
-# 被 release.yml 调用时 github.workflow 是调用方的名字、inputs.ref 是发布的 tag，
+# 被 release.yml 调用时 github.workflow 是调用方的名字、github.ref 是发布的 tag，
 # 发布流程因此不会与普通 CI 或其它 tag 的发布互相取消。
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ inputs.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -48,7 +43,6 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.ref }}
           persist-credentials: false
 
       - name: 检测桌面端改动
@@ -190,7 +184,6 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.ref }}
           persist-credentials: false
 
       - name: 检测桌面端改动
@@ -253,7 +246,6 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.ref }}
           persist-credentials: false
 
       - name: 配置 .NET（版本取自 global.json）

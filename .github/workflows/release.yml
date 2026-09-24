@@ -1,24 +1,19 @@
 name: Release
 
-# 只由推送的版本 tag 触发（或对已有 tag 手动重跑）；工作流不会创建 tag。
+# 只由推送的版本 tag 触发；工作流不会创建 tag。发布失败时在 Actions 页面对该次运行"Re-run"，
+# 不提供手动输入 tag 的入口：检出的永远是触发事件本身的 tag，CI 与缓存不会执行外部指定的代码。
 on:
   push:
     tags:
       - 'v*'
       - '[0-9]*.[0-9]*.*'
-  workflow_dispatch:
-    inputs:
-      tag_name:
-        description: 要发布的已有版本 tag（如 v4.0.0）
-        required: true
-        type: string
 
 # 默认只读；写权限只授予最后的发布任务
 permissions:
   contents: read
 
 concurrency:
-  group: release-${{ inputs.tag_name || github.ref_name }}
+  group: release-${{ github.ref_name }}
   cancel-in-progress: false
 
 jobs:
@@ -34,14 +29,13 @@ jobs:
       - name: 检出 tag
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.tag_name && format('refs/tags/{0}', inputs.tag_name) || github.ref }}
           persist-credentials: false
 
       - name: 校验 tag 与 Directory.Build.props 版本一致
         id: meta
         shell: pwsh
         env:
-          TAG: ${{ inputs.tag_name || github.ref_name }}
+          TAG: ${{ github.ref_name }}
         run: |
           $props = [xml](Get-Content -LiteralPath Directory.Build.props -Raw)
           $version = @($props.Project.PropertyGroup | ForEach-Object { $_.Version } | Where-Object { $_ })[0]
@@ -65,7 +59,6 @@ jobs:
     needs: prepare
     uses: ./.github/workflows/ci.yml
     with:
-      ref: refs/tags/${{ needs.prepare.outputs.tag }}
       upload-aot: true
     permissions:
       contents: read
