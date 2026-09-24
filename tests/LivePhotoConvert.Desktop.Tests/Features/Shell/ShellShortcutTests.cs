@@ -162,7 +162,10 @@ public sealed class ShellShortcutTests : IDisposable
         AssertTips(session);
         Assert.Equal($"{session.Localizer["NavTools"]} (Ctrl+3)", Tip(session, AppShortcuts.NavigateTools).Single());
         Assert.Contains($"{session.Localizer["SelectAlbumFolderBtn"]} (Ctrl+O)", Tip(session, AppShortcuts.OpenAlbum));
-        Assert.EndsWith("(Enter)", Tip(session, AppShortcuts.StartAction).Single());
+        // 展开的检查器与收起后的窄条各有一个开始按钮
+        var startTips = Tip(session, AppShortcuts.StartAction);
+        Assert.Equal(2, startTips.Count);
+        Assert.All(startTips, tip => Assert.EndsWith("(Enter)", tip));
 
         session.Localizer.SetLanguage("en");
         session.Pump();

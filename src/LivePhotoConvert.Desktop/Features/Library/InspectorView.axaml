@@ -274,7 +274,7 @@
           <Button Classes="rail-btn" Command="{Binding ViewTasksCommand}" IsVisible="{Binding Tasks.IsRunning}" ToolTip.Tip="{Binding Tasks.Current?.Title}">
             <ic:SymbolIcon Symbol="ArrowSync" Foreground="{DynamicResource AccentBrush}" />
           </Button>
-          <Button Classes="primary-btn rail-start-btn" Command="{Binding StartCommand}" ToolTip.Tip="{Binding PrimaryButtonText}">
+          <Button Classes="primary-btn rail-start-btn" Command="{Binding StartCommand}" controls:ShortcutTip.Label="{Binding PrimaryButtonText}" controls:ShortcutTip.Shortcut="{x:Static infra:AppShortcuts.StartAction}">
             <ic:SymbolIcon Symbol="Play" FontSize="16" Foreground="{DynamicResource OnAccentBrush}" />
           </Button>
         </StackPanel>

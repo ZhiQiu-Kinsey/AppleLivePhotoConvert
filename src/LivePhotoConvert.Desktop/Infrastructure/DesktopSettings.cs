@@ -6,7 +6,7 @@ using LivePhotoConvert.Desktop.Features.Library;
 namespace LivePhotoConvert.Desktop.Infrastructure;
 
 /// <summary>
-/// 桌面端持久化配置。字段变更需同步提升 <see cref="SettingsStore.CurrentSchemaVersion"/> 并补迁移。
+/// 桌面端持久化配置。新增字段缺失时取默认值即可；重命名、删除或改变含义时需提升 <see cref="SettingsStore.CurrentSchemaVersion"/> 并补迁移。
 /// </summary>
 public sealed class DesktopSettings
 {
