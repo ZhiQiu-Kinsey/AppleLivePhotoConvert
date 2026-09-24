@@ -48,9 +48,9 @@ src/LivePhotoConvert.Desktop/       # Avalonia 12 桌面端
   Assets/                           # Styles.axaml、Strings.zh-CN.axaml、Strings.en-US.axaml
   Controls/                         # CompactToolbar / CurtainCompareControl / PhotoCardControl
   Converters/                       # ByteSizeConverter 等 XAML 值转换器
-  Infrastructure/                   # 与具体页面无关的桌面服务：ILocalizer / Localizer 等
+  Infrastructure/                   # 与具体页面无关的桌面服务：AppServices（DI 组合根）、Localizer、SettingsStore、DialogService、FilePicker、ShellLauncher、AppLifetime
   Models/                           # DesktopSettings、GalleryItem、AboutCredit、AboutInfo
-  Services/                         # AlbumScanner / ThumbnailReader / PlaybackHost / SettingsService 等
+  Services/                         # AlbumScanner / ThumbnailReader / PlaybackHost 等
   ViewModels/                       # Main / Convert / Strip / Tools / Report + Dialogs/
   Views/                            # 对应视图与 Dialogs/
 tests/                              # Core.Tests（单元）与 E2E（黑盒）
@@ -68,7 +68,8 @@ global.json                         # 固定 SDK 10.0.400（避免误用 11 prev
 - 物理结构：JPEG 前段（可能还跟着 Ultra HDR 增益图）+ 尾部拼接的 MP4。
 - 需写 XMP：`GCamera:MotionPhoto*`、`GCamera:MicroVideo*`（`MicroVideoOffset` = 视频字节长）以及 `Container:Directory`（Primary / GainMap / MotionPhoto 项）。
 - **读取与编辑一律走 `MotionPhotoXmp`（托管 XDocument），不依赖 ExifTool 标签表**：ExifTool 12.x 不认识 Container 命名空间，13.x 又把组名改成 `XMP-GContainer`，按标签名读写会随版本失效。写入时在原有 XMP 上合并后整包回写（`-xmp<=`），不得丢弃封面原有的其它命名空间。
-- 定位视频一律走 `MotionPhotoLayout`：候选偏移处必须是 `ftyp`（HEIC 允许 `mpvd` box 头），否则视为非动态照片；只有 GainMap 没有 MotionPhoto 项的 Ultra HDR 照片不是动态照片。
+- 定位视频一律走 `MotionPhotoLayout`：候选偏移处必须是 `ftyp`，否则视为非动态照片；只有 GainMap 没有 MotionPhoto 项的 Ultra HDR 照片不是动态照片。HEIC 动态照片无需 XMP：遍历顶层 box（支持 64 位长度与 size 0），内容以 `ftyp` 开头的 `mpvd` 即为视频。
+- `EmbeddedVideo` 区分两个位置：`Offset`/`Length` 是视频数据（切片、播放用），`ImageEnd` 是照片部分的结束位置（剥离、拆分截断用）。视频包在 `mpvd` box 或三星 SEF 数据块中时 `ImageEnd < Offset`，截断必须用 `ImageEnd`，否则会残留容器头。
 - 剥离视频时只删除 MotionPhoto 目录项，保留 GainMap 项；带增益图的照片不转码 HEIC（会丢失 HDR）。
 - 拼接/拆分由 `BinaryFile.ConcatAsync` / `CopySegmentAsync` 流式完成，**严禁整文件读入堆内存**。
 
@@ -107,8 +108,9 @@ global.json                         # 固定 SDK 10.0.400（避免误用 11 prev
 
 ### 4.3 原子安全与非破坏
 
-- 中间文件放在 `TempWorkspace`（`Path.GetTempPath()/LivePhotoConvert/temp-{guid}/`），启动时清理 24h 前的孤儿目录。
-- **最终输出必须经 `OutputCommitter`**：先写到目标目录内的 `~lpc-*` 暂存文件，校验通过后同卷重命名落盘；同一批次的文件名由它统一分配，并发任务不会写到同一路径，**任何冲突策略下都不会覆盖本批次的源文件或本批次已写出的文件**。成对输出（HEIC + MOV）用 `CommitGroup` 保证同一序号，失败整组回滚。
+- 中间文件放在 `TempWorkspace`（`Path.GetTempPath()/LivePhotoConvert/temp-{guid}/`），启动时清理 24h 前的孤儿目录；退出时只用 `TempWorkspace.DeleteOwned()` 删除本进程创建的目录（多个实例共用根目录）。
+- **最终输出必须经 `OutputCommitter`**：先写到目标目录内的 `~lpc-*` 暂存文件，校验通过后同卷重命名落盘；同一批次的文件名由它统一分配，并发任务不会写到同一路径，**任何冲突策略下都不会覆盖本批次的源文件或本批次已写出的文件**。成对输出（HEIC + MOV）用 `CommitGroup` 保证同一序号，失败整组回滚；覆盖模式下成组落盘前先把已有目标改名为同目录 `~lpc-*` 备份，失败时新文件退回暂存、备份还原，成功后删除备份。受保护路径与已认领路径一律 `Path.GetFullPath` + 忽略大小写比较（大小写不敏感卷上只差大小写即同一文件）。
+- 暂存文件名带创建时间（`~lpc-t{ticks}-{guid}`），过期残留按文件名中的时间判断；源文件时间戳通过 `Commit`/`CommitGroup`/`ReplaceSource` 的 `timestamp` 参数在落盘后写到最终文件，不要对暂存文件调用 `FileTimestamp.ApplyTo`。
 - 就地替换走 `OutputCommitter.ReplaceSource`：扩展名不变时 `File.Replace` + `.livephoto_backup`，成功后**立即删除备份**；扩展名改变时先落盘新文件（不覆盖已有文件）再删除原文件，删除失败则撤销新文件。
 - 源文件处置（移动/回收站/删除）只在输出落盘并校验通过后由 `SourceDisposition` 执行；瘦身删除 Apple 配对视频前必须通过 `PairValidator`，且只走回收站。
 - 外部工具只写流程自己生成的中间或暂存文件，从不直接修改用户原文件。
@@ -116,13 +118,16 @@ global.json                         # 固定 SDK 10.0.400（避免误用 11 prev
 ### 4.3.1 外部进程
 
 - 一律通过 `ProcessRunner`（参数逐项 `ArgumentList`、标准输入立即关闭、默认 10 分钟超时、取消即结束进程树）；FFmpeg 固定带 `-nostdin`。
-- ExifTool 常驻会话经标准输入逐行传参，**含换行符的参数必须拒绝**；读取一律批量 `-j -n -G1 -a` 后由 `ExifToolJson` 解析，禁止逐标签往返。
+- ExifTool 常驻会话经标准输入逐行传参，**含换行符的参数必须拒绝**；输出按块读取，以「缓冲末尾为 `{readyN}` + 换行」判定结束（`-b` 输出没有尾随换行，不能逐行匹配标记）；读取一律批量 `-j -n -G1 -a` 后由 `ExifToolJson` 解析，禁止逐标签往返。
 - 工具可用性探测结果由 `ToolLocator` 按文件路径、大小与修改时间缓存，不要在热路径上重复启动 `-version`。
 
 ### 4.4 Avalonia / MVVM 规范
 
 - 所有视图必须 `x:CompileBindings="True"` + 显式 `x:DataType`；绑定一律 `CompiledBinding`，界面文案一律 `DynamicResource`。
 - 视图模型继承 `ViewModelBase`，使用 CommunityToolkit `[ObservableProperty]` / `[RelayCommand]`。
+- 服务与页面 VM 由 `Infrastructure/AppServices` 显式工厂注册（禁止反射扫描），通过构造函数注入；VM 之间不用 `Action` 回调互相接线，不新增静态单例。
+- 弹窗继承 `DialogViewModel<TResult>`，调用方 `await dialogs.ShowAsync(...)` 取结果；Esc 与遮罩点击走 `CancelCommand`，资源在 `OnClosed` 中释放。
+- 设置只经 `SettingsStore.Update(...)` 修改（防抖原子写入）；文件选择与打开目录/链接只经 `IFilePicker` / `IShellLauncher`，不直接 `Process.Start`。
 - **零 Emoji 策略**：UI 只用 FluentIcons 矢量图标（`ic:SymbolIcon`），不得用 emoji 字符充当图标。
 - 新增按钮/卡片样式统一写入 `Assets/Styles.axaml`（如 `Button.credit-row`），不要在视图里堆内联样式。
 - 复用型列表项模板放 `UserControl.Resources` 的 `DataTemplate`，跨级取命令用 `((vm:XxxViewModel)$parent[ItemsControl].DataContext).Command` 语法。

@@ -87,13 +87,15 @@ public sealed class MotionPhotoSplitter(IMetadataService metadata, IImageConvert
         var stagedVideo = OutputCommitter.CreateStagingPath(directory, videoExtension);
         try
         {
-            await BinaryFile.CopySegmentAsync(path, stagedPhoto, 0, video.Offset, cancellationToken);
+            await BinaryFile.CopySegmentAsync(path, stagedPhoto, 0, video.ImageEnd, cancellationToken);
             await metadata.RemoveMotionPhotoAsync(stagedPhoto, cancellationToken);
             await BinaryFile.CopySegmentAsync(path, stagedVideo, video.Offset, video.Length, cancellationToken);
-            FileTimestamp.Read(path).ApplyTo(stagedPhoto, stagedVideo);
 
             var stem = Path.GetFileNameWithoutExtension(path);
-            return committer.CommitGroup([new StagedFile(stagedPhoto, stem + photoExtension), new StagedFile(stagedVideo, stem + videoExtension)], directory);
+            return committer.CommitGroup(
+                [new StagedFile(stagedPhoto, stem + photoExtension), new StagedFile(stagedVideo, stem + videoExtension)],
+                directory,
+                FileTimestamp.Read(path));
         }
         catch
         {
@@ -121,7 +123,7 @@ public sealed class MotionPhotoSplitter(IMetadataService metadata, IImageConvert
         var stagedVideo = OutputCommitter.CreateStagingPath(directory, ".MOV");
         try
         {
-            await BinaryFile.CopySegmentAsync(path, cover, 0, video.Offset, cancellationToken);
+            await BinaryFile.CopySegmentAsync(path, cover, 0, video.ImageEnd, cancellationToken);
             await metadata.RemoveMotionPhotoAsync(cover, cancellationToken);
             if (photoExtension.Equals(".heic", StringComparison.OrdinalIgnoreCase))
             {
@@ -138,10 +140,12 @@ public sealed class MotionPhotoSplitter(IMetadataService metadata, IImageConvert
             var contentIdentifier = Guid.NewGuid().ToString().ToUpperInvariant();
             await metadata.WriteApplePhotoIdentifierAsync(stagedPhoto, contentIdentifier, cancellationToken);
             await metadata.WriteAppleVideoTagsAsync(stagedVideo, AppleVideoTags.From(contentIdentifier, sourceTags), cancellationToken);
-            FileTimestamp.Read(path).ApplyTo(stagedPhoto, stagedVideo);
 
             var stem = Path.GetFileNameWithoutExtension(path);
-            return committer.CommitGroup([new StagedFile(stagedPhoto, stem + ".HEIC"), new StagedFile(stagedVideo, stem + ".MOV")], directory);
+            return committer.CommitGroup(
+                [new StagedFile(stagedPhoto, stem + ".HEIC"), new StagedFile(stagedVideo, stem + ".MOV")],
+                directory,
+                FileTimestamp.Read(path));
         }
         catch
         {

@@ -1,3 +1,4 @@
+using LivePhotoConvert.Core.Io;
 using LivePhotoConvert.Core.Pipeline;
 
 namespace LivePhotoConvert.Core.Tests.Pipeline;
@@ -143,6 +144,113 @@ public class OutputCommitterTests
         Assert.False(File.Exists(stale));
         Assert.True(File.Exists(fresh));
         Assert.True(File.Exists(user));
+    }
+
+    [Fact]
+    public void CommitGroup_OverwriteAndSecondItemFails_RestoresOverwrittenFile()
+    {
+        using var temp = new TempDirectory();
+        var existing = temp.CreateFile("IMG.HEIC", [7, 7, 7]);
+        var photo = Stage(temp, [1]);
+        var missingVideo = temp.Combine("~lpc-missing.mov");
+        var committer = new OutputCommitter(ConflictPolicy.Overwrite, []);
+
+        Assert.Throws<FileNotFoundException>(() => committer.CommitGroup([new StagedFile(photo, "IMG.HEIC"), new StagedFile(missingVideo, "IMG.MOV")], temp.Root));
+
+        Assert.Equal([7, 7, 7], File.ReadAllBytes(existing));
+        Assert.Equal([1], File.ReadAllBytes(photo));
+        Assert.Equal(["IMG.HEIC", Path.GetFileName(photo)], temp.FileNames());
+    }
+
+    [Fact]
+    public void CommitGroup_OverwriteSucceeds_ReplacesTargetsAndLeavesNoBackup()
+    {
+        using var temp = new TempDirectory();
+        temp.CreateFile("IMG.HEIC", [7]);
+        temp.CreateFile("IMG.MOV", [8]);
+        var committer = new OutputCommitter(ConflictPolicy.Overwrite, []);
+
+        var finals = committer.CommitGroup([new StagedFile(Stage(temp, [1]), "IMG.HEIC"), new StagedFile(Stage(temp, [2]), "IMG.MOV")], temp.Root);
+
+        Assert.Equal([temp.Combine("IMG.HEIC"), temp.Combine("IMG.MOV")], finals);
+        Assert.Equal([1], File.ReadAllBytes(finals[0]));
+        Assert.Equal([2], File.ReadAllBytes(finals[1]));
+        Assert.Equal(["IMG.HEIC", "IMG.MOV"], temp.FileNames());
+    }
+
+    [Fact]
+    public void Commit_OverwritePolicy_ProtectsSourcesDifferingOnlyInCase()
+    {
+        using var temp = new TempDirectory();
+        var source = temp.CreateFile("IMG_0001.JPG", [1]);
+        var committer = new OutputCommitter(ConflictPolicy.Overwrite, [source]);
+
+        var final = committer.Commit(Stage(temp, [2]), temp.Root, "IMG_0001.jpg");
+
+        Assert.Equal(temp.Combine("IMG_0001_1.jpg"), final);
+        Assert.Equal([1], File.ReadAllBytes(source));
+    }
+
+    [Fact]
+    public void Commit_OverwritePolicy_NeverOverwritesOutputOfSameBatchDifferingOnlyInCase()
+    {
+        using var temp = new TempDirectory();
+        var committer = new OutputCommitter(ConflictPolicy.Overwrite, []);
+
+        var first = committer.Commit(Stage(temp, [1]), temp.Root, "MVIMG.JPG");
+        var second = committer.Commit(Stage(temp, [2]), temp.Root, "MVIMG.jpg");
+
+        Assert.Equal(temp.Combine("MVIMG_1.jpg"), second);
+        Assert.Equal([1], File.ReadAllBytes(first));
+    }
+
+    [Fact]
+    public void Commit_AppliesTimestampToFinalFileOnly()
+    {
+        using var temp = new TempDirectory();
+        var old = new DateTime(2020, 5, 1, 8, 0, 0, DateTimeKind.Utc);
+        var committer = new OutputCommitter(ConflictPolicy.AppendIndex, []);
+
+        var final = committer.Commit(Stage(temp, [1]), temp.Root, "out.jpg", new FileTimestamp(old, old));
+
+        Assert.Equal(old, File.GetLastWriteTimeUtc(final));
+    }
+
+    [Fact]
+    public void ReplaceSource_AppliesTimestampAfterReplacing()
+    {
+        using var temp = new TempDirectory();
+        var source = temp.CreateFile("IMG_0001.jpg", [1]);
+        var old = new DateTime(2020, 5, 1, 8, 0, 0, DateTimeKind.Utc);
+
+        var final = new OutputCommitter(ConflictPolicy.AppendIndex, [source]).ReplaceSource(Stage(temp, [2]), source, ".jpg", new FileTimestamp(old, old));
+
+        Assert.Equal(old, File.GetLastWriteTimeUtc(final));
+    }
+
+    [Fact]
+    public void DeleteStaleStagingFiles_ActiveStagingWithOldFileTime_IsKept()
+    {
+        using var temp = new TempDirectory();
+        var active = Stage(temp, [1]);
+        File.SetLastWriteTimeUtc(active, DateTime.UtcNow.AddDays(-30));
+
+        OutputCommitter.DeleteStaleStagingFiles(temp.Root, TimeSpan.FromDays(1));
+
+        Assert.True(File.Exists(active));
+    }
+
+    [Fact]
+    public void TryParseCreatedTime_RoundTripsNewNamesAndRejectsLegacyNames()
+    {
+        var before = DateTime.UtcNow;
+        var created = OutputCommitter.TryParseCreatedTime(OutputCommitter.NewStagingName(".jpg"));
+
+        Assert.NotNull(created);
+        Assert.InRange(created.Value, before, DateTime.UtcNow);
+        Assert.Null(OutputCommitter.TryParseCreatedTime($"~lpc-{Guid.NewGuid():N}.jpg"));
+        Assert.Null(OutputCommitter.TryParseCreatedTime("~lpc-tzzzzzzzzzzzzzzzz-x.jpg"));
+        Assert.Null(OutputCommitter.TryParseCreatedTime("photo.jpg"));
     }
 
     private static string Stage(TempDirectory temp, byte[] content)

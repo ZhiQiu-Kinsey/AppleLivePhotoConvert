@@ -24,6 +24,12 @@ internal sealed class FakeMetadataService : IMetadataService
     /// <summary>对匹配的文件写元数据时抛出异常，模拟 ExifTool 失败。</summary>
     public Func<string, bool> FailWrites { get; set; } = _ => false;
 
+    /// <summary>对匹配的文件读取 XMP 时抛出异常，模拟 ExifTool 读取失败。</summary>
+    public Func<string, bool> FailXmpReads { get; set; } = _ => false;
+
+    /// <summary>批量读取前同步执行：可抛出异常模拟整批读取失败，或阻塞以模拟耗时的读取。</summary>
+    public Action<IReadOnlyCollection<string>>? BeforeRead { get; set; }
+
     public MetadataScope? LastScope { get; private set; }
 
     public void Set(string path, MediaMetadata metadata) => Tags[Path.GetFullPath(path)] = metadata with { Path = path };
@@ -31,6 +37,7 @@ internal sealed class FakeMetadataService : IMetadataService
     public Task<IReadOnlyDictionary<string, MediaMetadata>> ReadAsync(IReadOnlyCollection<string> paths, MetadataScope scope = MetadataScope.Standard, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        BeforeRead?.Invoke(paths);
         LastScope = scope;
         IReadOnlyDictionary<string, MediaMetadata> result = paths.Distinct().ToDictionary(
             path => path,
@@ -40,6 +47,11 @@ internal sealed class FakeMetadataService : IMetadataService
 
     public Task<string?> ReadXmpAsync(string path, CancellationToken cancellationToken = default)
     {
+        if (FailXmpReads(path))
+        {
+            throw new InvalidOperationException($"模拟 ExifTool 读取失败：{Path.GetFileName(path)}");
+        }
+
         using var stream = File.OpenRead(path);
         return Task.FromResult(MotionPhotoLayout.ReadJpegXmp(stream));
     }

@@ -15,7 +15,7 @@ public static class ToolDownloader
     /// <summary>
     /// 获取优先使用的工具存放目录（具有写权限的本地应用数据目录或程序目录）
     /// </summary>
-    public static string LocalAppDataToolDirectory => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LivePhotoConvert", "tools");
+    public static string LocalAppDataToolDirectory => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.Create), "LivePhotoConvert", "tools");
 
     /// <summary>
     /// 获取当前可写的工具目录（优先程序根目录下的 tools，无权限时自动降级到 LocalAppData）

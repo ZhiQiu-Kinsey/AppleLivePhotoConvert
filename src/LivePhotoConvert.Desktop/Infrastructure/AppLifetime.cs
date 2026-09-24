@@ -52,7 +52,7 @@ public sealed class AppLifetime(
         settings.Flush();
         if (settings.Current.AutoCleanTemp)
         {
-            SafetyGuard.CleanAllTempDirectories();
+            SafetyGuard.CleanOwnTempDirectories();
         }
 
         _shutdownPrepared = true;

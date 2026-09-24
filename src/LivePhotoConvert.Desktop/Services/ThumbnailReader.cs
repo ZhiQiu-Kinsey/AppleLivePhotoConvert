@@ -15,7 +15,7 @@ public sealed class ThumbnailReader
     }
 
     private static readonly string CacheDir = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.Create),
         "LivePhotoConvert", "cache", "thumbs");
 
     static ThumbnailReader()

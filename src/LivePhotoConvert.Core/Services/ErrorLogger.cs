@@ -20,7 +20,7 @@ public static class ErrorLogger
     {
         get
         {
-            var logDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LivePhotoConvert", "logs");
+            var logDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.Create), "LivePhotoConvert", "logs");
             try
             {
                 Directory.CreateDirectory(logDir);

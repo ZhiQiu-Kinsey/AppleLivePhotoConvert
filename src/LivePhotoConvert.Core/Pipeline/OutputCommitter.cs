@@ -1,3 +1,4 @@
+using System.Globalization;
 using LivePhotoConvert.Core.Io;
 
 namespace LivePhotoConvert.Core.Pipeline;
@@ -31,6 +32,9 @@ public sealed class OutputCommitter
 
     private const int MaxIndex = 100_000;
 
+    /// <summary>暂存文件名中创建时间的标记：残留判断看文件名里的创建时间，不受写入的文件时间影响。</summary>
+    private const char CreatedMarker = 't';
+
     private readonly ConflictPolicy _policy;
     private readonly HashSet<string> _protected;
     private readonly HashSet<string> _claimed;
@@ -43,7 +47,11 @@ public sealed class OutputCommitter
         _claimed = new HashSet<string>(PathComparer);
     }
 
-    public static StringComparer PathComparer { get; } = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+    /// <summary>
+    /// 一律忽略大小写：macOS 与 exFAT/NTFS 卷在任何系统上都不区分大小写，而卷的属性无法可靠探测；
+    /// 把只差大小写的路径误判为同一文件只会多追加一个序号，反过来却可能覆盖源文件。
+    /// </summary>
+    public static StringComparer PathComparer { get; } = StringComparer.OrdinalIgnoreCase;
 
     /// <summary>
     /// 在目标目录中生成暂存路径，保留扩展名以便外部工具按扩展名识别格式。
@@ -51,12 +59,16 @@ public sealed class OutputCommitter
     public static string CreateStagingPath(string directory, string extension)
     {
         Directory.CreateDirectory(directory);
-        return Path.Combine(directory, $"{StagingPrefix}{Guid.NewGuid():N}{extension}");
+        return Path.Combine(directory, NewStagingName(extension));
     }
 
     /// <summary>
     /// 删除目录中早于指定时间的暂存文件（上次进程异常退出的残留）。
     /// </summary>
+    /// <remarks>
+    /// 按文件名中记录的创建时间判断：暂存文件可能被写入源文件的旧时间，按修改时间会误删其它批次正在使用的文件。
+    /// 文件名中没有创建时间的（旧版本残留）才按修改时间判断。
+    /// </remarks>
     public static void DeleteStaleStagingFiles(string directory, TimeSpan olderThan)
     {
         if (!Directory.Exists(directory))
@@ -67,7 +79,8 @@ public sealed class OutputCommitter
         var threshold = DateTime.UtcNow - olderThan;
         foreach (var file in Directory.EnumerateFiles(directory, StagingPrefix + "*"))
         {
-            if (File.GetLastWriteTimeUtc(file) < threshold)
+            var created = TryParseCreatedTime(Path.GetFileName(file)) ?? File.GetLastWriteTimeUtc(file);
+            if (created < threshold)
             {
                 FileHelper.TryDeleteFile(file);
             }
@@ -77,13 +90,18 @@ public sealed class OutputCommitter
     /// <summary>
     /// 把暂存文件落盘为 <paramref name="fileName"/>，返回最终路径。
     /// </summary>
-    public string Commit(string stagingPath, string directory, string fileName) =>
-        CommitGroup([new StagedFile(stagingPath, fileName)], directory)[0];
+    /// <param name="timestamp">落盘后写入最终文件的时间；不在暂存阶段写入，以免暂存文件被当成过期残留</param>
+    public string Commit(string stagingPath, string directory, string fileName, FileTimestamp? timestamp = null) =>
+        CommitGroup([new StagedFile(stagingPath, fileName)], directory, timestamp)[0];
 
     /// <summary>
     /// 把一组暂存文件以相同序号后缀落盘（如照片与视频成对），任一文件失败时整组回滚。
     /// </summary>
-    public IReadOnlyList<string> CommitGroup(IReadOnlyList<StagedFile> files, string directory)
+    /// <remarks>
+    /// 覆盖模式下单个文件的重命名覆盖本身是原子的；成组时后一项失败需要还原前一项覆盖掉的旧文件，
+    /// 因此先把旧文件改名为同目录的暂存备份，整组成功后再删除。
+    /// </remarks>
+    public IReadOnlyList<string> CommitGroup(IReadOnlyList<StagedFile> files, string directory, FileTimestamp? timestamp = null)
     {
         ArgumentOutOfRangeException.ThrowIfZero(files.Count);
         for (var index = 0; index < MaxIndex; index++)
@@ -96,26 +114,42 @@ public sealed class OutputCommitter
             }
 
             var moved = new List<(string From, string To)>(files.Count);
+            var backups = new List<(string Original, string Backup)>();
             try
             {
                 for (var i = 0; i < files.Count; i++)
                 {
+                    if (overwrite && files.Count > 1 && File.Exists(targets[i]))
+                    {
+                        var backup = Path.Combine(Path.GetDirectoryName(targets[i])!, NewStagingName(Path.GetExtension(targets[i])));
+                        File.Move(targets[i], backup);
+                        backups.Add((targets[i], backup));
+                    }
+
                     File.Move(files[i].StagingPath, targets[i], overwrite);
                     moved.Add((files[i].StagingPath, targets[i]));
                 }
-
-                return targets;
             }
             catch (IOException) when (!overwrite && File.Exists(targets[moved.Count]) && File.Exists(files[moved.Count].StagingPath))
             {
                 // 其它进程在认领之后抢先创建了同名文件：撤回已移动的文件，换下一个序号
                 Rollback(moved);
+                continue;
             }
             catch
             {
                 Rollback(moved);
+                RestoreBackups(backups);
                 throw;
             }
+
+            foreach (var (_, backup) in backups)
+            {
+                FileHelper.TryDeleteFile(backup);
+            }
+
+            timestamp?.ApplyTo(targets);
+            return targets;
         }
 
         throw new IOException($"无法为 {files[0].FileName} 找到可用的输出文件名。");
@@ -128,8 +162,9 @@ public sealed class OutputCommitter
     /// <param name="stagingPath">与源文件位于同一目录的暂存文件</param>
     /// <param name="sourcePath">被替换的源文件</param>
     /// <param name="extension">新文件的扩展名</param>
+    /// <param name="timestamp">替换完成后写入最终文件的时间</param>
     /// <returns>替换后的文件路径</returns>
-    public string ReplaceSource(string stagingPath, string sourcePath, string extension)
+    public string ReplaceSource(string stagingPath, string sourcePath, string extension, FileTimestamp? timestamp = null)
     {
         var fullSource = Path.GetFullPath(sourcePath);
         var directory = Path.GetDirectoryName(fullSource)!;
@@ -140,21 +175,44 @@ public sealed class OutputCommitter
             var backup = fullSource + BackupSuffix;
             File.Replace(stagingPath, fullSource, backup, ignoreMetadataErrors: true);
             FileHelper.TryDeleteFile(backup);
+            timestamp?.ApplyTo(fullSource);
             return fullSource;
         }
 
-        var committed = CommitGroup([new StagedFile(stagingPath, Path.GetFileName(target))], directory)[0];
+        var committed = CommitGroup([new StagedFile(stagingPath, Path.GetFileName(target))], directory, timestamp);
         try
         {
             File.Delete(fullSource);
         }
         catch
         {
-            FileHelper.TryDeleteFile(committed);
+            FileHelper.TryDeleteFile(committed[0]);
             throw;
         }
 
-        return committed;
+        return committed[0];
+    }
+
+    /// <summary>
+    /// 生成暂存文件名：<c>~lpc-t{创建时间 ticks}-{guid}{扩展名}</c>。
+    /// </summary>
+    internal static string NewStagingName(string extension) =>
+        $"{StagingPrefix}{CreatedMarker}{DateTime.UtcNow.Ticks:x16}-{Guid.NewGuid():N}{extension}";
+
+    internal static DateTime? TryParseCreatedTime(string fileName)
+    {
+        var name = fileName.AsSpan();
+        if (!name.StartsWith(StagingPrefix, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        name = name[StagingPrefix.Length..];
+        return name.Length > 18 && name[0] == CreatedMarker && name[17] == '-'
+               && long.TryParse(name[1..17], NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out var ticks)
+               && ticks >= 0 && ticks <= DateTime.MaxValue.Ticks
+            ? new DateTime(ticks, DateTimeKind.Utc)
+            : null;
     }
 
     private bool TryClaim(string[] targets, bool overwrite)
@@ -189,6 +247,24 @@ public sealed class OutputCommitter
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
                 // 回滚失败时保留已落盘的文件，至少不丢数据
+            }
+        }
+    }
+
+    /// <summary>
+    /// 把覆盖前备份的旧文件还原到原名；此时新文件已退回暂存路径，即使没退回也以用户原有文件为准。
+    /// </summary>
+    private static void RestoreBackups(List<(string Original, string Backup)> backups)
+    {
+        foreach (var (original, backup) in backups)
+        {
+            try
+            {
+                File.Move(backup, original, overwrite: true);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // 还原失败时备份文件仍保留在同一目录
             }
         }
     }
