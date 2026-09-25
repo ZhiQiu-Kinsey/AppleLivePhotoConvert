@@ -24,20 +24,20 @@
   <sys:String x:Key="SortName">名字</sys:String>
   <sys:String x:Key="SortAsc">升序</sys:String>
   <sys:String x:Key="SortDesc">降序</sys:String>
-  <sys:String x:Key="FilterAllFormat">全部照片 ({0})</sys:String>
-  <sys:String x:Key="FilterSuspiciousFormat">仅待人工裁决 ({0})</sys:String>
+  <sys:String x:Key="FilterAllFormat">全部照片（{0}）</sys:String>
+  <sys:String x:Key="FilterSuspiciousFormat">仅待人工裁决（{0}）</sys:String>
   <sys:String x:Key="FilterSelected">仅已选中项</sys:String>
   <sys:String x:Key="FilterBannerPrefix">当前已应用筛选视图：</sys:String>
   <sys:String x:Key="FilterClear">清除筛选</sys:String>
   <sys:String x:Key="CropNatural">等高自适应</sys:String>
-  <sys:String x:Key="CropSquare">方形 (1:1)</sys:String>
-  <sys:String x:Key="ScaleSmall">紧凑小网格 (多图一览)</sys:String>
+  <sys:String x:Key="CropSquare">方形（1:1）</sys:String>
+  <sys:String x:Key="ScaleSmall">紧凑小网格（多图一览）</sys:String>
   <sys:String x:Key="ScaleMedium">标准网格</sys:String>
-  <sys:String x:Key="ScaleLarge">超大卡片 (细节鉴赏)</sys:String>
+  <sys:String x:Key="ScaleLarge">超大卡片（细节鉴赏）</sys:String>
   <sys:String x:Key="GroupDate">按日期分组</sys:String>
   <sys:String x:Key="GroupMonth">按月份汇总</sys:String>
   <sys:String x:Key="GroupYear">按年份足迹</sys:String>
-  <sys:String x:Key="GroupNone">连续平铺 (不分组)</sys:String>
+  <sys:String x:Key="GroupNone">连续平铺（不分组）</sys:String>
   <sys:String x:Key="SelectAll">全选所有照片</sys:String>
   <sys:String x:Key="DeselectAll">取消全选</sys:String>
   <sys:String x:Key="ToggleAllCollapse">全部折叠 / 展开</sys:String>
@@ -72,7 +72,7 @@
   <sys:String x:Key="NoAlbumOrPhotoSelected">尚未选择相册或照片</sys:String>
   <sys:String x:Key="CurtainCompareTitle">瘦身画质对比</sys:String>
   <sys:String x:Key="CurtainCompareDesc">样张已按当前瘦身参数真实处理。拖动分割线对比原片与产物；滚轮缩放、拖动平移，按住右键或开启放大镜查看 1:1 像素。</sys:String>
-  <sys:String x:Key="InPlaceStripTitle">就地覆盖原照片 (破坏性替换)</sys:String>
+  <sys:String x:Key="InPlaceStripTitle">就地覆盖原照片（破坏性替换）</sys:String>
   <sys:String x:Key="InPlaceStripDesc">开启后直接覆盖原片，关闭则安全导出至独立目录</sys:String>
   <sys:String x:Key="SpaceEstimateTitle">空间释放预估</sys:String>
   <sys:String x:Key="OriginalSizeLabel">原相册总体积:</sys:String>
@@ -88,11 +88,11 @@
   <sys:String x:Key="RescanToolsBtn">重新扫描检测引擎</sys:String>
   <sys:String x:Key="MirrorTitle">GitHub 国内下载加速镜像</sys:String>
   <sys:String x:Key="MirrorDesc">从常用预设节点挑选，或手动输入您的私有加速代理</sys:String>
-  <sys:String x:Key="MirrorPresetGhfast">极速镜像 (ghfast.top - 推荐)</sys:String>
-  <sys:String x:Key="MirrorPresetGhproxy">公益镜像 (ghproxy.net)</sys:String>
-  <sys:String x:Key="MirrorPresetMirrorGhproxy">加速节点 (mirror.ghproxy.com)</sys:String>
-  <sys:String x:Key="MirrorPresetGithub">官方直连 (github.com)</sys:String>
-  <sys:String x:Key="MirrorPresetCustom">自定义镜像源 (手动输入)</sys:String>
+  <sys:String x:Key="MirrorPresetGhfast">极速镜像（ghfast.top - 推荐）</sys:String>
+  <sys:String x:Key="MirrorPresetGhproxy">公益镜像（ghproxy.net）</sys:String>
+  <sys:String x:Key="MirrorPresetMirrorGhproxy">加速节点（mirror.ghproxy.com）</sys:String>
+  <sys:String x:Key="MirrorPresetGithub">官方直连（github.com）</sys:String>
+  <sys:String x:Key="MirrorPresetCustom">自定义镜像源（手动输入）</sys:String>
   <sys:String x:Key="TestPingBtn">测试连通性</sys:String>
 
   <!-- 防灾弹窗 -->
@@ -152,7 +152,7 @@
   <sys:String x:Key="ToolUpgradeBtnFormat">升级到 {0}</sys:String>
   <sys:String x:Key="ToolHdrUnavailable">HDR 预览/转码不可用：当前 FFmpeg 缺少 HDR 色调映射或 10-bit HEVC 编码。</sys:String>
   <sys:String x:Key="ToolExplicitPathInvalid">自定义路径无效，已回退到自动检测。</sys:String>
-  <sys:String x:Key="ToolCapabilityHdrTonemap">HDR 色调映射 (zscale+tonemap)</sys:String>
+  <sys:String x:Key="ToolCapabilityHdrTonemap">HDR 色调映射（zscale+tonemap）</sys:String>
   <sys:String x:Key="ToolCapabilityHevc10Bit">HEVC 10-bit</sys:String>
   <sys:String x:Key="ToolPlatformUnsupportedBtn">当前平台请用系统包管理器安装</sys:String>
   <sys:String x:Key="ToolPlatformUnsupported">当前平台没有内置下载包，请用系统包管理器安装，或手动指定路径。</sys:String>
@@ -187,6 +187,8 @@
 
   <!-- PhotoCard Keys -->
   <sys:String x:Key="CardLiveBadge">实况</sys:String>
+  <sys:String x:Key="CardHdrBadge">HDR</sys:String>
+  <sys:String x:Key="CardHdrTip">HDR 照片：带高动态范围增益图，支持的屏幕上显示更亮的高光</sys:String>
   <sys:String x:Key="CardTimeMismatch">拍摄时间不吻合</sys:String>
   <sys:String x:Key="CardArbitrateBtn">人工确认配对</sys:String>
 
@@ -341,7 +343,7 @@
   <sys:String x:Key="PrimaryBtnMergeFormat">合成 {0} 组安卓动态照片</sys:String>
   <sys:String x:Key="PrimaryBtnAppleFormat">还原 {0} 组苹果实况</sys:String>
   <sys:String x:Key="PrimaryBtnExtractFormat">解包 {0} 张动态照片</sys:String>
-  <sys:String x:Key="FilterBannerSuspiciousFormat">仅待人工裁决 ({0}项)</sys:String>
+  <sys:String x:Key="FilterBannerSuspiciousFormat">仅待人工裁决（{0}项）</sys:String>
   <sys:String x:Key="FilterBannerSelected">仅已选中项</sys:String>
   <sys:String x:Key="SelectedBadgeFormat">已选 {0} 项</sys:String>
   <sys:String x:Key="StripSavedPctFormat">释放比例: {0:F1}%</sys:String>
@@ -352,16 +354,15 @@
   <!-- 运行时状态文案 -->
   <sys:String x:Key="AlbumSummaryNoDir">未选择目录</sys:String>
   <sys:String x:Key="LocalAlbumFallback">本地相册</sys:String>
-  <sys:String x:Key="CardDurationLive">实况视频</sys:String>
   <sys:String x:Key="PairStatusLocked">配对锁定</sys:String>
   <sys:String x:Key="PairStatusPending">待裁决</sys:String>
-  <sys:String x:Key="TimeDiffWarningFormat">时间相差 {0:F1} 秒 (&gt; 3.0s)</sys:String>
+  <sys:String x:Key="TimeDiffWarningFormat">时间相差 {0:F1} 秒（&gt; 3.0s）</sys:String>
   <sys:String x:Key="DateGroupFormat">yyyy年M月d日</sys:String>
   <sys:String x:Key="GroupTitleMonthFormat">yyyy年M月</sys:String>
   <sys:String x:Key="GroupTitleYearFormat">yyyy年</sys:String>
   <sys:String x:Key="CurtainPositionFormat">对比位置: {0:F0}% / {1:F0}%</sys:String>
   <sys:String x:Key="PingTesting">测试中...</sys:String>
-  <sys:String x:Key="PingFailedFormat">连接失败 ({0})</sys:String>
+  <sys:String x:Key="PingFailedFormat">连接失败（{0}）</sys:String>
   <sys:String x:Key="PingResultFormat">{0} ms (HTTP {1})</sys:String>
   <sys:String x:Key="PingDnsFailed">域名解析失败</sys:String>
   <sys:String x:Key="PingTlsFailed">安全连接失败</sys:String>
@@ -414,7 +415,7 @@
   <sys:String x:Key="TaskStatusCanceled">已取消</sys:String>
   <sys:String x:Key="TaskStatusFailed">未能完成</sys:String>
   <sys:String x:Key="TaskViewBtn">查看任务</sys:String>
-  <sys:String x:Key="RetryFailedFormat">重试失败项 ({0})</sys:String>
+  <sys:String x:Key="RetryFailedFormat">重试失败项（{0}）</sys:String>
   <sys:String x:Key="ExportCsvBtn">导出 CSV</sys:String>
   <sys:String x:Key="ExportCsvTitle">导出任务报告</sys:String>
   <sys:String x:Key="ExportCsvFilterName">CSV 文件</sys:String>

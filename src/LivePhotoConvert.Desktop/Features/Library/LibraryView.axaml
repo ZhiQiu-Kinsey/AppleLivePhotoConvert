@@ -17,55 +17,55 @@
     <Border x:Name="HeaderRow" Grid.Row="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1" Padding="14,10">
       <Grid ColumnDefinitions="Auto,*,Auto">
         <!-- 左侧：当前相册目录 -->
-        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" ToolTip.Tip="{Binding AlbumDirectory}">
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" ToolTip.Tip="{CompiledBinding AlbumDirectory}">
           <ic:SymbolIcon Symbol="FolderOpen" FontSize="15" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
-          <TextBlock Text="{Binding AlbumDirectorySummary}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"
+          <TextBlock Text="{CompiledBinding AlbumDirectorySummary}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"
                      VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="260" />
-          <Border Classes="task-chip accent" VerticalAlignment="Center" IsVisible="{Binding IsScanning}">
+          <Border Classes="task-chip accent" VerticalAlignment="Center" IsVisible="{CompiledBinding IsScanning}">
             <TextBlock Text="{DynamicResource LibraryScanning}" />
           </Border>
         </StackPanel>
 
         <!-- 右侧：扫描统计徽章，标题栏变窄时只显示数字 -->
         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Spacing="6"
-                    IsVisible="{Binding Selection.HasScannedFiles}">
+                    IsVisible="{CompiledBinding Selection.HasScannedFiles}">
           <!-- 实况就绪徽章 (绿) -->
           <Border Background="{DynamicResource SuccessSoftBrush}" BorderBrush="{DynamicResource SuccessBorderBrush}" BorderThickness="1"
                   CornerRadius="10" Padding="8,3" VerticalAlignment="Center"
-                  IsVisible="{Binding Selection.HasReadyItems}" ToolTip.Tip="{Binding Selection.FunnelReadyText}">
+                  IsVisible="{CompiledBinding Selection.HasReadyItems}" ToolTip.Tip="{CompiledBinding Selection.FunnelReadyText}">
             <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
               <ic:SymbolIcon Symbol="CheckmarkCircle" FontSize="12" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
-              <TextBlock Text="{Binding Selection.FunnelReadyText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center"
-                         IsVisible="{Binding #HeaderRow.Bounds.Width, Converter={x:Static conv:MinWidthToBoolConverter.Instance}, ConverterParameter=520}"/>
-              <TextBlock Text="{Binding Selection.ReadyCount}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center"
-                         IsVisible="{Binding #HeaderRow.Bounds.Width, Converter={x:Static conv:MinWidthToBoolConverter.Instance}, ConverterParameter=&lt;520}"/>
+              <TextBlock Text="{CompiledBinding Selection.FunnelReadyText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center"
+                         IsVisible="{CompiledBinding #HeaderRow.Bounds.Width, Converter={x:Static conv:MinWidthToBoolConverter.Instance}, ConverterParameter=520}"/>
+              <TextBlock Text="{CompiledBinding Selection.ReadyCount}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center"
+                         IsVisible="{CompiledBinding #HeaderRow.Bounds.Width, Converter={x:Static conv:MinWidthToBoolConverter.Instance}, ConverterParameter=&lt;520}"/>
             </StackPanel>
           </Border>
 
           <!-- 待裁决徽章 (橙黄，仅在 >0 时展示) -->
           <Border Background="{DynamicResource WarningSoftBrush}" BorderBrush="{DynamicResource WarningBorderBrush}" BorderThickness="1"
                   CornerRadius="10" Padding="8,3" VerticalAlignment="Center"
-                  IsVisible="{Binding Selection.HasSuspiciousItems}" ToolTip.Tip="{Binding Selection.FunnelSuspiciousText}">
+                  IsVisible="{CompiledBinding Selection.HasSuspiciousItems}" ToolTip.Tip="{CompiledBinding Selection.FunnelSuspiciousText}">
             <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
               <ic:SymbolIcon Symbol="Warning" FontSize="12" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
-              <TextBlock Text="{Binding Selection.FunnelSuspiciousText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center"
-                         IsVisible="{Binding #HeaderRow.Bounds.Width, Converter={x:Static conv:MinWidthToBoolConverter.Instance}, ConverterParameter=520}"/>
-              <TextBlock Text="{Binding Selection.SuspiciousCount}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center"
-                         IsVisible="{Binding #HeaderRow.Bounds.Width, Converter={x:Static conv:MinWidthToBoolConverter.Instance}, ConverterParameter=&lt;520}"/>
+              <TextBlock Text="{CompiledBinding Selection.FunnelSuspiciousText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center"
+                         IsVisible="{CompiledBinding #HeaderRow.Bounds.Width, Converter={x:Static conv:MinWidthToBoolConverter.Instance}, ConverterParameter=520}"/>
+              <TextBlock Text="{CompiledBinding Selection.SuspiciousCount}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center"
+                         IsVisible="{CompiledBinding #HeaderRow.Bounds.Width, Converter={x:Static conv:MinWidthToBoolConverter.Instance}, ConverterParameter=&lt;520}"/>
             </StackPanel>
           </Border>
 
           <!-- 扫描统计胶囊：文件数 · 条目数 · 忽略数（实况对的照片与视频合为一个条目，不算忽略） -->
           <Border Background="{DynamicResource HoverBrush}" CornerRadius="10" Padding="8,3" VerticalAlignment="Center"
-                  ToolTip.Tip="{Binding Selection.FunnelTooltipText}"
-                  IsVisible="{Binding #HeaderRow.Bounds.Width, Converter={x:Static conv:MinWidthToBoolConverter.Instance}, ConverterParameter=560}">
+                  ToolTip.Tip="{CompiledBinding Selection.FunnelTooltipText}"
+                  IsVisible="{CompiledBinding #HeaderRow.Bounds.Width, Converter={x:Static conv:MinWidthToBoolConverter.Instance}, ConverterParameter=560}">
             <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
               <ic:SymbolIcon Symbol="DocumentSearch" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
-              <TextBlock Text="{Binding Selection.FunnelTotalText}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+              <TextBlock Text="{CompiledBinding Selection.FunnelTotalText}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
               <TextBlock Text="·" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"/>
-              <TextBlock Text="{Binding Selection.FunnelItemsText}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
-              <TextBlock Text="·" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" IsVisible="{Binding Selection.HasIgnoredFiles}"/>
-              <TextBlock Text="{Binding Selection.FunnelIgnoredText}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" IsVisible="{Binding Selection.HasIgnoredFiles}"/>
+              <TextBlock Text="{CompiledBinding Selection.FunnelItemsText}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+              <TextBlock Text="·" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" IsVisible="{CompiledBinding Selection.HasIgnoredFiles}"/>
+              <TextBlock Text="{CompiledBinding Selection.FunnelIgnoredText}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" IsVisible="{CompiledBinding Selection.HasIgnoredFiles}"/>
             </StackPanel>
           </Border>
         </StackPanel>
@@ -80,14 +80,14 @@
       <!-- 筛选指示条 -->
       <Border Grid.Row="1" Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBorderBrush}" BorderThickness="1"
               CornerRadius="12" Padding="12,8" Margin="0,0,0,10"
-              IsVisible="{Binding IsFilterBannerVisible}">
+              IsVisible="{CompiledBinding IsFilterBannerVisible}">
         <Grid ColumnDefinitions="*,Auto">
           <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
             <ic:SymbolIcon Symbol="Filter" FontSize="12" Foreground="{DynamicResource AccentBrush}"/>
             <TextBlock Text="{DynamicResource FilterBannerPrefix}" FontSize="11" Foreground="{DynamicResource AccentTextBrush}" />
-            <TextBlock Text="{Binding FilterBannerDesc}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentTextBrush}" />
+            <TextBlock Text="{CompiledBinding FilterBannerDesc}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentTextBrush}" />
           </StackPanel>
-          <Button Grid.Column="1" Command="{Binding SetFilterModeCommand}" CommandParameter="All"
+          <Button Grid.Column="1" Command="{CompiledBinding SetFilterModeCommand}" CommandParameter="All"
                   Classes="toolbar-btn" Padding="8,2">
             <StackPanel Orientation="Horizontal" Spacing="4">
               <ic:SymbolIcon Symbol="Dismiss" FontSize="10" Foreground="{DynamicResource AccentBrush}"/>
@@ -100,17 +100,17 @@
       <!-- 扫描提示：目录无法读取，或跳过了无权限的子目录 -->
       <Border Grid.Row="2" Background="{DynamicResource WarningSoftBrush}" BorderBrush="{DynamicResource WarningBorderBrush}" BorderThickness="1"
               CornerRadius="12" Padding="12,8" Margin="0,0,0,10"
-              IsVisible="{Binding Catalog.HasStatus}">
+              IsVisible="{CompiledBinding Catalog.HasStatus}">
         <StackPanel Orientation="Horizontal" Spacing="6">
           <ic:SymbolIcon Symbol="Warning" FontSize="12" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center"/>
-          <TextBlock Text="{Binding Catalog.StatusText}" FontSize="11" Foreground="{DynamicResource WarningTextBrush}" TextWrapping="Wrap" VerticalAlignment="Center" />
+          <TextBlock Text="{CompiledBinding Catalog.StatusText}" FontSize="11" Foreground="{DynamicResource WarningTextBrush}" TextWrapping="Wrap" VerticalAlignment="Center" />
         </StackPanel>
       </Border>
 
       <!-- 画廊滚动视口：虚拟化单流排版，仅为可视区域生成视觉元素；等高行的容器与卡片控件由列表自己复用 -->
       <controls:GalleryList Grid.Row="3"
                             x:Name="GalleryListBox"
-                            ItemsSource="{Binding Layout.Items}"
+                            ItemsSource="{CompiledBinding Layout.Items}"
                             Background="Transparent"
                             BorderThickness="0"
                             Padding="0"
@@ -140,19 +140,19 @@
                     Height="{x:Static thumbs:GalleryMetrics.GroupHeaderHeight}">
               <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
                 <Button Grid.Column="0" Background="Transparent" BorderThickness="0" Padding="0" HorizontalAlignment="Left"
-                        Command="{Binding $parent[ListBox].((library:LibraryViewModel)DataContext).ToggleGroupCollapseCommand}"
-                        CommandParameter="{Binding}" Cursor="Hand">
+                        Command="{CompiledBinding $parent[ListBox].((library:LibraryViewModel)DataContext).ToggleGroupCollapseCommand}"
+                        CommandParameter="{CompiledBinding}" Cursor="Hand">
                   <StackPanel Orientation="Horizontal" Spacing="8">
                     <Panel Width="16" Height="16">
-                      <ic:SymbolIcon Symbol="ChevronDown" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" IsVisible="{Binding !IsCollapsed}"/>
-                      <ic:SymbolIcon Symbol="ChevronRight" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" IsVisible="{Binding IsCollapsed}"/>
+                      <ic:SymbolIcon Symbol="ChevronDown" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" IsVisible="{CompiledBinding !IsCollapsed}"/>
+                      <ic:SymbolIcon Symbol="ChevronRight" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" IsVisible="{CompiledBinding IsCollapsed}"/>
                     </Panel>
-                    <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                    <TextBlock Text="{CompiledBinding Title}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
-                                IsVisible="{Binding LocationSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                IsVisible="{CompiledBinding LocationSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                       <Border Width="1" Height="10" Background="{DynamicResource LineStrongBrush}" VerticalAlignment="Center" />
                       <ic:SymbolIcon Symbol="Location" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"/>
-                      <TextBlock Text="{Binding LocationSummary}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"
+                      <TextBlock Text="{CompiledBinding LocationSummary}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"
                                  TextTrimming="CharacterEllipsis" MaxWidth="240" />
                     </StackPanel>
                   </StackPanel>
@@ -160,12 +160,12 @@
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                   <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding PhotoCount}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
+                    <TextBlock Text="{CompiledBinding PhotoCount}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
                     <TextBlock Text="{DynamicResource UnitLivePhotos}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
                   </StackPanel>
                   <Button Classes="toolbar-btn" Width="24" Height="24" Padding="0"
-                          Command="{Binding $parent[ListBox].((library:LibraryViewModel)DataContext).SelectGroupCommand}"
-                          CommandParameter="{Binding}" ToolTip.Tip="{DynamicResource GroupSelectTip}">
+                          Command="{CompiledBinding $parent[ListBox].((library:LibraryViewModel)DataContext).SelectGroupCommand}"
+                          CommandParameter="{CompiledBinding}" ToolTip.Tip="{DynamicResource GroupSelectTip}">
                     <ic:SymbolIcon Symbol="SelectAllOn" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"/>
                   </Button>
                 </StackPanel>
@@ -176,19 +176,19 @@
       </controls:GalleryList>
 
       <!-- 空状态 -->
-      <Panel Grid.Row="3" IsVisible="{Binding !HasPhotos}">
+      <Panel Grid.Row="3" IsVisible="{CompiledBinding !HasPhotos}">
         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
           <ic:SymbolIcon Symbol="Camera" FontSize="56" Foreground="{DynamicResource LineStrongBrush}" HorizontalAlignment="Center"/>
-          <TextBlock Text="{Binding EmptyStateTitle}" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"
+          <TextBlock Text="{CompiledBinding EmptyStateTitle}" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"
                      HorizontalAlignment="Center" TextAlignment="Center" />
-          <TextBlock Text="{Binding EmptyStateSubtitle}" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"
+          <TextBlock Text="{CompiledBinding EmptyStateSubtitle}" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"
                      HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="380" TextWrapping="Wrap" />
-          <Button Classes="primary-btn" Command="{Binding SelectAlbumFolderCommand}"
+          <Button Classes="primary-btn" Command="{CompiledBinding SelectAlbumFolderCommand}"
                   HorizontalAlignment="Center" Padding="18,9" Margin="0,6,0,0"
-                  controls:ShortcutTip.Label="{Binding SelectAlbumFolderBtnText}" controls:ShortcutTip.Shortcut="{x:Static infra:AppShortcuts.OpenAlbum}">
+                  controls:ShortcutTip.Label="{CompiledBinding SelectAlbumFolderBtnText}" controls:ShortcutTip.Shortcut="{x:Static infra:AppShortcuts.OpenAlbum}">
             <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
               <ic:SymbolIcon Symbol="Folder" FontSize="15" Foreground="{DynamicResource OnAccentBrush}" VerticalAlignment="Center" Margin="0,1,0,0"/>
-              <TextBlock Text="{Binding SelectAlbumFolderBtnText}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center" />
+              <TextBlock Text="{CompiledBinding SelectAlbumFolderBtnText}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center" />
             </StackPanel>
           </Button>
           <TextBlock Classes="empty-drop-hint" Text="{DynamicResource EmptyStateDropHint}" />

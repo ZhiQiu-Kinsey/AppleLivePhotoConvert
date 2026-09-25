@@ -61,7 +61,7 @@ public sealed partial class PhotoCardItemViewModel : ObservableObject, IGalleryD
 {
     private static readonly string[] ItemDerivedProperties =
     [
-        nameof(Kind), nameof(IsMotionPhoto), nameof(IsApplePair), nameof(Video),
+        nameof(Kind), nameof(IsMotionPhoto), nameof(IsApplePair), nameof(IsHdr), nameof(Video),
         nameof(PhotoHeader), nameof(AspectRatio), nameof(ResolutionText), nameof(DateTaken), nameof(FormattedDate),
         nameof(FormattedTime), nameof(DeviceInfo), nameof(PhotoSizeText), nameof(VideoSizeText), nameof(SizeSummary),
         nameof(RequiresPairReview), nameof(WarningReason)
@@ -104,6 +104,8 @@ public sealed partial class PhotoCardItemViewModel : ObservableObject, IGalleryD
 
     public bool IsApplePair => Item.Kind == LibraryItemKind.ApplePair;
 
+    public bool IsHdr => Item.IsHdr;
+
     /// <summary>视频数据位置：实况对为整段视频文件，动态照片为照片内的区段（播放器直接读取，不切临时文件）。</summary>
     public VideoSource? Video => Item.VideoSource;
 
@@ -141,7 +143,10 @@ public sealed partial class PhotoCardItemViewModel : ObservableObject, IGalleryD
         _ => string.Empty
     };
 
-    public string SizeSummary => string.IsNullOrEmpty(VideoSizeText) ? PhotoSizeText : $"{PhotoSizeText} + {VideoSizeText}";
+    /// <summary>苹果实况是照片与视频两个文件，分别列出；动态照片只有一个文件，显示文件总大小。</summary>
+    public string SizeSummary => IsMotionPhoto
+        ? ByteSizeConverter.Format(Item.Photo.Length)
+        : string.IsNullOrEmpty(VideoSizeText) ? PhotoSizeText : $"{PhotoSizeText} + {VideoSizeText}";
 
     /// <summary>配对未通过校验且尚未人工确认：合成前需要裁决。</summary>
     public bool RequiresPairReview => Item.RequiresPairReview && !IsForceAccepted;

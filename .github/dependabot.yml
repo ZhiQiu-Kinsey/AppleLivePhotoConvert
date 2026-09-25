@@ -14,8 +14,19 @@ updates:
     open-pull-requests-limit: 10
     commit-message:
       prefix: deps
-    # 依赖按先匹配的分组归类：Avalonia 全家（含 Headless 测试包）需同版本升级，放在最前
+    # Avalonia.Headless.XUnit 仍基于 xunit.v3 3.x 编译，与 xunit 4 二进制不兼容（发现 [AvaloniaFact] 时 MissingMethodException），
+    # 且 xunit 4 不再支持 VSTest 运行方式；等 Avalonia 支持后再整体迁移
+    ignore:
+      - dependency-name: xunit.v3*
+        update-types: [version-update:semver-major]
+      - dependency-name: xunit.runner.visualstudio
+        update-types: [version-update:semver-major]
+    # 依赖按先匹配的分组归类：FluentIcons 各包之间是精确版本约束，只升其中一个会还原失败（NU1608）；
+    # Avalonia 全家（含 Headless 测试包）需同版本升级
     groups:
+      fluenticons:
+        patterns:
+          - FluentIcons.*
       avalonia:
         patterns:
           - Avalonia

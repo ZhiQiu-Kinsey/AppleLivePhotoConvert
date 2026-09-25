@@ -187,6 +187,8 @@
 
   <!-- PhotoCard Keys -->
   <sys:String x:Key="CardLiveBadge">Live</sys:String>
+  <sys:String x:Key="CardHdrBadge">HDR</sys:String>
+  <sys:String x:Key="CardHdrTip">HDR photo: carries a gain map for brighter highlights on HDR displays</sys:String>
   <sys:String x:Key="CardTimeMismatch">Timestamp Mismatch</sys:String>
   <sys:String x:Key="CardArbitrateBtn">Confirm Pair Manually</sys:String>
 
@@ -352,7 +354,6 @@
   <!-- Runtime Status Strings -->
   <sys:String x:Key="AlbumSummaryNoDir">No directory selected</sys:String>
   <sys:String x:Key="LocalAlbumFallback">Local Album</sys:String>
-  <sys:String x:Key="CardDurationLive">Live Video</sys:String>
   <sys:String x:Key="PairStatusLocked">Pair Locked</sys:String>
   <sys:String x:Key="PairStatusPending">Needs Decision</sys:String>
   <sys:String x:Key="TimeDiffWarningFormat">Time gap {0:F1}s (&gt; 3.0s)</sys:String>

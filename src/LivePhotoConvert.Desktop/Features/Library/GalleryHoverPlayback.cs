@@ -15,7 +15,7 @@ namespace LivePhotoConvert.Desktop.Features.Library;
 public sealed class GalleryHoverPlayback : IDisposable
 {
     /// <summary>指针划过画廊时不为途经的每张卡片启动 FFmpeg。</summary>
-    public static readonly TimeSpan DefaultStartDelay = TimeSpan.FromMilliseconds(250);
+    public static readonly TimeSpan DefaultStartDelay = TimeSpan.FromMilliseconds(100);
 
     private readonly PlaybackService _service;
     private readonly ILivePhotoPlayer _player;

@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.VisualTree;
 using LivePhotoConvert.Core.Tests.Support;
+using LivePhotoConvert.Desktop.Controls;
 using LivePhotoConvert.Desktop.Features.Dialogs;
 using LivePhotoConvert.Desktop.Features.Library;
 using LivePhotoConvert.Desktop.Features.Library.Gallery;
@@ -135,6 +136,39 @@ public sealed class GalleryViewTests : IDisposable
         Assert.Contains("Motion Photo", shownEn);
         UiTexts.AssertNoChinese(session, "图库（英文）");
         session.Log.AssertNoBindingErrors();
+    }
+
+    /// <summary>苹果实况的 HEIC 增益图与安卓动态照片的 Ultra HDR 都显示 HDR 徽章，普通照片不显示；切换语言后仍然正确。</summary>
+    [AvaloniaFact]
+    public async Task HdrCards_ShowHdrBadge_OnlyForHdrPhotos()
+    {
+        _album.CreateInputFile("IMG_0001.heic", SyntheticImages.Heif(400, 300, appleGainMap: true));
+        _album.CreateInputFile("IMG_0001.mov", SyntheticMedia.Mov());
+        _album.CreateInputFile("IMG_0002.heic", SyntheticImages.Heif(400, 300));
+        _album.CreateInputFile("IMG_0002.mov", SyntheticMedia.Mov());
+        _album.CreateInputFile("MVIMG_0003.jpg", SyntheticMedia.MotionPhotoWithGainMap(SyntheticMedia.Jpeg(700)));
+        _album.CreateInputFile("MVIMG_0004.jpg", SyntheticMedia.MotionPhoto());
+        // 瘦身同时列出苹果实况对与安卓动态照片
+        using var session = new ShellSession(settings: s => s.Action = ConversionAction.Strip);
+        await ScanAsync(session, 4);
+
+        AssertHdrBadges(session);
+        session.Shell.Settings.SetLanguageCommand.Execute("en");
+        session.Pump();
+        AssertHdrBadges(session);
+        Screenshots.Save(session, "gallery-hdr-badges-en");
+        session.Log.AssertNoBindingErrors();
+
+        static void AssertHdrBadges(ShellSession session)
+        {
+            var hdrText = session.Localizer["CardHdrBadge"];
+            var badged = session.Descendants<PhotoCardControl>()
+                .Where(c => c.IsEffectivelyVisible && c.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == hdrText && t.IsEffectivelyVisible))
+                .Select(c => ((PhotoCardItemViewModel)c.DataContext!).FileName)
+                .Order()
+                .ToList();
+            Assert.Equal(["IMG_0001", "MVIMG_0003"], badged);
+        }
     }
 
     /// <summary>预览序列只含画廊当前显示的卡片：筛选掉的卡片不能左右切换到。</summary>

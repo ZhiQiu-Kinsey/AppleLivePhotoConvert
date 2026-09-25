@@ -139,6 +139,9 @@
         </ResourceDictionary>
 
       </ResourceDictionary.ThemeDictionaries>
+
+      <!-- 数字、路径与文件名用等宽字体；按平台常见字体依次回退，Windows 上取 Cascadia Mono 或 Consolas -->
+      <FontFamily x:Key="MonoFontFamily">Cascadia Mono, Consolas, Menlo, DejaVu Sans Mono, Noto Sans Mono</FontFamily>
     </ResourceDictionary>
   </Styles.Resources>
 
@@ -337,9 +340,9 @@
                  Button.engine-secondary-btn:pressed /template/ ContentPresenter#PART_ContentPresenter,
                  Button.update-badge:pointerover /template/ ContentPresenter#PART_ContentPresenter,
                  Button.update-badge:pressed /template/ ContentPresenter#PART_ContentPresenter">
-    <Setter Property="Background" Value="{Binding $parent[Button].Background}" />
-    <Setter Property="BorderBrush" Value="{Binding $parent[Button].BorderBrush}" />
-    <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}" />
+    <Setter Property="Background" Value="{CompiledBinding $parent[Button].Background}" />
+    <Setter Property="BorderBrush" Value="{CompiledBinding $parent[Button].BorderBrush}" />
+    <Setter Property="Foreground" Value="{CompiledBinding $parent[Button].Foreground}" />
   </Style>
 
   <!-- 现代化全局 ComboBox 风格系统 -->
@@ -1172,7 +1175,7 @@
 
   <Style Selector="Button.action-tile ic|SymbolIcon">
     <Setter Property="FontSize" Value="16" />
-    <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}" />
+    <Setter Property="Foreground" Value="{CompiledBinding $parent[Button].Foreground}" />
   </Style>
 
   <!-- 检查器收起按钮与收起后窄条上的图标按钮 -->
@@ -1202,7 +1205,7 @@
 
   <Style Selector="Button.rail-btn ic|SymbolIcon">
     <Setter Property="FontSize" Value="16" />
-    <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}" />
+    <Setter Property="Foreground" Value="{CompiledBinding $parent[Button].Foreground}" />
   </Style>
 
   <Style Selector="Button.rail-start-btn">
@@ -1232,12 +1235,12 @@
   <Style Selector="Button.group-header ic|SymbolIcon">
     <Setter Property="FontSize" Value="12" />
     <Setter Property="VerticalAlignment" Value="Center" />
-    <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}" />
+    <Setter Property="Foreground" Value="{CompiledBinding $parent[Button].Foreground}" />
   </Style>
 
   <Style Selector="TextBlock.group-summary">
     <Setter Property="FontSize" Value="11" />
-    <Setter Property="FontFamily" Value="Consolas" />
+    <Setter Property="FontFamily" Value="{StaticResource MonoFontFamily}" />
     <Setter Property="Margin" Value="0,2,8,0" />
     <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}" />
     <Setter Property="TextTrimming" Value="CharacterEllipsis" />
@@ -1306,13 +1309,18 @@
   </Style>
 
   <!-- 画廊卡片：预览区左上角的实况 / 待裁决徽章 -->
+  <Style Selector="StackPanel.card-media-badges">
+    <Setter Property="Orientation" Value="Horizontal" />
+    <Setter Property="Spacing" Value="6" />
+    <Setter Property="Margin" Value="8" />
+    <Setter Property="HorizontalAlignment" Value="Left" />
+    <Setter Property="VerticalAlignment" Value="Top" />
+  </Style>
+
   <Style Selector="Border.card-media-badge">
     <Setter Property="Background" Value="{DynamicResource MediaControlBrush}" />
     <Setter Property="CornerRadius" Value="12" />
     <Setter Property="Padding" Value="8,4" />
-    <Setter Property="Margin" Value="8" />
-    <Setter Property="HorizontalAlignment" Value="Left" />
-    <Setter Property="VerticalAlignment" Value="Top" />
   </Style>
 
   <Style Selector="Border.card-media-badge.warning">
@@ -1426,7 +1434,7 @@
   <Style Selector="Border.compare-zoom-readout > TextBlock">
     <Setter Property="FontSize" Value="12" />
     <Setter Property="FontWeight" Value="Bold" />
-    <Setter Property="FontFamily" Value="Consolas" />
+    <Setter Property="FontFamily" Value="{StaticResource MonoFontFamily}" />
     <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
     <Setter Property="HorizontalAlignment" Value="Center" />
     <Setter Property="VerticalAlignment" Value="Center" />

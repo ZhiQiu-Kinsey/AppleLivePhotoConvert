@@ -31,7 +31,7 @@
           <StackPanel Spacing="8">
             <Grid ColumnDefinitions="*,Auto">
               <TextBlock Grid.Column="0" Text="{DynamicResource ArbitratePhotoTitle}" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
-              <TextBlock Grid.Column="1" Text="{CompiledBinding PhotoTimeText}" FontSize="11" Foreground="{DynamicResource AccentTextBrush}" FontFamily="Consolas" />
+              <TextBlock Grid.Column="1" Text="{CompiledBinding PhotoTimeText}" FontSize="11" Foreground="{DynamicResource AccentTextBrush}" FontFamily="{DynamicResource MonoFontFamily}" />
             </Grid>
             <Border Background="{DynamicResource MediaCanvasBrush}" CornerRadius="12" Height="140">
               <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="4">
@@ -48,7 +48,7 @@
           <StackPanel Spacing="8">
             <Grid ColumnDefinitions="*,Auto">
               <TextBlock Grid.Column="0" Text="{DynamicResource ArbitrateVideoTitle}" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
-              <TextBlock Grid.Column="1" Text="{CompiledBinding VideoTimeText}" FontSize="11" Foreground="{DynamicResource WarningTextBrush}" FontFamily="Consolas" />
+              <TextBlock Grid.Column="1" Text="{CompiledBinding VideoTimeText}" FontSize="11" Foreground="{DynamicResource WarningTextBrush}" FontFamily="{DynamicResource MonoFontFamily}" />
             </Grid>
             <Border Background="{DynamicResource MediaCanvasBrush}" CornerRadius="12" Height="140">
               <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="4">

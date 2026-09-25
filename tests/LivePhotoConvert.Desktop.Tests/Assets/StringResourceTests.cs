@@ -250,6 +250,18 @@ public class StringResourceTests
         Assert.True(offenders.Count == 0, "英文字典含中文:\n" + string.Join('\n', offenders));
     }
 
+    /// <summary>中文文案用全角括号；纯英文或纯数字的值（版权行、延迟、百分比）保留半角。</summary>
+    [Fact]
+    public void ChineseDictionary_UsesFullWidthParenthesesInChineseText()
+    {
+        var offenders = DesktopSources.LoadEntries("zh-CN")
+            .Where(e => UiTexts.ContainsChinese(e.Value) && e.Value.AsSpan().ContainsAny('(', ')'))
+            .Select(e => $"{e.Key}: {e.Value}")
+            .ToList();
+
+        Assert.True(offenders.Count == 0, "中文文案含半角括号:\n" + string.Join('\n', offenders));
+    }
+
     /// <summary>零 Emoji：图标只用 FluentIcons 矢量图标。箭头（←→）属于按键说明，不算 Emoji。</summary>
     [Fact]
     public void DesktopSourcesAndStrings_ContainNoEmoji()

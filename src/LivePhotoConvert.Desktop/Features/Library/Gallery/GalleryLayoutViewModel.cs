@@ -160,6 +160,9 @@ public sealed partial class GalleryLayoutViewModel : ObservableObject
         _widthTimer.Start();
     }
 
+    /// <summary>有视口宽度变化正在防抖、尚未重排；此时的排版随后还会被替换。</summary>
+    internal bool IsWidthPending => _widthTimer.IsEnabled;
+
     /// <summary>立即按新宽度重排（跳过防抖）。</summary>
     public void ApplyViewportWidth(double width)
     {

@@ -70,6 +70,40 @@ public partial class ViewStyleRulesTests
         Assert.True(violations.Count == 0, "小于 11px 的文字:\n" + string.Join('\n', violations));
     }
 
+    /// <summary>字体只经 MonoFontFamily 等资源指定：资源里带各平台的回退列表，写死字体名在缺该字体的系统上会退回默认字体。</summary>
+    [Fact]
+    public void FontFamilies_ComeFromResources()
+    {
+        var violations = new List<string>();
+        foreach (var (file, doc) in CheckedViews())
+        {
+            foreach (var element in doc.Descendants())
+            {
+                var value = element.Name.LocalName == "Setter" && (string?)element.Attribute("Property") == "FontFamily"
+                    ? (string?)element.Attribute("Value")
+                    : (string?)element.Attribute("FontFamily");
+                if (value is not null && !value.StartsWith('{'))
+                {
+                    violations.Add($"{file}: <{element.Name.LocalName}> FontFamily=\"{value}\"");
+                }
+            }
+        }
+
+        Assert.True(violations.Count == 0, "写死的字体:\n" + string.Join('\n', violations));
+    }
+
+    /// <summary>绑定统一写 CompiledBinding，一眼可见绑定在编译期校验，不依赖工程的默认编译绑定开关。</summary>
+    [Fact]
+    public void Bindings_UseCompiledBindingMarkup()
+    {
+        var violations = CheckedViews()
+            .SelectMany(v => PlainBinding().Matches(File.ReadAllText(Path.Combine(DesktopSources.Directory, v.File)))
+                .Select(m => $"{v.File}: {m.Value}"))
+            .ToList();
+
+        Assert.True(violations.Count == 0, "未写成 CompiledBinding 的绑定:\n" + string.Join('\n', violations));
+    }
+
     /// <summary>
     /// Fluent 按钮模板悬停时改写内部 ContentPresenter 的底色；自定义了悬停底色的按钮类必须加入让呈现器跟随按钮画刷的规则，
     /// 否则悬停样式不生效。
@@ -201,6 +235,9 @@ public partial class ViewStyleRulesTests
     /// <summary>代码里增删或设置样式类：Classes.Add("x")、Classes.Set("x", …)、Classes.Contains("x") 等。</summary>
     [GeneratedRegex(@"Classes\.\w+\(\s*""(?<cls>[\w-]+)""")]
     private static partial Regex CodeClass();
+
+    [GeneratedRegex(@"\{Binding(?=[\s}])[^}]*\}?")]
+    private static partial Regex PlainBinding();
 
     [GeneratedRegex(@"^Button\.(?<cls>[\w-]+):pointerover$")]
     private static partial Regex HoverButton();

@@ -12,7 +12,7 @@
 - **形态**：.NET 10 + Avalonia 12 桌面应用，Native AOT 单文件发布（`TrimMode=full`）。命令行入口已移除，**不要恢复 CLI 或为新功能加命令行分支**；可复用能力放 Core，交互放 Desktop。
 - **名称**：工程、可执行文件（`LivePhotoConvert.exe`）、设置与缓存目录都叫 `LivePhotoConvert`，不要改名。
 - **平台**：正式支持 Windows x64（安装版、可更新便携版与纯解压版，均为 `win-x64`）；Linux 可从源码运行（依赖自行安装、无回收站）；macOS 未适配；安卓 / iOS 不支持（依赖外部命令行进程）。
-- **技术栈**：Avalonia 12.1.2（Desktop / Themes.Fluent / Fonts.Inter）、CommunityToolkit.Mvvm 8.4.0、FluentIcons.Avalonia、Microsoft.Extensions.DependencyInjection、Velopack（安装与更新，vpk CLI 版本由 `.github/scripts/velopack-pack.ps1` 从 csproj 读取，始终与库同版本）；Core 只引用 `Magick.NET-Q8-x64`（图像解码）与 `SharpCompress`（7z 解压）。外部工具：ExifTool、FFmpeg、heif-enc / heif-dec。
+- **技术栈**：Avalonia 12.1.3（Desktop / Themes.Fluent / Fonts.Inter）、CommunityToolkit.Mvvm 8.4.2、FluentIcons.Avalonia、Microsoft.Extensions.DependencyInjection、Velopack（安装与更新，vpk CLI 版本由 `.github/scripts/velopack-pack.ps1` 从 csproj 读取，始终与库同版本）；Core 只引用 `Magick.NET-Q8-x64`（图像解码）与 `SharpCompress`（7z 解压）。外部工具：ExifTool、FFmpeg、heif-enc / heif-dec。
 - **测试**：xunit.v3。`LivePhotoConvert.Core.Tests`（引擎）、`LivePhotoConvert.Desktop.Tests`（VM / 服务单元测试 + Avalonia Headless 界面测试）、`LivePhotoConvert.E2E`（真实外壳 + 真实工具的黑盒流程）。
 
 ## 2. 架构速览
@@ -93,6 +93,7 @@ tests/  Core.Tests（按 Media / Metadata / Pairing / Pipeline / Services / Exte
 
 - `Assets/Strings.zh-CN.axaml` 与 `Assets/Strings.en-US.axaml` 是唯一数据源，**两份必须同时修改、键集合一致**。视图用 `{DynamicResource Key}`，代码用 `ILocalizer`（`localizer["Key"]`、`localizer.Format("XxxFormat", ...)`），.cs 中不写界面可见的中英文字面量。
 - 格式串以 `Format` 结尾，两种语言占位符一致；日期格式也放资源。XAML 中转义 `&` `<` `>`，首尾空格加 `xml:space="preserve"`。缺失键在 Debug 下 `Debug.Fail`（测试进程直接终止）。
+- 中文文案用全角括号「（）」，只有纯英文 / 数字的值保留半角。
 - **Core 只返回原因码**：跳过 / 失败用 `OutcomeReason` + `OutcomeCause`，附注用 `OutcomeNoteKind`，异常原文放 `ItemOutcome.Detail`；`Features/Tasks/OutcomeTexts` 为每个枚举值映射字符串键，新增枚举值须同步两份 Strings。
 
 ### 3.6 界面样式与无障碍
@@ -100,6 +101,7 @@ tests/  Core.Tests（按 Media / Metadata / Pairing / Pipeline / Services / Exte
 - **零 Emoji**：图标只用 FluentIcons（`ic:SymbolIcon`），界面源码与字符串中不出现 Emoji。
 - 颜色只用主题 token（`Styles.axaml` 的 ThemeDictionaries 为浅色 / 深色各定义一份，键集合一致），不写字面量颜色；文字与图标对比度达到 WCAG AA（正文 ≥4.5:1，大字与图标 ≥3:1）；最小字号 11px。
 - 新样式写进 `Assets/Styles.axaml`，不在视图里堆内联样式；样式类必须被视图或代码使用；带自定义悬停底色的按钮类必须加入呈现器跟随规则，否则 Fluent 模板的悬停底色会覆盖它。
+- 字体只经资源指定（等宽用 `MonoFontFamily`，带各平台回退），不写死字体名；绑定统一写 `{CompiledBinding}`。
 
 ### 3.7 画廊内存与播放
 

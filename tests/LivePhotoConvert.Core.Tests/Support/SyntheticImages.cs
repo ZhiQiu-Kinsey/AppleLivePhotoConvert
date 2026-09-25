@@ -152,7 +152,8 @@ internal static class SyntheticImages
     /// <param name="rotation">irot 的角度（逆时针 90° 的倍数），为 <c>null</c> 时不写 irot</param>
     /// <param name="thumbnailWidth">缩略图 ispe 宽；大于主图时可验证按 ipma 取主图而非面积最大者</param>
     public static byte[] Heif(int width, int height, int? rotation = null, string? dateTimeOriginal = null, string? offsetTimeOriginal = null,
-                              int thumbnailWidth = 320, int thumbnailHeight = 240, bool withIpma = true, string? contentIdentifier = null)
+                              int thumbnailWidth = 320, int thumbnailHeight = 240, bool withIpma = true, string? contentIdentifier = null,
+                              bool appleGainMap = false, bool toneMapItem = false)
     {
         byte[] exifItem = dateTimeOriginal is null && contentIdentifier is null
             ? []
@@ -168,12 +169,17 @@ internal static class SyntheticImages
         byte[] Meta(int exifFileOffset)
         {
             var pitm = FullBox("pitm", 0, U16Bytes(1));
-            List<byte> iinfBody = [.. U16Bytes(exifItem.Length > 0 ? 3 : 2)];
+            List<byte> iinfBody = [.. U16Bytes(2 + (exifItem.Length > 0 ? 1 : 0) + (toneMapItem ? 1 : 0))];
             iinfBody.AddRange(Infe(1, "hvc1"));
             iinfBody.AddRange(Infe(2, "hvc1"));
             if (exifItem.Length > 0)
             {
                 iinfBody.AddRange(Infe(3, "Exif"));
+            }
+
+            if (toneMapItem)
+            {
+                iinfBody.AddRange(Infe(4, "tmap"));
             }
 
             var iinf = FullBox("iinf", 0, [.. iinfBody]);
@@ -186,6 +192,12 @@ internal static class SyntheticImages
             if (rotation is { } angle)
             {
                 ipco.AddRange(Box("irot", [(byte)angle]));
+            }
+
+            // 增益图属性排在最后，不改变前面属性的序号
+            if (appleGainMap)
+            {
+                ipco.AddRange(FullBox("auxC", 0, [.. "urn:com:apple:photo:2020:aux:hdrgainmap"u8, 0]));
             }
 
             // 属性序号从 1 开始：1 = 缩略图 ispe，2 = 主图 ispe，3 = irot

@@ -20,7 +20,7 @@
 
       <Border Background="{DynamicResource WarningSoftBrush}" CornerRadius="12" Padding="12" BorderBrush="{DynamicResource WarningBorderBrush}" BorderThickness="1">
         <StackPanel Spacing="6">
-          <TextBlock Text="{CompiledBinding TargetDirectory}" FontSize="11" FontFamily="Consolas" TextTrimming="CharacterEllipsis"
+          <TextBlock Text="{CompiledBinding TargetDirectory}" FontSize="11" FontFamily="{DynamicResource MonoFontFamily}" TextTrimming="CharacterEllipsis"
                      Foreground="{DynamicResource WarningTextBrush}" ToolTip.Tip="{CompiledBinding TargetDirectory}" />
           <Grid ColumnDefinitions="*,Auto">
             <TextBlock Grid.Column="0" Text="{DynamicResource LowDiskRequiredLabel}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource WarningTextBrush}" />

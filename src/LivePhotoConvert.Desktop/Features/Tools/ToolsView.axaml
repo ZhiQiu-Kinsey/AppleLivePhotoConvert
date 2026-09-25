@@ -24,7 +24,7 @@
             <TextBlock Grid.Column="1" Text="{CompiledBinding DisplayName}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
             <Border Grid.Column="2" Classes="status-pill" Classes.success="{CompiledBinding IsHealthy}" Classes.warning="{CompiledBinding HasWarning}" Classes.danger="{CompiledBinding IsMissing}" Classes.muted="{CompiledBinding IsProbing}"
                     ToolTip.Tip="{CompiledBinding VersionDetail}">
-              <TextBlock Text="{CompiledBinding StatusText}" FontSize="11" FontWeight="Bold" FontFamily="Consolas" TextTrimming="CharacterEllipsis" />
+              <TextBlock Text="{CompiledBinding StatusText}" FontSize="11" FontWeight="Bold" FontFamily="{DynamicResource MonoFontFamily}" TextTrimming="CharacterEllipsis" />
             </Border>
           </Grid>
 
@@ -54,7 +54,7 @@
           </Grid>
 
           <Border Classes="engine-path">
-            <TextBlock Text="{CompiledBinding PathText}" FontSize="11" FontFamily="Consolas" TextTrimming="CharacterEllipsis" ToolTip.Tip="{CompiledBinding PathText}" Foreground="{DynamicResource TextSecondaryBrush}" />
+            <TextBlock Text="{CompiledBinding PathText}" FontSize="11" FontFamily="{DynamicResource MonoFontFamily}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{CompiledBinding PathText}" Foreground="{DynamicResource TextSecondaryBrush}" />
           </Border>
 
           <StackPanel Spacing="6" IsVisible="{CompiledBinding IsInstalling}">
@@ -107,7 +107,7 @@
             <TextBlock Text="{DynamicResource ToolsIntegrityNote}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
             <Grid ColumnDefinitions="Auto,*" ColumnSpacing="4">
               <TextBlock Text="{DynamicResource ToolsInstallRootLabel}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" />
-              <TextBlock Grid.Column="1" Text="{CompiledBinding InstallRoot}" FontSize="11" FontFamily="Consolas" Foreground="{DynamicResource TextTertiaryBrush}" TextTrimming="LeadingCharacterEllipsis" ToolTip.Tip="{CompiledBinding InstallRoot}" />
+              <TextBlock Grid.Column="1" Text="{CompiledBinding InstallRoot}" FontSize="11" FontFamily="{DynamicResource MonoFontFamily}" Foreground="{DynamicResource TextTertiaryBrush}" TextTrimming="LeadingCharacterEllipsis" ToolTip.Tip="{CompiledBinding InstallRoot}" />
             </Grid>
           </StackPanel>
         </Grid>
@@ -144,7 +144,7 @@
                 <DataTemplate x:DataType="vm:MirrorPreset"><TextBlock Text="{CompiledBinding Name}" FontSize="12" /></DataTemplate>
               </ComboBox.ItemTemplate>
             </ComboBox>
-            <TextBox Grid.Column="1" Text="{CompiledBinding CustomMirrorUrl, Mode=TwoWay}" FontSize="11" FontFamily="Consolas" Padding="10,8" />
+            <TextBox Grid.Column="1" Text="{CompiledBinding CustomMirrorUrl, Mode=TwoWay}" FontSize="11" FontFamily="{DynamicResource MonoFontFamily}" Padding="10,8" />
             <Button Grid.Column="2" Classes="engine-secondary-btn" Command="{CompiledBinding TestMirrorSpeedCommand}">
               <StackPanel Orientation="Horizontal" Spacing="6">
                 <ic:SymbolIcon Symbol="TopSpeed" FontSize="13" />
@@ -154,7 +154,7 @@
           </Grid>
           <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{CompiledBinding HasPingResult}">
             <TextBlock Classes="ping-result" Classes.ok="{CompiledBinding IsPingHealthy}" Text="{DynamicResource PingLatencyLabel}" FontWeight="Bold" />
-            <TextBlock Classes="ping-result" Classes.ok="{CompiledBinding IsPingHealthy}" Text="{CompiledBinding PingLatencyText}" FontFamily="Consolas" />
+            <TextBlock Classes="ping-result" Classes.ok="{CompiledBinding IsPingHealthy}" Text="{CompiledBinding PingLatencyText}" FontFamily="{DynamicResource MonoFontFamily}" />
           </StackPanel>
         </StackPanel>
       </Border>
