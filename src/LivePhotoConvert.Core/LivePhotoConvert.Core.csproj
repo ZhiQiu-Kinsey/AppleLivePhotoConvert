@@ -10,7 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Magick.NET-Q8-x64" Version="14.16.0" />
+    <PackageReference Include="Magick.NET-Q8-x64" Version="14.17.1" />
     <!-- 7z 解压（heif-enc 只发布 7z 包）；纯托管、标注 IsTrimmable，AOT 发布无警告 -->
     <PackageReference Include="SharpCompress" Version="1.0.0" />
   </ItemGroup>
