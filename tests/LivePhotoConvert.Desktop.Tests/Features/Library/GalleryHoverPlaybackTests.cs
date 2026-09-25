@@ -8,6 +8,7 @@ using LivePhotoConvert.Desktop.Features.Library;
 using LivePhotoConvert.Desktop.Features.Playback;
 using LivePhotoConvert.Desktop.Infrastructure;
 using LivePhotoConvert.Desktop.Models;
+using LivePhotoConvert.Desktop.Tests.Features.Library.Thumbnails;
 using LivePhotoConvert.Desktop.Tests.Features.Playback;
 using LivePhotoConvert.Desktop.Tests.Harness;
 using Microsoft.Extensions.DependencyInjection;
@@ -235,7 +236,8 @@ public sealed class GalleryHoverPlaybackTests : IDisposable
         library.AlbumDirectory = _album.InputDirectory;
         await library.RefreshAlbumAsync();
         await session.WaitUntilAsync(() => library.AllCards.Count == pairs && session.Descendants<PhotoCardControl>().Any(c => c.PreviewSize.Height > 0));
-        session.Pump();
+        // 缩略图就位且排版稳定后再悬停：起播延迟很短，否则视频帧可能先于缩略图到达，随后的重排也会停止播放
+        await SyntheticGallery.PumpUntilLoadedAsync(session, Gallery(session));
         return session;
     }
 
