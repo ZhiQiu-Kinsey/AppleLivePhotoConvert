@@ -22,8 +22,17 @@
 </p>
 
 <p align="center">
-  <img src="screenshots/library-light-en.png" alt="Library workbench" width="880" />
+  <img src="screenshots/library-light-en.png" alt="LivePhotoConvert library: browse and convert iPhone Live Photos and Android motion photos" width="880" />
 </p>
+
+LivePhotoConvert is a Windows desktop app for the "moving photos" on your phone: Apple Live Photos and Android Motion Photos.
+
+- **iPhone Live Photos don't move on Android**: merge each Live Photo (`.HEIC` / `.JPG` + `.MOV`) into a single-file motion photo (`MVIMG_*.jpg`) that plays on long-press in Google Photos and Xiaomi / HyperOS Gallery. iPhone HDR photos can stay HDR as Ultra HDR.
+- **Switching from Android to iPhone**: turn Google, Xiaomi, Samsung and other Android motion photos back into `.HEIC` + `.MOV` Live Photo pairs that Photos on iPhone and Mac recognizes as Live Photos.
+- **Just want the video**: extract the embedded `.mp4` from a motion photo, byte-for-byte and lossless.
+- **Live Photos take too much space**: drop the video and keep only the photo, optionally as HEIC. Compare the quality and see the estimated savings before you start.
+
+Whole albums are processed in batches, outputs are verified before they are written, and your originals are kept by default.
 
 ## Contents
 
@@ -190,6 +199,30 @@ On macOS keyboards the Command key acts as Ctrl.
 | Android / iOS | Not supported: conversions depend on launching command-line tools such as ExifTool and FFmpeg as local processes |
 
 ## FAQ
+
+<details>
+<summary><b>How do I convert iPhone Live Photos into motion photos that play on Android?</b></summary>
+
+Export the unmodified originals from your iPhone (each Live Photo is a photo plus a `.MOV` with the same name), open the folder in the library, choose "To Android" and start. Each result is a single `MVIMG_*.jpg`; copy it to the phone over USB, the local network or an original-quality cloud upload, then long-press it in Google Photos or Xiaomi / HyperOS Gallery. See [Getting started](#getting-started).
+</details>
+
+<details>
+<summary><b>How do I turn Android motion photos into iPhone Live Photos?</b></summary>
+
+Open the folder and choose "To Apple". Each motion photo becomes a `.HEIC` and a `.MOV` with the same name and the same pairing identifier; import both files together into Photos on iPhone or Mac and they show up as a Live Photo. Google, Xiaomi and Samsung motion photos and HEIC files with an embedded video are all recognized.
+</details>
+
+<details>
+<summary><b>How do I extract the video from a motion photo?</b></summary>
+
+Choose "Extract". Each motion photo yields its cover image and a standalone `.mp4`, cut byte-for-byte without re-encoding. The video of an Apple Live Photo is already a separate `.MOV` file.
+</details>
+
+<details>
+<summary><b>Live Photos and motion photos take too much space</b></summary>
+
+Choose "Slim down" to remove the embedded or paired video and keep only the photo, optionally re-encoded as HEIC (quality 90 by default). Before you start, "Compare preview" shows the resulting quality and the album-wide estimate shows how much space you will save. Results are exported to a new folder by default, or you can replace the originals in place.
+</details>
 
 <details>
 <summary><b>Engine downloads fail</b></summary>
