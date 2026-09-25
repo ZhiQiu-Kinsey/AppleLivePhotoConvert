@@ -44,36 +44,38 @@
                  HorizontalAlignment="Stretch"
                  VerticalAlignment="Center" />
 
-          <!-- 实况徽章；窄卡片只显示图标 -->
-          <Border Classes="card-media-badge" IsVisible="{CompiledBinding !RequiresPairReview}">
-            <StackPanel Orientation="Horizontal" Spacing="4">
-              <ic:SymbolIcon Symbol="Live" FontSize="12" Foreground="{DynamicResource MediaAccentBrush}"/>
-              <TextBlock Text="{DynamicResource CardLiveBadge}" Foreground="{DynamicResource OnMediaBrush}" FontSize="11" FontWeight="Bold"
-                         IsVisible="{CompiledBinding !IsCompact}" />
-            </StackPanel>
-          </Border>
+          <!-- 左上角徽章：实况（配对待裁决时换成警示）与 HDR；窄卡片只显示图标 -->
+          <StackPanel Classes="card-media-badges">
+            <Border Classes="card-media-badge" IsVisible="{CompiledBinding !RequiresPairReview}">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <ic:SymbolIcon Symbol="Live" FontSize="12" Foreground="{DynamicResource MediaAccentBrush}"/>
+                <TextBlock Text="{DynamicResource CardLiveBadge}" Foreground="{DynamicResource OnMediaBrush}" FontSize="11" FontWeight="Bold"
+                           IsVisible="{CompiledBinding !IsCompact}" />
+              </StackPanel>
+            </Border>
 
-          <!-- 警示徽章 -->
-          <Border Classes="card-media-badge warning" IsVisible="{CompiledBinding RequiresPairReview}"
-                  ToolTip.Tip="{CompiledBinding WarningReason}">
-            <StackPanel Orientation="Horizontal" Spacing="4">
-              <ic:SymbolIcon Symbol="Warning" FontSize="12" Foreground="{DynamicResource OnAccentBrush}"/>
-              <TextBlock Text="{DynamicResource CardTimeMismatch}" Foreground="{DynamicResource OnAccentBrush}" FontSize="11" FontWeight="Bold"
-                         IsVisible="{CompiledBinding !IsCompact}" />
-            </StackPanel>
-          </Border>
+            <Border Classes="card-media-badge warning" IsVisible="{CompiledBinding RequiresPairReview}"
+                    ToolTip.Tip="{CompiledBinding WarningReason}">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <ic:SymbolIcon Symbol="Warning" FontSize="12" Foreground="{DynamicResource OnAccentBrush}"/>
+                <TextBlock Text="{DynamicResource CardTimeMismatch}" Foreground="{DynamicResource OnAccentBrush}" FontSize="11" FontWeight="Bold"
+                           IsVisible="{CompiledBinding !IsCompact}" />
+              </StackPanel>
+            </Border>
+
+            <Border Classes="card-media-badge" IsVisible="{CompiledBinding IsHdr}" ToolTip.Tip="{DynamicResource CardHdrTip}">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <ic:SymbolIcon Symbol="Hdr" FontSize="12" Foreground="{DynamicResource MediaAccentBrush}"/>
+                <TextBlock Text="{DynamicResource CardHdrBadge}" Foreground="{DynamicResource OnMediaBrush}" FontSize="11" FontWeight="Bold"
+                           IsVisible="{CompiledBinding !IsCompact}" />
+              </StackPanel>
+            </Border>
+          </StackPanel>
 
           <!-- 勾选角标：选中时常显，未选中时悬停出现；点击它只切换这一张 -->
           <Border Classes="card-check" Classes.selected="{CompiledBinding IsSelected}">
             <ic:SymbolIcon Symbol="Checkmark" FontSize="13" Foreground="{DynamicResource OnSelectionBrush}"
                            IsVisible="{CompiledBinding IsSelected}" />
-          </Border>
-
-          <!-- 时长角标 -->
-          <Border Background="{DynamicResource MediaBadgeBrush}" CornerRadius="6" Padding="6,2"
-                  HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="8"
-                  IsVisible="{CompiledBinding !IsCompact}">
-            <TextBlock Text="{DynamicResource CardDurationLive}" Foreground="{DynamicResource OnMediaBrush}" FontSize="11" FontWeight="SemiBold" />
           </Border>
         </Panel>
 

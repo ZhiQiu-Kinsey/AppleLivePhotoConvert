@@ -289,6 +289,36 @@ public class FastImageHeaderReaderTests
         Assert.Equal((640, 480, 1), (header.Width, header.Height, header.Orientation));
     }
 
+    [Theory]
+    [InlineData(false, false, false)]
+    [InlineData(true, false, true)]
+    [InlineData(false, true, true)]
+    public void ReadHeader_Heif_DetectsAppleOrIsoGainMap(bool appleGainMap, bool toneMapItem, bool expected)
+    {
+        var heif = SyntheticImages.Heif(400, 300, rotation: 1, appleGainMap: appleGainMap, toneMapItem: toneMapItem);
+
+        Assert.True(FastImageHeaderReader.TryReadHeader(new MemoryStream(heif), ".heic", out var header));
+
+        Assert.Equal(expected, header.HasGainMap);
+        Assert.Equal((300, 400), (header.Width, header.Height));
+    }
+
+    [Fact]
+    public void ReadHeader_JpegWithIsoGainMapSegment_ReportsGainMap()
+    {
+        var plain = SyntheticImages.Jpeg(640, 480);
+        byte[] iso = [.. "urn:iso:std:iso:ts:21496:-1\0"u8, 0, 0, 0, 0];
+        byte[] app2 = [0xFF, 0xE2, (byte)((iso.Length + 2) >> 8), (byte)(iso.Length + 2), .. iso];
+        byte[] withIso = [.. plain.AsSpan(0, 2), .. app2, .. plain.AsSpan(2)];
+
+        Assert.True(FastImageHeaderReader.TryReadHeader(new MemoryStream(plain), ".jpg", out var plainHeader));
+        Assert.True(FastImageHeaderReader.TryReadHeader(new MemoryStream(withIso), ".jpg", out var isoHeader));
+
+        Assert.False(plainHeader.HasGainMap);
+        Assert.True(isoHeader.HasGainMap);
+        Assert.Equal((640, 480), (isoHeader.Width, isoHeader.Height));
+    }
+
     [Fact]
     public void ReadHeader_HeifExifItem_ParsesCaptureTimeAndRotation()
     {

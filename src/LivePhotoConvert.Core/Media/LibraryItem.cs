@@ -57,6 +57,9 @@ public sealed record LibraryItem(LibraryItemKind Kind, LibraryFile Photo)
     /// <summary>带 Ultra HDR 增益图（转码 HEIC 会丢失 HDR）。</summary>
     public bool HasGainMap { get; init; }
 
+    /// <summary>HDR 照片：带增益图的 JPEG（Ultra HDR 或 ISO 21496-1）或 HEIC（Apple 或 ISO 21496-1）。</summary>
+    public bool IsHdr => HasGainMap || Header is { HasGainMap: true };
+
     /// <summary>拍摄的当地时间。</summary>
     public DateTime CaptureTimeLocal { get; init; }
 

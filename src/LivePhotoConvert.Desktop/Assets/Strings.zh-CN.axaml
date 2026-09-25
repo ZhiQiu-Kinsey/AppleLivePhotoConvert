@@ -187,6 +187,8 @@
 
   <!-- PhotoCard Keys -->
   <sys:String x:Key="CardLiveBadge">实况</sys:String>
+  <sys:String x:Key="CardHdrBadge">HDR</sys:String>
+  <sys:String x:Key="CardHdrTip">HDR 照片：带高动态范围增益图，支持的屏幕上显示更亮的高光</sys:String>
   <sys:String x:Key="CardTimeMismatch">拍摄时间不吻合</sys:String>
   <sys:String x:Key="CardArbitrateBtn">人工确认配对</sys:String>
 
@@ -352,7 +354,6 @@
   <!-- 运行时状态文案 -->
   <sys:String x:Key="AlbumSummaryNoDir">未选择目录</sys:String>
   <sys:String x:Key="LocalAlbumFallback">本地相册</sys:String>
-  <sys:String x:Key="CardDurationLive">实况视频</sys:String>
   <sys:String x:Key="PairStatusLocked">配对锁定</sys:String>
   <sys:String x:Key="PairStatusPending">待裁决</sys:String>
   <sys:String x:Key="TimeDiffWarningFormat">时间相差 {0:F1} 秒（&gt; 3.0s）</sys:String>

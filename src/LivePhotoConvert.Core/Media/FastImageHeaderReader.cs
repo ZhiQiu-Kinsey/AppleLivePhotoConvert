@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Buffers.Binary;
+using LivePhotoConvert.Core.Media.UltraHdr;
 using LivePhotoConvert.Core.Metadata;
 
 namespace LivePhotoConvert.Core.Media;
@@ -22,8 +23,10 @@ public readonly record struct ImageDimensions(int Width, int Height)
 /// <param name="OffsetTimeOriginal">EXIF 拍摄时间的 UTC 偏移</param>
 /// <param name="DateTimeDigitized">EXIF 数字化时间（CreateDate），拍摄时间缺失时的后备</param>
 /// <param name="ContentIdentifier">Apple MakerNotes 中的实况配对标识</param>
+/// <param name="HasGainMap">带 HDR 增益图：HEIC 有 Apple hdrgainmap 辅助图像或 ISO 21496-1 tmap 派生图像，JPEG 主图有 ISO 21496-1 APP2 声明；
+/// 只在 XMP 目录中声明的 Ultra HDR 由 <see cref="MotionPhotoLayout"/> 识别</param>
 public readonly record struct ImageHeader(int Width, int Height, int Orientation = 1, DateTime? DateTimeOriginal = null, TimeSpan? OffsetTimeOriginal = null,
-                                          DateTime? DateTimeDigitized = null, string? ContentIdentifier = null)
+                                          DateTime? DateTimeDigitized = null, string? ContentIdentifier = null, bool HasGainMap = false)
 {
     /// <summary>
     /// 与 ExifTool 读取照片拍摄时间的优先级一致：DateTimeOriginal（配合 OffsetTimeOriginal），其次 ExifIFD 的 CreateDate。
@@ -76,7 +79,9 @@ public static class FastImageHeaderReader
     private const uint BoxIpma = 0x69706D61; // "ipma"
     private const uint BoxIspe = 0x69737065; // "ispe"
     private const uint BoxIrot = 0x69726F74; // "irot"
+    private const uint BoxAuxC = 0x61757843; // "auxC"
     private const uint ItemExif = 0x45786966; // "Exif"
+    private const uint ItemTmap = 0x746D6170; // "tmap"
 
     private const ushort TypeAscii = 2;
     private const ushort TypeUndefined = 7;
@@ -199,6 +204,8 @@ public static class FastImageHeaderReader
 
         var exif = ExifFields.Default;
         var exifParsed = false;
+        var hasGainMap = false;
+        Span<byte> isoNamespace = stackalloc byte[GainMapMetadata.IsoNamespace.Length];
         int width = 0, height = 0;
         while (stream.Position < MaxJpegHeaderBytes)
         {
@@ -249,6 +256,15 @@ public static class FastImageHeaderReader
                 continue;
             }
 
+            // 主图的 ISO 21496-1 APP2 声明带增益图；不写 hdrgm XMP 目录的机型只有这一处标记
+            if (marker == 0xE2 && !hasGainMap && payloadLength >= isoNamespace.Length)
+            {
+                hasGainMap = stream.ReadAtLeast(isoNamespace, isoNamespace.Length, throwOnEndOfStream: false) == isoNamespace.Length
+                             && isoNamespace.SequenceEqual(GainMapMetadata.IsoNamespace);
+                stream.Position = segmentEnd;
+                continue;
+            }
+
             // SOF0～SOF15，排除 DHT(C4)/JPG(C8)/DAC(CC)
             if (marker is (>= 0xC0 and <= 0xC3) or (>= 0xC5 and <= 0xC7) or (>= 0xC9 and <= 0xCB) or (>= 0xCD and <= 0xCF))
             {
@@ -269,7 +285,7 @@ public static class FastImageHeaderReader
             return false;
         }
 
-        header = Build(width, height, exif);
+        header = Build(width, height, exif) with { HasGainMap = hasGainMap };
         return true;
     }
 
@@ -355,7 +371,7 @@ public static class FastImageHeaderReader
 
             // HEIC 的方向由 irot 决定，解码器会自动应用；Exif 中的 Orientation 仅供参考，不采用
             var orientation = rotation switch { 1 => 8, 2 => 3, 3 => 6, _ => 1 };
-            header = Build(width, height, exif with { Orientation = orientation });
+            header = Build(width, height, exif with { Orientation = orientation }) with { HasGainMap = meta.HasGainMap };
             return true;
         }
         finally
@@ -657,6 +673,25 @@ public static class FastImageHeaderReader
                         break;
                 }
             }
+        }
+
+        /// <summary>带 HDR 增益图：iOS 17 及以前写 Apple 辅助图像，iOS 18 起可能只写 ISO 21496-1 的 tmap。</summary>
+        public bool HasGainMap => HeifItems.FindItemId(_iinf, ItemTmap) is not null || HasAuxiliaryType(AppleGainMapAuxiliaryType);
+
+        private static ReadOnlySpan<byte> AppleGainMapAuxiliaryType => "urn:com:apple:photo:2020:aux:hdrgainmap"u8;
+
+        /// <summary>auxC 是 FullBox，版本与标志之后是以 NUL 结尾的辅助图像类型 URN。</summary>
+        private bool HasAuxiliaryType(ReadOnlySpan<byte> auxType)
+        {
+            foreach (var (type, body) in new IsoBoxEnumerator(_ipco))
+            {
+                if (type == BoxAuxC && body.Length > 4 && body[4..].StartsWith(auxType))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private uint? PrimaryItemId =>

@@ -1309,13 +1309,18 @@
   </Style>
 
   <!-- 画廊卡片：预览区左上角的实况 / 待裁决徽章 -->
+  <Style Selector="StackPanel.card-media-badges">
+    <Setter Property="Orientation" Value="Horizontal" />
+    <Setter Property="Spacing" Value="6" />
+    <Setter Property="Margin" Value="8" />
+    <Setter Property="HorizontalAlignment" Value="Left" />
+    <Setter Property="VerticalAlignment" Value="Top" />
+  </Style>
+
   <Style Selector="Border.card-media-badge">
     <Setter Property="Background" Value="{DynamicResource MediaControlBrush}" />
     <Setter Property="CornerRadius" Value="12" />
     <Setter Property="Padding" Value="8,4" />
-    <Setter Property="Margin" Value="8" />
-    <Setter Property="HorizontalAlignment" Value="Left" />
-    <Setter Property="VerticalAlignment" Value="Top" />
   </Style>
 
   <Style Selector="Border.card-media-badge.warning">

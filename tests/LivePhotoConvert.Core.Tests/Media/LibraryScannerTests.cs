@@ -86,6 +86,27 @@ public class LibraryScannerTests
         Assert.Equal(4000, item.Header?.Width);
     }
 
+    /// <summary>苹果实况的 HEIC 增益图、安卓动态照片的 Ultra HDR 与 HEIC tmap 都算 HDR；普通照片不算。</summary>
+    [Fact]
+    public async Task HdrPhotos_AreFlaggedForAppleAndAndroidItems()
+    {
+        using var temp = new TempDirectory();
+        temp.CreateFile("IMG_0001.heic", SyntheticImages.Heif(400, 300, appleGainMap: true));
+        temp.CreateFile("IMG_0001.mov", SyntheticMedia.Mov());
+        temp.CreateFile("IMG_0002.heic", SyntheticImages.Heif(400, 300));
+        temp.CreateFile("IMG_0002.mov", SyntheticMedia.Mov());
+        temp.CreateFile("MVIMG_0003.jpg", SyntheticMedia.MotionPhotoWithGainMap(SyntheticMedia.Jpeg(700)));
+        temp.CreateFile("MVIMG_0004.jpg", SyntheticMedia.MotionPhoto());
+        temp.CreateFile("MVIMG_0005.heic", SyntheticMedia.HeicMotionPhoto(SyntheticImages.Heif(400, 300, toneMapItem: true), SyntheticMedia.Mp4(3000)));
+
+        var items = (await ScanAsync(temp.Root)).Items.ToDictionary(item => Path.GetFileNameWithoutExtension(item.Photo.Path));
+
+        Assert.Equal(LibraryItemKind.ApplePair, items["IMG_0001"].Kind);
+        Assert.Equal(LibraryItemKind.MotionPhoto, items["MVIMG_0003"].Kind);
+        Assert.Equal(LibraryItemKind.MotionPhoto, items["MVIMG_0005"].Kind);
+        Assert.Equal(["IMG_0001", "MVIMG_0003", "MVIMG_0005"], items.Where(kv => kv.Value.IsHdr).Select(kv => kv.Key).Order());
+    }
+
     [Fact]
     public async Task SamsungTrailer_IsMotionPhoto()
     {
