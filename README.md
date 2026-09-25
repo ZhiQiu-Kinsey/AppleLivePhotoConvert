@@ -22,8 +22,17 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/library-light-zh.png" alt="图库工作台" width="880" />
+  <img src="docs/screenshots/library-light-zh.png" alt="LivePhotoConvert 图库：浏览并转换 iPhone 实况照片与安卓动态照片" width="880" />
 </p>
+
+LivePhotoConvert 是一个 Windows 桌面工具，专门处理手机里「会动的照片」——苹果的实况照片（Live Photo）和安卓的动态照片（Motion Photo）：
+
+- **iPhone 实况照片发到安卓手机不会动**：把实况照片（`.HEIC` / `.JPG` + `.MOV`）合成为单文件动态照片（`MVIMG_*.jpg`），在 Google 相册、小米 / 澎湃 OS 相册中长按即可播放；iPhone 的 HDR 照片可保留为 Ultra HDR。
+- **从安卓换到 iPhone，动态照片想继续当实况看**：把 Google、小米、三星等安卓动态照片还原为 `.HEIC` + `.MOV` 实况对，导入 iPhone / Mac「照片」后就是实况照片。
+- **只想要里面的视频**：从动态照片中按字节无损提取 `.mp4`。
+- **实况照片太占空间**：去掉实况视频只保留照片，可同时转为 HEIC；处理前可先对比画质、预估能省多少空间。
+
+整个相册批量处理，输出校验通过后才落盘，默认保留原片。
 
 ## 目录
 
@@ -190,6 +199,30 @@ macOS 键盘上的 Command 键按 Ctrl 处理。
 | Android / iOS | 不支持：转换依赖在本机启动 ExifTool、FFmpeg 等命令行工具进程 |
 
 ## 常见问题
+
+<details>
+<summary><b>iPhone 实况照片怎么转成安卓 / 小米手机能播放的动态照片？</b></summary>
+
+先从 iPhone 导出未修改的原片（每张实况是同名的照片与 `.MOV`），在图库中打开所在文件夹，选择「转为安卓」并开始。生成的 `MVIMG_*.jpg` 是单个文件，用数据线、局域网或网盘原图传到手机，在 Google 相册、小米 / 澎湃 OS 相册中长按播放。详见[快速上手](#快速上手)。
+</details>
+
+<details>
+<summary><b>安卓动态照片怎么变成 iPhone 的实况照片？</b></summary>
+
+打开动态照片所在文件夹，选择「转为苹果」。每张动态照片会生成同名的 `.HEIC` 与 `.MOV`，两端写入相同的配对标识；把两个文件一起导入 iPhone 或 Mac 的「照片」，即识别为实况照片。Google、小米、三星的动态照片和内嵌视频的 HEIC 都能识别。
+</details>
+
+<details>
+<summary><b>怎么从动态照片里提取视频？</b></summary>
+
+选择「解包提取」，每张动态照片输出封面图与独立的 `.mp4`，视频按字节切出，不重新编码、不损失画质。苹果实况照片的视频本来就是单独的 `.MOV` 文件，无需提取。
+</details>
+
+<details>
+<summary><b>实况照片、动态照片太占空间怎么办？</b></summary>
+
+选择「空间瘦身」：去掉内嵌或配对的视频，只保留照片，并可同时转码为 HEIC（默认质量 90）。开始前可以用「对比预览」查看处理后的画质，并看到整个相册预计能省下的空间；默认导出到新目录，也可以选择就地替换。
+</details>
 
 <details>
 <summary><b>依赖下载失败怎么办？</b></summary>
