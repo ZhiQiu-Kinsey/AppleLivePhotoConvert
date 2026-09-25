@@ -5,7 +5,7 @@ using LivePhotoConvert.Desktop.Infrastructure;
 namespace LivePhotoConvert.Desktop.Controls;
 
 /// <summary>
-/// 把文案与 <see cref="AppShortcut"/> 合成工具提示（"重新扫描 (F5)"）。
+/// 把文案与 <see cref="AppShortcut"/> 合成工具提示（"重新扫描（F5）" / "Rescan (F5)"）。
 /// 文案在控件自身上解析 DynamicResource / 绑定，切换语言时提示随之更新；按键文本只来自快捷键定义。
 /// </summary>
 public sealed class ShortcutTip : AvaloniaObject
@@ -34,10 +34,13 @@ public sealed class ShortcutTip : AvaloniaObject
 
     public static void SetShortcut(Control control, AppShortcut? value) => control.SetValue(ShortcutProperty, value);
 
-    /// <summary>提示文本的唯一合成规则；没有文案时只显示按键。</summary>
+    /// <summary>提示文本的唯一合成规则；没有文案时只显示按键，中文文案配全角括号。</summary>
+    /// <remarks>按文案本身判断而不查当前语言：文案随 DynamicResource 切换时括号随之切换，无需额外订阅。</remarks>
     public static string? Compose(string? label, AppShortcut? shortcut) => shortcut is null
         ? label
-        : string.IsNullOrWhiteSpace(label) ? shortcut.DisplayText : $"{label} ({shortcut.DisplayText})";
+        : string.IsNullOrWhiteSpace(label) ? shortcut.DisplayText
+        : label.AsSpan().ContainsAnyInRange('\u4E00', '\u9FFF') ? $"{label}（{shortcut.DisplayText}）"
+        : $"{label} ({shortcut.DisplayText})";
 
     private static void Apply(Control control) =>
         ToolTip.SetTip(control, Compose(GetLabel(control), GetShortcut(control)));

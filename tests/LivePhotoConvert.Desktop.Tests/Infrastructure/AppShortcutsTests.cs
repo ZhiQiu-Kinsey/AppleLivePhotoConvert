@@ -50,9 +50,10 @@ public class AppShortcutsTests
     }
 
     [Fact]
-    public void Compose_AppendsKeyToLabel()
+    public void Compose_AppendsKeyToLabel_WithParenthesesMatchingLabelLanguage()
     {
-        Assert.Equal("重新扫描 (F5)", ShortcutTip.Compose("重新扫描", AppShortcuts.Rescan));
+        Assert.Equal("重新扫描（F5）", ShortcutTip.Compose("重新扫描", AppShortcuts.Rescan));
+        Assert.Equal("Rescan (F5)", ShortcutTip.Compose("Rescan", AppShortcuts.Rescan));
         Assert.Equal("F5", ShortcutTip.Compose(null, AppShortcuts.Rescan));
         Assert.Equal("关闭", ShortcutTip.Compose("关闭", null));
     }

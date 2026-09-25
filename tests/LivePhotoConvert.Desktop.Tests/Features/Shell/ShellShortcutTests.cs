@@ -160,12 +160,12 @@ public sealed class ShellShortcutTests : IDisposable
     {
         using var session = new ShellSession();
         AssertTips(session);
-        Assert.Equal($"{session.Localizer["NavTools"]} (Ctrl+3)", Tip(session, AppShortcuts.NavigateTools).Single());
-        Assert.Contains($"{session.Localizer["SelectAlbumFolderBtn"]} (Ctrl+O)", Tip(session, AppShortcuts.OpenAlbum));
+        Assert.Equal($"{session.Localizer["NavTools"]}（Ctrl+3）", Tip(session, AppShortcuts.NavigateTools).Single());
+        Assert.Contains($"{session.Localizer["SelectAlbumFolderBtn"]}（Ctrl+O）", Tip(session, AppShortcuts.OpenAlbum));
         // 展开的检查器与收起后的窄条各有一个开始按钮
         var startTips = Tip(session, AppShortcuts.StartAction);
         Assert.Equal(2, startTips.Count);
-        Assert.All(startTips, tip => Assert.EndsWith("(Enter)", tip));
+        Assert.All(startTips, tip => Assert.EndsWith("（Enter）", tip));
 
         session.Localizer.SetLanguage("en");
         session.Pump();
@@ -189,9 +189,9 @@ public sealed class ShellShortcutTests : IDisposable
 
         var loc = session.Localizer;
         var tips = dialog.GetVisualDescendants().OfType<Button>().Select(b => ToolTip.GetTip(b) as string).ToList();
-        Assert.Contains($"{loc["QuickLookPrevTip"]} (←)", tips);
-        Assert.Contains($"{loc["QuickLookNextTip"]} (→)", tips);
-        Assert.Contains($"{loc["DialogCloseTip"]} (Esc)", tips);
+        Assert.Contains($"{loc["QuickLookPrevTip"]}（←）", tips);
+        Assert.Contains($"{loc["QuickLookNextTip"]}（→）", tips);
+        Assert.Contains($"{loc["DialogCloseTip"]}（Esc）", tips);
         Assert.Contains(dialog.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == loc.Format("QuickLookShortcutsFormat", "Space", "←", "→", "Esc"));
 
         dialog.Focus();

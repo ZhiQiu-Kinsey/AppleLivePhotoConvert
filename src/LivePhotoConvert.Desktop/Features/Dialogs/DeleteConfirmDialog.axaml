@@ -33,7 +33,7 @@
         <TextBox x:Name="PasswordBox"
                  Text="{CompiledBinding PasswordInput, Mode=TwoWay}"
                  PlaceholderText="{DynamicResource DeleteInputPlaceholder}"
-                 FontSize="13" FontWeight="Bold" FontFamily="Consolas"
+                 FontSize="13" FontWeight="Bold" FontFamily="{DynamicResource MonoFontFamily}"
                  HorizontalContentAlignment="Center"
                  CornerRadius="10" Padding="10" />
       </StackPanel>

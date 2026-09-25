@@ -98,7 +98,7 @@
                 </Border>
 
                 <Button Classes="card-status pending"
-                        Command="{Binding $parent[ListBox].((library:LibraryViewModel)DataContext).ArbitrateCommand}"
+                        Command="{CompiledBinding $parent[ListBox].((library:LibraryViewModel)DataContext).ArbitrateCommand}"
                         CommandParameter="{CompiledBinding}"
                         IsVisible="{CompiledBinding RequiresPairReview}"
                         ToolTip.Tip="{DynamicResource CardArbitrateBtn}">

@@ -17,7 +17,7 @@
         </Border>
         <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center" Spacing="2">
           <TextBlock Text="{DynamicResource CurtainCompareTitle}" FontWeight="Black" FontSize="14" Foreground="{DynamicResource TextPrimaryBrush}" />
-          <TextBlock Text="{CompiledBinding FileName}" FontSize="11" FontFamily="Consolas" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextTertiaryBrush}" />
+          <TextBlock Text="{CompiledBinding FileName}" FontSize="11" FontFamily="{DynamicResource MonoFontFamily}" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextTertiaryBrush}" />
         </StackPanel>
         <Border Grid.Column="2" Classes="task-chip success" VerticalAlignment="Center" Margin="0,0,8,0"
                 IsVisible="{CompiledBinding SavedPercentResult, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
@@ -100,12 +100,12 @@
       <Grid Grid.Row="4" ColumnDefinitions="*,Auto,*">
         <StackPanel Grid.Column="0" Spacing="2">
           <TextBlock Text="{DynamicResource CompareBeforeSizeLabel}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" />
-          <TextBlock Text="{CompiledBinding BeforeSizeText}" FontSize="13" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource TextSecondaryBrush}" />
+          <TextBlock Text="{CompiledBinding BeforeSizeText}" FontSize="13" FontWeight="Bold" FontFamily="{DynamicResource MonoFontFamily}" Foreground="{DynamicResource TextSecondaryBrush}" />
         </StackPanel>
         <TextBlock Grid.Column="1" Text="{CompiledBinding CurtainPercentageText}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
         <StackPanel Grid.Column="2" Spacing="2" HorizontalAlignment="Right">
           <TextBlock Text="{DynamicResource CompareAfterSizeLabel}" FontSize="11" Foreground="{DynamicResource SuccessTextBrush}" HorizontalAlignment="Right" />
-          <TextBlock Text="{CompiledBinding AfterSizeText}" FontSize="13" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource SuccessTextBrush}" HorizontalAlignment="Right" />
+          <TextBlock Text="{CompiledBinding AfterSizeText}" FontSize="13" FontWeight="Bold" FontFamily="{DynamicResource MonoFontFamily}" Foreground="{DynamicResource SuccessTextBrush}" HorizontalAlignment="Right" />
         </StackPanel>
       </Grid>
     </Grid>
