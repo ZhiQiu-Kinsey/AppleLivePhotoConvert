@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <strong>A Live Photo workbench: browse your album, convert between Apple Live Photos and Android motion photos, slim down the library, and keep HDR intact.</strong>
+  <strong>A Live Photo and motion photo converter: browse your album, convert between Apple Live Photos and Android motion photos, slim down the library, and keep HDR intact.</strong>
 </p>
 
 <p align="center">
@@ -25,7 +25,7 @@
   <img src="screenshots/library-light-en.png" alt="LivePhotoConvert library: browse and convert iPhone Live Photos and Android motion photos" width="880" />
 </p>
 
-LivePhotoConvert is a Windows desktop app for the "moving photos" on your phone: Apple Live Photos and Android Motion Photos.
+LivePhotoConvert is a motion photo converter for Windows that handles the "moving photos" on your phone: Apple Live Photos and Android Motion Photos.
 
 - **iPhone Live Photos don't move on Android**: merge each Live Photo (`.HEIC` / `.JPG` + `.MOV`) into a single-file motion photo (`MVIMG_*.jpg`) that plays on long-press in Google Photos and Xiaomi / HyperOS Gallery. iPhone HDR photos can stay HDR as Ultra HDR.
 - **Switching from Android to iPhone**: turn Google, Xiaomi, Samsung and other Android motion photos back into `.HEIC` + `.MOV` Live Photo pairs that Photos on iPhone and Mac recognizes as Live Photos.

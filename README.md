@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <strong>实况照片工作台：浏览相册，在苹果实况与安卓动态照片之间互转，为相册瘦身，并保留 HDR 画质。</strong>
+  <strong>实况照片 / 动态照片转换工具：浏览相册，在苹果实况与安卓动态照片之间互转，为相册瘦身，并保留 HDR 画质。</strong>
 </p>
 
 <p align="center">
@@ -25,7 +25,7 @@
   <img src="docs/screenshots/library-light-zh.png" alt="LivePhotoConvert 图库：浏览并转换 iPhone 实况照片与安卓动态照片" width="880" />
 </p>
 
-LivePhotoConvert 是一个 Windows 桌面工具，专门处理手机里「会动的照片」——苹果的实况照片（Live Photo）和安卓的动态照片（Motion Photo）：
+LivePhotoConvert 是一个 Windows 上的动态照片转换工具，专门处理手机里「会动的照片」——苹果的实况照片（Live Photo）和安卓的动态照片（Motion Photo）：
 
 - **iPhone 实况照片发到安卓手机不会动**：把实况照片（`.HEIC` / `.JPG` + `.MOV`）合成为单文件动态照片（`MVIMG_*.jpg`），在 Google 相册、小米 / 澎湃 OS 相册中长按即可播放；iPhone 的 HDR 照片可保留为 Ultra HDR。
 - **从安卓换到 iPhone，动态照片想继续当实况看**：把 Google、小米、三星等安卓动态照片还原为 `.HEIC` + `.MOV` 实况对，导入 iPhone / Mac「照片」后就是实况照片。
