@@ -73,8 +73,9 @@ internal static class SyntheticGallery
         Dispatcher.UIThread.RunJobs();
         session.Window.UpdateLayout();
         var deadline = DateTime.UtcNow.AddSeconds(20);
-        // 重排瞬间可能没有已实例化的行，空集合不算加载完成
-        while (Attached(list) is not { Count: > 0 } cards || !cards.All(c => c.DisplayImage is not null))
+        // 重排瞬间可能没有已实例化的行，空集合不算加载完成；出现滚动条后的宽度变化防抖结束才会重排，之前的排版还会被替换
+        var layout = session.Shell.Library.Layout;
+        while (layout.IsWidthPending || Attached(list) is not { Count: > 0 } cards || !cards.All(c => c.DisplayImage is not null))
         {
             Assert.True(DateTime.UtcNow < deadline, "等待缩略图超时");
             await Task.Delay(1, TestContext.Current.CancellationToken);
