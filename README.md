@@ -34,6 +34,18 @@ LivePhotoConvert 是一个 Windows 上的动态照片转换工具，专门处理
 
 整个相册批量处理，输出校验通过后才落盘，默认保留原片。
 
+## 赞赏支持
+
+如果这个工具对你有帮助，欢迎请作者喝杯咖啡。
+
+<p align="center">
+  <img src="docs/sponsor-qrcode.png" alt="赞赏码" width="300" />
+</p>
+
+<p align="center">
+  <sub>微信扫一扫赞赏</sub>
+</p>
+
 ## 目录
 
 - [功能概览](#功能概览)
@@ -47,7 +59,6 @@ LivePhotoConvert 是一个 Windows 上的动态照片转换工具，专门处理
 - [常见问题](#常见问题)
 - [从源码构建](#从源码构建)
 - [许可证与致谢](#许可证与致谢)
-- [赞赏支持](#赞赏支持)
 
 ## 功能概览
 
@@ -328,17 +339,5 @@ LPC_DOCS_SCREENSHOTS=docs/screenshots dotnet test tests/LivePhotoConvert.Desktop
 - [Google Motion Photo 格式规范](https://developer.android.com/media/platform/motion-photo-format)
 
 外部工具按各自的许可证分发，一键安装时从其官方或镜像来源下载，不随本程序打包。
-
-## 赞赏支持
-
-如果这个工具对你有帮助，欢迎请作者喝杯咖啡。
-
-<p align="center">
-  <img src="docs/sponsor-qrcode.png" alt="赞赏码" width="300" />
-</p>
-
-<p align="center">
-  <sub>微信扫一扫赞赏</sub>
-</p>
 
 也欢迎点亮 Star、在 [Issues](https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert/issues) 反馈问题，或提交 [Pull Request](https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert/pulls)。
