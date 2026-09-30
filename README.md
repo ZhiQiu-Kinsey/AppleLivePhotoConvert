@@ -34,6 +34,18 @@ LivePhotoConvert 是一个 Windows 上的动态照片转换工具，专门处理
 
 整个相册批量处理，输出校验通过后才落盘，默认保留原片。
 
+<details>
+<summary><b>更多截图</b></summary>
+
+| | |
+| :---: | :---: |
+| ![图库（深色）](docs/screenshots/library-dark-zh.png) 图库（深色） | ![QuickLook](docs/screenshots/quicklook-zh.png) QuickLook 实况预览 |
+| ![空间瘦身](docs/screenshots/strip-zh.png) 空间瘦身与空间预估 | ![瘦身对比](docs/screenshots/strip-compare-zh.png) 瘦身画质对比 |
+| ![任务报告](docs/screenshots/report-zh.png) 任务报告 | ![依赖引擎](docs/screenshots/tools-zh.png) 依赖引擎 |
+| ![偏好设置](docs/screenshots/settings-zh.png) 偏好设置 | |
+
+</details>
+
 ## 赞赏支持
 
 如果这个工具对你有帮助，欢迎请作者喝杯咖啡。
@@ -88,18 +100,6 @@ LivePhotoConvert 是一个 Windows 上的动态照片转换工具，专门处理
 ### 依赖引擎
 
 转换依赖三个命令行工具：[ExifTool](https://exiftool.org/)（元数据）、[FFmpeg](https://ffmpeg.org/)（视频）与 [heif-enc](https://github.com/strukturag/libheif)（HEIC 编码，同包的 heif-dec 用于 HDR 增益图）。依赖页可一键安装锁定版本：下载后校验 SHA256，解压、试运行通过后才替换，失败不影响原有版本；也可指定已有的可执行文件。
-
-<details>
-<summary><b>更多截图</b></summary>
-
-| | |
-| :---: | :---: |
-| ![图库（深色）](docs/screenshots/library-dark-zh.png) 图库（深色） | ![QuickLook](docs/screenshots/quicklook-zh.png) QuickLook 实况预览 |
-| ![空间瘦身](docs/screenshots/strip-zh.png) 空间瘦身与空间预估 | ![瘦身对比](docs/screenshots/strip-compare-zh.png) 瘦身画质对比 |
-| ![任务报告](docs/screenshots/report-zh.png) 任务报告 | ![依赖引擎](docs/screenshots/tools-zh.png) 依赖引擎 |
-| ![偏好设置](docs/screenshots/settings-zh.png) 偏好设置 | |
-
-</details>
 
 ## 与其它方式的对比
 
