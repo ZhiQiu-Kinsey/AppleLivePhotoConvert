@@ -11,8 +11,8 @@
 - **定位**：实况照片工作台——浏览相册，在苹果实况与安卓动态照片之间互转、解包、瘦身，并保留 HDR（Ultra HDR 增益图、HDR 视频色调映射预览与 10-bit 转码）。不向通用相册工具扩展。
 - **形态**：.NET 10 + Avalonia 12 桌面应用，Native AOT 单文件发布（`TrimMode=full`）。命令行入口已移除，**不要恢复 CLI 或为新功能加命令行分支**；可复用能力放 Core，交互放 Desktop。
 - **名称**：工程、可执行文件（`LivePhotoConvert.exe`）、设置与缓存目录都叫 `LivePhotoConvert`，不要改名。
-- **平台**：正式支持 Windows x64（安装版、可更新便携版与纯解压版，均为 `win-x64`）；Linux 可从源码运行（依赖自行安装、无回收站）；macOS 未适配；安卓 / iOS 不支持（依赖外部命令行进程）。
-- **技术栈**：Avalonia 12.1.3（Desktop / Themes.Fluent / Fonts.Inter）、CommunityToolkit.Mvvm 8.4.2、FluentIcons.Avalonia、Microsoft.Extensions.DependencyInjection、Velopack（安装与更新，vpk CLI 版本由 `.github/scripts/velopack-pack.ps1` 从 csproj 读取，始终与库同版本）；Core 只引用 `Magick.NET-Q8-x64`（图像解码）与 `SharpCompress`（7z 解压）。外部工具：ExifTool、FFmpeg、heif-enc / heif-dec。
+- **平台**：正式支持 Windows x64（安装版、可更新便携版与纯解压版，均为 `win-x64`）；Linux 可从源码运行（依赖自行安装、无回收站）；macOS 可从源码运行并打出未签名的 `.app`（依赖页下载锁定版本，废纸篓可用，没有公证和自动更新）。安卓 / iOS 不支持（依赖外部命令行进程）。
+- **技术栈**：Avalonia 12.1.3（Desktop / Themes.Fluent / Fonts.Inter）、CommunityToolkit.Mvvm 8.4.2、FluentIcons.Avalonia、Microsoft.Extensions.DependencyInjection、Velopack（安装与更新，vpk CLI 版本由 `.github/scripts/velopack-pack.ps1` 从 csproj 读取，始终与库同版本）；Core 引用 `Magick.NET-Q8-x64`（macOS 构建改用 `Magick.NET-Q8-AnyCPU`）与 `SharpCompress`（7z 解压）。外部工具：ExifTool、FFmpeg、heif-enc / heif-dec。
 - **测试**：xunit.v3。`LivePhotoConvert.Core.Tests`（引擎）、`LivePhotoConvert.Desktop.Tests`（VM / 服务单元测试 + Avalonia Headless 界面测试）、`LivePhotoConvert.E2E`（真实外壳 + 真实工具的黑盒流程）。
 
 ## 2. 架构速览
@@ -28,7 +28,7 @@ src/LivePhotoConvert.Core/            纯引擎：无 UI 依赖、AOT 兼容
   Services/     MotionPhotoMerger（转安卓）/ MotionPhotoSplitter（转苹果、解包）/ MotionPhotoStripper（瘦身）
   External/     ProcessRunner；FFmpeg / heif-enc / Magick 转换器；HeifDecoder；VideoStreamProbe；ToolLocator；
                 Tools/：tools.json 依赖清单、ToolInstaller 校验安装、ToolRegistry 版本与能力探测
-  Io/ Platform/ BinaryFile 流式拼接切片、UniquePath、FileHelper；RecycleBin、WindowsShellThumbnailSource
+  Io/ Platform/ BinaryFile 流式拼接切片、UniquePath、FileHelper；RecycleBin、WindowsShellThumbnailSource、QuickLookThumbnailSource
 
 src/LivePhotoConvert.Desktop/         Avalonia 桌面端（程序集名 LivePhotoConvert）
   App.axaml.cs / Program.cs           组合根（主题与语言先于任何页面 VM 生效）/ 全局异常钩子

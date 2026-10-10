@@ -13,7 +13,7 @@ public enum SourceFileAction
     /// <summary>移到源文件所在目录下的归档子文件夹。</summary>
     Move = 1,
 
-    /// <summary>移入回收站（仅 Windows）。</summary>
+    /// <summary>移入回收站（Windows）或废纸篓（macOS）。</summary>
     Recycle = 2,
 
     /// <summary>永久删除。</summary>
@@ -97,7 +97,7 @@ public sealed class SourceDisposition
 
                 break;
             case SourceFileAction.Recycle:
-                if (!OperatingSystem.IsWindows())
+                if (!OperatingSystem.IsWindows() && !OperatingSystem.IsMacOS())
                 {
                     throw new PlatformNotSupportedException("当前系统不支持回收站。");
                 }

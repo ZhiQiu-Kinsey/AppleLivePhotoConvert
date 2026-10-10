@@ -277,7 +277,7 @@ public sealed class ExifToolMetadataService : IMetadataService
 
     private static FileStream OpenRead(string path) => new(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 4096, FileOptions.RandomAccess);
 
-    private static readonly StringComparer PathKeyComparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+    private static readonly StringComparer PathKeyComparer = PathEquality.Comparer;
 
     /// <summary>
     /// ExifTool 在 Windows 上会把 SourceFile 中的反斜杠输出为正斜杠，比较前统一格式。

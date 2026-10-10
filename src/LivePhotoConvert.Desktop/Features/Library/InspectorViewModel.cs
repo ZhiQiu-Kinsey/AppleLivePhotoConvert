@@ -217,7 +217,7 @@ public sealed partial class InspectorViewModel : ViewModelBase
     [
         new("SourceActionKeepShort"),
         new("SourceActionSubfolderShort"),
-        new("SourceActionRecycleShort"),
+        new(OperatingSystem.IsMacOS() ? "SourceActionTrashShort" : "SourceActionRecycleShort"),
         new("SourceActionDeleteShort", isDanger: true)
     ];
 

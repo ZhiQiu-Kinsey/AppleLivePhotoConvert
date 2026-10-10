@@ -80,7 +80,7 @@ public static class AppServices
             sp.GetRequiredService<SettingsStore>().Current.Gallery.ThumbnailDiskCacheBytes));
         services.AddSingleton(sp => new ThumbnailGenerator(
             sp.GetRequiredService<ThumbnailDiskCache>(),
-            WindowsShellThumbnailSource.TryCreate()));
+            WindowsShellThumbnailSource.TryCreate() ?? QuickLookThumbnailSource.TryCreate()));
         services.AddSingleton<IThumbnailPipeline>(sp => new ThumbnailPipeline(
             sp.GetRequiredService<ThumbnailGenerator>(),
             sp.GetRequiredService<SettingsStore>().Current.Gallery.ThumbnailBudgetBytes));

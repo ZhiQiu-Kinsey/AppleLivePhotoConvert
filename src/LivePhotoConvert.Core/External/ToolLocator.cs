@@ -18,7 +18,7 @@ public static class ToolLocator
     private static readonly ConcurrentDictionary<(string Path, long Length, DateTime LastWrite), bool> ProbeCache = new();
 
     /// <summary>
-    /// 按「指定路径 → 程序目录及其 tools/、tools/&lt;工具&gt;/ 子目录 → 本地应用数据目录 → PATH」顺序查找。
+    /// 按「指定路径 → 程序目录及其 tools/、tools/&lt;工具&gt;/ 子目录 → 本地应用数据目录 → PATH → macOS 上常见的包管理器目录」顺序查找。
     /// 指定了路径时只检查该路径。
     /// </summary>
     /// <param name="subDirectories">额外的子目录，同时在 tools/ 下按安装布局查找（例如 heif-dec 随 heif-enc 装在 tools/heif-enc/）</param>
@@ -55,7 +55,7 @@ public static class ToolLocator
             candidates.Add(Path.Combine(ToolDirectories.LocalAppDataToolDirectory, subDirectory, fileName));
         }
 
-        var found = candidates.FirstOrDefault(IsValidTool) ?? FindOnPath(fileName);
+        var found = candidates.FirstOrDefault(IsValidTool) ?? FindOnPath(fileName) ?? FindInPlatformDirectories(fileName);
         return found is null ? null : Path.GetFullPath(found);
     }
 
@@ -157,6 +157,36 @@ public static class ToolLocator
             }
 
             var candidate = Path.Combine(directory.ToString(), fileName);
+            if (IsValidTool(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 从访达启动的 .app 继承不到终端里的 PATH。Homebrew 与 MacPorts 的默认前缀要在 PATH 之后再找一次，
+    /// 这样终端里显式配置的同名工具仍然优先。
+    /// </summary>
+    internal static IEnumerable<string> PlatformPathDirectories()
+    {
+        if (!OperatingSystem.IsMacOS())
+        {
+            yield break;
+        }
+
+        yield return "/opt/homebrew/bin";
+        yield return "/usr/local/bin";
+        yield return "/opt/local/bin";
+    }
+
+    private static string? FindInPlatformDirectories(string fileName)
+    {
+        foreach (var directory in PlatformPathDirectories())
+        {
+            var candidate = Path.Combine(directory, fileName);
             if (IsValidTool(candidate))
             {
                 return candidate;

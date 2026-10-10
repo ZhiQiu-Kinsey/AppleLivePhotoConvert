@@ -52,6 +52,7 @@
   <sys:String x:Key="SourceActionKeepShort">保留原片</sys:String>
   <sys:String x:Key="SourceActionSubfolderShort">移入备份文件夹</sys:String>
   <sys:String x:Key="SourceActionRecycleShort">移入回收站</sys:String>
+  <sys:String x:Key="SourceActionTrashShort">移入废纸篓</sys:String>
   <sys:String x:Key="SourceActionDeleteShort">永久删除</sys:String>
   <sys:String x:Key="ArchiveFolderMerged">已合成</sys:String>
   <sys:String x:Key="ArchiveFolderSplit">已拆分</sys:String>

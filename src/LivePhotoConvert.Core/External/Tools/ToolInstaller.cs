@@ -1,3 +1,4 @@
+using System.Runtime.Versioning;
 using LivePhotoConvert.Core.Io;
 
 namespace LivePhotoConvert.Core.External.Tools;
@@ -178,7 +179,9 @@ public sealed class ToolInstaller : IToolInstaller
 
             attempt.Stage = ToolInstallStage.Extracting;
             attempt.Report(ToolInstallStage.Extracting);
-            var extracted = await ToolArchiveExtractor.ExtractAsync(package.Format, archivePath, payload, package.Root, package.Include, cancellationToken);
+            var extracted = await ToolArchiveExtractor.ExtractAsync(
+                package.Format, archivePath, payload, package.Root, package.Include, cancellationToken,
+                singleFileName: package.Format == ToolArchiveFormat.Zstd ? package.Entry : null);
             FileHelper.TryDeleteFile(archivePath);
             if (extracted == 0)
             {
@@ -226,11 +229,31 @@ public sealed class ToolInstaller : IToolInstaller
 
         if (!OperatingSystem.IsWindows())
         {
-            File.SetUnixFileMode(executable, File.GetUnixFileMode(executable) | UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute);
+            MakeExecutable(executable);
+        }
+
+        // 同一个二进制按 argv[0] 充当多个命令时，安装目录里要各有一份同内容的文件
+        foreach (var alias in package.Aliases ?? [])
+        {
+            var aliasPath = Path.Combine(payload, alias);
+            if (string.Equals(alias, definition.ExecutableFileName, StringComparison.OrdinalIgnoreCase) || File.Exists(aliasPath))
+            {
+                throw new InvalidDataException($"下载包 {package.Id} 的别名 {alias} 与已有文件冲突。");
+            }
+
+            File.Copy(executable, aliasPath);
+            if (!OperatingSystem.IsWindows())
+            {
+                MakeExecutable(aliasPath);
+            }
         }
 
         return executable;
     }
+
+    [UnsupportedOSPlatform("windows")]
+    private static void MakeExecutable(string path) =>
+        File.SetUnixFileMode(path, File.GetUnixFileMode(path) | UnixFileMode.UserRead | UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute);
 
     private async Task<string?> DefaultProbeAsync(ToolDefinition definition, string executable, CancellationToken cancellationToken)
     {

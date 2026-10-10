@@ -1,7 +1,9 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using LivePhotoConvert.Core.Pipeline;
 using LivePhotoConvert.Desktop.Features.Library;
+using LivePhotoConvert.Desktop.Features.Shell;
 using LivePhotoConvert.Desktop.Features.Settings;
 using LivePhotoConvert.Desktop.Features.Tasks;
 using LivePhotoConvert.Desktop.Features.Tools;
@@ -42,6 +44,44 @@ public sealed class ShellSmokeTests : IDisposable
         Assert.Same(shell.Tasks, session.Descendants<TasksView>().Single().DataContext);
         Assert.Same(shell.Tools, session.Descendants<ToolsView>().Single().DataContext);
         Assert.Same(shell.Settings, session.Descendants<SettingsView>().Single().DataContext);
+        session.Log.AssertNoBindingErrors();
+    }
+
+    [AvaloniaFact]
+    public void WindowChrome_UsesSystemTrafficLightsOnMac()
+    {
+        using var session = new ShellSession();
+        var titleBar = session.Window.FindControl<Border>("TitleBar");
+        var titleContent = session.Window.FindControl<Grid>("TitleContent");
+        var captionButtons = session.Window.FindControl<StackPanel>("CaptionButtons");
+        Assert.NotNull(titleBar);
+        Assert.NotNull(titleContent);
+        Assert.NotNull(captionButtons);
+
+        if (OperatingSystem.IsMacOS())
+        {
+            Assert.Equal(WindowDecorations.Full, session.Window.WindowDecorations);
+            Assert.Equal(40, session.Window.ExtendClientAreaTitleBarHeightHint);
+            Assert.False(captionButtons.IsVisible);
+            Assert.Equal(78, titleBar.Padding.Left);
+            Assert.Equal(78, titleBar.Padding.Right);
+            Assert.Equal(Avalonia.Layout.HorizontalAlignment.Center, titleContent.HorizontalAlignment);
+            var mid = TitleGroupMidpoint(session, titleBar);
+            Assert.InRange(mid, titleBar.Bounds.Width / 2 - 2, titleBar.Bounds.Width / 2 + 2);
+        }
+        else
+        {
+            Assert.Equal(WindowDecorations.BorderOnly, session.Window.WindowDecorations);
+            Assert.True(captionButtons.IsVisible);
+            Assert.Equal(14, titleBar.Padding.Left);
+            Assert.Equal(0, titleBar.Padding.Right);
+            Assert.Equal(Avalonia.Layout.HorizontalAlignment.Left, titleContent.HorizontalAlignment);
+            var brand = session.Window.FindControl<StackPanel>("BrandPanel");
+            Assert.NotNull(brand);
+            var left = brand.TranslatePoint(new Point(), titleBar)!.Value.X;
+            Assert.InRange(left, 13, 15);
+        }
+
         session.Log.AssertNoBindingErrors();
     }
 
@@ -162,6 +202,17 @@ public sealed class ShellSmokeTests : IDisposable
             session.Dispose();
             throw;
         }
+    }
+
+    private static double TitleGroupMidpoint(ShellSession session, Border titleBar)
+    {
+        var brand = session.Window.FindControl<StackPanel>("BrandPanel")!;
+        var subtitle = session.Window.FindControl<FitOrHidePanel>("SubtitlePanel")!;
+        var left = brand.TranslatePoint(new Point(), titleBar)!.Value.X;
+        var right = subtitle.IsContentHidden
+            ? left + brand.Bounds.Width
+            : subtitle.TranslatePoint(new Point(subtitle.Bounds.Width, 0), titleBar)!.Value.X;
+        return (left + right) / 2;
     }
 
     private static void VisitAll(ShellSession session, string context, bool english)

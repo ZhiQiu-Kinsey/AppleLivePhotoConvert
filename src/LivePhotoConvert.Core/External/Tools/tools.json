@@ -47,6 +47,28 @@
           "format": "zip",
           "root": "exiftool-13.59_64",
           "entry": "exiftool(-k).exe"
+        },
+        {
+          "id": "exiftool-sourceforge-osx-arm64",
+          "nameKey": "ToolSourceSourceForge",
+          "rid": "osx-arm64",
+          "version": "13.59",
+          "url": "https://sourceforge.net/projects/exiftool/files/Image-ExifTool-13.59.tar.gz/download",
+          "sha256": "668ea3acececb7235fbd0f4900e72d5f12c9b07e5c778fd36cb1e9b5828fd65a",
+          "format": "tgz",
+          "root": "Image-ExifTool-13.59",
+          "entry": "exiftool"
+        },
+        {
+          "id": "exiftool-sourceforge-osx-x64",
+          "nameKey": "ToolSourceSourceForge",
+          "rid": "osx-x64",
+          "version": "13.59",
+          "url": "https://sourceforge.net/projects/exiftool/files/Image-ExifTool-13.59.tar.gz/download",
+          "sha256": "668ea3acececb7235fbd0f4900e72d5f12c9b07e5c778fd36cb1e9b5828fd65a",
+          "format": "tgz",
+          "root": "Image-ExifTool-13.59",
+          "entry": "exiftool"
         }
       ]
     },
@@ -83,6 +105,58 @@
           "entry": "ffmpeg.exe",
           "include": [ "ffmpeg.exe", "ffprobe.exe" ],
           "githubRelease": true
+        },
+        {
+          "id": "ffmpeg-npmmirror-osx-arm64",
+          "nameKey": "ToolSourceNpmMirror",
+          "rid": "osx-arm64",
+          "version": "7.0",
+          "url": "https://registry.npmmirror.com/@ffmpeg-binary/darwin-arm64/-/darwin-arm64-7.0.0.tgz",
+          "sha256": "198021e63ce5c4436175aec8423cf548b96406d191949c42d2e05763387d07d2",
+          "integrity": "sha512-NUa2mV8k/O9vcDmI5+UpbzGpeh7MQjlQ/r8E9ea1AGJ+KrRTHT3aZGoVga1WZTXfrz3LkWbUit4hoiyOAIrH3g==",
+          "format": "tgz",
+          "root": "package",
+          "entry": "ffmpeg",
+          "include": [ "ffmpeg", "LICENSE" ]
+        },
+        {
+          "id": "ffmpeg-npmjs-osx-arm64",
+          "nameKey": "ToolSourceNpmRegistry",
+          "rid": "osx-arm64",
+          "version": "7.0",
+          "url": "https://registry.npmjs.org/@ffmpeg-binary/darwin-arm64/-/darwin-arm64-7.0.0.tgz",
+          "sha256": "198021e63ce5c4436175aec8423cf548b96406d191949c42d2e05763387d07d2",
+          "integrity": "sha512-NUa2mV8k/O9vcDmI5+UpbzGpeh7MQjlQ/r8E9ea1AGJ+KrRTHT3aZGoVga1WZTXfrz3LkWbUit4hoiyOAIrH3g==",
+          "format": "tgz",
+          "root": "package",
+          "entry": "ffmpeg",
+          "include": [ "ffmpeg", "LICENSE" ]
+        },
+        {
+          "id": "ffmpeg-npmmirror-osx-x64",
+          "nameKey": "ToolSourceNpmMirror",
+          "rid": "osx-x64",
+          "version": "7.0",
+          "url": "https://registry.npmmirror.com/@ffmpeg-binary/darwin-x64/-/darwin-x64-7.0.0.tgz",
+          "sha256": "739686a0f9c37a75c530e9e55812b8166b2e5eadc524c9308ff23635bd6a77d6",
+          "integrity": "sha512-yfDl5rn/ypZ+TJjbSnc+/poSZvHIODdPBA6GvHNW5TfPWjKZq9AOwidBIO6rkgH2AUBG02R/qe3wwSxEJnGZqQ==",
+          "format": "tgz",
+          "root": "package",
+          "entry": "ffmpeg",
+          "include": [ "ffmpeg", "LICENSE" ]
+        },
+        {
+          "id": "ffmpeg-npmjs-osx-x64",
+          "nameKey": "ToolSourceNpmRegistry",
+          "rid": "osx-x64",
+          "version": "7.0",
+          "url": "https://registry.npmjs.org/@ffmpeg-binary/darwin-x64/-/darwin-x64-7.0.0.tgz",
+          "sha256": "739686a0f9c37a75c530e9e55812b8166b2e5eadc524c9308ff23635bd6a77d6",
+          "integrity": "sha512-yfDl5rn/ypZ+TJjbSnc+/poSZvHIODdPBA6GvHNW5TfPWjKZq9AOwidBIO6rkgH2AUBG02R/qe3wwSxEJnGZqQ==",
+          "format": "tgz",
+          "root": "package",
+          "entry": "ffmpeg",
+          "include": [ "ffmpeg", "LICENSE" ]
         }
       ]
     },
@@ -104,6 +178,32 @@
           "format": "7z",
           "root": "libheif-1.23.4-win64",
           "entry": "heif-enc.exe",
+          "githubRelease": true
+        },
+        {
+          "id": "heif-enc-unpins-osx-arm64",
+          "nameKey": "ToolSourceGitHub",
+          "rid": "osx-arm64",
+          "version": "1.23.4",
+          "url": "https://github.com/unpins/heif/releases/download/v1.23.4-1/heif-1.23.4-1-aarch64-darwin.zst",
+          "sha256": "d5aef4e60e175d15e69a4ed9156678961c2d1393aed2cb1a095258910b969769",
+          "format": "zst",
+          "root": "",
+          "entry": "heif-enc",
+          "aliases": [ "heif-dec" ],
+          "githubRelease": true
+        },
+        {
+          "id": "heif-enc-unpins-osx-x64",
+          "nameKey": "ToolSourceGitHub",
+          "rid": "osx-x64",
+          "version": "1.23.4",
+          "url": "https://github.com/unpins/heif/releases/download/v1.23.4-1/heif-1.23.4-1-x86_64-darwin.zst",
+          "sha256": "a3a668bdbe6a7f2e59ad957afd0a3d2790f7e30e1529bfe08b373bbdf18300c3",
+          "format": "zst",
+          "root": "",
+          "entry": "heif-enc",
+          "aliases": [ "heif-dec" ],
           "githubRelease": true
         }
       ]

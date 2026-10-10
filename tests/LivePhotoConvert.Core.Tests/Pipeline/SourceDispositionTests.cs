@@ -65,9 +65,9 @@ public class SourceDispositionTests
     }
 
     [Fact]
-    public void Recycle_OnNonWindows_ReportsErrorWithoutDeleting()
+    public void Recycle_WithoutTrash_ReportsErrorWithoutDeleting()
     {
-        Assert.SkipWhen(OperatingSystem.IsWindows(), "Windows 支持回收站");
+        Assert.SkipWhen(OperatingSystem.IsWindows() || OperatingSystem.IsMacOS(), "该系统可以把文件移入废纸篓");
         using var temp = new TempDirectory();
         var file = temp.CreateFile("IMG.mov", [1]);
 

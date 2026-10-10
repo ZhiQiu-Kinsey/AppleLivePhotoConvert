@@ -8,6 +8,20 @@ namespace LivePhotoConvert.Core.Tests.External;
 public class ToolLocatorTests
 {
     [Fact]
+    public void PlatformPathDirectories_AreHomebrewPrefixesOnMacOnly()
+    {
+        var directories = ToolLocator.PlatformPathDirectories().ToList();
+        if (OperatingSystem.IsMacOS())
+        {
+            Assert.Equal(["/opt/homebrew/bin", "/usr/local/bin", "/opt/local/bin"], directories);
+        }
+        else
+        {
+            Assert.Empty(directories);
+        }
+    }
+
+    [Fact]
     public void GetWritableToolDirectory_ReturnsExistingDirectory()
     {
         var directory = ToolDirectories.GetWritableToolDirectory();
