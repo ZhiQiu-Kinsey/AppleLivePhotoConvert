@@ -157,7 +157,7 @@ public class ThumbnailGeneratorTests
         int width, int height, int orientation, int tier, int hintWidth, int hintHeight, int targetWidth, int targetHeight)
     {
         var plan = ThumbnailGenerator.PlanJpegScale(
-            new ThumbnailGenerator.ProbeResult(ThumbnailDecodeKind.Jpeg, width, height, (OrientationType)orientation, null), tier);
+            new ThumbnailGenerator.ProbeResult(ThumbnailDecodeKind.Jpeg, width, height, (Orientation)orientation, null), tier);
 
         Assert.NotNull(plan);
         Assert.Equal((hintWidth, hintHeight), ((int)plan.Value.Hint.Width, (int)plan.Value.Hint.Height));
@@ -167,7 +167,7 @@ public class ThumbnailGeneratorTests
     [Fact]
     public void PlanJpegScale_NoHintWhenTargetNeedsFullResolution() =>
         Assert.Null(ThumbnailGenerator.PlanJpegScale(
-            new ThumbnailGenerator.ProbeResult(ThumbnailDecodeKind.Jpeg, 1100, 1000, OrientationType.TopLeft, null), 1024));
+            new ThumbnailGenerator.ProbeResult(ThumbnailDecodeKind.Jpeg, 1100, 1000, Orientation.TopLeft, null), 1024));
 
     [Theory]
     [InlineData(4000, 3000)]

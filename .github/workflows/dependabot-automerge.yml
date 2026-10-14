@@ -1,0 +1,61 @@
+name: Dependabot 自动合并
+
+# CI 全部通过后合并 Dependabot 的依赖升级 PR。
+# 用 workflow_run 而不是 GitHub 自带的自动合并：后者要求 main 配置必需检查，
+# 没有分支规则时会在 CI 结束前直接合并。这里只读事件数据、不检出 PR 代码。
+on:
+  workflow_run:
+    workflows: [ CI ]
+    types: [ completed ]
+
+permissions: {}
+
+concurrency:
+  group: dependabot-automerge-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+
+jobs:
+  merge:
+    name: 合并依赖升级
+    if: >-
+      github.event.workflow_run.event == 'pull_request'
+      && github.event.workflow_run.conclusion == 'success'
+      && github.event.workflow_run.actor.login == 'dependabot[bot]'
+      && github.event.workflow_run.head_repository.full_name == github.repository
+      && startsWith(github.event.workflow_run.head_branch, 'dependabot/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      # 用 GITHUB_TOKEN 合并不会触发 main 的 push 事件，合并后手动派发一次 CI
+      actions: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+      HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+    steps:
+      - name: 确认 PR 仍由 Dependabot 打开且未被追加提交
+        id: pr
+        run: |
+          pr="$(gh pr list --state open --head "$HEAD_BRANCH" --json number,author,headRefOid \
+            --jq '.[] | select(.author.is_bot and (.author.login | test("dependabot"))) | "\(.number) \(.headRefOid)"')"
+          read -r number sha <<< "$pr"
+          if [ -z "$number" ]; then
+            echo "没有找到 Dependabot 打开的 PR，跳过。"
+            exit 0
+          fi
+          # 有人在 Dependabot 之后推送过提交时，CI 结果对应的不是当前头提交
+          if [ "$sha" != "$HEAD_SHA" ]; then
+            echo "PR #$number 的头提交已变化（$sha），等待新的 CI 结果。"
+            exit 0
+          fi
+          echo "number=$number" >> "$GITHUB_OUTPUT"
+
+      - name: 合并
+        if: steps.pr.outputs.number != ''
+        run: gh pr merge "${{ steps.pr.outputs.number }}" --merge --match-head-commit "$HEAD_SHA"
+
+      - name: 在 main 上运行 CI
+        if: steps.pr.outputs.number != ''
+        run: gh workflow run ci.yml --ref main

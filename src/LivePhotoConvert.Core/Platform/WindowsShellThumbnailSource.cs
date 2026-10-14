@@ -204,7 +204,7 @@ public sealed partial class WindowsShellThumbnailSource : IThumbnailSource, IDis
                 pixels.AsSpan(0, length),
                 new PixelReadSettings((uint)width, (uint)height, StorageType.Char, PixelMapping.BGRA));
             // Shell 位图的 alpha 常为 0 或预乘值，照片缩略图一律视为不透明
-            image.Alpha(AlphaOption.Off);
+            image.Alpha(AlphaAction.Off);
             return image;
         }
         finally

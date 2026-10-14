@@ -73,7 +73,7 @@ public sealed class CompareImageSourceTests : IDisposable
     [AvaloniaFact]
     public async Task DisplayDecode_FitsTargetPixelsWithoutUpscaling()
     {
-        var path = WriteJpeg("display.jpg", 1600, 1200, OrientationType.TopLeft);
+        var path = WriteJpeg("display.jpg", 1600, 1200, Orientation.TopLeft);
         using var source = await CompareImageSource.OpenAsync(path, path, Token);
 
         var (before, after) = await source.DecodeDisplayAsync(new PixelSize(600, 600), Token);
@@ -103,7 +103,7 @@ public sealed class CompareImageSourceTests : IDisposable
     [AvaloniaFact]
     public async Task ExifOrientation_IsAppliedToSizeAndPixels()
     {
-        var path = WriteJpeg("rotated.jpg", 400, 200, OrientationType.RightTop);
+        var path = WriteJpeg("rotated.jpg", 400, 200, Orientation.RightTop);
         using var source = await CompareImageSource.OpenAsync(path, path, Token);
 
         Assert.Equal(new PixelSize(200, 400), source.SourceSize);
@@ -169,7 +169,7 @@ public sealed class CompareImageSourceTests : IDisposable
         return path;
     }
 
-    private string WriteJpeg(string name, int width, int height, OrientationType orientation)
+    private string WriteJpeg(string name, int width, int height, Orientation orientation)
     {
         var path = Path.Combine(_sandbox.InputDirectory, name);
         using var image = new MagickImage(MagickColors.SteelBlue, (uint)width, (uint)height);

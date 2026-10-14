@@ -205,7 +205,7 @@ public sealed class QuickLookThumbnailSource : IThumbnailSource
         }
 
         var result = new MagickImage(pixels, new PixelReadSettings((uint)width, (uint)height, StorageType.Char, PixelMapping.RGBA));
-        result.Alpha(AlphaOption.Off);
+        result.Alpha(AlphaAction.Off);
         return result;
     }
 
