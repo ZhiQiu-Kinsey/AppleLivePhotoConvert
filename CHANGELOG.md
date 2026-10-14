@@ -10,7 +10,7 @@
 
 ### 改进
 
-- **依赖升级**：Magick.NET 15.0.0、Velopack 1.2.161、FluentIcons 2.1.344。
+- **依赖升级**：Avalonia 12.1.4、Magick.NET 15.0.0、Velopack 1.2.161、FluentIcons 2.1.344。
 
 ---
 
