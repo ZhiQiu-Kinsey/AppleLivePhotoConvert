@@ -206,7 +206,7 @@ macOS 键盘上的 Command 键按 Ctrl 处理。
 | :--- | :--- |
 | Windows 10 / 11 x64 | 正式支持，提供发布包 |
 | Linux x64 | 可从源码运行，没有发布包。ExifTool、FFmpeg 与 libheif（heif-enc / heif-dec）需通过系统包管理器安装，依赖页不提供下载；回收站不可用，「移入回收站」会失败并记入报告，就地瘦身时配对的 MOV 会保留 |
-| macOS 13+（Apple Silicon / Intel） | 可从源码运行，并打出未签名的 `.app`。依赖页可下载锁定版本的 ExifTool、FFmpeg 与 heif-enc；本机已用 Homebrew 安装时也会被找到。没有签名、公证和自动更新。移入废纸篓第一次会请求控制「访达」的权限 |
+| macOS 13+（Apple Silicon / Intel） | 可从源码运行，并打出未签名的 `.app`。首次打开会被系统拦截：在访达里右键点「打开」，或在终端执行 `xattr -dr com.apple.quarantine LivePhotoConvert.app`。依赖页可下载锁定版本的 ExifTool、FFmpeg 与 heif-enc；本机已用 Homebrew 安装时也会被找到。没有签名、公证和自动更新。移入废纸篓第一次会请求控制「访达」的权限 |
 | Android / iOS | 不支持：转换依赖在本机启动 ExifTool、FFmpeg 等命令行工具进程 |
 
 ## 常见问题

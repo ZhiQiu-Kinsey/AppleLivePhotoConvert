@@ -195,7 +195,7 @@ On macOS keyboards the Command key acts as Ctrl.
 | :--- | :--- |
 | Windows 10 / 11 x64 | Supported, with release packages |
 | Linux x64 | Runs from source; no release package. Install ExifTool, FFmpeg and libheif (heif-enc / heif-dec) with your package manager — the Engines page does not download them. There is no Recycle Bin: "Move to Recycle Bin" fails and is reported, and in-place slimming keeps paired MOV files |
-| macOS 13+ (Apple Silicon / Intel) | Runs from source and can be packed into an unsigned `.app`. The Engines page downloads pinned builds of ExifTool, FFmpeg and heif-enc; tools already installed with Homebrew are detected too. No signing, notarization, or automatic updates. Moving files to the Trash asks for permission to control Finder the first time |
+| macOS 13+ (Apple Silicon / Intel) | Runs from source and can be packed into an unsigned `.app`. Gatekeeper blocks the first launch: right-click the app in Finder and choose Open, or run `xattr -dr com.apple.quarantine LivePhotoConvert.app`. The Engines page downloads pinned builds of ExifTool, FFmpeg and heif-enc; tools already installed with Homebrew are detected too. No signing, notarization, or automatic updates. Moving files to the Trash asks for permission to control Finder the first time |
 | Android / iOS | Not supported: conversions depend on launching command-line tools such as ExifTool and FFmpeg as local processes |
 
 ## FAQ

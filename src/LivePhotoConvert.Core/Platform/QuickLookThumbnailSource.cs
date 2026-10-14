@@ -55,10 +55,8 @@ public sealed class QuickLookThumbnailSource : IThumbnailSource
         Native.EnsureFrameworks();
         var pool = Native.PoolPush();
         var request = IntPtr.Zero;
-        var block = IntPtr.Zero;
-        var descriptor = IntPtr.Zero;
         var state = new State();
-        var handle = GCHandle.Alloc(state);
+        var submitted = false;
         try
         {
             request = CreateRequest(path, width, height);
@@ -67,16 +65,11 @@ public sealed class QuickLookThumbnailSource : IThumbnailSource
                 return null;
             }
 
-            (block, descriptor) = CreateBlock(handle);
+            var (block, descriptor) = CreateBlock(state);
             var generator = Native.Send(Native.Class("QLThumbnailGenerator"), "sharedGenerator");
             Native.Generate(generator, request, block);
-            state.Wait(cancellationToken, () => Native.Send(generator, "cancelRequest:", request));
-            return state.Image;
-        }
-        catch (OperationCanceledException)
-        {
-            state.Image?.Dispose();
-            throw;
+            submitted = true;
+            return state.Wait(cancellationToken, () => Native.Send(generator, "cancelRequest:", request));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -90,15 +83,10 @@ public sealed class QuickLookThumbnailSource : IThumbnailSource
             }
 
             Native.PoolPop(pool);
-            handle.Free();
-            if (block != IntPtr.Zero)
+            // 回调还没来时不能释放 block：快速滚动画廊会取消请求，Quick Look 可能稍后才调用完成函数
+            if (!submitted || !state.CallbackWillRelease)
             {
-                Marshal.FreeHGlobal(block);
-            }
-
-            if (descriptor != IntPtr.Zero)
-            {
-                Marshal.FreeHGlobal(descriptor);
+                state.ReleaseNative();
             }
         }
     }
@@ -132,8 +120,9 @@ public sealed class QuickLookThumbnailSource : IThumbnailSource
         }
     }
 
-    private static (IntPtr Block, IntPtr Descriptor) CreateBlock(GCHandle handle)
+    private static (IntPtr Block, IntPtr Descriptor) CreateBlock(State state)
     {
+        var handle = GCHandle.Alloc(state);
         var descriptor = Marshal.AllocHGlobal(16);
         Marshal.WriteInt64(descriptor, 0, 0);
         Marshal.WriteInt64(descriptor, 8, Marshal.SizeOf<BlockLiteral>());
@@ -145,6 +134,7 @@ public sealed class QuickLookThumbnailSource : IThumbnailSource
             Descriptor = descriptor,
             Context = GCHandle.ToIntPtr(handle),
         }, block, false);
+        state.Adopt(handle, block, descriptor);
         return (block, descriptor);
     }
 
@@ -153,21 +143,21 @@ public sealed class QuickLookThumbnailSource : IThumbnailSource
     {
         var literal = Marshal.PtrToStructure<BlockLiteral>(block);
         var state = (State)GCHandle.FromIntPtr(literal.Context).Target!;
+        IMagickImage<byte>? image = null;
         try
         {
             if (representation != IntPtr.Zero && error == IntPtr.Zero)
             {
-                state.Image = ReadImage(Native.Send(representation, "CGImage"));
+                image = ReadImage(Native.Send(representation, "CGImage"));
             }
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            state.Image = null;
+            image?.Dispose();
+            image = null;
         }
-        finally
-        {
-            state.Finish();
-        }
+
+        state.Complete(image);
     }
 
     private static IMagickImage<byte>? ReadImage(IntPtr image)
@@ -186,7 +176,11 @@ public sealed class QuickLookThumbnailSource : IThumbnailSource
 
         var length = checked(width * height * 4);
         var pixels = new byte[length];
-        var space = Native.CGColorSpaceCreateDeviceRGB();
+        var space = Native.CreateSrgbColorSpace();
+        if (space == IntPtr.Zero)
+        {
+            return null;
+        }
         try
         {
             unsafe
@@ -217,23 +211,114 @@ public sealed class QuickLookThumbnailSource : IThumbnailSource
 
     private sealed class State
     {
+        private readonly Lock _gate = new();
         private readonly ManualResetEventSlim _done = new();
+        private bool _abandoned;
+        private bool _finished;
+        private bool _released;
+        private GCHandle _handle;
+        private IntPtr _block;
+        private IntPtr _descriptor;
+        private IMagickImage<byte>? _image;
 
-        public IMagickImage<byte>? Image { get; set; }
+        public bool CallbackWillRelease
+        {
+            get
+            {
+                lock (_gate)
+                {
+                    return _abandoned && !_released;
+                }
+            }
+        }
 
-        public void Finish() => _done.Set();
+        public void Adopt(GCHandle handle, IntPtr block, IntPtr descriptor)
+        {
+            _handle = handle;
+            _block = block;
+            _descriptor = descriptor;
+        }
 
-        public void Wait(CancellationToken cancellationToken, Action cancel)
+        /// <summary>回调结束。调用方已经放弃等待时，在这里释放图像和 block，避免再碰已释放的内存。</summary>
+        public void Complete(IMagickImage<byte>? image)
+        {
+            lock (_gate)
+            {
+                if (_abandoned)
+                {
+                    image?.Dispose();
+                    ReleaseNativeCore();
+                    return;
+                }
+
+                _image = image;
+                _finished = true;
+                _done.Set();
+            }
+        }
+
+        public IMagickImage<byte>? Wait(CancellationToken cancellationToken, Action cancel)
         {
             try
             {
                 _done.Wait(cancellationToken);
+                return _image;
             }
             catch (OperationCanceledException)
             {
-                cancel();
-                _done.Wait(TimeSpan.FromSeconds(2));
+                try
+                {
+                    cancel();
+                }
+                catch (Exception ex) when (ex is not OutOfMemoryException)
+                {
+                    // 取消请求失败也不要让回调去读已经释放的 block
+                }
+
+                lock (_gate)
+                {
+                    _abandoned = true;
+                    if (_finished)
+                    {
+                        _image?.Dispose();
+                        _image = null;
+                        ReleaseNativeCore();
+                    }
+                }
+
                 throw;
+            }
+        }
+
+        public void ReleaseNative()
+        {
+            lock (_gate)
+            {
+                ReleaseNativeCore();
+            }
+        }
+
+        private void ReleaseNativeCore()
+        {
+            if (_released)
+            {
+                return;
+            }
+
+            _released = true;
+            if (_handle.IsAllocated)
+            {
+                _handle.Free();
+            }
+
+            if (_block != IntPtr.Zero)
+            {
+                Marshal.FreeHGlobal(_block);
+            }
+
+            if (_descriptor != IntPtr.Zero)
+            {
+                Marshal.FreeHGlobal(_descriptor);
             }
         }
     }
@@ -333,7 +418,18 @@ public sealed class QuickLookThumbnailSource : IThumbnailSource
         public static extern nint CGImageGetHeight(IntPtr image);
 
         [DllImport("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics")]
-        public static extern IntPtr CGColorSpaceCreateDeviceRGB();
+        private static extern IntPtr CGColorSpaceCreateWithName(IntPtr name);
+
+        public static IntPtr CreateSrgbColorSpace()
+        {
+            var symbol = dlsym((IntPtr)(-2), "kCGColorSpaceSRGB");
+            if (symbol == IntPtr.Zero)
+            {
+                return IntPtr.Zero;
+            }
+
+            return CGColorSpaceCreateWithName(Marshal.ReadIntPtr(symbol));
+        }
 
         [DllImport("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics")]
         public static extern void CGColorSpaceRelease(IntPtr space);

@@ -32,6 +32,17 @@ public class QuickLookThumbnailSourceTests
         var bottom = ThumbnailTestImages.PixelAt(image, (int)image.Width / 2, (int)image.Height * 4 / 5);
         Assert.True(top.R > 180 && top.B < 80, $"顶部应是红色 {top}");
         Assert.True(bottom.B > 180 && bottom.R < 80, $"底部应是蓝色 {bottom}");
+
+        using var cancel = new CancellationTokenSource();
+        var pending = source.TryGetAsync(path, 200, 200, cancel.Token);
+        await cancel.CancelAsync();
+        try
+        {
+            using var cancelled = await pending;
+        }
+        catch (OperationCanceledException)
+        {
+        }
     }
 
     [Fact]
