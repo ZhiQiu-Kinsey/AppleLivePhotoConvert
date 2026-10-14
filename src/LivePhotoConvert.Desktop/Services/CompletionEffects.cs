@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using LivePhotoConvert.Desktop.Infrastructure;
 
 namespace LivePhotoConvert.Desktop.Services;
@@ -25,17 +26,19 @@ public sealed class CompletionEffects(SettingsStore settings, IShellLauncher she
         }
     }
 
-    /// <summary>仅 Windows 有系统提示音；无音频设备时静默跳过，不打断主流程。</summary>
+    /// <summary>Windows 用信息提示音，macOS 用系统提示音；无音频设备时静默跳过，不打断主流程。</summary>
     private static void PlayCompletionSound()
     {
-        if (!OperatingSystem.IsWindows())
-        {
-            return;
-        }
-
         try
         {
-            _ = MessageBeep(MB_ICONASTERISK);
+            if (OperatingSystem.IsWindows())
+            {
+                _ = MessageBeep(MB_ICONASTERISK);
+            }
+            else if (OperatingSystem.IsMacOS())
+            {
+                NSBeep();
+            }
         }
         catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or ExternalException)
         {
@@ -44,4 +47,8 @@ public sealed class CompletionEffects(SettingsStore settings, IShellLauncher she
 
     [DllImport("user32.dll", EntryPoint = "MessageBeep")]
     private static extern bool MessageBeep(uint uType);
+
+    [DllImport("/System/Library/Frameworks/AppKit.framework/AppKit", EntryPoint = "NSBeep")]
+    [SupportedOSPlatform("macos")]
+    private static extern void NSBeep();
 }

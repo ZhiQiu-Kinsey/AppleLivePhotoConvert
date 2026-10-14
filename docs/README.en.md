@@ -195,7 +195,7 @@ On macOS keyboards the Command key acts as Ctrl.
 | :--- | :--- |
 | Windows 10 / 11 x64 | Supported, with release packages |
 | Linux x64 | Runs from source; no release package. Install ExifTool, FFmpeg and libheif (heif-enc / heif-dec) with your package manager — the Engines page does not download them. There is no Recycle Bin: "Move to Recycle Bin" fails and is reported, and in-place slimming keeps paired MOV files |
-| macOS | Not adapted: the referenced Magick.NET x64 package does not cover Apple Silicon, packages are not signed or notarized, and nothing has been verified on real hardware |
+| macOS 13+ (Apple Silicon / Intel) | Runs from source and can be packed into an unsigned `.app`. Gatekeeper blocks the first launch: right-click the app in Finder and choose Open, or run `xattr -dr com.apple.quarantine LivePhotoConvert.app`. The Engines page downloads pinned builds of ExifTool, FFmpeg and heif-enc; tools already installed with Homebrew are detected too. No signing, notarization, or automatic updates. Moving files to the Trash asks for permission to control Finder the first time |
 | Android / iOS | Not supported: conversions depend on launching command-line tools such as ExifTool and FFmpeg as local processes |
 
 ## FAQ
@@ -297,6 +297,9 @@ dotnet run --project src/LivePhotoConvert.Desktop/LivePhotoConvert.Desktop.cspro
 
 # Windows x64 Native AOT publish
 dotnet publish src/LivePhotoConvert.Desktop/LivePhotoConvert.Desktop.csproj -r win-x64 -c Release -o dist/aot
+
+# unsigned macOS app for the current machine
+.github/scripts/publish-macos.sh
 ```
 
 See [AGENTS.md](../AGENTS.md) for code layout and conventions, [docs/design](design/README.md) for subsystem design notes, and [CHANGELOG.md](../CHANGELOG.md) for release history (all in Chinese).

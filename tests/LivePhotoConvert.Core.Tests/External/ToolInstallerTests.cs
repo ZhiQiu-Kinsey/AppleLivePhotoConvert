@@ -1,4 +1,5 @@
 using LivePhotoConvert.Core.External.Tools;
+using ZstdSharp;
 
 namespace LivePhotoConvert.Core.Tests.External;
 
@@ -35,6 +36,23 @@ public class ToolInstallerTests
         Assert.Equal(
             [ToolInstallStage.Downloading, ToolInstallStage.Verifying, ToolInstallStage.Extracting, ToolInstallStage.Probing, ToolInstallStage.Committing],
             stages.Distinct());
+    }
+
+    [Fact]
+    public async Task Install_ZstdSingleFile_CopiesAliasBesideExecutable()
+    {
+        using var temp = new TempDirectory();
+        using var compressor = new Compressor();
+        var content = compressor.Wrap("1.2.3"u8.ToArray()).ToArray();
+        var http = new FakeHttpHandler().Serve(PrimaryUrl, content);
+        var installer = new ToolInstaller(
+            ToolPackages.Manifest(ToolPackages.Package("zst", PrimaryUrl, content, ToolArchiveFormat.Zstd, root: "", aliases: ["sidekick"])),
+            temp.Root, http.CreateClient(), ToolPackages.Options());
+
+        var result = await installer.InstallAsync(ToolId.ExifTool, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal("1.2.3", File.ReadAllText(result.ExecutablePath));
+        Assert.Equal("1.2.3", File.ReadAllText(Path.Combine(result.InstallDirectory, "sidekick")));
     }
 
     [Fact]

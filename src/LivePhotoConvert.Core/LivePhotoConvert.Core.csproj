@@ -9,10 +9,29 @@
     <InternalsVisibleTo Include="LivePhotoConvert.Core.Tests" />
   </ItemGroup>
 
-  <ItemGroup>
+  <!--
+    Magick.NET-Q8-x64 没有 osx-arm64 原生库，Apple Silicon 上会在启动时加载失败。
+    仅在为 macOS 编译（含本机 dotnet run，此时还没有 RID）时改用 AnyCPU，由它在运行时按 RID 选择原生库。
+    Windows / Linux 的 AOT 发布继续用 x64 包，避免把其它平台的原生库打进产物。
+  -->
+  <PropertyGroup>
+    <_UseMagickAnyCpu Condition="'$(RuntimeIdentifier)' == 'osx-arm64' OR '$(RuntimeIdentifier)' == 'osx-x64'">true</_UseMagickAnyCpu>
+    <_UseMagickAnyCpu Condition="'$(RuntimeIdentifier)' == '' AND $([MSBuild]::IsOSPlatform('OSX'))">true</_UseMagickAnyCpu>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(_UseMagickAnyCpu)' == 'true'">
+    <PackageReference Include="Magick.NET-Q8-AnyCPU" Version="14.17.2" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(_UseMagickAnyCpu)' != 'true'">
     <PackageReference Include="Magick.NET-Q8-x64" Version="14.17.2" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- 7z 解压（heif-enc 只发布 7z 包）；纯托管、标注 IsTrimmable，AOT 发布无警告 -->
     <PackageReference Include="SharpCompress" Version="1.0.0" />
+    <!-- macOS 的 heif-enc 发行包是 zstd 压缩的单个可执行文件 -->
+    <PackageReference Include="ZstdSharp.Port" Version="0.8.8" />
   </ItemGroup>
 
   <ItemGroup>

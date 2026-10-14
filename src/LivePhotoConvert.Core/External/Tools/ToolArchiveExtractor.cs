@@ -4,6 +4,7 @@ using System.IO.Compression;
 using LivePhotoConvert.Core.Io;
 using SharpCompress.Factories;
 using SharpCompress.Readers;
+using ZstdSharp;
 
 namespace LivePhotoConvert.Core.External.Tools;
 
@@ -40,7 +41,8 @@ internal static class ToolArchiveExtractor
         string root,
         IReadOnlyList<string>? include,
         CancellationToken cancellationToken,
-        SevenZipBackend sevenZipBackend = SevenZipBackend.Auto)
+        SevenZipBackend sevenZipBackend = SevenZipBackend.Auto,
+        string? singleFileName = null)
     {
         Directory.CreateDirectory(destinationDirectory);
         var normalizedRoot = root.Length == 0 ? string.Empty : ToolArchivePath.Normalize(root);
@@ -53,6 +55,7 @@ internal static class ToolArchiveExtractor
                 ToolArchiveFormat.Zip => await ExtractZipAsync(archivePath, selector, cancellationToken),
                 ToolArchiveFormat.Tgz => await ExtractTgzAsync(archivePath, selector, cancellationToken),
                 ToolArchiveFormat.SevenZip => await ExtractSevenZipAsync(archivePath, selector, sevenZipBackend, cancellationToken),
+                ToolArchiveFormat.Zstd => await ExtractZstdAsync(archivePath, destinationDirectory, singleFileName, cancellationToken),
                 _ => throw new NotSupportedException($"不支持的压缩格式 {format}。")
             };
         }
@@ -62,6 +65,23 @@ internal static class ToolArchiveExtractor
             // 解压库对损坏数据抛出的异常类型不统一（截断时是 EndOfStreamException），统一归为数据错误；其余 IO 异常是磁盘问题，原样抛出
             throw new InvalidDataException($"压缩包损坏或格式不受支持：{ex.Message}", ex);
         }
+    }
+
+    /// <summary>zst 帧里没有路径，整段解成一个由调用方命名的文件。</summary>
+    private static async Task<int> ExtractZstdAsync(string archivePath, string destinationDirectory, string? singleFileName, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(singleFileName))
+        {
+            throw new InvalidDataException("zst 包必须指定输出文件名。");
+        }
+
+        ToolManifest.RequireFileName(singleFileName, "zst");
+        var target = Path.Combine(destinationDirectory, singleFileName);
+        await using var input = new FileStream(archivePath, FileMode.Open, FileAccess.Read, FileShare.Read, BufferSize, useAsync: true);
+        await using var output = new FileStream(target, FileMode.Create, FileAccess.Write, FileShare.None, BufferSize, useAsync: true);
+        await using var zstd = new DecompressionStream(input);
+        await zstd.CopyToAsync(output, cancellationToken);
+        return 1;
     }
 
     private static async Task<int> ExtractZipAsync(string archivePath, EntrySelector selector, CancellationToken cancellationToken)

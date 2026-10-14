@@ -27,7 +27,11 @@ public enum ToolArchiveFormat
     Tgz,
 
     [JsonStringEnumMemberName("7z")]
-    SevenZip
+    SevenZip,
+
+    /// <summary>单个文件的 zstd 帧，解压后用入口名落盘。</summary>
+    [JsonStringEnumMemberName("zst")]
+    Zstd
 }
 
 /// <summary>
@@ -177,6 +181,7 @@ public sealed record ToolDefinition(
 /// <param name="Entry">主程序相对 <paramref name="Root"/> 的文件名，安装后重命名为工具的可执行文件名</param>
 /// <param name="Include">只解出这些相对 <paramref name="Root"/> 的文件或目录；为空时解出全部</param>
 /// <param name="GithubRelease">是否为 GitHub Release 地址（可套用加速前缀）</param>
+/// <param name="Aliases">与入口相同内容的额外文件名。多调用二进制（同一个文件既是 heif-enc 也是 heif-dec）靠文件名区分</param>
 public sealed record ToolPackage(
     string Id,
     string NameKey,
@@ -189,7 +194,8 @@ public sealed record ToolPackage(
     string? Sha256 = null,
     string? Integrity = null,
     IReadOnlyList<string>? Include = null,
-    bool GithubRelease = false)
+    bool GithubRelease = false,
+    IReadOnlyList<string>? Aliases = null)
 {
     /// <summary>是否带有可用于校验的 SHA256。</summary>
     public bool IsVerified => Sha256 is { Length: 64 } hash && hash.All(char.IsAsciiHexDigit);
@@ -217,6 +223,20 @@ public sealed record ToolPackage(
         }
 
         ToolManifest.RequireFileName(Entry, $"{Id}.entry");
+        if (Format == ToolArchiveFormat.Zstd && (Root.Length > 0 || Include is { Count: > 0 }))
+        {
+            throw new InvalidDataException($"下载包 {Id} 是单个 zst 文件，不能指定 root 或 include。");
+        }
+
+        foreach (var alias in Aliases ?? [])
+        {
+            ToolManifest.RequireFileName(alias, $"{Id}.aliases");
+            if (string.Equals(alias, Entry, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidDataException($"下载包 {Id} 的别名与入口同名：{alias}");
+            }
+        }
+
         try
         {
             if (Root.Length > 0)

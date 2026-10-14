@@ -3,7 +3,7 @@ using ImageMagick;
 namespace LivePhotoConvert.Core.Media.Thumbnails;
 
 /// <summary>
-/// 平台已有的缩略图（如 Windows Shell 缩略图缓存），命中时免去解码原图。
+/// 平台已有的缩略图（Windows Shell 缓存、macOS 快速查看缓存），命中时免去解码原图。
 /// </summary>
 public interface IThumbnailSource
 {

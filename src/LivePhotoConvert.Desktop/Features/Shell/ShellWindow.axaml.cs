@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using LivePhotoConvert.Desktop.Infrastructure;
 
@@ -10,11 +11,64 @@ namespace LivePhotoConvert.Desktop.Features.Shell;
 
 public partial class ShellWindow : Window
 {
+    /// <summary>与标题栏行高一致，交通灯按这个高度落在标题栏里。</summary>
+    private const double TitleBarHeight = 40;
+
+    /// <summary>三颗交通灯加上间距后，两侧留出的宽度。左右相等，标题组的中心才是窗口中心。</summary>
+    private const double TrafficLightInset = 78;
+
     public ShellWindow()
     {
         InitializeComponent();
+        if (OperatingSystem.IsMacOS())
+        {
+            UseSystemTrafficLights();
+        }
+
         // 隧道阶段处理：Esc 先于弹窗内的输入框关闭弹窗，全局快捷键先于列表等控件的默认按键处理
         AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
+    }
+
+    /// <summary>
+    /// BorderOnly 会藏起系统交通灯。macOS 改回完整装饰，标题组在栏内水平居中，并躲开两侧按钮区。
+    /// </summary>
+    private void UseSystemTrafficLights()
+    {
+        WindowDecorations = WindowDecorations.Full;
+        ExtendClientAreaTitleBarHeightHint = TitleBarHeight;
+        CaptionButtons.IsVisible = false;
+        TitleBar.Padding = new Thickness(TrafficLightInset, 0, TrafficLightInset, 0);
+        TitleContent.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center;
+    }
+
+    protected override void OnOpened(EventArgs e)
+    {
+        base.OnOpened(e);
+        ScheduleTrafficLights();
+    }
+
+    protected override void OnSizeChanged(SizeChangedEventArgs e)
+    {
+        base.OnSizeChanged(e);
+        ScheduleTrafficLights();
+    }
+
+    private bool _trafficLightQueued;
+
+    /// <summary>系统按钮落在较矮的标题栏里，等原生布局完成后再垂直居中。</summary>
+    private void ScheduleTrafficLights()
+    {
+        if (!OperatingSystem.IsMacOS() || _trafficLightQueued)
+        {
+            return;
+        }
+
+        _trafficLightQueued = true;
+        Dispatcher.UIThread.Post(() =>
+        {
+            _trafficLightQueued = false;
+            MacTrafficLights.CenterIn(this, TitleBarHeight);
+        }, DispatcherPriority.Render);
     }
 
     protected override void OnDataContextChanged(EventArgs e)
@@ -29,6 +83,7 @@ public partial class ShellWindow : Window
         if (change.Property == WindowStateProperty)
         {
             SyncMaximized();
+            ScheduleTrafficLights();
         }
     }
 

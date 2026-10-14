@@ -13,6 +13,8 @@ public class ToolManifestTests
         var tool = ToolManifest.Embedded.Get(id);
 
         Assert.Contains(tool.PackagesFor("win-x64"), package => package.IsVerified);
+        Assert.Contains(tool.PackagesFor("osx-arm64"), package => package.IsVerified);
+        Assert.Contains(tool.PackagesFor("osx-x64"), package => package.IsVerified);
         Assert.Equal(tool.InstallDirectory, Path.GetFileNameWithoutExtension(tool.ExecutableFileName));
     }
 
@@ -28,6 +30,17 @@ public class ToolManifestTests
                 Assert.NotNull(package.Integrity);
             }
         }
+    }
+
+    [Theory]
+    [InlineData("osx-arm64")]
+    [InlineData("osx-x64")]
+    public void Embedded_MacHeifPackageIsSingleBinaryWithDecoderAlias(string rid)
+    {
+        var package = Assert.Single(ToolManifest.Embedded.Get(ToolId.HeifEnc).PackagesFor(rid));
+
+        Assert.Equal(ToolArchiveFormat.Zstd, package.Format);
+        Assert.Equal(["heif-dec"], package.Aliases);
     }
 
     [Fact]

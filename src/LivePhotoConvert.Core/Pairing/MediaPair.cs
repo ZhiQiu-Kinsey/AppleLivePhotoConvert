@@ -1,3 +1,5 @@
+using LivePhotoConvert.Core.Io;
+
 namespace LivePhotoConvert.Core.Pairing;
 
 /// <summary>
@@ -35,13 +37,13 @@ public sealed record PairingResult
 }
 
 /// <summary>
-/// 忽略路径大小写（Windows）与分隔符差异比较配对。
+/// 按默认卷的大小写规则比较配对路径，并忽略末尾分隔符。
 /// </summary>
 public sealed class MediaPairPathEqualityComparer : IEqualityComparer<MediaPair>
 {
     public static readonly MediaPairPathEqualityComparer Instance = new();
 
-    private static readonly StringComparer PathComparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+    private static readonly StringComparer PathComparer = PathEquality.Comparer;
 
     public bool Equals(MediaPair? x, MediaPair? y) =>
         ReferenceEquals(x, y)

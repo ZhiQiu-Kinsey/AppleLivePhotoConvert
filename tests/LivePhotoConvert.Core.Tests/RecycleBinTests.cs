@@ -4,10 +4,17 @@ using LivePhotoConvert.Core.Platform;
 namespace LivePhotoConvert.Core.Tests;
 
 /// <summary>
-/// Windows 回收站。
+/// 废纸篓：Windows 回收站与 macOS 废纸篓。
 /// </summary>
 public class RecycleBinTests
 {
+    [Fact]
+    public void Send_MissingFile_DoesNothing()
+    {
+        var missing = Path.Combine(Path.GetTempPath(), "lpc-missing-" + Guid.NewGuid().ToString("N"));
+        RecycleBin.Send(missing);
+    }
+
     /// <summary>
     /// 在 Windows 平台上，调用 RecycleBin.Send 应能成功将文件移入回收站并且原文件不再存在
     /// </summary>

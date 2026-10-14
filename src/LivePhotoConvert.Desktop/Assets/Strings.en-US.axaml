@@ -52,6 +52,7 @@
   <sys:String x:Key="SourceActionKeepShort">Keep originals</sys:String>
   <sys:String x:Key="SourceActionSubfolderShort">Move to backup</sys:String>
   <sys:String x:Key="SourceActionRecycleShort">Move to Recycle Bin</sys:String>
+  <sys:String x:Key="SourceActionTrashShort">Move to Trash</sys:String>
   <sys:String x:Key="SourceActionDeleteShort">Delete permanently</sys:String>
   <sys:String x:Key="ArchiveFolderMerged">Merged</sys:String>
   <sys:String x:Key="ArchiveFolderSplit">Split</sys:String>

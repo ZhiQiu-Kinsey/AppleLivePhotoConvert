@@ -71,9 +71,10 @@ internal static class ToolPackages
         bool githubRelease = false,
         string? sha256 = null,
         string? integrity = null,
-        IReadOnlyList<string>? include = null) =>
+        IReadOnlyList<string>? include = null,
+        IReadOnlyList<string>? aliases = null) =>
         new(id, "ToolSourceTest", ToolRuntime.CurrentRid, "1.2.3", url, format, root, entry ?? ExecutableFileName,
-            sha256 ?? (content is null ? null : Sha256(content)), integrity, include, githubRelease);
+            sha256 ?? (content is null ? null : Sha256(content)), integrity, include, githubRelease, aliases);
 
     public static ToolManifest Manifest(params ToolPackage[] packages) => Manifest([], packages);
 

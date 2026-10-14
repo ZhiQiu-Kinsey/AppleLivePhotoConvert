@@ -1,3 +1,4 @@
+using LivePhotoConvert.Core.Io;
 using LivePhotoConvert.Core.Pairing;
 using LivePhotoConvert.Core.Pipeline;
 using LivePhotoConvert.Core.Services;
@@ -60,7 +61,7 @@ public sealed record ConversionInputs
 /// </summary>
 public sealed record ConversionJob(ConversionAction Action, ConversionOptions Options, ConversionInputs Inputs)
 {
-    private static readonly StringComparer PathComparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+    private static readonly StringComparer PathComparer = PathEquality.Comparer;
 
     public ToolPaths Tools { get; init; } = ToolPaths.Auto;
 
