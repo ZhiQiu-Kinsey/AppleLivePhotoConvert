@@ -130,7 +130,7 @@ public sealed class ThumbnailGenerator
     {
         var kind = DetectKind(request.Path);
         int storedWidth = 0, storedHeight = 0;
-        var orientation = OrientationType.Undefined;
+        var orientation = Orientation.Undefined;
         byte[]? embedded = null;
         try
         {
@@ -148,7 +148,7 @@ public sealed class ThumbnailGenerator
 
         if ((storedWidth <= 0 || storedHeight <= 0) && request.Header is { Width: > 0, Height: > 0 } header)
         {
-            orientation = (OrientationType)header.Orientation;
+            orientation = (Orientation)header.Orientation;
             (storedWidth, storedHeight) = IsTransposed(orientation) ? (header.Height, header.Width) : (header.Width, header.Height);
         }
 
@@ -285,8 +285,8 @@ public sealed class ThumbnailGenerator
         {
             // JPEG 无透明通道，直接丢弃 alpha 会露出透明像素里残留的颜色
             image.BackgroundColor = MagickColors.White;
-            image.Alpha(AlphaOption.Remove);
-            image.Alpha(AlphaOption.Off);
+            image.Alpha(AlphaAction.Remove);
+            image.Alpha(AlphaAction.Off);
         }
 
         image.Strip();
@@ -342,8 +342,8 @@ public sealed class ThumbnailGenerator
         }
     }
 
-    private static bool IsTransposed(OrientationType orientation) =>
-        orientation is OrientationType.LeftTop or OrientationType.RightTop or OrientationType.RightBottom or OrientationType.LeftBottom;
+    private static bool IsTransposed(Orientation orientation) =>
+        orientation is Orientation.LeftTop or Orientation.RightTop or Orientation.RightBottom or Orientation.LeftBottom;
 
     /// <summary>多帧格式（GIF、TIFF）只读第一帧。</summary>
     private static MagickReadSettings FirstFrame() => new() { FrameIndex = 0, FrameCount = 1 };
@@ -354,6 +354,6 @@ public sealed class ThumbnailGenerator
         ThumbnailDecodeKind Kind,
         int StoredWidth,
         int StoredHeight,
-        OrientationType Orientation,
+        Orientation Orientation,
         byte[]? Embedded);
 }

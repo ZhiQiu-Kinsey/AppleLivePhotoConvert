@@ -156,7 +156,7 @@ public sealed class CompareImageSource : ICompareDetailSource, IDisposable
         }
     }
 
-    private sealed class Side(string path, PixelSize size, OrientationType orientation, bool isJpeg, Lock decodeGate)
+    private sealed class Side(string path, PixelSize size, Orientation orientation, bool isJpeg, Lock decodeGate)
     {
         private readonly Lock _gate = new();
         private Dictionary<(int X, int Y), byte[]> _tiles = [];
@@ -281,8 +281,8 @@ public sealed class CompareImageSource : ICompareDetailSource, IDisposable
             }
         }
 
-        private static bool IsTransposed(OrientationType orientation) =>
-            orientation is OrientationType.LeftTop or OrientationType.RightTop or OrientationType.RightBottom or OrientationType.LeftBottom;
+        private static bool IsTransposed(Orientation orientation) =>
+            orientation is Orientation.LeftTop or Orientation.RightTop or Orientation.RightBottom or Orientation.LeftBottom;
 
         private static byte[] Export(MagickImage image, PixelRect rect)
         {
