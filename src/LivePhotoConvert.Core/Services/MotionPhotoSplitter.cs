@@ -78,10 +78,11 @@ public sealed class MotionPhotoSplitter(IMetadataService metadata, IImageConvert
                 }
 
                 var directory = request.Output.DirectoryFor(path);
+                var notes = new List<OutcomeNote>();
                 var outputs = request.Target == SplitTarget.Apple
-                    ? await RestoreAppleAsync(path, video, directory, request.HeicQuality, tags![path], committer, workspace, token)
+                    ? await RestoreAppleAsync(path, layout, directory, request.HeicQuality, tags![path], committer, workspace, notes, token)
                     : await ExtractAsync(path, video, directory, committer, token);
-                return ItemOutcome.Succeeded(path, outputs) with { CleanupError = disposition.Apply(path) };
+                return ItemOutcome.Succeeded(path, outputs) with { CleanupError = disposition.Apply(path), Notes = notes };
             },
             request.Parallelism,
             progress,
@@ -115,14 +116,16 @@ public sealed class MotionPhotoSplitter(IMetadataService metadata, IImageConvert
 
     private async Task<IReadOnlyList<string>> RestoreAppleAsync(
         string path,
-        EmbeddedVideo video,
+        ImageLayout layout,
         string directory,
         int heicQuality,
         MediaMetadata sourceTags,
         OutputCommitter committer,
         TempWorkspace workspace,
+        List<OutcomeNote> notes,
         CancellationToken cancellationToken)
     {
+        var video = layout.Video!;
         var (photoExtension, videoExtension) = DetectExtensions(path, video);
         var cover = workspace.NewFile(photoExtension);
         var embeddedVideo = workspace.NewFile(videoExtension);
@@ -147,6 +150,12 @@ public sealed class MotionPhotoSplitter(IMetadataService metadata, IImageConvert
             var contentIdentifier = Guid.NewGuid().ToString().ToUpperInvariant();
             await metadata.WriteApplePhotoIdentifierAsync(stagedPhoto, contentIdentifier, cancellationToken);
             await metadata.WriteAppleVideoTagsAsync(stagedVideo, AppleVideoTags.From(contentIdentifier, sourceTags), cancellationToken);
+
+            // 封面时间轨道必须在标签写完之后加：ExifTool 重写文件时会把 moov 移到 mdat 之前，轨道里的块偏移随之失效
+            if (await MovStillImageTrack.AddAsync(stagedVideo, layout.PresentationTimestampUs ?? 0, cancellationToken) == StillImageTrackResult.Unsupported)
+            {
+                notes.Add(new OutcomeNote(OutcomeNoteKind.StillImageTrackUnavailable));
+            }
 
             var stem = Path.GetFileNameWithoutExtension(path);
             return committer.CommitGroup(

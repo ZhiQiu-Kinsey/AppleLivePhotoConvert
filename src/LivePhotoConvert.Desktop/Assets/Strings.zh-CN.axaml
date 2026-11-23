@@ -531,6 +531,7 @@
   <sys:String x:Key="OutcomeNoteHdrMetadataMissing">HDR 元数据不足，已输出 SDR</sys:String>
   <sys:String x:Key="OutcomeNoteHdrConversionFailed">HDR 转换失败，已输出 SDR</sys:String>
   <sys:String x:Key="OutcomeNoteKeptOriginalFormat">保留原格式（HEIC 更大）</sys:String>
+  <sys:String x:Key="OutcomeNoteStillImageTrackUnavailable">未能写入封面时间轨道，iPhone 上无法调整封面</sys:String>
 
   <!-- 自动更新 -->
   <sys:String x:Key="SettingsUpdatesTitle">更新</sys:String>

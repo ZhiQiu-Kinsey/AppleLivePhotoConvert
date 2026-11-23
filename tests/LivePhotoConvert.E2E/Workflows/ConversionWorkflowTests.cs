@@ -70,6 +70,9 @@ public sealed class ConversionWorkflowTests : IDisposable
         var identifier = tags[outputs[0]].ContentIdentifier;
         Assert.False(string.IsNullOrEmpty(identifier), "HEIC 没有写入配对 UUID");
         Assert.Equal(identifier, tags[outputs[1]].ContentIdentifier);
+
+        // 封面时间轨道：iPhone 靠它定位封面帧，缺了就无法在照片 App 里调整封面
+        Assert.Equal(1_500_000, MovStillImageTrack.TryReadStillImageTimeUs(outputs[1]));
         Assert.True(File.Exists(source));
     }
 
@@ -161,16 +164,17 @@ public sealed class ConversionWorkflowTests : IDisposable
     {
         var cover = SampleAlbum.WriteJpeg(Path.Combine(_sandbox.RootDirectory, "cover.jpg"), 4, 640, 480);
         var video = Path.Combine(_sandbox.RootDirectory, "clip.mp4");
-        await GenerateVideoAsync(ffmpeg, video);
+        // 合成照片的 XMP 把封面时刻写在 1.5 秒，视频必须够长，否则会按设计收敛到最后一帧
+        await GenerateVideoAsync(ffmpeg, video, seconds: 2);
         var bytes = SyntheticMedia.MotionPhoto(await File.ReadAllBytesAsync(cover, Token), await File.ReadAllBytesAsync(video, Token));
         return _sandbox.CreateInputFile(fileName, bytes);
     }
 
-    private static async Task GenerateVideoAsync(string ffmpeg, string path, string? metadata = null)
+    private static async Task GenerateVideoAsync(string ffmpeg, string path, string? metadata = null, int seconds = 1)
     {
         List<string> args =
         [
-            "-nostdin", "-y", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=size=160x120:rate=30", "-t", "1", "-pix_fmt", "yuv420p"
+            "-nostdin", "-y", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=size=160x120:rate=30", "-t", seconds.ToString(), "-pix_fmt", "yuv420p"
         ];
         if (metadata is not null)
         {

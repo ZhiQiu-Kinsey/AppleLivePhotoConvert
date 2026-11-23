@@ -76,7 +76,10 @@ public enum OutcomeNoteKind
     HdrConversionFailed,
 
     /// <summary>瘦身时转码的 HEIC 不比原格式小，保留了原格式，只剥离视频。</summary>
-    KeptOriginalFormat
+    KeptOriginalFormat,
+
+    /// <summary>转为苹果实况时无法写入封面时间轨道，输出仍可播放，但 iPhone 上不能调整封面。</summary>
+    StillImageTrackUnavailable
 }
 
 /// <summary>

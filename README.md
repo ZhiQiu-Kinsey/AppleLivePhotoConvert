@@ -190,7 +190,7 @@ macOS 键盘上的 Command 键按 Ctrl 处理。
 | 动作 | 文件 | 说明 |
 | :--- | :--- | :--- |
 | 转为安卓 | `MVIMG_<原名>.jpg`、`MVIMG_<日期_时间>_<原名>.jpg` 或 `MVIMG_<日期_时间>.jpg` | JPEG 封面 + 尾部 MP4；写入 Google Motion Photo XMP（`GCamera:MotionPhoto*`、`MicroVideo*` 与 `Container:Directory`）和小米相册识别所需的 Exif `0x8897`；封面帧时间戳取自 MOV 的静态图时间轨道；非 MP4 视频重新封装为 MP4，前置摄像头的镜像视频重新编码以修正方向 |
-| 转为苹果 | `<原名>.HEIC` + `<原名>.MOV` | JPEG 封面转码为 HEIC；照片的 Apple MakerNotes 与视频的 QuickTime Keys 写入同一个 ContentIdentifier，并同步拍摄时间、机型与位置 |
+| 转为苹果 | `<原名>.HEIC` + `<原名>.MOV` | JPEG 封面转码为 HEIC；照片的 Apple MakerNotes 与视频的 QuickTime Keys 写入同一个 ContentIdentifier，并同步拍摄时间、机型与位置；视频按原照片 XMP 记录的封面时刻写入 still-image-time 轨道，iPhone 上可拖动调整封面 |
 | 解包提取 | `<原名>.jpg` / `.heic` + `<原名>.mp4` | 按字节切出，不重新编码 |
 | 空间瘦身 | 原格式或 `.heic` | 转码后的 HEIC 不比原格式小时保留原格式，只剥离视频；带增益图的照片保持原格式以保留 HDR |
 

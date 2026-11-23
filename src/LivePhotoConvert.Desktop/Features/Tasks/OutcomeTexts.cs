@@ -43,6 +43,7 @@ public static class OutcomeTexts
         OutcomeNoteKind.HdrDecoderUnavailable => "OutcomeNoteHdrDecoderUnavailable",
         OutcomeNoteKind.HdrMetadataMissing => "OutcomeNoteHdrMetadataMissing",
         OutcomeNoteKind.KeptOriginalFormat => "OutcomeNoteKeptOriginalFormat",
+        OutcomeNoteKind.StillImageTrackUnavailable => "OutcomeNoteStillImageTrackUnavailable",
         _ => "OutcomeNoteHdrConversionFailed"
     };
 

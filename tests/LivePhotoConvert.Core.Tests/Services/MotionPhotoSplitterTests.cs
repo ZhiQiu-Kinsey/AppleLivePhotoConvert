@@ -76,6 +76,8 @@ public class MotionPhotoSplitterTests
         Assert.Equal(captureTime, videoTags.CaptureTime);
         Assert.Equal("Xiaomi", videoTags.Make);
         Assert.Single(_images.HeicConversions);
+        // 替身视频没有 moov，轨道写入不了时必须如实报告，而不是让条目失败
+        Assert.Contains(new OutcomeNote(OutcomeNoteKind.StillImageTrackUnavailable), Assert.Single(report.Items).Notes);
     }
 
     [Fact]
