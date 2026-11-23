@@ -45,7 +45,10 @@ public static partial class FfmpegFilters
         return filters;
     }
 
-    /// <summary>解析 <c>-filters</c> 输出：每行为 3 位能力标记、滤镜名与输入输出类型。</summary>
+    /// <summary>
+    /// 解析 <c>-filters</c> 输出：每行为能力标记、滤镜名与输入输出类型。
+    /// 标记列数随版本变化（FFmpeg 8 起只有两列，如 <c>.S zscale</c>），按 2～3 位都认。
+    /// </summary>
     public static FrozenSet<string> Parse(string standardOutput)
     {
         HashSet<string> names = new(StringComparer.Ordinal);
@@ -73,6 +76,6 @@ public static partial class FfmpegFilters
         }
     }
 
-    [GeneratedRegex(@"^\s*[T.][S.][C.]\s+([A-Za-z0-9_]+)\s+\S+->\S+", RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"^\s*[TSC.]{2,3}\s+([A-Za-z0-9_]+)\s+\S+->\S+", RegexOptions.CultureInvariant)]
     private static partial Regex FilterLineRegex();
 }

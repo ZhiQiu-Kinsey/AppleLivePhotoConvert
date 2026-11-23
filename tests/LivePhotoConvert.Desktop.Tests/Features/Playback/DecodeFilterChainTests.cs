@@ -101,6 +101,30 @@ public class DecodeFilterChainTests
     }
 
     [Fact]
+    public void FfmpegFilters_Parse_ReadsFfmpeg8TwoColumnFlags()
+    {
+        // FFmpeg 8 的能力标记只有两列：按旧的三列格式匹配会认不出 zscale，HDR 预览被误报为缺少滤镜
+        const string output = """
+            Filters:
+              T. = Timeline support
+              .S = Slice threading
+              A = Audio input/output
+              V = Video input/output
+              N = Dynamic number and/or type of input/output
+              | = Source or sink filter
+             .. abench            A->A       Benchmark part of a filtergraph.
+             .S tonemap           V->V       Conversion to/from different dynamic ranges.
+             .S zscale            V->V       Apply resizing, colorspace and bit depth conversion.
+             .. nullsrc           |->V       Null video source, return unprocessed video frames.
+            """;
+
+        var filters = FfmpegFilters.Parse(output);
+
+        Assert.Equal(["abench", "nullsrc", "tonemap", "zscale"], filters.Order(StringComparer.Ordinal));
+        Assert.True(FfmpegFilters.SupportsHdrToneMapping(filters));
+    }
+
+    [Fact]
     public void BuildArguments_PassesEachItemSeparately()
     {
         const string input = "subfile,,start,10,end,20,,:/相册 a,b/动态 照片.jpg";
