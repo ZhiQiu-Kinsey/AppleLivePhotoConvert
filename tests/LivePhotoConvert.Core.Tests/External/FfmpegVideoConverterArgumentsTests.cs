@@ -56,7 +56,7 @@ public class FfmpegVideoConverterArgumentsTests
     [Fact]
     public void Transcode_Hdr_Uses10BitX265WithColorMetadata()
     {
-        var arguments = FfmpegVideoConverter.BuildTranscodeArguments("/in.mov", "/out.mp4", Hlg, hevc: true, bakeOrientation: false, VideoContainer.Mp4);
+        var arguments = FfmpegVideoConverter.BuildTranscodeArguments("/in.mov", "/out.mp4", Hlg, hevc: true, bakeOrientation: false, toneMapToSdr: false, VideoContainer.Mp4);
 
         Assert.Equal("libx265", ValueAfter(arguments, "-c:v"));
         Assert.Equal("yuv420p10le", ValueAfter(arguments, "-pix_fmt"));
@@ -76,7 +76,7 @@ public class FfmpegVideoConverterArgumentsTests
     {
         var bt709 = H264 with { ColorSpace = "bt709", ColorPrimaries = "bt709", ColorTransfer = "bt709" };
 
-        var arguments = FfmpegVideoConverter.BuildTranscodeArguments("/in.mov", "/out.mp4", bt709, hevc: false, bakeOrientation: false, VideoContainer.Mp4);
+        var arguments = FfmpegVideoConverter.BuildTranscodeArguments("/in.mov", "/out.mp4", bt709, hevc: false, bakeOrientation: false, toneMapToSdr: false, VideoContainer.Mp4);
 
         Assert.Equal("libx264", ValueAfter(arguments, "-c:v"));
         Assert.Equal("yuv420p", ValueAfter(arguments, "-pix_fmt"));
@@ -89,7 +89,7 @@ public class FfmpegVideoConverterArgumentsTests
     [Fact]
     public void Transcode_UnknownColors_AreNotInvented()
     {
-        var arguments = FfmpegVideoConverter.BuildTranscodeArguments("/in.mov", "/out.mp4", H264, hevc: false, bakeOrientation: false, VideoContainer.Mp4);
+        var arguments = FfmpegVideoConverter.BuildTranscodeArguments("/in.mov", "/out.mp4", H264, hevc: false, bakeOrientation: false, toneMapToSdr: false, VideoContainer.Mp4);
 
         Assert.DoesNotContain("-color_primaries", arguments);
         Assert.DoesNotContain("-color_trc", arguments);
@@ -97,15 +97,46 @@ public class FfmpegVideoConverterArgumentsTests
     }
 
     [Fact]
+    public void Transcode_ToneMapToSdr_ReplacesColorTripletWithBt709()
+    {
+        // 一加 / OPPO 的 HLG 视频：转为苹果必须映射成 SDR，否则 iOS 按 HDR 渲染视频帧而发灰
+        var arguments = FfmpegVideoConverter.BuildTranscodeArguments("/in.mov", "/out.MOV", Hlg, hevc: false, bakeOrientation: false, toneMapToSdr: true, VideoContainer.Mov);
+
+        Assert.Equal("yuv420p", ValueAfter(arguments, "-pix_fmt"));
+        Assert.Equal("bt709", ValueAfter(arguments, "-color_primaries"));
+        Assert.Equal("bt709", ValueAfter(arguments, "-color_trc"));
+        Assert.Equal("bt709", ValueAfter(arguments, "-colorspace"));
+        Assert.DoesNotContain("-tag:v", arguments);
+        Assert.Contains("tonemap", ValueAfter(arguments, "-vf"));
+        // 滤镜里的 p=bt2020 是输入色域，输出三元组必须全部落到 bt709
+        Assert.DoesNotContain("bt2020", ValueAfter(arguments, "-color_primaries"));
+    }
+
+    [Fact]
+    public void Transcode_ToneMapRequestedForSdrSource_LeavesSourceColorsAlone()
+    {
+        // 小米等 SDR 源：套用色调映射会改变画面观感，只保留源的三元组
+        var bt709 = H264 with { ColorSpace = "bt709", ColorPrimaries = "bt709", ColorTransfer = "bt709" };
+
+        var arguments = FfmpegVideoConverter.BuildTranscodeArguments("/in.mov", "/out.MOV", bt709, hevc: false, bakeOrientation: false, toneMapToSdr: true, VideoContainer.Mov);
+
+        Assert.Equal("scale=out_range=tv,format=yuv420p", ValueAfter(arguments, "-vf"));
+        Assert.Equal("bt709", ValueAfter(arguments, "-color_primaries"));
+        Assert.DoesNotContain("tonemap", string.Join(' ', arguments));
+    }
+
+    [Fact]
     public void Transcode_PreservesDisplayMatrixUnlessBaking()
     {
-        var preserve = FfmpegVideoConverter.BuildTranscodeArguments("/in.mov", "/out.mp4", H264, hevc: false, bakeOrientation: false, VideoContainer.Mp4);
-        var bake = FfmpegVideoConverter.BuildTranscodeArguments("/in.mov", "/out.mp4", H264, hevc: false, bakeOrientation: true, VideoContainer.Mp4);
+        var preserve = FfmpegVideoConverter.BuildTranscodeArguments("/in.mov", "/out.mp4", H264, hevc: false, bakeOrientation: false, toneMapToSdr: false, VideoContainer.Mp4);
+        var bake = FfmpegVideoConverter.BuildTranscodeArguments("/in.mov", "/out.mp4", H264, hevc: false, bakeOrientation: true, toneMapToSdr: false, VideoContainer.Mp4);
 
         // -autorotate 是输入选项，必须位于 -i 之前
-        Assert.Equal("0", ValueAfter(preserve, "-autorotate"));
-        Assert.True(preserve.ToList().IndexOf("-autorotate") < preserve.ToList().IndexOf("-i"));
-        Assert.DoesNotContain("-autorotate", bake);
+        // FFmpeg 7 起只接受 -noautorotate；旧式 "-autorotate 0" 会报「输入选项用于输出文件」
+        Assert.Contains("-noautorotate", preserve);
+        Assert.DoesNotContain("-autorotate", preserve);
+        Assert.True(preserve.ToList().IndexOf("-noautorotate") < preserve.ToList().IndexOf("-i"));
+        Assert.DoesNotContain("-noautorotate", bake);
     }
 
     [Fact]

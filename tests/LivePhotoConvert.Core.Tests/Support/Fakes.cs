@@ -84,6 +84,15 @@ internal sealed class FakeMetadataService : IMetadataService
         }
     }
 
+    public async Task RemoveAndroidDeclarationsAsync(string imagePath, CancellationToken cancellationToken = default)
+    {
+        ThrowIfFailing(imagePath);
+        if (MotionPhotoXmp.RemoveAndroidDeclarations(await ReadXmpAsync(imagePath, cancellationToken)) is { } xmp)
+        {
+            await File.WriteAllBytesAsync(imagePath, SyntheticMedia.InsertXmp(await File.ReadAllBytesAsync(imagePath, cancellationToken), xmp), cancellationToken);
+        }
+    }
+
     public Task CopyCoverMetadataAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken = default)
     {
         ThrowIfFailing(destinationPath);

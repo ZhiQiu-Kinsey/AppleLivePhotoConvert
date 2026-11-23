@@ -145,4 +145,58 @@ public class MotionPhotoXmpTests
         Assert.Null(MotionPhotoXmp.Parse(stripped));
         Assert.DoesNotContain("MicroVideo", stripped);
     }
+
+    [Fact]
+    public void RemoveAndroidDeclarations_DropsGainMapAndOppoDeclarations()
+    {
+        // 一加 / OPPO 的 XMP：Container 目录声明增益图、hdrgm 版本与厂商私有字段
+        const string xmp = """
+                           <x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+                           <rdf:Description rdf:about="" xmlns:hdrgm="http://ns.adobe.com/hdr-gain-map/1.0/"
+                               xmlns:OpCamera="http://ns.oplus.com/photos/1.0/camera/"
+                               xmlns:Container="http://ns.google.com/photos/1.0/container/"
+                               xmlns:Item="http://ns.google.com/photos/1.0/container/item/"
+                               hdrgm:Version="1.0" OpCamera:OLivePhotoVersion="2" OpCamera:VideoLength="5851656">
+                           <Container:Directory><rdf:Seq>
+                           <rdf:li rdf:parseType="Resource"><Container:Item Item:Semantic="Primary" Item:Mime="image/jpeg"/></rdf:li>
+                           <rdf:li rdf:parseType="Resource"><Container:Item Item:Semantic="GainMap" Item:Mime="image/jpeg" Item:Length="1149275"/></rdf:li>
+                           </rdf:Seq></Container:Directory>
+                           </rdf:Description></rdf:RDF></x:xmpmeta>
+                           """;
+
+        var stripped = MotionPhotoXmp.RemoveAndroidDeclarations(xmp);
+
+        Assert.NotNull(stripped);
+        // 声明全部消失：否则 iOS 会以为封面带增益图，按 HDR 渲染视频帧而发灰
+        Assert.DoesNotContain("GainMap", stripped);
+        Assert.DoesNotContain("hdrgm", stripped);
+        Assert.DoesNotContain("OpCamera", stripped);
+        Assert.DoesNotContain("Container", stripped);
+        Assert.Null(MotionPhotoXmp.Parse(stripped));
+    }
+
+    [Fact]
+    public void RemoveAndroidDeclarations_KeepsUnrelatedXmp()
+    {
+        const string xmp = """
+                           <x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+                           <rdf:Description rdf:about="" xmlns:dc="http://purl.org/dc/elements/1.1/"
+                               xmlns:GCamera="http://ns.google.com/photos/1.0/camera/" GCamera:MotionPhoto="1">
+                           <dc:creator><rdf:Seq><rdf:li>Someone</rdf:li></rdf:Seq></dc:creator>
+                           </rdf:Description></rdf:RDF></x:xmpmeta>
+                           """;
+
+        var stripped = MotionPhotoXmp.RemoveAndroidDeclarations(xmp);
+
+        Assert.NotNull(stripped);
+        Assert.Contains("Someone", stripped);
+        Assert.DoesNotContain("GCamera", stripped);
+    }
+
+    [Fact]
+    public void RemoveAndroidDeclarations_NoXmp_ReturnsNull()
+    {
+        Assert.Null(MotionPhotoXmp.RemoveAndroidDeclarations(null));
+        Assert.Null(MotionPhotoXmp.RemoveAndroidDeclarations("   "));
+    }
 }

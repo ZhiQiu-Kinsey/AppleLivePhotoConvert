@@ -147,6 +147,8 @@ tests/  Core.Tests（按 Media / Metadata / Pairing / Pipeline / Services / Exte
 - 照片端：Apple MakerNotes 的 `ContentIdentifier`（大写 UUID）。ExifTool 不能在没有 MakerNotes 的文件里创建该块，必须用 `AppleMakerNote.BuildTemplateJpeg` 生成模板后 `-tagsFromFile 模板 -MakerNotes` 整块复制并回读校验。
 - 视频端：QuickTime Keys 写 `com.apple.quicktime.content.identifier`（同一 UUID），同步 `creationdate` / `make` / `model` / `software` / `GPSCoordinates`（`纬度, 经度, 海拔`）。mvhd / mdhd 按 UTC 存储，写入时传**带偏移**的时间由 ExifTool 换算。还原时 UUID 用 `Guid.NewGuid().ToString().ToUpperInvariant()`。`Keys:StillImageTime` 不可写，**不要写入**。
 - 封面时间轨道：还原为苹果时由 `MovStillImageTrack` 追加 handler `meta`、格式 `mebx` 的单样本轨道（105 字节样本 + `edts/elst` 把样本推迟到封面时刻），时间取自源照片 XMP 的 `MotionPhotoPresentationTimestampUs` 并收敛到视频时长内。**必须在 ExifTool 写完标签之后执行**：ExifTool 重写文件会把 `moov` 移到 `mdat` 之前，先前写好的块偏移随之失效。缺这条轨道时 iPhone 仍识别为实况照片，但编辑界面无法拖动封面；FFmpeg 只能映射音视频流，重封装后该轨道必然丢失，也无法用 ExifTool 补写。
+- 视频必须是 SDR：苹果实况视频是 BT.709 SDR，iOS 调整封面时按 SDR 渲染视频帧。HDR 源（一加 / OPPO / 部分小米的 HLG）须经 `VideoConversionOptions.ToneMapToSdr` 色调映射为 BT.709 8-bit HEVC；SDR 源保持原有三元组不动。保留 HDR 标记会让调整封面后的画面发灰。
+- 封面 XMP 必须与实际内容一致：转为苹果时清掉 Google Container 目录、`hdrgm` 与厂商私有命名空间（`MotionPhotoXmp.RemoveAndroidDeclarations`）。声明有增益图但 HEIC 里没有辅助图项，iOS 会按 HDR 渲染。
 - 配对：`MediaPairMatcher` 先按 ContentIdentifier，再按「同目录 + 主干」（HEIC > JPG > PNG，MOV > MP4，候选全部保留由合成阶段择优）。`PairValidator`：标识一致直接通过；标识冲突或单边存在、时间差 >3s、仅单边有拍摄时间、视频 >30s 则拒绝；两侧都有时区偏移按绝对时刻比较，否则按当地时间。扫描与合成共用同一判定；人工裁决通过的配对进入 `ForceAccepted`，合成时跳过校验。
 
 **Ultra HDR（合成时 `PreserveHdr`，默认开启）**

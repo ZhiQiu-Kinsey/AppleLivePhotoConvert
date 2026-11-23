@@ -134,7 +134,8 @@ public sealed class MotionPhotoSplitter(IMetadataService metadata, IImageConvert
         try
         {
             await BinaryFile.CopySegmentAsync(path, cover, 0, video.ImageEnd, cancellationToken);
-            await metadata.RemoveMotionPhotoAsync(cover, cancellationToken);
+            // 清掉安卓声明：封面已不带增益图，留着 Container/hdrgm 声明会让 iOS 按 HDR 渲染而发灰
+            await metadata.RemoveAndroidDeclarationsAsync(cover, cancellationToken);
             if (photoExtension.Equals(".heic", StringComparison.OrdinalIgnoreCase))
             {
                 File.Copy(cover, stagedPhoto);
@@ -145,7 +146,8 @@ public sealed class MotionPhotoSplitter(IMetadataService metadata, IImageConvert
             }
 
             await BinaryFile.CopySegmentAsync(path, embeddedVideo, video.Offset, video.Length, cancellationToken);
-            await videoConverter!.RemuxToMovAsync(embeddedVideo, stagedVideo, cancellationToken: cancellationToken);
+            // 苹果实况视频是 SDR：保留安卓的 HDR 标记会让 iOS 在调整封面时按错误曲线渲染视频帧而发灰
+            await videoConverter!.RemuxToMovAsync(embeddedVideo, stagedVideo, new VideoConversionOptions { ToneMapToSdr = true }, cancellationToken);
 
             var contentIdentifier = Guid.NewGuid().ToString().ToUpperInvariant();
             await metadata.WriteApplePhotoIdentifierAsync(stagedPhoto, contentIdentifier, cancellationToken);

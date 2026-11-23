@@ -90,6 +90,8 @@ internal sealed class CountingEngines(IImageConverter images) : IConversionEngin
 
         public Task RemoveMotionPhotoAsync(string imagePath, CancellationToken cancellationToken = default) => inner.RemoveMotionPhotoAsync(imagePath, cancellationToken);
 
+        public Task RemoveAndroidDeclarationsAsync(string imagePath, CancellationToken cancellationToken = default) => inner.RemoveAndroidDeclarationsAsync(imagePath, cancellationToken);
+
         public Task CopyCoverMetadataAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken = default) =>
             inner.CopyCoverMetadataAsync(sourcePath, destinationPath, cancellationToken);
 

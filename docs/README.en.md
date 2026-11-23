@@ -179,7 +179,7 @@ On macOS keyboards the Command key acts as Ctrl.
 | Action | Files | Notes |
 | :--- | :--- | :--- |
 | To Android | `MVIMG_<name>.jpg`, `MVIMG_<date_time>_<name>.jpg` or `MVIMG_<date_time>.jpg` | JPEG cover followed by an MP4; writes Google Motion Photo XMP (`GCamera:MotionPhoto*`, `MicroVideo*` and `Container:Directory`) and the Exif tag `0x8897` Xiaomi Gallery uses to detect motion photos; the cover frame timestamp comes from the MOV's still-image timing track; non-MP4 videos are remuxed to MP4 and mirrored front-camera videos are re-encoded to fix orientation |
-| To Apple | `<name>.HEIC` + `<name>.MOV` | JPEG covers are converted to HEIC; the photo's Apple MakerNotes and the video's QuickTime Keys get the same ContentIdentifier, with capture time, device model and location synchronized; the video gets a still-image-time track at the cover moment recorded in the photo's XMP, so the key photo can be dragged on iPhone |
+| To Apple | `<name>.HEIC` + `<name>.MOV` | JPEG covers are converted to HEIC; the photo's Apple MakerNotes and the video's QuickTime Keys get the same ContentIdentifier, with capture time, device model and location synchronized; the video gets a still-image-time track at the cover moment recorded in the photo's XMP, so the key photo can be dragged on iPhone; HDR videos are tone-mapped to BT.709 SDR (matching Apple originals) and the Android Container / hdrgm declarations are removed |
 | Extract | `<name>.jpg` / `.heic` + `<name>.mp4` | Cut byte-for-byte, no re-encoding |
 | Slim down | Original format or `.heic` | If the HEIC is not smaller than the original, the original format is kept and only the video is removed; photos with a gain map keep their format to preserve HDR |
 

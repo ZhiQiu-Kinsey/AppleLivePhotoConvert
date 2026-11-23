@@ -15,6 +15,12 @@ public sealed class FfmpegVideoConverter : IVideoConverter
     private const string HdrPixelFormat = "yuv420p10le";
     private const string SdrPixelFormat = "yuv420p";
 
+    /// <summary>色调映射到 BT.709：先线性化，按参考白压到可显示范围，再按 BT.709 编码。</summary>
+    private const string SdrToneMapFilter = "zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt2020:rin=limited,tonemap=hable:desat=0,zscale=t=bt709:m=bt709:p=bt709:r=limited,format=yuv420p";
+    private const string SdrPrimaries = "bt709";
+    private const string SdrTransfer = "bt709";
+    private const string SdrMatrix = "bt709";
+
     private readonly string _executablePath;
     private readonly Lazy<Task<FrozenSet<string>>> _encoders;
 
@@ -50,7 +56,9 @@ public sealed class FfmpegVideoConverter : IVideoConverter
         var source = await VideoStreamProbe.ProbeAsync(_executablePath, input, cancellationToken: cancellationToken);
 
         string? remuxError = null;
-        if (!options.ForceTranscode && !options.BakeOrientation)
+        // 色调映射必须重新编码，流复制会把 HDR 标记原样带过去；SDR 源不需要，仍可流复制
+        var needsToneMap = options.ToneMapToSdr && source is { IsHdr: true };
+        if (!options.ForceTranscode && !options.BakeOrientation && !needsToneMap)
         {
             var remux = await ProcessRunner.RunAsync(_executablePath, BuildRemuxArguments(input, output, source, container), cancellationToken);
             if (remux.Success && IsNonEmptyFile(output))
@@ -65,7 +73,7 @@ public sealed class FfmpegVideoConverter : IVideoConverter
         var (planned, hevc) = await PlanTranscodeAsync(input, source, options, remuxError, cancellationToken);
         var transcode = await ProcessRunner.RunAsync(
             _executablePath,
-            BuildTranscodeArguments(input, output, planned, hevc, options.BakeOrientation, container),
+            BuildTranscodeArguments(input, output, planned, hevc, options.BakeOrientation, options.ToneMapToSdr, container),
             cancellationToken);
         if (transcode.Success && IsNonEmptyFile(output))
         {
@@ -85,6 +93,13 @@ public sealed class FfmpegVideoConverter : IVideoConverter
         if (source is not { IsHdr: true })
         {
             return (source, false);
+        }
+
+        // 色调映射为 SDR 后输出是 8-bit BT.709；仍用 HEVC 与苹果实况一致（原生实况视频是 HEVC）
+        if (options.ToneMapToSdr)
+        {
+            var mapped = await _encoders.Value.WaitAsync(cancellationToken);
+            return (source, mapped.Contains(HevcEncoder));
         }
 
         var encoders = await _encoders.Value.WaitAsync(cancellationToken);
@@ -130,41 +145,49 @@ public sealed class FfmpegVideoConverter : IVideoConverter
     /// </summary>
     private const string TranscodeCrf = "18";
 
-    internal static IReadOnlyList<string> BuildTranscodeArguments(string input, string output, VideoStreamInfo? source, bool hevc, bool bakeOrientation, VideoContainer container)
+    internal static IReadOnlyList<string> BuildTranscodeArguments(string input, string output, VideoStreamInfo? source, bool hevc, bool bakeOrientation, bool toneMapToSdr, VideoContainer container)
     {
         List<string> arguments = ["-nostdin", "-hide_banner", "-loglevel", "error"];
         if (!bakeOrientation)
         {
-            // 默认 autorotate 会把像素转正并丢掉显示矩阵；关闭后矩阵原样写入输出，与流复制一致
-            arguments.AddRange(["-autorotate", "0"]);
+            // 默认 autorotate 会把像素转正并丢掉显示矩阵；关闭后矩阵原样写入输出，与流复制一致。
+            // FFmpeg 7 起 -autorotate 只接受 -noautorotate 写法，旧式 "-autorotate 0" 会报选项位置错误。
+            arguments.Add("-noautorotate");
         }
 
-        var pixelFormat = hevc ? HdrPixelFormat : SdrPixelFormat;
+        // 只有 HDR 源需要色调映射；SDR 源（如小米）保持原有曲线，套用映射会改变画面观感
+        var applyToneMap = toneMapToSdr && source is { IsHdr: true };
+        // 色调映射后是 8-bit SDR 画面，即使编码器仍用 HEVC 也不能标 10-bit
+        var pixelFormat = hevc && !applyToneMap ? HdrPixelFormat : SdrPixelFormat;
         arguments.AddRange(["-i", input, "-map", "0:v:0", "-map", "0:a:0?"]);
         // 统一输出有限范围：像素格式不变时 FFmpeg 不会自动换算范围，只改标记会让全范围源发灰或过曝
-        arguments.AddRange(["-vf", $"scale=out_range=tv,format={pixelFormat}"]);
+        arguments.AddRange(["-vf", applyToneMap ? SdrToneMapFilter : $"scale=out_range=tv,format={pixelFormat}"]);
         if (hevc)
         {
-            arguments.AddRange(["-c:v", HevcEncoder, "-pix_fmt", pixelFormat, "-crf", TranscodeCrf, "-x265-params", BuildX265Parameters(source), "-tag:v", "hvc1"]);
+            arguments.AddRange(["-c:v", HevcEncoder, "-pix_fmt", pixelFormat, "-crf", TranscodeCrf, "-x265-params", BuildX265Parameters(applyToneMap ? null : source), "-tag:v", "hvc1"]);
         }
         else
         {
             arguments.AddRange(["-c:v", "libx264", "-pix_fmt", pixelFormat, "-crf", TranscodeCrf]);
         }
 
-        if (source?.ColorPrimaries is { } primaries)
+        // 色调映射后整段画面已是 BT.709 SDR，沿用源的三元组会让播放器按 HDR 解释而发灰
+        var (primaries, transfer, space) = applyToneMap
+            ? (SdrPrimaries, SdrTransfer, SdrMatrix)
+            : (source?.ColorPrimaries, source?.ColorTransfer, source?.ColorSpace);
+        if (primaries is { } p)
         {
-            arguments.AddRange(["-color_primaries", primaries]);
+            arguments.AddRange(["-color_primaries", p]);
         }
 
-        if (source?.ColorTransfer is { } transfer)
+        if (transfer is { } t)
         {
-            arguments.AddRange(["-color_trc", transfer]);
+            arguments.AddRange(["-color_trc", t]);
         }
 
-        if (source?.ColorSpace is { } space)
+        if (space is { } s)
         {
-            arguments.AddRange(["-colorspace", space]);
+            arguments.AddRange(["-colorspace", s]);
         }
 
         arguments.AddRange(["-color_range", "tv"]);

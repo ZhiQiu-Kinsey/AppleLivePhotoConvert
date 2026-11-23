@@ -130,6 +130,18 @@ public sealed class ExifToolMetadataService : IMetadataService
         });
     }
 
+    public async Task RemoveAndroidDeclarationsAsync(string imagePath, CancellationToken cancellationToken = default)
+    {
+        var xmp = MotionPhotoXmp.RemoveAndroidDeclarations(await ReadXmpAsync(imagePath, cancellationToken));
+        await WithSidecarAsync(imagePath, xmp, async sidecar =>
+        {
+            List<string> arguments = sidecar is null ? [] : [$"-xmp<={sidecar}"];
+            arguments.AddRange(["-EXIF:MicroVideo=", "-overwrite_original", imagePath]);
+            var response = await ExecuteAsync(arguments, cancellationToken);
+            ThrowIfFailed(response, "清除安卓动态照片标记");
+        });
+    }
+
     public async Task CopyCoverMetadataAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken = default)
     {
         var response = await ExecuteAsync(

@@ -21,6 +21,12 @@ public sealed record VideoConversionOptions
     /// 为 false 时抛出 <see cref="VideoConversionException"/>（<see cref="VideoConversionError.HdrEncoderUnavailable"/>）。
     /// </summary>
     public bool AllowHdrDowngrade { get; init; }
+
+    /// <summary>
+    /// 把 HDR 源色调映射为 SDR（BT.709 8-bit）后输出，不保留 HDR 标记。
+    /// 苹果实况视频本身是 SDR，iOS 在调整封面时按 SDR 渲染视频帧，带 HDR 标记的视频会被错误解释而发灰。
+    /// </summary>
+    public bool ToneMapToSdr { get; init; }
 }
 
 /// <summary>视频转换失败的原因，供界面映射为本地化文案。</summary>

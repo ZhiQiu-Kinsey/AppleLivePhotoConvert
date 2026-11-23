@@ -61,6 +61,11 @@ public interface IMetadataService : IAsyncDisposable
     Task RemoveMotionPhotoAsync(string imagePath, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// 清除安卓动态照片的声明（Container 目录、hdrgm 与厂商私有命名空间），用于转为苹果时让 XMP 与实际内容一致。
+    /// </summary>
+    Task RemoveAndroidDeclarationsAsync(string imagePath, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// 把源图的元数据复制到转码后的封面；像素已按方向转正，方向固定写为 1。
     /// </summary>
     Task CopyCoverMetadataAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken = default);
