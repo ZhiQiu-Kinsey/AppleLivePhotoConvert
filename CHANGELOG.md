@@ -2,7 +2,15 @@
 
 本项目的版本历史与变更说明。
 
-## [未发布]
+## [4.1.0] - 2026-11-23
+
+### 新增
+
+- **macOS 支持**：可在 macOS 13+（Apple Silicon / Intel）上从源码运行，并用 `.github/scripts/publish-macos.sh` 打出未签名的 `.app`。依赖页可下载锁定版本的 ExifTool、FFmpeg 与 heif-enc，本机已用 Homebrew 安装的工具也会被识别；源文件可移入废纸篓（首次会请求控制「访达」的权限）；图库优先使用快速查看（Quick Look）缩略图缓存；窗口使用系统交通灯按钮，完成提示音走系统提示音。没有签名、公证与自动更新，首次打开需在访达中右键「打开」。Release 仍只提供 Windows 安装包。
+
+### 改进
+
+- **依赖升级**：Avalonia 12.1.4、Magick.NET 15.0.0、Velopack 1.2.161、FluentIcons 2.1.344。
 
 ### 修复
 
@@ -12,23 +20,11 @@
 - **色调映射不可用时降级而非失败**：FFmpeg 缺 zscale / tonemap 或映射失败时，转为苹果退回流复制并保留 HDR，报告中注明「iPhone 上调整封面后可能发灰」；色调映射滤镜显式声明源色彩属性，码流缺 VUI 的片源不再报「no path between colorspaces」。动态照片 XMP 把封面时间写成 -1（未指定）时不再导致条目失败；封面时间轨道写入时的读写错误只记附注。
 - **修复 FFmpeg 7.1 及以上重新编码丢失色彩标记**：新版 FFmpeg 的编码器取帧上的色彩属性，`-color_primaries` / `-color_trc` 会被覆盖为 unknown，HDR 视频重新编码后丢掉 HLG / PQ 标记、SDR 视频丢掉 BT.709 标记（内置的 FFmpeg 8.1 即受影响）；现在先用 `setparams` 把源色彩写到帧上。
 - **修复 FFmpeg 8 下 HDR 预览误报缺少滤镜**：FFmpeg 8 的 `-filters` 能力标记从三列变为两列，旧的解析认不出 zscale / tonemap，HDR 视频预览被误报为「缺少色调映射滤镜」（内置的 FFmpeg 8.1 即受影响）。
-- **修复 FFmpeg 7 及以上转码失败**：`-autorotate 0` 在新版 FFmpeg 中已改为输出选项，任何转码（HDR、镜像前置摄像头、强制转码）都会以「输入选项用于输出文件」失败；改用 `-noautorotate`。此问题同时导致 CI 的 Linux 任务自 FFmpeg 8.0 起长期失败。
+- **修复 FFmpeg 7 及以上转码失败**：`-autorotate 0` 在新版 FFmpeg 中已改为输出选项，任何转码（HDR、镜像前置摄像头、强制转码）都会以「输入选项用于输出文件」失败；改用 `-noautorotate`。
 
 ### 其它
 
 - README 末尾新增贡献者头像墙，由 GitHub Actions 定期从 API 生成（不含机器人账号）。
-
----
-
-## [4.1.0] - 2026-10-14
-
-### 新增
-
-- **macOS 支持**：可在 macOS 13+（Apple Silicon / Intel）上从源码运行，并用 `.github/scripts/publish-macos.sh` 打出未签名的 `.app`。依赖页可下载锁定版本的 ExifTool、FFmpeg 与 heif-enc，本机已用 Homebrew 安装的工具也会被识别；源文件可移入废纸篓（首次会请求控制「访达」的权限）；图库优先使用快速查看（Quick Look）缩略图缓存；窗口使用系统交通灯按钮，完成提示音走系统提示音。没有签名、公证与自动更新，首次打开需在访达中右键「打开」。Release 仍只提供 Windows 安装包。
-
-### 改进
-
-- **依赖升级**：Avalonia 12.1.4、Magick.NET 15.0.0、Velopack 1.2.161、FluentIcons 2.1.344。
 
 ---
 
