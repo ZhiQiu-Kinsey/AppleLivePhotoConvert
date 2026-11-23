@@ -7,11 +7,11 @@ updates:
       - /
       - /src/*
       - /tests/*
+    # 每月一次（每月 1 日）：依赖升级不紧急，按周检查会频繁打断。安全更新由仓库设置中的 Dependabot security updates 单独控制，不受此计划限制
     schedule:
-      interval: weekly
-      day: monday
+      interval: monthly
       timezone: Asia/Shanghai
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 3
     commit-message:
       prefix: deps
     # Avalonia.Headless.XUnit 仍基于 xunit.v3 3.x 编译，与 xunit 4 二进制不兼容（发现 [AvaloniaFact] 时 MissingMethodException），
@@ -45,9 +45,9 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
-      day: monday
+      interval: monthly
       timezone: Asia/Shanghai
+    open-pull-requests-limit: 1
     commit-message:
       prefix: ci
     groups:
