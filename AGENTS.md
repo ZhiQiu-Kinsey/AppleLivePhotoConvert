@@ -69,6 +69,7 @@ tests/  Core.Tests（按 Media / Metadata / Pairing / Pipeline / Services / Exte
 ### 3.3 外部进程
 
 - 一律经 `ProcessRunner`：参数逐项 `ArgumentList`、标准输入立即关闭、默认 10 分钟超时、取消即结束进程树；FFmpeg 固定带 `-nostdin`，不用 `-hwaccel auto`。
+- FFmpeg 7.1 起编码器的色彩属性取自帧，`-color_primaries` / `-color_trc` 会被帧上的 unknown 覆盖：重新编码时用 `setparams` 把源三元组写到帧上（`BuildPassThroughFilter`），色调映射链在第一个 zscale 显式写明输入属性；关闭自动旋转用 `-noautorotate`（`-autorotate 0` 在 7.x 起报错）。
 - ExifTool 常驻会话经标准输入逐行传参，**拒绝含换行符的参数**；输出按块读取，以缓冲末尾的 `{readyN}` + 换行判定结束（`-b` 输出没有尾随换行）；读取一律批量 `-j -n -G1 -a` 后由 `ExifToolJson` 解析，禁止逐标签往返；`-api QuickTimeUTC=1` 经 `-common_args` 对所有命令生效。
 - 工具路径、版本与能力由 `ToolRegistry` 缓存，可执行性探测由 `ToolLocator` 按路径、大小、修改时间缓存；不要在热路径上重复启动 `-version`。依赖下载只经 `ToolInstaller`（清单锁定版本、SHA256 / integrity 校验、路径穿越防护、试运行后整目录替换）；更新 `tools.json` 必须附实际下载计算的哈希。
 
@@ -146,6 +147,9 @@ tests/  Core.Tests（按 Media / Metadata / Pairing / Pipeline / Services / Exte
 
 - 照片端：Apple MakerNotes 的 `ContentIdentifier`（大写 UUID）。ExifTool 不能在没有 MakerNotes 的文件里创建该块，必须用 `AppleMakerNote.BuildTemplateJpeg` 生成模板后 `-tagsFromFile 模板 -MakerNotes` 整块复制并回读校验。
 - 视频端：QuickTime Keys 写 `com.apple.quicktime.content.identifier`（同一 UUID），同步 `creationdate` / `make` / `model` / `software` / `GPSCoordinates`（`纬度, 经度, 海拔`）。mvhd / mdhd 按 UTC 存储，写入时传**带偏移**的时间由 ExifTool 换算。还原时 UUID 用 `Guid.NewGuid().ToString().ToUpperInvariant()`。`Keys:StillImageTime` 不可写，**不要写入**。
+- 封面时间轨道：还原为苹果时由 `MovStillImageTrack` 追加 handler `meta`、格式 `mebx` 的单样本轨道（105 字节样本 + `edts/elst` 把样本推迟到封面时刻），时间取自源照片 XMP 的 `MotionPhotoPresentationTimestampUs` 并收敛到视频时长内。**必须在 ExifTool 写完标签之后执行**：ExifTool 重写文件会把 `moov` 移到 `mdat` 之前，先前写好的块偏移随之失效。缺这条轨道时 iPhone 仍识别为实况照片，但编辑界面无法拖动封面；FFmpeg 只能映射音视频流，重封装后该轨道必然丢失，也无法用 ExifTool 补写。
+- 视频必须是 SDR：苹果实况视频是 BT.709 SDR，iOS 调整封面时按 SDR 渲染视频帧。HDR 源（一加 / OPPO / 部分小米的 HLG）须经 `VideoConversionOptions.ToneMapToSdr` 色调映射为 BT.709 8-bit HEVC；SDR 源保持原有三元组不动。保留 HDR 标记会让调整封面后的画面发灰。FFmpeg 缺 zscale / tonemap（`HdrToneMapUnavailable`）或映射失败时退回流复制、记 `VideoToneMapSkipped`，不让条目失败；XMP 中 -1 的封面时间表示未指定，按 0 处理。
+- 封面 XMP 必须与实际内容一致：转为苹果时清掉 Google Container 目录、`hdrgm` 与厂商私有命名空间（`MotionPhotoXmp.RemoveAndroidDeclarations`）。声明有增益图但 HEIC 里没有辅助图项，iOS 会按 HDR 渲染。
 - 配对：`MediaPairMatcher` 先按 ContentIdentifier，再按「同目录 + 主干」（HEIC > JPG > PNG，MOV > MP4，候选全部保留由合成阶段择优）。`PairValidator`：标识一致直接通过；标识冲突或单边存在、时间差 >3s、仅单边有拍摄时间、视频 >30s 则拒绝；两侧都有时区偏移按绝对时刻比较，否则按当地时间。扫描与合成共用同一判定；人工裁决通过的配对进入 `ForceAccepted`，合成时跳过校验。
 
 **Ultra HDR（合成时 `PreserveHdr`，默认开启）**
@@ -178,6 +182,7 @@ LPC_DOCS_SCREENSHOTS=docs/screenshots dotnet test tests/LivePhotoConvert.Desktop
 | [`ci.yml`](.github/workflows/ci.yml) | push `main`、所有 PR、手动、被 `release.yml` 调用（不接受外部指定检出引用） | **Linux**：安装 ExifTool / FFmpeg / libheif / Noto CJK 并编译固定版本的 libultrahdr，全部测试（`-m:1` 串行、排除 `ToolManifestPackageTests`）并收集覆盖率；**跳过数超过 7 即失败**（允许的 7 条见工作流注释：Windows Shell 缩略图 2 条、快速查看缩略图 2 条、回收站 2 条、需要私有 HDR 样片的 1 条）。**Windows**：构建与测试（未装外部工具，集成用例按设计跳过）。**AOT 与安装包**：`win-x64` 发布，并用同一产物打两个测试版本，静默安装、启动、增量升级、卸载（不联网）。编译与发布均以警告为错误。 |
 | [`tools-manifest.yml`](.github/workflows/tools-manifest.yml) | 每周一、手动、PR 改动 `External/Tools/**` | 在 Linux 与 Windows 下载 `tools.json` 的每个包并用 `ToolInstaller` 校验哈希与结构。 |
 | [`dependabot-automerge.yml`](.github/workflows/dependabot-automerge.yml) | `ci.yml` 完成 | Dependabot 打开的 PR 在 CI 全部通过、头提交未被他人改动时自动合并，随后在 `main` 上派发一次 CI。不检出 PR 代码；CI 失败的升级 PR 保留待人工处理。 |
+| [`contributors.yml`](.github/workflows/contributors.yml) | push `main`、每周一、手动 | 用 `gh api` 读取贡献者（排除 Bot 与 `[bot]` 账号），由 `.github/scripts/update-contributors.ps1` 改写 README.md 与 docs/README.en.md 中 `CONTRIBUTORS:START` / `END` 之间的头像墙；名单无变化时不提交。**不要手写这一区段。** |
 | [`release.yml`](.github/workflows/release.yml) | 推送版本 tag | 见 5.3。 |
 
 - 测试结果写入 Job Summary（`.github/scripts/test-summary.ps1`），trx、覆盖率与界面截图作为产物上传（截图仅在失败或桌面端改动时上传）。

@@ -115,6 +115,9 @@ jobs:
           echo "${ffmpeg_version%%$'\n'*}"
           ffmpeg_encoders="$(ffmpeg -hide_banner -encoders)"
           grep -q libx265 <<< "$ffmpeg_encoders" || { echo "::error::FFmpeg 不带 libx265。"; exit 1; }
+          # HDR 色调映射（播放与转为苹果）依赖 zscale + tonemap；缺失时相关用例会跳过并超出跳过阈值，先在这里点明原因
+          ffmpeg_filters="$(ffmpeg -hide_banner -filters)"
+          grep -E ' (zscale|tonemap) ' <<< "$ffmpeg_filters" || echo "::warning::FFmpeg 不带 zscale / tonemap，HDR 色调映射用例将跳过。"
           heif_enc="$(heif-enc --version)"
           echo "heif-enc ${heif_enc%%$'\n'*}"
           if command -v heif-dec > /dev/null; then decoder=heif-dec; else decoder=heif-convert; fi

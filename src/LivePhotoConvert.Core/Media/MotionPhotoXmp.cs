@@ -149,6 +149,64 @@ public sealed record MotionPhotoXmp
         return XmpDocument.Serialize(document);
     }
 
+    /// <summary>
+    /// 去掉安卓动态照片特有的声明（Google Container 目录、hdrgm 与厂商命名空间），只保留与苹果实况无关的通用 XMP。
+    /// 转为苹果时封面已是 SDR HEIC，留着「有增益图」的声明会让 iOS 按 HDR 渲染视频帧而发灰。
+    /// </summary>
+    public static string? RemoveAndroidDeclarations(string? existingXmp)
+    {
+        var document = XmpDocument.TryLoad(existingXmp);
+        if (document is null)
+        {
+            return null;
+        }
+
+        RemoveMotionPhotoProperties(document);
+        foreach (var description in XmpDocument.Descriptions(document).ToList())
+        {
+            foreach (var attribute in description.Attributes().ToList())
+            {
+                if (IsAndroidDeclaration(attribute.Name))
+                {
+                    attribute.Remove();
+                }
+            }
+
+            foreach (var element in description.Elements().ToList())
+            {
+                if (IsAndroidDeclaration(element.Name))
+                {
+                    element.Remove();
+                }
+            }
+        }
+
+        // 命名空间声明本身也一并去掉，避免留下无内容的 xmlns 前缀
+        foreach (var element in document.Descendants().ToList())
+        {
+            foreach (var attribute in element.Attributes().Where(a => a.IsNamespaceDeclaration).ToList())
+            {
+                if (attribute.Value == XmpDocument.GCamera.NamespaceName
+                    || attribute.Value == XmpDocument.Container.NamespaceName
+                    || attribute.Value == XmpDocument.Item.NamespaceName
+                    || attribute.Value == XmpDocument.HdrGainMap.NamespaceName
+                    || attribute.Value == XmpDocument.OpCamera.NamespaceName)
+                {
+                    attribute.Remove();
+                }
+            }
+        }
+
+        return XmpDocument.Serialize(document);
+    }
+
+    private static bool IsAndroidDeclaration(XName name) =>
+        name.Namespace == XmpDocument.GCamera
+        || name.Namespace == XmpDocument.Container
+        || name.Namespace == XmpDocument.Item
+        || name.Namespace == XmpDocument.HdrGainMap
+        || name.Namespace == XmpDocument.OpCamera;
+
     private static void RemoveMotionPhotoProperties(XDocument document)
     {
         foreach (var description in XmpDocument.Descriptions(document).ToList())
@@ -186,6 +244,10 @@ internal static class XmpDocument
     public static readonly XNamespace GCamera = "http://ns.google.com/photos/1.0/camera/";
     public static readonly XNamespace Container = "http://ns.google.com/photos/1.0/container/";
     public static readonly XNamespace Item = "http://ns.google.com/photos/1.0/container/item/";
+    public static readonly XNamespace HdrGainMap = "http://ns.adobe.com/hdr-gain-map/1.0/";
+
+    /// <summary>一加 / OPPO 相机写入的私有动态照片命名空间。</summary>
+    public static readonly XNamespace OpCamera = "http://ns.oplus.com/photos/1.0/camera/";
 
     public static readonly string[] MotionPhotoPropertyNames =
     [

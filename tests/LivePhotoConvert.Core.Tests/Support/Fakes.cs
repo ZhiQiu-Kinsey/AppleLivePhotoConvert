@@ -84,6 +84,15 @@ internal sealed class FakeMetadataService : IMetadataService
         }
     }
 
+    public async Task RemoveAndroidDeclarationsAsync(string imagePath, CancellationToken cancellationToken = default)
+    {
+        ThrowIfFailing(imagePath);
+        if (MotionPhotoXmp.RemoveAndroidDeclarations(await ReadXmpAsync(imagePath, cancellationToken)) is { } xmp)
+        {
+            await File.WriteAllBytesAsync(imagePath, SyntheticMedia.InsertXmp(await File.ReadAllBytesAsync(imagePath, cancellationToken), xmp), cancellationToken);
+        }
+    }
+
     public Task CopyCoverMetadataAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken = default)
     {
         ThrowIfFailing(destinationPath);
@@ -146,6 +155,11 @@ internal sealed class FakeVideoConverter : IVideoConverter
     /// <summary>不为 <c>null</c> 时每次转换都抛出该异常。</summary>
     public Exception? Failure { get; set; }
 
+    /// <summary>不为 <c>null</c> 时，要求色调映射的转换抛出该异常（模拟 FFmpeg 缺 zscale / tonemap）。</summary>
+    public Exception? ToneMapFailure { get; set; }
+
+    public ConcurrentBag<VideoConversionOptions> MovRemuxOptions { get; } = [];
+
     public Task ConvertToMp4Async(string sourcePath, string destinationPath, VideoConversionOptions? options = null, CancellationToken cancellationToken = default)
     {
         if (Failure is not null)
@@ -164,7 +178,13 @@ internal sealed class FakeVideoConverter : IVideoConverter
             return Task.FromException(Failure);
         }
 
+        if (ToneMapFailure is not null && options is { ToneMapToSdr: true })
+        {
+            return Task.FromException(ToneMapFailure);
+        }
+
         MovRemuxes.Add(sourcePath);
+        MovRemuxOptions.Add(options ?? VideoConversionOptions.Default);
         return File.WriteAllBytesAsync(destinationPath, SyntheticMedia.Mov((int)new FileInfo(sourcePath).Length), cancellationToken);
     }
 }

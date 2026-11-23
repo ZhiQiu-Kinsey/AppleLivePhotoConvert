@@ -76,6 +76,41 @@ public class MotionPhotoSplitterTests
         Assert.Equal(captureTime, videoTags.CaptureTime);
         Assert.Equal("Xiaomi", videoTags.Make);
         Assert.Single(_images.HeicConversions);
+        // 替身视频没有 moov，轨道写入不了时必须如实报告，而不是让条目失败
+        Assert.Contains(new OutcomeNote(OutcomeNoteKind.StillImageTrackUnavailable), Assert.Single(report.Items).Notes);
+        // 转为苹果一律请求色调映射，SDR 源由转换器自行保持原样
+        Assert.True(Assert.Single(_videos.MovRemuxOptions).ToneMapToSdr);
+    }
+
+    [Theory]
+    [InlineData(VideoConversionError.HdrToneMapUnavailable)]
+    [InlineData(VideoConversionError.EncodeFailed)]
+    public async Task Apple_ToneMapUnavailable_FallsBackToHdrRemuxWithNote(VideoConversionError error)
+    {
+        using var temp = new TempDirectory();
+        var source = temp.CreateFile("MVIMG_0001.jpg", SyntheticMedia.MotionPhoto());
+        _videos.ToneMapFailure = new VideoConversionException(error, "缺少 zscale");
+
+        var report = await SplitAsync(temp, [source], SplitTarget.Apple);
+
+        var item = Assert.Single(report.Items);
+        Assert.Equal(1, report.Succeeded);
+        Assert.Equal(["MVIMG_0001.HEIC", "MVIMG_0001.MOV"], temp.FileNames("out"));
+        Assert.Contains(new OutcomeNote(OutcomeNoteKind.VideoToneMapSkipped, "缺少 zscale"), item.Notes);
+        Assert.False(Assert.Single(_videos.MovRemuxOptions).ToneMapToSdr);
+    }
+
+    [Fact]
+    public async Task Apple_RemuxFailsEvenWithoutToneMap_FailsItem()
+    {
+        using var temp = new TempDirectory();
+        var source = temp.CreateFile("MVIMG_0001.jpg", SyntheticMedia.MotionPhoto());
+        _videos.Failure = new VideoConversionException(VideoConversionError.EncodeFailed, "损坏的视频");
+
+        var report = await SplitAsync(temp, [source], SplitTarget.Apple);
+
+        Assert.Equal(0, report.Succeeded);
+        Assert.Empty(temp.FileNames("out"));
     }
 
     [Fact]

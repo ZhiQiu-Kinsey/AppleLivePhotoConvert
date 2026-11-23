@@ -23,7 +23,8 @@ public sealed record EmbeddedVideo(long Offset, long Length, long ImageEnd)
 /// </summary>
 /// <param name="Video">内嵌视频；普通照片为 <c>null</c></param>
 /// <param name="HasGainMap">是否带 Ultra HDR 增益图（转码为 HEIC 会丢失 HDR 信息）</param>
-public readonly record struct ImageLayout(EmbeddedVideo? Video, bool HasGainMap);
+/// <param name="PresentationTimestampUs">封面帧在视频中的时间（微秒），来自 XMP；未声明时为 <c>null</c></param>
+public readonly record struct ImageLayout(EmbeddedVideo? Video, bool HasGainMap, long? PresentationTimestampUs = null);
 
 /// <summary>
 /// 定位动态照片中内嵌的视频。每个候选位置都必须以 ftyp box 开头才会被采用，
@@ -61,7 +62,9 @@ public static class MotionPhotoLayout
         xmp ??= ReadJpegXmp(stream);
         var declaration = MotionPhotoXmp.Parse(xmp);
         var video = LocateFromXmp(stream, declaration) ?? LocateMpvdBox(stream) ?? LocateSamsungTrailer(stream);
-        return new ImageLayout(video, declaration?.HasGainMap ?? false);
+        // Google 规范允许写 -1 表示「未指定」，负值一律视为未声明
+        var presentation = declaration?.PresentationTimestampUs is long timestamp and >= 0 ? timestamp : (long?)null;
+        return new ImageLayout(video, declaration?.HasGainMap ?? false, presentation);
     }
 
     /// <summary>

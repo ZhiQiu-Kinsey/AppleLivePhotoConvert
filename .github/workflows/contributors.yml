@@ -1,0 +1,48 @@
+name: Contributors
+
+# 从 GitHub API 读取贡献者（排除 Bot），更新 README.md 与 docs/README.en.md 末尾的头像墙。
+# 推送 main 后与每周一各运行一次；名单没有变化时不提交。
+# GITHUB_TOKEN 推送的提交不会再触发工作流，不会循环。
+on:
+  push:
+    branches: [ main ]
+  schedule:
+    - cron: '41 3 * * 1'   # 每周一 03:41 UTC（北京时间 11:41）
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: contributors
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: 更新 README 贡献者
+    # fork 中不运行，避免往 fork 的 main 推送
+    if: github.repository == 'ZhiQiu-Kinsey/AppleLivePhotoConvert'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v7
+
+      - name: 生成贡献者列表
+        id: contributors
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./.github/scripts/update-contributors.ps1 -Repository '${{ github.repository }}' -Path README.md, docs/README.en.md
+
+      - name: 提交变更
+        if: steps.contributors.outputs.changed == 'true'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add README.md docs/README.en.md
+          git commit -m 'docs: 更新 README 贡献者列表'
+          git push

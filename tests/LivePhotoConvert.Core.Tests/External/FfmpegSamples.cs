@@ -23,6 +23,18 @@ internal static class FfmpegSamples
         return ffmpeg;
     }
 
+    public static async Task<string> RequireToneMapFiltersAsync(string ffmpeg)
+    {
+        var listed = await ProcessRunner.RunAsync(ffmpeg, ["-nostdin", "-hide_banner", "-filters"], Token);
+        var filters = ToolOutputParser.ParseFilterNames(listed.StandardOutput);
+        if (!filters.Contains("zscale") || !filters.Contains("tonemap"))
+        {
+            Assert.Skip("本机 FFmpeg 不带 zscale/tonemap，跳过 HDR 集成测试。");
+        }
+
+        return ffmpeg;
+    }
+
     /// <summary>HLG 或 PQ 的 10-bit HEVC；默认 hev1 标记，便于验证输出改为 hvc1。PQ 附带 HDR10 静态元数据。</summary>
     public static Task HdrAsync(string ffmpeg, string path, string transfer)
     {
@@ -32,9 +44,19 @@ internal static class FfmpegSamples
         return GenerateAsync(ffmpeg, path,
         [
             "-c:v", "libx265", "-pix_fmt", "yuv420p10le", "-x265-params", x265,
-            "-color_primaries", "bt2020", "-color_trc", transfer, "-colorspace", "bt2020nc", "-tag:v", "hev1"
+            .. ColorArguments("bt2020", transfer, "bt2020nc"), "-tag:v", "hev1"
         ]);
     }
+
+    /// <summary>
+    /// 色彩三元组：FFmpeg 7.1 起编码器取帧上的属性，testsrc 的帧原色 / 传递特性是 unknown 会覆盖 -color_primaries / -color_trc，
+    /// 必须先用 setparams 写到帧上；容器选项一并保留，兼容旧版本。
+    /// </summary>
+    public static string[] ColorArguments(string primaries, string transfer, string matrix) =>
+    [
+        "-vf", $"setparams=color_primaries={primaries}:color_trc={transfer}:colorspace={matrix}",
+        "-color_primaries", primaries, "-color_trc", transfer, "-colorspace", matrix
+    ];
 
     public static Task H264Async(string ffmpeg, string path, params string[] extra) =>
         GenerateAsync(ffmpeg, path, ["-c:v", "libx264", "-pix_fmt", "yuv420p", .. extra]);

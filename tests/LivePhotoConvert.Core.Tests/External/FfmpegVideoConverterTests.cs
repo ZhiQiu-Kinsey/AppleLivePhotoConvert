@@ -91,7 +91,7 @@ public class FfmpegVideoConverterTests
         var ffmpeg = ExternalTools.RequireFfmpeg();
         using var temp = new TempDirectory();
         var source = temp.Combine("bt709.mov");
-        await FfmpegSamples.H264Async(ffmpeg, source, "-color_primaries", "bt709", "-color_trc", "bt709", "-colorspace", "bt709");
+        await FfmpegSamples.H264Async(ffmpeg, source, FfmpegSamples.ColorArguments("bt709", "bt709", "bt709"));
         var output = temp.Combine("out.mp4");
 
         await FfmpegVideoConverter.Create(ffmpeg).ConvertToMp4Async(source, output, Force, Token);
@@ -148,6 +148,44 @@ public class FfmpegVideoConverterTests
 
         Assert.Equal(VideoConversionError.HdrEncoderUnavailable, error.Error);
         Assert.Contains("HLG", error.Message);
+        Assert.False(File.Exists(output));
+    }
+
+    [Theory]
+    [InlineData(VideoStreamProbe.TransferHlg)]
+    [InlineData(VideoStreamProbe.TransferPq)]
+    public async Task RemuxToMov_ToneMapToSdr_OutputsBt709EightBitHevc(string transfer)
+    {
+        var ffmpeg = await FfmpegSamples.RequireToneMapFiltersAsync(await FfmpegSamples.RequireLibx265Async(ExternalTools.RequireFfmpeg()));
+        using var temp = new TempDirectory();
+        var source = temp.Combine("hdr.mp4");
+        await FfmpegSamples.HdrAsync(ffmpeg, source, transfer);
+        var output = temp.Combine("out.MOV");
+
+        await FfmpegVideoConverter.Create(ffmpeg).RemuxToMovAsync(source, output, new VideoConversionOptions { ToneMapToSdr = true }, Token);
+
+        var after = await FfmpegSamples.ProbeAsync(ffmpeg, output);
+        Assert.Equal("hevc", after.Codec);
+        Assert.Equal("hvc1", after.CodecTag);
+        Assert.Equal(8, after.BitDepth);
+        Assert.Equal(("bt709", "bt709", "bt709"), (after.ColorPrimaries, after.ColorTransfer, after.ColorSpace));
+        Assert.False(after.IsHdr);
+    }
+
+    [Fact]
+    public async Task RemuxToMov_ToneMapWithoutZscale_FailsWithHdrToneMapUnavailable()
+    {
+        var ffmpeg = await FfmpegSamples.RequireLibx265Async(ExternalTools.RequireFfmpeg());
+        using var temp = new TempDirectory();
+        var source = temp.Combine("hlg.mp4");
+        await FfmpegSamples.HdrAsync(ffmpeg, source, VideoStreamProbe.TransferHlg);
+        var output = temp.Combine("out.MOV");
+        var converter = FfmpegVideoConverter.Create(ffmpeg, availableFilters: ["scale"]);
+
+        var error = await Assert.ThrowsAsync<VideoConversionException>(
+            () => converter.RemuxToMovAsync(source, output, new VideoConversionOptions { ToneMapToSdr = true }, Token));
+
+        Assert.Equal(VideoConversionError.HdrToneMapUnavailable, error.Error);
         Assert.False(File.Exists(output));
     }
 
