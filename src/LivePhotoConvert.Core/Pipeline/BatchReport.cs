@@ -79,7 +79,10 @@ public enum OutcomeNoteKind
     KeptOriginalFormat,
 
     /// <summary>转为苹果实况时无法写入封面时间轨道，输出仍可播放，但 iPhone 上不能调整封面。</summary>
-    StillImageTrackUnavailable
+    StillImageTrackUnavailable,
+
+    /// <summary>转为苹果实况时 FFmpeg 无法把 HDR 视频色调映射为 SDR，已保留 HDR 流复制；iPhone 上调整封面后画面可能发灰。</summary>
+    VideoToneMapSkipped
 }
 
 /// <summary>

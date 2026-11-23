@@ -18,6 +18,22 @@ public class MotionPhotoLayoutTests
         Assert.False(layout.HasGainMap);
     }
 
+    [Theory]
+    [InlineData("1500000", 1_500_000L)]
+    [InlineData("-1", null)]
+    public void Inspect_PresentationTimestamp_TreatsNegativeAsUnset(string declared, long? expected)
+    {
+        // Google 规范用 -1 表示「未指定」，不能当作真实时刻传给封面时间轨道；Apply 不接受负数，按文本替换写入
+        var video = SyntheticMedia.Mp4(5000);
+        var xmp = MotionPhotoXmp.Apply(null, video.Length, 7_654_321).Replace("7654321", declared, StringComparison.Ordinal);
+        var cover = SyntheticMedia.InsertXmp(SyntheticMedia.Jpeg(3000), xmp);
+
+        var layout = MotionPhotoLayout.Inspect(new MemoryStream([.. cover, .. video]));
+
+        Assert.NotNull(layout.Video);
+        Assert.Equal(expected, layout.PresentationTimestampUs);
+    }
+
     [Fact]
     public void Inspect_MotionPhotoWithGainMap_KeepsGainMapInPhotoPart()
     {

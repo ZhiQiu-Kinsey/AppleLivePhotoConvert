@@ -532,6 +532,7 @@
   <sys:String x:Key="OutcomeNoteHdrConversionFailed">HDR conversion failed · SDR</sys:String>
   <sys:String x:Key="OutcomeNoteKeptOriginalFormat">Kept original format (HEIC was larger)</sys:String>
   <sys:String x:Key="OutcomeNoteStillImageTrackUnavailable">Still-image-time track missing · key photo can't be changed on iPhone</sys:String>
+  <sys:String x:Key="OutcomeNoteVideoToneMapSkipped">Video kept as HDR (tone mapping unavailable) · key photo may look dim on iPhone</sys:String>
 
   <!-- 自动更新 -->
   <sys:String x:Key="SettingsUpdatesTitle">Updates</sys:String>

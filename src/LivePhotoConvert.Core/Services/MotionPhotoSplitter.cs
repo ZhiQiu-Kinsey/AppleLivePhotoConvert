@@ -146,18 +146,14 @@ public sealed class MotionPhotoSplitter(IMetadataService metadata, IImageConvert
             }
 
             await BinaryFile.CopySegmentAsync(path, embeddedVideo, video.Offset, video.Length, cancellationToken);
-            // 苹果实况视频是 SDR：保留安卓的 HDR 标记会让 iOS 在调整封面时按错误曲线渲染视频帧而发灰
-            await videoConverter!.RemuxToMovAsync(embeddedVideo, stagedVideo, new VideoConversionOptions { ToneMapToSdr = true }, cancellationToken);
+            await RemuxAsSdrAsync(embeddedVideo, stagedVideo, notes, cancellationToken);
 
             var contentIdentifier = Guid.NewGuid().ToString().ToUpperInvariant();
             await metadata.WriteApplePhotoIdentifierAsync(stagedPhoto, contentIdentifier, cancellationToken);
             await metadata.WriteAppleVideoTagsAsync(stagedVideo, AppleVideoTags.From(contentIdentifier, sourceTags), cancellationToken);
 
             // 封面时间轨道必须在标签写完之后加：ExifTool 重写文件时会把 moov 移到 mdat 之前，轨道里的块偏移随之失效
-            if (await MovStillImageTrack.AddAsync(stagedVideo, layout.PresentationTimestampUs ?? 0, cancellationToken) == StillImageTrackResult.Unsupported)
-            {
-                notes.Add(new OutcomeNote(OutcomeNoteKind.StillImageTrackUnavailable));
-            }
+            await AddStillImageTrackAsync(stagedVideo, layout.PresentationTimestampUs ?? 0, notes, cancellationToken);
 
             var stem = Path.GetFileNameWithoutExtension(path);
             return committer.CommitGroup(
@@ -175,6 +171,42 @@ public sealed class MotionPhotoSplitter(IMetadataService metadata, IImageConvert
         {
             FileHelper.TryDeleteFile(cover);
             FileHelper.TryDeleteFile(embeddedVideo);
+        }
+    }
+
+    /// <summary>
+    /// 苹果实况视频是 SDR：保留安卓的 HDR 标记会让 iOS 在调整封面时按错误曲线渲染视频帧而发灰，所以先尝试色调映射。
+    /// FFmpeg 缺 zscale / tonemap 或映射失败时退回流复制、保留 HDR，只记附注，不让条目失败。
+    /// </summary>
+    private async Task RemuxAsSdrAsync(string source, string destination, List<OutcomeNote> notes, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await videoConverter!.RemuxToMovAsync(source, destination, new VideoConversionOptions { ToneMapToSdr = true }, cancellationToken);
+            return;
+        }
+        catch (VideoConversionException ex) when (ex.Error is VideoConversionError.HdrToneMapUnavailable or VideoConversionError.EncodeFailed)
+        {
+            FileHelper.TryDeleteFile(destination);
+            // SDR 源两次走的是同一条流复制 / 转码路径，仍然失败时异常照常抛出，附注只在退回成功后记录
+            await videoConverter!.RemuxToMovAsync(source, destination, cancellationToken: cancellationToken);
+            notes.Add(new OutcomeNote(OutcomeNoteKind.VideoToneMapSkipped, ex.Message));
+        }
+    }
+
+    /// <summary>封面时间轨道是锦上添花：结构不支持或读写出错都只记附注，转换结果照常落盘。</summary>
+    private static async Task AddStillImageTrackAsync(string video, long stillTimeUs, List<OutcomeNote> notes, CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (await MovStillImageTrack.AddAsync(video, stillTimeUs, cancellationToken) == StillImageTrackResult.Unsupported)
+            {
+                notes.Add(new OutcomeNote(OutcomeNoteKind.StillImageTrackUnavailable));
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            notes.Add(new OutcomeNote(OutcomeNoteKind.StillImageTrackUnavailable, ex.Message));
         }
     }
 

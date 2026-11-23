@@ -62,7 +62,9 @@ public static class MotionPhotoLayout
         xmp ??= ReadJpegXmp(stream);
         var declaration = MotionPhotoXmp.Parse(xmp);
         var video = LocateFromXmp(stream, declaration) ?? LocateMpvdBox(stream) ?? LocateSamsungTrailer(stream);
-        return new ImageLayout(video, declaration?.HasGainMap ?? false, declaration?.PresentationTimestampUs);
+        // Google 规范允许写 -1 表示「未指定」，负值一律视为未声明
+        var presentation = declaration?.PresentationTimestampUs is long timestamp and >= 0 ? timestamp : (long?)null;
+        return new ImageLayout(video, declaration?.HasGainMap ?? false, presentation);
     }
 
     /// <summary>

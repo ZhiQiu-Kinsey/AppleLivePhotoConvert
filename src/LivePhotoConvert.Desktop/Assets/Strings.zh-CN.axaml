@@ -532,6 +532,7 @@
   <sys:String x:Key="OutcomeNoteHdrConversionFailed">HDR 转换失败，已输出 SDR</sys:String>
   <sys:String x:Key="OutcomeNoteKeptOriginalFormat">保留原格式（HEIC 更大）</sys:String>
   <sys:String x:Key="OutcomeNoteStillImageTrackUnavailable">未能写入封面时间轨道，iPhone 上无法调整封面</sys:String>
+  <sys:String x:Key="OutcomeNoteVideoToneMapSkipped">视频未能转为 SDR，保留了 HDR，iPhone 上调整封面后可能发灰</sys:String>
 
   <!-- 自动更新 -->
   <sys:String x:Key="SettingsUpdatesTitle">更新</sys:String>

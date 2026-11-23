@@ -44,6 +44,7 @@ public static class OutcomeTexts
         OutcomeNoteKind.HdrMetadataMissing => "OutcomeNoteHdrMetadataMissing",
         OutcomeNoteKind.KeptOriginalFormat => "OutcomeNoteKeptOriginalFormat",
         OutcomeNoteKind.StillImageTrackUnavailable => "OutcomeNoteStillImageTrackUnavailable",
+        OutcomeNoteKind.VideoToneMapSkipped => "OutcomeNoteVideoToneMapSkipped",
         _ => "OutcomeNoteHdrConversionFailed"
     };
 

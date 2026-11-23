@@ -15,7 +15,7 @@ public class VideoStreamProbeTests
         var ffmpeg = ExternalTools.RequireFfmpeg();
         using var temp = new TempDirectory();
         var video = temp.Combine("clip.mp4");
-        await FfmpegSamples.H264Async(ffmpeg, video, "-color_primaries", "bt709", "-color_trc", "bt709", "-colorspace", "bt709");
+        await FfmpegSamples.H264Async(ffmpeg, video, FfmpegSamples.ColorArguments("bt709", "bt709", "bt709"));
         // Windows 文件名不允许冒号；其它平台一并覆盖，冒号会被 FFmpeg 当作协议分隔符
         var name = OperatingSystem.IsWindows() ? "动态 照片,1.jpg" : "动态 照片,1:2.jpg";
         var container = temp.CreateFile(Path.Combine("相册 a,b", name));

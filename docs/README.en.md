@@ -345,3 +345,10 @@ If this tool helps you, you are welcome to buy the author a coffee.
 </p>
 
 Stars, [issues](https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert/issues) and [pull requests](https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert/pulls) are welcome too.
+
+## Contributors
+
+Thanks to everyone who has contributed! This list is generated from GitHub by [`contributors.yml`](../.github/workflows/contributors.yml) (bot accounts excluded).
+
+<!-- CONTRIBUTORS:START -->
+<!-- CONTRIBUTORS:END -->

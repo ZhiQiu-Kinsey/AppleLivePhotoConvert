@@ -15,32 +15,38 @@ public sealed class FfmpegVideoConverter : IVideoConverter
     private const string HdrPixelFormat = "yuv420p10le";
     private const string SdrPixelFormat = "yuv420p";
 
-    /// <summary>色调映射到 BT.709：先线性化，按参考白压到可显示范围，再按 BT.709 编码。</summary>
-    private const string SdrToneMapFilter = "zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt2020:rin=limited,tonemap=hable:desat=0,zscale=t=bt709:m=bt709:p=bt709:r=limited,format=yuv420p";
+    /// <summary>色调映射的参考白（nits）：HDR 线性光按它归一，与播放端一致。</summary>
+    private const string ToneMapReferenceWhiteNits = "100";
     private const string SdrPrimaries = "bt709";
     private const string SdrTransfer = "bt709";
     private const string SdrMatrix = "bt709";
 
     private readonly string _executablePath;
     private readonly Lazy<Task<FrozenSet<string>>> _encoders;
+    private readonly Lazy<Task<FrozenSet<string>>> _filters;
 
-    private FfmpegVideoConverter(string executablePath, IEnumerable<string>? availableEncoders)
+    private FfmpegVideoConverter(string executablePath, IEnumerable<string>? availableEncoders, IEnumerable<string>? availableFilters)
     {
         _executablePath = executablePath;
         _encoders = availableEncoders is null
             ? new(() => ListEncodersAsync(executablePath))
             : new(Task.FromResult(availableEncoders.ToFrozenSet(StringComparer.Ordinal)));
+        _filters = availableFilters is null
+            ? new(() => ListFiltersAsync(executablePath))
+            : new(Task.FromResult(availableFilters.ToFrozenSet(StringComparer.Ordinal)));
     }
 
     public static string ExecutableName => OperatingSystem.IsWindows() ? "ffmpeg.exe" : "ffmpeg";
 
     /// <param name="executablePath">指定的 ffmpeg 路径；null 时按默认位置查找</param>
     /// <param name="availableEncoders">已知可用的编码器名单；null 时在首次需要重新编码 HDR 源时运行 <c>ffmpeg -encoders</c> 探测（只支持 8-bit 的 libx265 视为缺失）</param>
+    /// <param name="availableFilters">已知可用的滤镜名单；null 时在首次需要色调映射时运行 <c>ffmpeg -filters</c> 探测</param>
     /// <exception cref="FileNotFoundException">找不到 FFmpeg</exception>
-    public static FfmpegVideoConverter Create(string? executablePath = null, IEnumerable<string>? availableEncoders = null) =>
+    public static FfmpegVideoConverter Create(string? executablePath = null, IEnumerable<string>? availableEncoders = null, IEnumerable<string>? availableFilters = null) =>
         new(ToolLocator.Find(ExecutableName, executablePath, "ffmpeg", "FFmpeg", "bin")
             ?? throw new ToolNotFoundException(ExecutableName),
-            availableEncoders);
+            availableEncoders,
+            availableFilters);
 
     public Task ConvertToMp4Async(string sourcePath, string destinationPath, VideoConversionOptions? options = null, CancellationToken cancellationToken = default) =>
         ConvertAsync(sourcePath, destinationPath, VideoContainer.Mp4, options ?? VideoConversionOptions.Default, cancellationToken);
@@ -58,6 +64,18 @@ public sealed class FfmpegVideoConverter : IVideoConverter
         string? remuxError = null;
         // 色调映射必须重新编码，流复制会把 HDR 标记原样带过去；SDR 源不需要，仍可流复制
         var needsToneMap = options.ToneMapToSdr && source is { IsHdr: true };
+        if (needsToneMap)
+        {
+            var filters = await _filters.Value.WaitAsync(cancellationToken);
+            if (!filters.Contains(ZscaleFilter) || !filters.Contains(TonemapFilter))
+            {
+                // 不能悄悄流复制：调用方要据此决定退回保留 HDR 并告知用户
+                throw new VideoConversionException(
+                    VideoConversionError.HdrToneMapUnavailable,
+                    $"源视频为 HDR，当前 FFmpeg 缺少 {ZscaleFilter} 或 {TonemapFilter} 滤镜，无法色调映射为 SDR。");
+            }
+        }
+
         if (!options.ForceTranscode && !options.BakeOrientation && !needsToneMap)
         {
             var remux = await ProcessRunner.RunAsync(_executablePath, BuildRemuxArguments(input, output, source, container), cancellationToken);
@@ -161,7 +179,7 @@ public sealed class FfmpegVideoConverter : IVideoConverter
         var pixelFormat = hevc && !applyToneMap ? HdrPixelFormat : SdrPixelFormat;
         arguments.AddRange(["-i", input, "-map", "0:v:0", "-map", "0:a:0?"]);
         // 统一输出有限范围：像素格式不变时 FFmpeg 不会自动换算范围，只改标记会让全范围源发灰或过曝
-        arguments.AddRange(["-vf", applyToneMap ? SdrToneMapFilter : $"scale=out_range=tv,format={pixelFormat}"]);
+        arguments.AddRange(["-vf", applyToneMap ? BuildToneMapFilter(source!) : BuildPassThroughFilter(source, pixelFormat)]);
         if (hevc)
         {
             arguments.AddRange(["-c:v", HevcEncoder, "-pix_fmt", pixelFormat, "-crf", TranscodeCrf, "-x265-params", BuildX265Parameters(applyToneMap ? null : source), "-tag:v", "hvc1"]);
@@ -193,6 +211,67 @@ public sealed class FfmpegVideoConverter : IVideoConverter
         arguments.AddRange(["-color_range", "tv"]);
         AddAudioAndContainer(arguments, output, container);
         return arguments;
+    }
+
+    /// <summary>
+    /// 不做色调映射时的滤镜：先把源的色彩三元组写到帧上，再统一换算为有限范围。
+    /// </summary>
+    /// <remarks>
+    /// FFmpeg 7.1 起编码器的色彩属性取自帧，只有矩阵与范围参与滤镜协商；码流 VUI 缺失时帧上的原色与传递特性是 unknown，
+    /// 会覆盖 <c>-color_primaries</c> / <c>-color_trc</c>，HDR 输出因此丢掉 HLG / PQ 标记。用 setparams 显式声明可兼容所有版本。
+    /// </remarks>
+    internal static string BuildPassThroughFilter(VideoStreamInfo? source, string pixelFormat)
+    {
+        List<string> declared = [];
+        if (source?.ColorPrimaries is { } primaries && X265Primaries.Contains(primaries))
+        {
+            declared.Add($"color_primaries={primaries}");
+        }
+
+        if (source?.ColorTransfer is { } transfer && X265Transfers.Contains(transfer))
+        {
+            declared.Add($"color_trc={transfer}");
+        }
+
+        if (source?.ColorSpace is { } space && X265Matrices.Contains(space))
+        {
+            declared.Add($"colorspace={space}");
+        }
+
+        var scale = $"scale=out_range=tv,format={pixelFormat}";
+        return declared.Count == 0 ? scale : $"setparams={string.Join(':', declared)},{scale}";
+    }
+
+    /// <summary>
+    /// HDR → BT.709 SDR：按源的色彩属性线性化，在 BT.2020 线性光下按参考白做 hable 映射，再按 BT.709 编码为 8-bit 有限范围。
+    /// </summary>
+    /// <remarks>
+    /// 输入属性必须显式写进第一个 zscale，且同时给出输出色域：码流 VUI 缺失而容器 colr 有标注时，
+    /// zscale 从帧上读不到属性，会报「no path between colorspaces」。
+    /// </remarks>
+    internal static string BuildToneMapFilter(VideoStreamInfo source)
+    {
+        List<string> input = [];
+        if (source.ColorRange switch { "pc" => "full", "tv" => "limited", _ => null } is { } range)
+        {
+            input.Add($"rin={range}");
+        }
+
+        if (source.ColorSpace is { } matrix && ZscaleMatrices.Contains(matrix))
+        {
+            input.Add($"min={matrix}");
+        }
+
+        var primaries = source.ColorPrimaries is { } declared && ZscalePrimaries.Contains(declared) ? declared : "bt2020";
+        input.Add($"pin={primaries}");
+        if (source.ColorTransfer is { } transfer)
+        {
+            input.Add($"tin={transfer}");
+        }
+
+        input.AddRange(["t=linear", $"npl={ToneMapReferenceWhiteNits}", $"p={primaries}"]);
+        return $"zscale={string.Join(':', input)},format=gbrpf32le,tonemap=hable:desat=0,"
+            + $"zscale=t={SdrTransfer}:m={SdrMatrix}:p={SdrPrimaries}:r=limited,format={SdrPixelFormat}";
     }
 
     /// <summary>
@@ -269,7 +348,29 @@ public sealed class FfmpegVideoConverter : IVideoConverter
         }
     }
 
+    private static async Task<FrozenSet<string>> ListFiltersAsync(string executablePath)
+    {
+        try
+        {
+            var result = await ProcessRunner.RunAsync(executablePath, ["-nostdin", "-hide_banner", "-filters"], CancellationToken.None, TimeSpan.FromSeconds(30));
+            return ToolOutputParser.ParseFilterNames(result.StandardOutput).ToFrozenSet(StringComparer.Ordinal);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or TimeoutException or System.ComponentModel.Win32Exception)
+        {
+            return FrozenSet<string>.Empty;
+        }
+    }
+
     private static bool IsNonEmptyFile(string path) => new FileInfo(path) is { Exists: true, Length: > 0 };
+
+    private const string ZscaleFilter = "zscale";
+    private const string TonemapFilter = "tonemap";
+
+    private static readonly FrozenSet<string> ZscaleMatrices = FrozenSet.Create(
+        StringComparer.Ordinal, "bt709", "bt470bg", "smpte170m", "bt2020nc", "bt2020c");
+
+    private static readonly FrozenSet<string> ZscalePrimaries = FrozenSet.Create(
+        StringComparer.Ordinal, "bt709", "bt470bg", "smpte170m", "bt2020", "smpte432");
 
     private static readonly FrozenSet<string> X265Primaries = FrozenSet.Create(
         StringComparer.Ordinal,

@@ -36,7 +36,10 @@ public enum VideoConversionError
     EncodeFailed,
 
     /// <summary>源是 HDR，但 FFmpeg 缺少保真所需的 10-bit HEVC 编码器（libx265）。</summary>
-    HdrEncoderUnavailable
+    HdrEncoderUnavailable,
+
+    /// <summary>要求色调映射为 SDR，但 FFmpeg 缺少 zscale 或 tonemap 滤镜。</summary>
+    HdrToneMapUnavailable
 }
 
 /// <summary>

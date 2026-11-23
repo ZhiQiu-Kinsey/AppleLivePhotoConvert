@@ -121,6 +121,12 @@ public static class MovStillImageTrack
         }
 
         var stillUnits = ClampStillUnits(stillTimeUs, header.Timescale, header.Duration);
+        // 编辑列表与 tkhd 的时长字段只有 32 位（时长未知时上面不会收敛）
+        if (stillUnits >= uint.MaxValue)
+        {
+            return StillImageTrackResult.Unsupported;
+        }
+
         var payloadLength = mdat.Size - mdat.HeaderLength;
         var prefixLength = boxes.Where(box => box.Type is not (Moov or Mdat)).Sum(box => box.Size);
         // mdat 总长超过 32 位时改写为 64 位长度头；此时前缀里其它 box 的偏移不变，只是样本位置后移
@@ -338,10 +344,11 @@ public static class MovStillImageTrack
                     return false;
                 }
 
+                // 版本 1 的创建时间是 64 位；新轨道用 32 位字段，2040 年前的秒数都放得下，超出时取上限
                 header = new MovieHeader(
                     BinaryPrimitives.ReadUInt32BigEndian(moov[(body + 20)..]),
                     BinaryPrimitives.ReadUInt64BigEndian(moov[(body + 24)..]),
-                    BinaryPrimitives.ReadUInt32BigEndian(moov[(body + 4)..]));
+                    (uint)Math.Min(BinaryPrimitives.ReadUInt64BigEndian(moov[(body + 4)..]), uint.MaxValue));
             }
             else
             {

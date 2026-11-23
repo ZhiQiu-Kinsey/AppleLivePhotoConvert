@@ -344,3 +344,10 @@ LPC_DOCS_SCREENSHOTS=docs/screenshots dotnet test tests/LivePhotoConvert.Desktop
 外部工具按各自的许可证分发，一键安装时从其官方或镜像来源下载，不随本程序打包。
 
 也欢迎点亮 Star、在 [Issues](https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert/issues) 反馈问题，或提交 [Pull Request](https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert/pulls)。
+
+## 贡献者
+
+感谢每一位贡献者！名单由 [`contributors.yml`](.github/workflows/contributors.yml) 从 GitHub 自动生成（不含机器人账号）。
+
+<!-- CONTRIBUTORS:START -->
+<!-- CONTRIBUTORS:END -->
