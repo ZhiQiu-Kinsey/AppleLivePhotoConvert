@@ -351,4 +351,10 @@ Stars, [issues](https://github.com/ZhiQiu-Kinsey/AppleLivePhotoConvert/issues) a
 Thanks to everyone who has contributed! This list is generated from GitHub by [`contributors.yml`](../.github/workflows/contributors.yml) (bot accounts excluded).
 
 <!-- CONTRIBUTORS:START -->
+<p>
+  <a href="https://github.com/ZhiQiu-Kinsey" title="ZhiQiu-Kinsey"><img src="https://avatars.githubusercontent.com/u/22720616?v=4&amp;s=128" width="64" height="64" alt="ZhiQiu-Kinsey" /></a>
+  <a href="https://github.com/SiRan-Dev" title="SiRan-Dev"><img src="https://avatars.githubusercontent.com/u/313007674?v=4&amp;s=128" width="64" height="64" alt="SiRan-Dev" /></a>
+  <a href="https://github.com/claude" title="claude"><img src="https://avatars.githubusercontent.com/u/81847?v=4&amp;s=128" width="64" height="64" alt="claude" /></a>
+  <a href="https://github.com/RyanStarFox" title="RyanStarFox"><img src="https://avatars.githubusercontent.com/u/176813606?v=4&amp;s=128" width="64" height="64" alt="RyanStarFox" /></a>
+</p>
 <!-- CONTRIBUTORS:END -->
